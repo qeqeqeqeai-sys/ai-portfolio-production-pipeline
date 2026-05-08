@@ -67,8 +67,8 @@ jobs:
           python scripts/ai_signal_scoring_v7_alpha_model_efficiency_github_actions.py 2>&1 | tee logs/01_signal_scoring.log
 
       - name: Run Step 2 - Portfolio engine
-        run: |
-          python scripts/ai_portfolio_engine_v7_alpha_score.py 2>&1 | tee logs/02_portfolio_engine.log
+        run: |          
+          python scripts/ai_portfolio_engine_v7_alpha_score_github_actions.py 2>&1 | tee logs/02_portfolio_engine.log
 
       - name: Run Step 3 - Monitoring report
         run: |
