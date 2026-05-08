@@ -62,6 +62,9 @@ jobs:
           print("All required secrets are present.")
           PY
 
+      - name: Force failure test
+        run: exit 1
+
       - name: Run Step 1 - Daily stock alpha scoring
         run: |          
           python scripts/ai_signal_scoring_v7_alpha_model_efficiency_github_actions.py 2>&1 | tee logs/01_signal_scoring.log
