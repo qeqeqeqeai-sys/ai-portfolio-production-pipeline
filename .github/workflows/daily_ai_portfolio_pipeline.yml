@@ -71,8 +71,8 @@ jobs:
           python scripts/ai_portfolio_engine_v7_alpha_score_github_actions.py 2>&1 | tee logs/02_portfolio_engine.log
 
       - name: Run Step 3 - Monitoring report
-        run: |
-          python scripts/ai_portfolio_monitoring_v1.py 2>&1 | tee logs/03_monitoring.log
+        run: |          
+          python scripts/ai_portfolio_monitoring_v1_github_actions.py 2>&1 | tee logs/03_monitoring.log
 
       - name: Upload logs and outputs
         if: always()
