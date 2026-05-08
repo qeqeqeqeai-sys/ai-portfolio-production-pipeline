@@ -861,6 +861,8 @@ def main() -> None:
 
     # File paths
     summary_path = OUTPUT_DIR / f"ai_portfolio_v7_summary_{stamp}.csv"
+    latest_summary_path = OUTPUT_DIR / "ai_portfolio_v7_summary_latest.csv"
+    summary.to_csv(latest_summary_path, index=False)
     signal_path = OUTPUT_DIR / f"ai_portfolio_v7_signal_scores_{stamp}.csv"
     top_alpha_path = OUTPUT_DIR / f"ai_portfolio_v7_top_alpha_{stamp}.csv"
     holdings_path = OUTPUT_DIR / f"ai_portfolio_v7_holdings_{stamp}.csv"
