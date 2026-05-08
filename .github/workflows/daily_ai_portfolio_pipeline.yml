@@ -93,6 +93,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Write pipeline failure metrics
+        if: failure()
+        run: |
+          python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/05_pipeline_failure_metrics.log
+
       - name: Send Telegram failure notification
         if: failure()
         run: |
