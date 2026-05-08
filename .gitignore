@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+
+.env
+.env.*
+*.log
+
+outputs/*
+!outputs/.gitkeep
+
+logs/*
+!logs/.gitkeep
+
+.DS_Store
+Thumbs.db
