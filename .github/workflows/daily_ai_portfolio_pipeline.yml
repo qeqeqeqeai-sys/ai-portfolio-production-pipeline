@@ -63,8 +63,8 @@ jobs:
           PY
 
       - name: Run Step 1 - Daily stock alpha scoring
-        run: |
-          python scripts/ai_signal_scoring_v7_alpha_model_efficiency_enabled.py 2>&1 | tee logs/01_signal_scoring.log
+        run: |          
+          python scripts/ai_signal_scoring_v7_alpha_model_efficiency_github_actions.py 2>&1 | tee logs/01_signal_scoring.log
 
       - name: Run Step 2 - Portfolio engine
         run: |
