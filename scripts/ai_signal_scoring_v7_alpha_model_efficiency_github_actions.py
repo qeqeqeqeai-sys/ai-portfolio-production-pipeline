@@ -19,6 +19,7 @@ This script:
 4. Computes alpha_score_v7
 5. Ranks stocks within subsector and globally
 6. Writes results to public.ai_stock_signal_scores_v7
+7. Uses retry wrappers for Supabase REST calls in GitHub Actions
 
 Required environment variables
 ------------------------------
@@ -35,6 +36,7 @@ python ai_signal_scoring_v7_alpha_model.py
 """
 
 import os
+import sys
 import math
 import json
 import time
@@ -53,6 +55,18 @@ try:
     load_dotenv()
 except Exception:
     pass
+
+# Allow imports from the scripts/ folder when running in GitHub Actions.
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.append(str(SCRIPT_DIR))
+
+try:
+    from api_retry_utils import request_with_retries
+except Exception as exc:
+    raise RuntimeError(
+        "Could not import api_retry_utils.py. Make sure it exists in the same scripts/ folder."
+    ) from exc
 
 
 # =============================================================================
@@ -136,7 +150,20 @@ def sb_get(table: str, params: Dict[str, str], limit: int = 10000) -> pd.DataFra
         p["limit"] = str(limit)
         p["offset"] = str(offset)
 
-        r = requests.get(url, headers=supabase_headers(), params=p, timeout=60)
+        try:
+            r = request_with_retries(
+                "GET",
+                url,
+                headers=supabase_headers(),
+                params=p,
+                timeout=60,
+                max_attempts=3,
+                base_sleep_seconds=2.0,
+                service_name=f"Supabase GET {table}",
+            )
+        except RuntimeError as exc:
+            log(f"Retry wrapper failed while reading {table}: {exc}", "WARN")
+            return pd.DataFrame()
 
         if r.status_code == 404:
             log(f"Table not found or unavailable: {table}", "WARN")
@@ -170,12 +197,16 @@ def sb_upsert(table: str, rows: List[Dict[str, Any]], conflict_cols: str, batch_
 
     for i in range(0, len(rows), batch_size):
         batch = rows[i:i + batch_size]
-        r = requests.post(
+        r = request_with_retries(
+            "POST",
             url,
             headers=supabase_headers("resolution=merge-duplicates"),
             params=params,
             data=json.dumps(batch, default=str),
             timeout=60,
+            max_attempts=3,
+            base_sleep_seconds=2.0,
+            service_name=f"Supabase UPSERT {table}",
         )
 
         if r.status_code >= 400:
