@@ -74,6 +74,11 @@ jobs:
         run: |          
           python scripts/ai_portfolio_monitoring_v1_github_actions.py 2>&1 | tee logs/03_monitoring.log
 
+      - name: Write pipeline runtime metrics
+        if: success()
+        run: |
+          python scripts/write_pipeline_metrics.py 2>&1 | tee logs/04_pipeline_metrics.log
+
       - name: Upload logs and outputs
         if: always()
         uses: actions/upload-artifact@v4
