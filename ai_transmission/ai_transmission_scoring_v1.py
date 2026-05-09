@@ -2,6 +2,10 @@
 """
 ai_transmission_scoring_v1.py
 
+Revision
+--------
+2026-05-10: Updated FMP market confirmation to use stable historical-price-eod/light endpoint.
+
 Purpose
 -------
 Build v1 AI transmission scores from ai_transmission_map and write results into
@@ -319,9 +323,23 @@ def fetch_fmp_historical_prices(
     lookback_days: int = PRICE_LOOKBACK_DAYS + 10,
 ) -> List[Dict[str, Any]]:
     """
-    Fetch recent daily prices from FMP.
+    Fetch recent daily prices from the current FMP stable endpoint.
 
-    Returns most recent prices sorted ascending by date.
+    Uses:
+        https://financialmodelingprep.com/stable/historical-price-eod/light
+
+    This replaces the legacy endpoint:
+        /api/v3/historical-price-full/{symbol}
+
+    Returns recent prices sorted ascending by date.
+    Expected FMP stable light response shape is usually a list of rows:
+        [
+            {"symbol": "AAPL", "date": "2026-05-08", "price": 123.45, "volume": 123456},
+            ...
+        ]
+
+    The parser is defensive and also accepts dict payloads containing
+    historical/data/results arrays, because FMP response shapes can vary by plan.
     """
     if not FMP_API_KEY:
         return []
@@ -329,10 +347,18 @@ def fetch_fmp_historical_prices(
     if not ticker:
         return []
 
-    url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{ticker}"
+    symbol = ticker.strip().upper()
+
+    # Pull a slightly wider calendar window because weekends/holidays reduce trading days.
+    to_date = datetime.utcnow().date()
+    from_date = to_date - timedelta(days=max(45, lookback_days * 3))
+
+    url = "https://financialmodelingprep.com/stable/historical-price-eod/light"
 
     params = {
-        "timeseries": lookback_days,
+        "symbol": symbol,
+        "from": from_date.isoformat(),
+        "to": to_date.isoformat(),
         "apikey": FMP_API_KEY,
     }
 
@@ -340,35 +366,68 @@ def fetch_fmp_historical_prices(
 
     if response.status_code >= 400:
         logger.warning(
-            "FMP historical price failed for %s: HTTP %s - %s",
-            ticker,
+            "FMP stable historical price failed for %s: HTTP %s - %s",
+            symbol,
             response.status_code,
             response.text[:300],
         )
         return []
 
-    payload = response.json()
-    historical = payload.get("historical", [])
-
-    if not isinstance(historical, list):
+    try:
+        payload = response.json()
+    except Exception as exc:
+        logger.warning("FMP response for %s was not valid JSON: %s", symbol, exc)
         return []
 
-    clean = []
+    historical: Any
+
+    if isinstance(payload, list):
+        historical = payload
+    elif isinstance(payload, dict):
+        historical = (
+            payload.get("historical")
+            or payload.get("data")
+            or payload.get("results")
+            or []
+        )
+    else:
+        historical = []
+
+    if not isinstance(historical, list):
+        logger.warning("Unexpected FMP payload shape for %s. Using neutral score.", symbol)
+        return []
+
+    clean: List[Dict[str, Any]] = []
+
     for row in historical:
-        close = safe_float(row.get("close"))
+        if not isinstance(row, dict):
+            continue
+
+        # stable light commonly uses price. stable full may use close/adjClose.
+        close = (
+            safe_float(row.get("price"))
+            or safe_float(row.get("close"))
+            or safe_float(row.get("adjClose"))
+            or safe_float(row.get("adj_close"))
+        )
         volume = safe_float(row.get("volume"))
         date = row.get("date")
 
         if date and close is not None:
             clean.append(
                 {
-                    "date": date,
+                    "date": str(date),
                     "close": close,
                     "volume": volume,
                 }
             )
 
     clean.sort(key=lambda x: x["date"])
+
+    # Keep only the latest N trading rows to avoid old data affecting confirmation.
+    if len(clean) > lookback_days:
+        clean = clean[-lookback_days:]
+
     return clean
 
 
