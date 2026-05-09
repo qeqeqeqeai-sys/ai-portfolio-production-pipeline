@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    # 05:30 Singapore time (UTC+8)
+    # 05:30 Singapore time, Tuesday to Saturday
     # GitHub cron uses UTC
     - cron: "30 21 * * 1-5"
 
@@ -22,6 +22,8 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       PYTHONUNBUFFERED: "1"
 
     steps:
@@ -43,6 +45,11 @@ jobs:
         run: |
           mkdir -p logs outputs
 
+      - name: Record pipeline start time
+        run: |
+          echo "PIPELINE_START_TS=$(date +%s)" >> $GITHUB_ENV
+          echo "PIPELINE_START_SGT=$(TZ='Asia/Singapore' date '+%Y-%m-%d %H:%M:%S SGT')" >> $GITHUB_ENV
+
       - name: Check required secrets
         run: |
           python - <<'PY'
@@ -52,6 +59,8 @@ jobs:
               "SUPABASE_URL",
               "SUPABASE_SERVICE_ROLE_KEY",
               "FMP_API_KEY",
+              "TELEGRAM_BOT_TOKEN",
+              "TELEGRAM_CHAT_ID",
           ]
 
           missing = [x for x in required if not os.getenv(x)]
@@ -77,83 +86,78 @@ jobs:
       - name: Verify and prepare metrics summary file
         if: success()
         run: |
-          echo "Listing outputs after monitoring:"
-          find outputs -maxdepth 1 -type f -print | sort
+          echo "Checking for metrics summary file..."
 
-          python - <<'PY' 2>&1 | tee logs/03b_prepare_metrics_summary.log
-          from pathlib import Path
+          if [ -f "outputs/ai_portfolio_v7_summary_latest.csv" ]; then
+            echo "Found outputs/ai_portfolio_v7_summary_latest.csv"
+            exit 0
+          fi
+
+          SUMMARY_FILE=$(ls outputs/ai_portfolio_v7_summary_*.csv 2>/dev/null | head -n 1)
+
+          if [ -f "$SUMMARY_FILE" ]; then
+            echo "Using summary CSV: $SUMMARY_FILE"
+            cp "$SUMMARY_FILE" outputs/ai_portfolio_v7_summary_latest.csv
+            exit 0
+          fi
+
+          PORTFOLIO_JSON=$(ls outputs/portfolio_engine_v7_summary_*.json 2>/dev/null | head -n 1)
+
+          if [ -f "$PORTFOLIO_JSON" ]; then
+            echo "Using fallback portfolio summary JSON: $PORTFOLIO_JSON"
+
+            python - <<PY
           import json
           import pandas as pd
 
-          out = Path("outputs")
-          out.mkdir(exist_ok=True)
+          json_file = "$PORTFOLIO_JSON"
 
-          latest = out / "ai_portfolio_v7_summary_latest.csv"
+          with open(json_file, "r", encoding="utf-8") as f:
+              data = json.load(f)
 
-          if latest.exists():
-              print(f"[OK] Found existing latest summary: {latest}")
-              raise SystemExit(0)
+          if isinstance(data, list):
+              data = data[0] if data else {}
 
-          # Preferred source: monitoring-created dated summary CSV
-          candidates = sorted(out.glob("ai_portfolio_v7_summary_*.csv"), reverse=True)
-          candidates = [p for p in candidates if p.name != "ai_portfolio_v7_summary_latest.csv"]
+          row = {
+              "run_date_sgt_requested": data.get("run_date_sgt"),
+              "signal_date_used": data.get("run_date_sgt"),
+              "portfolio_date_used": data.get("run_date_sgt"),
+              "signal_rows": data.get("signal_rows", 0),
+              "portfolio_rows": data.get("portfolio_rows", 0),
+              "equity_holdings": data.get("equity_holdings", 0),
+              "subsectors_in_signal_universe": data.get("subsectors_in_signal_universe", 0),
+              "subsectors_in_portfolio": data.get("subsectors_in_portfolio", 0),
+              "total_portfolio_weight": data.get("total_portfolio_weight", 0),
+              "cash_weight": data.get("cash_weight", 0),
+              "equity_weight": data.get("equity_weight", 0),
+              "avg_alpha_score": data.get("avg_alpha_score", data.get("avg_alpha_all", 0)),
+              "top_alpha_ticker": data.get("top_alpha_ticker", ""),
+              "status": "OK",
+          }
 
-          if candidates:
-              src = candidates[0]
-              latest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-              print(f"[OK] Created {latest} from {src}")
-              raise SystemExit(0)
-
-          # Fallback source: portfolio engine summary JSON
-          json_candidates = sorted(out.glob("portfolio_engine_v7_summary_*.json"), reverse=True)
-
-          if json_candidates:
-              src = json_candidates[0]
-              data = json.loads(src.read_text(encoding="utf-8"))
-
-              if isinstance(data, list):
-                  if not data:
-                      raise RuntimeError(f"Portfolio summary JSON is empty: {src}")
-                  data = data[0]
-
-              if not isinstance(data, dict):
-                  raise RuntimeError(f"Unexpected portfolio summary JSON format: {src}")
-
-              # Normalize common portfolio-engine summary fields into what write_pipeline_metrics.py expects.
-              row = {
-                  "run_date_sgt": data.get("run_date_sgt") or data.get("run_date") or data.get("date"),
-                  "signal_rows": data.get("signal_rows") or data.get("input_rows") or data.get("score_rows"),
-                  "portfolio_rows": data.get("portfolio_rows") or data.get("rows") or data.get("holdings") or data.get("equity_holdings"),
-                  "subsectors": data.get("subsectors") or data.get("subsectors_in_signal_universe"),
-                  "portfolio_subsectors": data.get("portfolio_subsectors") or data.get("subsectors_in_portfolio"),
-                  "cash_weight": data.get("cash_weight"),
-                  "avg_alpha_score": data.get("avg_alpha_score") or data.get("avg_portfolio_alpha"),
-                  "top_alpha_ticker": data.get("top_alpha_ticker"),
-              }
-
-              # Keep all original JSON fields too, in case future metrics need them.
-              for k, v in data.items():
-                  row.setdefault(k, v)
-
-              pd.DataFrame([row]).to_csv(latest, index=False)
-              print(f"[OK] Created {latest} from fallback JSON {src}")
-              raise SystemExit(0)
-
-          raise RuntimeError(
-              "Could not create ai_portfolio_v7_summary_latest.csv. "
-              "No monitoring summary CSV or portfolio_engine_v7_summary JSON found in outputs/."
+          pd.DataFrame([row]).to_csv(
+              "outputs/ai_portfolio_v7_summary_latest.csv",
+              index=False
           )
           PY
+
+            exit 0
+          fi
+
+          echo "ERROR: No suitable summary file found."
+          ls -la outputs || true
+          exit 1
 
       - name: Write pipeline runtime metrics
         if: success()
         run: |
-          python scripts/write_pipeline_metrics.py 2>&1 | tee logs/04_pipeline_metrics.log
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
 
-      - name: Write pipeline failure metrics
-        if: failure()
-        run: |
-          python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/05_pipeline_failure_metrics.log
+          echo "Pipeline runtime seconds: $PIPELINE_RUNTIME_SECONDS"
+
+          PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
+          python scripts/write_pipeline_metrics.py 2>&1 | tee logs/04_pipeline_metrics.log
 
       - name: Upload logs and outputs
         if: always()
@@ -163,11 +167,19 @@ jobs:
           path: |
             logs/
             outputs/
-            *.csv
-            *.png
-            *.xlsx
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Write pipeline failure metrics
+        if: failure()
+        run: |
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+
+          echo "Pipeline runtime seconds: $PIPELINE_RUNTIME_SECONDS"
+
+          PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
+          python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/05_pipeline_failure_metrics.log
 
       - name: Send Telegram failure notification
         if: failure()
@@ -181,7 +193,7 @@ jobs:
       - name: Send Telegram success notification
         if: success()
         run: |
-          SUMMARY_FILE=$(ls outputs/ai_portfolio_v7_summary_latest.csv 2>/dev/null | head -n 1)
+          SUMMARY_FILE="outputs/ai_portfolio_v7_summary_latest.csv"
 
           if [ -f "$SUMMARY_FILE" ]; then
             SIGNAL_ROWS=$(python - <<PY
@@ -218,7 +230,10 @@ jobs:
             TOP_ALPHA="NA"
           fi
 
-          MESSAGE="✅ AI Portfolio Pipeline COMPLETED%0A%0ARepo: ${{ github.repository }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0ABranch: ${{ github.ref_name }}%0ASignal rows: ${SIGNAL_ROWS}%0APortfolio rows: ${PORTFOLIO_ROWS}%0ACash weight: ${CASH_WEIGHT}%0ATop alpha: ${TOP_ALPHA}%0ATime: $(TZ='Asia/Singapore' date '+%Y-%m-%d %H:%M:%S SGT')"
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+
+          MESSAGE="✅ AI Portfolio Pipeline COMPLETED%0A%0ARepo: ${{ github.repository }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0ABranch: ${{ github.ref_name }}%0ASignal rows: ${SIGNAL_ROWS}%0APortfolio rows: ${PORTFOLIO_ROWS}%0ACash weight: ${CASH_WEIGHT}%0ATop alpha: ${TOP_ALPHA}%0ARuntime: ${PIPELINE_RUNTIME_SECONDS}s%0ATime: $(TZ='Asia/Singapore' date '+%Y-%m-%d %H:%M:%S SGT')"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
