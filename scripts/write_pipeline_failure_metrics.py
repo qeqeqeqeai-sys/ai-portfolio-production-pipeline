@@ -1,15 +1,20 @@
 """
 write_pipeline_failure_metrics.py
 
-Writes FAILED GitHub Actions pipeline runs into Supabase.
+Schema-compatible failure metrics writer for production_pipeline_runs.
 
-Supports:
-- Normal script/runtime failures
-- Intentional validation gate failures
-- Validation report ingestion from outputs/validation_report.json
-- Runtime duration tracking
-- Log capture
-- GitHub Actions metadata
+Works with current table columns only:
+
+- run_timestamp_sgt
+- run_date_sgt
+- pipeline_name
+- status
+- runtime_seconds
+- github_run_id
+- github_workflow
+- github_repository
+- github_branch
+- error_message
 """
 
 import json
@@ -38,8 +43,16 @@ OUTPUTS_DIR = Path("outputs")
 VALIDATION_REPORT_PATH = OUTPUTS_DIR / "validation_report.json"
 
 
+def now_sgt() -> datetime:
+    return datetime.now(ZoneInfo("Asia/Singapore"))
+
+
 def now_sgt_iso() -> str:
-    return datetime.now(ZoneInfo("Asia/Singapore")).isoformat()
+    return now_sgt().isoformat()
+
+
+def today_sgt_iso() -> str:
+    return now_sgt().date().isoformat()
 
 
 def safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:
@@ -51,7 +64,7 @@ def safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:
         return default
 
 
-def read_text_file(path: Path, max_chars: int = 12000) -> Optional[str]:
+def read_text_file(path: Path, max_chars: int = 6000) -> Optional[str]:
     if not path.exists():
         return None
 
@@ -72,8 +85,8 @@ def read_json_file(path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def load_validation_failure_summary(path: Path = VALIDATION_REPORT_PATH) -> str:
-    data = read_json_file(path)
+def load_validation_failure_summary() -> str:
+    data = read_json_file(VALIDATION_REPORT_PATH)
 
     if not data:
         return "Validation report not found."
@@ -83,9 +96,8 @@ def load_validation_failure_summary(path: Path = VALIDATION_REPORT_PATH) -> str:
         if not r.get("passed", True)
     ]
 
-    top_failed = failed[:8]
-
     lines = [
+        "Failure type: VALIDATION_GATE_FAILED",
         f"Validation status: {data.get('status')}",
         f"Warnings: {data.get('warning_count')}",
         f"Errors: {data.get('error_count')}",
@@ -94,10 +106,10 @@ def load_validation_failure_summary(path: Path = VALIDATION_REPORT_PATH) -> str:
         "Failed checks:",
     ]
 
-    if not top_failed:
-        lines.append("- No failed validation checks found.")
+    if not failed:
+        lines.append("- No failed checks found.")
     else:
-        for r in top_failed:
+        for r in failed[:8]:
             lines.append(
                 f"- [{r.get('severity')}] {r.get('check_name')}: {r.get('message')}"
             )
@@ -105,14 +117,16 @@ def load_validation_failure_summary(path: Path = VALIDATION_REPORT_PATH) -> str:
     return "\n".join(lines)
 
 
-def detect_failure_type(validation_report: Optional[Dict[str, Any]]) -> str:
+def detect_failure_type() -> str:
+    validation_report = read_json_file(VALIDATION_REPORT_PATH)
+
     if validation_report and validation_report.get("status") == "FAILED":
         return "VALIDATION_GATE_FAILED"
 
     return "SCRIPT_RUNTIME_FAILED"
 
 
-def collect_log_bundle(max_chars_per_file: int = 8000) -> Dict[str, Optional[str]]:
+def collect_recent_logs(max_chars_per_file: int = 2500) -> str:
     log_files = [
         "01_signal_scoring.log",
         "02_portfolio_engine.log",
@@ -122,80 +136,103 @@ def collect_log_bundle(max_chars_per_file: int = 8000) -> Dict[str, Optional[str
         "06_pipeline_failure_metrics.log",
     ]
 
-    logs = {}
+    sections = []
 
     for file_name in log_files:
         path = LOG_DIR / file_name
-        logs[file_name] = read_text_file(path, max_chars=max_chars_per_file)
+        text = read_text_file(path, max_chars=max_chars_per_file)
 
-    return logs
+        if text:
+            sections.append(
+                f"\n--- {file_name} ---\n{text}"
+            )
+
+    if not sections:
+        return "No log files found."
+
+    return "\n".join(sections)
 
 
-def find_last_available_log(logs: Dict[str, Optional[str]]) -> Optional[str]:
-    for key in reversed(list(logs.keys())):
-        if logs.get(key):
-            return logs[key]
-    return None
+def truncate_error_message(message: str, max_chars: int = 12000) -> str:
+    if len(message) <= max_chars:
+        return message
+
+    return message[-max_chars:]
+
+
+def build_error_message() -> str:
+    failure_type = detect_failure_type()
+
+    if failure_type == "VALIDATION_GATE_FAILED":
+        main_summary = load_validation_failure_summary()
+    else:
+        main_summary = "Failure type: SCRIPT_RUNTIME_FAILED"
+
+    recent_logs = collect_recent_logs()
+
+    message = f"""
+AI Portfolio production pipeline failed.
+
+{main_summary}
+
+GitHub metadata:
+- github_run_id: {os.getenv("GITHUB_RUN_ID")}
+- github_workflow: {os.getenv("GITHUB_WORKFLOW")}
+- github_repository: {os.getenv("GITHUB_REPOSITORY")}
+- github_branch: {os.getenv("GITHUB_REF_NAME")}
+- github_sha: {os.getenv("GITHUB_SHA")}
+
+Recent logs:
+{recent_logs}
+""".strip()
+
+    return truncate_error_message(message)
 
 
 def build_failure_payload() -> Dict[str, Any]:
-    validation_report = read_json_file(VALIDATION_REPORT_PATH)
-    validation_summary_text = load_validation_failure_summary(VALIDATION_REPORT_PATH)
-
-    logs = collect_log_bundle()
-    last_log = find_last_available_log(logs)
-
-    failure_type = detect_failure_type(validation_report)
-
     runtime_seconds = safe_float(os.getenv("PIPELINE_RUNTIME_SECONDS"))
 
     payload = {
-        "run_date_sgt": datetime.now(ZoneInfo("Asia/Singapore")).date().isoformat(),
         "run_timestamp_sgt": now_sgt_iso(),
+        "run_date_sgt": today_sgt_iso(),
+        "pipeline_name": "AI_PORTFOLIO_PRODUCTION",
         "status": "FAILED",
-        "failure_type": failure_type,
         "runtime_seconds": runtime_seconds,
 
-        # GitHub Actions metadata
+        # Existing GitHub metadata columns
         "github_run_id": os.getenv("GITHUB_RUN_ID"),
-        "github_run_number": os.getenv("GITHUB_RUN_NUMBER"),
         "github_workflow": os.getenv("GITHUB_WORKFLOW"),
-        "github_job": os.getenv("GITHUB_JOB"),
         "github_repository": os.getenv("GITHUB_REPOSITORY"),
-        "github_ref": os.getenv("GITHUB_REF"),
-        "github_ref_name": os.getenv("GITHUB_REF_NAME"),
-        "github_sha": os.getenv("GITHUB_SHA"),
-        "github_actor": os.getenv("GITHUB_ACTOR"),
+        "github_branch": os.getenv("GITHUB_REF_NAME"),
 
-        # Validation fields
-        "validation_status": validation_report.get("status") if validation_report else None,
-        "validation_warning_count": validation_report.get("warning_count") if validation_report else None,
-        "validation_error_count": validation_report.get("error_count") if validation_report else None,
-        "validation_hard_fail_count": validation_report.get("hard_fail_count") if validation_report else None,
-        "validation_should_fail_pipeline": validation_report.get("should_fail_pipeline") if validation_report else None,
-        "validation_summary": validation_summary_text,
-        "validation_report_json": validation_report,
-
-        # Logs
-        "error_log": last_log,
-        "logs_json": logs,
-
-        # Source marker
-        "source": "GITHUB_ACTIONS_FAILURE_WRITER",
-        "created_at": now_sgt_iso(),
+        # Existing error field
+        "error_message": build_error_message(),
     }
 
     return payload
 
 
-def supabase_insert(table: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def write_local_failure_payload(payload: Dict[str, Any]) -> None:
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    path = OUTPUTS_DIR / "pipeline_failure_payload_latest.json"
+
+    path.write_text(
+        json.dumps(payload, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+    print(f"[INFO] Local failure payload written to {path}")
+
+
+def supabase_insert(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not SUPABASE_URL:
         raise RuntimeError("Missing SUPABASE_URL")
 
     if not SUPABASE_SERVICE_ROLE_KEY:
         raise RuntimeError("Missing SUPABASE_SERVICE_ROLE_KEY")
 
-    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{table}"
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{PIPELINE_TABLE}"
 
     headers = {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
@@ -222,19 +259,6 @@ def supabase_insert(table: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return {"raw_response": response.text}
 
 
-def write_local_failure_payload(payload: Dict[str, Any]) -> None:
-    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    path = OUTPUTS_DIR / "pipeline_failure_payload_latest.json"
-
-    path.write_text(
-        json.dumps(payload, indent=2, default=str),
-        encoding="utf-8",
-    )
-
-    print(f"[INFO] Local failure payload written to {path}")
-
-
 def main() -> int:
     print("=" * 100)
     print("Writing pipeline failure metrics")
@@ -242,10 +266,9 @@ def main() -> int:
 
     try:
         payload = build_failure_payload()
-
         write_local_failure_payload(payload)
 
-        result = supabase_insert(PIPELINE_TABLE, payload)
+        result = supabase_insert(payload)
 
         print("[SUCCESS] Failure metrics written to Supabase.")
         print(json.dumps(result, indent=2, default=str))
@@ -257,16 +280,15 @@ def main() -> int:
         print(str(exc))
         print(traceback.format_exc())
 
-        fallback = {
+        fallback_payload = {
             "status": "FAILED",
-            "failure_type": "FAILURE_METRICS_WRITE_FAILED",
             "error": str(exc),
             "traceback": traceback.format_exc(),
-            "created_at": now_sgt_iso(),
+            "created_at_sgt": now_sgt_iso(),
         }
 
         try:
-            write_local_failure_payload(fallback)
+            write_local_failure_payload(fallback_payload)
         except Exception:
             pass
 
