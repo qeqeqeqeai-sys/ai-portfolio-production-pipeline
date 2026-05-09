@@ -3,6 +3,14 @@
 AI Portfolio Monitoring v1 - GitHub Actions Ready
 =================================================
 
+def log(message, level="INFO"):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    now = datetime.now(ZoneInfo("Asia/Singapore")).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{now} SGT] [{level}] {message}", flush=True)
+
+
 Purpose
 -------
 Monitor the daily AI portfolio production pipeline after:
@@ -861,11 +869,6 @@ def main() -> None:
 
     # File paths
     summary_path = OUTPUT_DIR / f"ai_portfolio_v7_summary_{stamp}.csv"
-    latest_summary_path = OUTPUT_DIR / "ai_portfolio_v7_summary_latest.csv"
-    summary.to_csv(latest_summary_path, index=False)
-    latest_summary_path = OUTPUT_DIR / "ai_portfolio_v7_summary_latest.csv"
-    summary.to_csv(latest_summary_path, index=False)
-    log(f"Latest summary CSV saved: {latest_summary_path}", "OK")
     signal_path = OUTPUT_DIR / f"ai_portfolio_v7_signal_scores_{stamp}.csv"
     top_alpha_path = OUTPUT_DIR / f"ai_portfolio_v7_top_alpha_{stamp}.csv"
     holdings_path = OUTPUT_DIR / f"ai_portfolio_v7_holdings_{stamp}.csv"
