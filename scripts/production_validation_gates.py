@@ -3,22 +3,28 @@ production_validation_gates.py
 
 Institutional-style validation gates for AI portfolio production pipeline.
 
-This module separates:
-- validation logic
-- orchestration logic
-- reporting logic
+Designed for:
+- GitHub Actions
+- Supabase REST API
+- Singapore timezone
+- v7 AI portfolio system
+- outputs/ artifact-based validation
 
-It intentionally raises no exceptions during normal validation.
-Instead, it returns structured ValidationResult objects.
+This file expects production_validation_config.py to contain:
+
+signal_output_csv_pattern
+portfolio_output_csv_pattern
+monitoring_summary_csv
+validation_report_path
 """
 
 import json
 import math
 import os
-import sys
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, date
 from enum import Enum
+from glob import glob
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -68,6 +74,16 @@ def today_sgt() -> date:
     return now_sgt().date()
 
 
+def resolve_latest_file(pattern: str) -> Optional[str]:
+    matches = glob(pattern)
+
+    if not matches:
+        return None
+
+    matches = sorted(matches)
+    return matches[-1]
+
+
 def safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:
     try:
         if value is None:
@@ -98,9 +114,13 @@ def add_result(
     )
 
 
-def read_csv_if_exists(path: str) -> Optional[pd.DataFrame]:
+def read_csv_if_exists(path: Optional[str]) -> Optional[pd.DataFrame]:
+    if not path:
+        return None
+
     if not Path(path).exists():
         return None
+
     try:
         return pd.read_csv(path)
     except Exception:
@@ -109,15 +129,23 @@ def read_csv_if_exists(path: str) -> Optional[pd.DataFrame]:
 
 def detect_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     cols = set(df.columns)
+
     for col in candidates:
         if col in cols:
             return col
+
+    lower_map = {c.lower(): c for c in df.columns}
+
+    for col in candidates:
+        if col.lower() in lower_map:
+            return lower_map[col.lower()]
+
     return None
 
 
-# ---------------------------------------------------------------------
+# ============================================================
 # Environment validations
-# ---------------------------------------------------------------------
+# ============================================================
 
 def validate_environment(results: List[ValidationResult]) -> None:
     required_env_vars = [
@@ -125,7 +153,7 @@ def validate_environment(results: List[ValidationResult]) -> None:
         "SUPABASE_SERVICE_ROLE_KEY",
     ]
 
-    optional_but_recommended_env_vars = [
+    recommended_env_vars = [
         "TELEGRAM_BOT_TOKEN",
         "TELEGRAM_CHAT_ID",
         "GITHUB_RUN_ID",
@@ -134,7 +162,7 @@ def validate_environment(results: List[ValidationResult]) -> None:
     ]
 
     missing_required = [v for v in required_env_vars if not os.getenv(v)]
-    missing_optional = [v for v in optional_but_recommended_env_vars if not os.getenv(v)]
+    missing_recommended = [v for v in recommended_env_vars if not os.getenv(v)]
 
     add_result(
         results,
@@ -153,13 +181,13 @@ def validate_environment(results: List[ValidationResult]) -> None:
         results,
         "environment_optional_variables",
         Severity.WARNING,
-        passed=len(missing_optional) == 0,
+        passed=len(missing_recommended) == 0,
         message=(
             "All recommended environment variables exist."
-            if not missing_optional
-            else f"Missing recommended environment variables: {missing_optional}"
+            if not missing_recommended
+            else f"Missing recommended environment variables: {missing_recommended}"
         ),
-        details={"missing_optional": missing_optional},
+        details={"missing_recommended": missing_recommended},
     )
 
 
@@ -180,12 +208,65 @@ def validate_outputs_folder(results: List[ValidationResult], outputs_dir: str) -
     )
 
 
-# ---------------------------------------------------------------------
-# Signal validations
-# ---------------------------------------------------------------------
+def validate_supabase_connectivity(results: List[ValidationResult]) -> None:
+    supabase_url = os.getenv("SUPABASE_URL")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-def validate_signal_engine(results: List[ValidationResult], signal_csv: str) -> None:
+    if not supabase_url or not service_key:
+        add_result(
+            results,
+            "supabase_connectivity",
+            Severity.HARD_FAIL,
+            passed=False,
+            message="Cannot test Supabase connectivity because required env vars are missing.",
+            details={},
+        )
+        return
+
+    url = f"{supabase_url.rstrip('/')}/rest/v1/production_pipeline_runs?select=id&limit=1"
+
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=20)
+        passed = response.status_code < 400
+
+        add_result(
+            results,
+            "supabase_connectivity",
+            Severity.ERROR,
+            passed=passed,
+            message=(
+                "Supabase connectivity check passed."
+                if passed
+                else f"Supabase connectivity check failed: HTTP {response.status_code}"
+            ),
+            details={
+                "status_code": response.status_code,
+                "response_text_sample": response.text[:500],
+            },
+        )
+    except Exception as exc:
+        add_result(
+            results,
+            "supabase_connectivity",
+            Severity.ERROR,
+            passed=False,
+            message=f"Supabase connectivity check raised exception: {exc}",
+            details={"exception": str(exc)},
+        )
+
+
+# ============================================================
+# Signal engine validations
+# ============================================================
+
+def validate_signal_engine(results: List[ValidationResult], signal_csv: Optional[str]) -> None:
     cfg = get_config()
+
     df = read_csv_if_exists(signal_csv)
 
     add_result(
@@ -196,7 +277,7 @@ def validate_signal_engine(results: List[ValidationResult], signal_csv: str) -> 
         message=(
             f"Signal output file found: {signal_csv}"
             if df is not None
-            else f"Signal output file missing or unreadable: {signal_csv}"
+            else "Signal output file missing or unreadable."
         ),
         details={"path": signal_csv},
     )
@@ -306,12 +387,7 @@ def validate_signal_engine(results: List[ValidationResult], signal_csv: str) -> 
         severity,
         passed,
         f"Null alpha score percentage = {null_alpha_pct:.2%}",
-        {
-            "null_alpha_pct": null_alpha_pct,
-            "warning_threshold": cfg.max_null_alpha_score_pct_warning,
-            "error_threshold": cfg.max_null_alpha_score_pct_error,
-            "hard_fail_threshold": cfg.max_null_alpha_score_pct_hard_fail,
-        },
+        {"null_alpha_pct": null_alpha_pct},
     )
 
     total_cells = max(df.shape[0] * df.shape[1], 1)
@@ -360,11 +436,7 @@ def validate_signal_engine(results: List[ValidationResult], signal_csv: str) -> 
             severity,
             passed,
             f"Alpha score standard deviation = {alpha_std:.6f}",
-            {
-                "alpha_std": alpha_std,
-                "warning_min_std": cfg.min_alpha_score_std_warning,
-                "error_min_std": cfg.min_alpha_score_std_error,
-            },
+            {"alpha_std": alpha_std},
         )
 
         abs_alpha_sum = float(alpha_series.abs().sum())
@@ -390,11 +462,7 @@ def validate_signal_engine(results: List[ValidationResult], signal_csv: str) -> 
             severity,
             passed,
             f"Max single-name alpha concentration = {max_single_alpha_concentration:.2%}",
-            {
-                "max_single_alpha_concentration": max_single_alpha_concentration,
-                "warning_threshold": cfg.max_single_alpha_concentration_warning,
-                "error_threshold": cfg.max_single_alpha_concentration_error,
-            },
+            {"max_single_alpha_concentration": max_single_alpha_concentration},
         )
 
     if subsector_col:
@@ -469,12 +537,13 @@ def validate_signal_engine(results: List[ValidationResult], signal_csv: str) -> 
         )
 
 
-# ---------------------------------------------------------------------
-# Portfolio validations
-# ---------------------------------------------------------------------
+# ============================================================
+# Portfolio engine validations
+# ============================================================
 
-def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: str) -> None:
+def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: Optional[str]) -> None:
     cfg = get_config()
+
     df = read_csv_if_exists(portfolio_csv)
 
     add_result(
@@ -485,7 +554,7 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         message=(
             f"Portfolio output file found: {portfolio_csv}"
             if df is not None
-            else f"Portfolio output file missing or unreadable: {portfolio_csv}"
+            else "Portfolio output file missing or unreadable."
         ),
         details={"path": portfolio_csv},
     )
@@ -510,7 +579,10 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         Severity.ERROR,
         passed=row_count <= cfg.max_portfolio_rows_error,
         message=f"Portfolio row count = {row_count}",
-        details={"row_count": row_count, "max_portfolio_rows_error": cfg.max_portfolio_rows_error},
+        details={
+            "row_count": row_count,
+            "max_portfolio_rows_error": cfg.max_portfolio_rows_error,
+        },
     )
 
     ticker_col = detect_column(df, ["ticker", "symbol"])
@@ -540,9 +612,9 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
 
     df[weight_col] = pd.to_numeric(df[weight_col], errors="coerce")
 
-    invalid_weights = df[weight_col].isna().sum()
-    negative_weights = (df[weight_col] < 0).sum()
-    above_one_weights = (df[weight_col] > 1).sum()
+    invalid_weights = int(df[weight_col].isna().sum())
+    negative_weights = int((df[weight_col] < 0).sum())
+    above_one_weights = int((df[weight_col] > 1).sum())
 
     add_result(
         results,
@@ -555,9 +627,9 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
             else "Invalid portfolio weights detected."
         ),
         details={
-            "invalid_weights": int(invalid_weights),
-            "negative_weights": int(negative_weights),
-            "above_one_weights": int(above_one_weights),
+            "invalid_weights": invalid_weights,
+            "negative_weights": negative_weights,
+            "above_one_weights": above_one_weights,
         },
     )
 
@@ -594,11 +666,7 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         severity,
         passed,
         f"Total portfolio weight = {total_weight:.6f}",
-        {
-            "total_weight": total_weight,
-            "error_range": [cfg.min_total_weight_error, cfg.max_total_weight_error],
-            "hard_fail_range": [cfg.min_total_weight_hard_fail, cfg.max_total_weight_hard_fail],
-        },
+        {"total_weight": total_weight},
     )
 
     cash_rows = df[df[ticker_col].astype(str).str.upper() == "CASH"]
@@ -623,12 +691,7 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         severity,
         passed,
         f"Cash weight = {cash_weight:.2%}",
-        {
-            "cash_weight": cash_weight,
-            "warning_threshold": cfg.max_cash_weight_warning,
-            "error_threshold": cfg.max_cash_weight_error,
-            "hard_fail_threshold": cfg.max_cash_weight_hard_fail,
-        },
+        {"cash_weight": cash_weight},
     )
 
     max_single_weight = float(df[weight_col].max())
@@ -652,17 +715,17 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         severity,
         passed,
         f"Max single holding weight = {max_single_weight:.2%}",
-        {
-            "max_single_weight": max_single_weight,
-            "warning_threshold": cfg.max_single_holding_weight_warning,
-            "error_threshold": cfg.max_single_holding_weight_error,
-            "hard_fail_threshold": cfg.max_single_holding_weight_hard_fail,
-        },
+        {"max_single_weight": max_single_weight},
     )
 
     if subsector_col:
         non_cash_df = df[df[ticker_col].astype(str).str.upper() != "CASH"].copy()
-        missing_subsector_pct = float(non_cash_df[subsector_col].isna().mean()) if len(non_cash_df) else 0.0
+
+        missing_subsector_pct = (
+            float(non_cash_df[subsector_col].isna().mean())
+            if len(non_cash_df)
+            else 0.0
+        )
 
         add_result(
             results,
@@ -674,7 +737,12 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         )
 
         if len(non_cash_df):
-            subsector_weights = non_cash_df.groupby(subsector_col)[weight_col].sum().sort_values(ascending=False)
+            subsector_weights = (
+                non_cash_df.groupby(subsector_col)[weight_col]
+                .sum()
+                .sort_values(ascending=False)
+            )
+
             max_subsector_weight = float(subsector_weights.iloc[0]) if len(subsector_weights) else 0.0
             top_subsector = str(subsector_weights.index[0]) if len(subsector_weights) else None
 
@@ -700,9 +768,6 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
                 {
                     "top_subsector": top_subsector,
                     "max_subsector_weight": max_subsector_weight,
-                    "warning_threshold": cfg.max_subsector_weight_warning,
-                    "error_threshold": cfg.max_subsector_weight_error,
-                    "hard_fail_threshold": cfg.max_subsector_weight_hard_fail,
                 },
             )
     else:
@@ -716,20 +781,22 @@ def validate_portfolio_engine(results: List[ValidationResult], portfolio_csv: st
         )
 
 
-# ---------------------------------------------------------------------
+# ============================================================
 # Monitoring validations
-# ---------------------------------------------------------------------
+# ============================================================
 
 def validate_monitoring_outputs(results: List[ValidationResult]) -> None:
     cfg = get_config()
 
     for file_path in cfg.required_monitoring_files:
-        exists = Path(file_path).exists()
-        non_empty = exists and Path(file_path).stat().st_size > 0
+        path = Path(file_path)
+
+        exists = path.exists()
+        non_empty = exists and path.stat().st_size > 0
 
         add_result(
             results,
-            f"monitoring_file_exists::{Path(file_path).name}",
+            f"monitoring_file_exists::{path.name}",
             Severity.ERROR,
             passed=exists and non_empty,
             message=(
@@ -740,15 +807,17 @@ def validate_monitoring_outputs(results: List[ValidationResult]) -> None:
             details={
                 "file_path": file_path,
                 "exists": exists,
-                "size_bytes": Path(file_path).stat().st_size if exists else 0,
+                "size_bytes": path.stat().st_size if exists else 0,
             },
         )
 
     outputs_dir = Path(cfg.outputs_dir)
+
     if outputs_dir.exists():
         csv_files = list(outputs_dir.glob("*.csv"))
         json_files = list(outputs_dir.glob("*.json"))
         png_files = list(outputs_dir.glob("*.png"))
+        html_files = list(outputs_dir.glob("*.html"))
 
         add_result(
             results,
@@ -772,15 +841,24 @@ def validate_monitoring_outputs(results: List[ValidationResult]) -> None:
             results,
             "monitoring_chart_generation_check",
             Severity.WARNING,
-            passed=True,
+            passed=len(png_files) >= 1,
             message=f"PNG chart artifact count = {len(png_files)}",
             details={"png_files": [str(p) for p in png_files]},
         )
 
+        add_result(
+            results,
+            "monitoring_html_report_generation_check",
+            Severity.WARNING,
+            passed=len(html_files) >= 1,
+            message=f"HTML report artifact count = {len(html_files)}",
+            details={"html_files": [str(p) for p in html_files]},
+        )
 
-# ---------------------------------------------------------------------
+
+# ============================================================
 # Operational validations
-# ---------------------------------------------------------------------
+# ============================================================
 
 def validate_runtime_duration(results: List[ValidationResult]) -> None:
     cfg = get_config()
@@ -817,81 +895,31 @@ def validate_runtime_duration(results: List[ValidationResult]) -> None:
         severity,
         passed,
         f"Pipeline runtime seconds = {runtime_seconds:.2f}",
-        {
-            "runtime_seconds": runtime_seconds,
-            "min_runtime_warning": cfg.min_runtime_seconds_warning,
-            "max_runtime_warning": cfg.max_runtime_seconds_warning,
-            "max_runtime_error": cfg.max_runtime_seconds_error,
-        },
+        {"runtime_seconds": runtime_seconds},
     )
 
 
-def validate_supabase_connectivity(results: List[ValidationResult]) -> None:
-    """
-    Lightweight Supabase REST connectivity check.
-
-    This does not modify production data.
-    """
-    supabase_url = os.getenv("SUPABASE_URL")
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-    if not supabase_url or not service_key:
-        add_result(
-            results,
-            "supabase_connectivity",
-            Severity.HARD_FAIL,
-            passed=False,
-            message="Cannot test Supabase connectivity because required env vars are missing.",
-            details={},
-        )
-        return
-
-    url = f"{supabase_url.rstrip('/')}/rest/v1/production_pipeline_runs?select=id&limit=1"
-    headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
-    }
-
-    try:
-        response = requests.get(url, headers=headers, timeout=20)
-        passed = response.status_code < 400
-
-        add_result(
-            results,
-            "supabase_connectivity",
-            Severity.ERROR,
-            passed=passed,
-            message=(
-                "Supabase connectivity check passed."
-                if passed
-                else f"Supabase connectivity check failed: HTTP {response.status_code}"
-            ),
-            details={
-                "status_code": response.status_code,
-                "response_text_sample": response.text[:500],
-            },
-        )
-    except Exception as exc:
-        add_result(
-            results,
-            "supabase_connectivity",
-            Severity.ERROR,
-            passed=False,
-            message=f"Supabase connectivity check raised exception: {exc}",
-            details={"exception": str(exc)},
-        )
-
-
-# ---------------------------------------------------------------------
+# ============================================================
 # Summary / orchestration
-# ---------------------------------------------------------------------
+# ============================================================
 
 def build_summary(results: List[ValidationResult]) -> ValidationSummary:
     cfg = get_config()
 
-    failed_warnings = [r for r in results if not r.passed and r.severity == Severity.WARNING]
-    failed_errors = [r for r in results if not r.passed and r.severity == Severity.ERROR]
-    failed_hard = [r for r in results if not r.passed and r.severity == Severity.HARD_FAIL]
+    failed_warnings = [
+        r for r in results
+        if not r.passed and r.severity == Severity.WARNING
+    ]
+
+    failed_errors = [
+        r for r in results
+        if not r.passed and r.severity == Severity.ERROR
+    ]
+
+    failed_hard = [
+        r for r in results
+        if not r.passed and r.severity == Severity.HARD_FAIL
+    ]
 
     should_fail = False
 
@@ -902,10 +930,8 @@ def build_summary(results: List[ValidationResult]) -> ValidationSummary:
     elif failed_warnings and cfg.fail_on_warning:
         should_fail = True
 
-    status = "FAILED" if should_fail else "PASSED"
-
     return ValidationSummary(
-        status=status,
+        status="FAILED" if should_fail else "PASSED",
         generated_at_sgt=now_sgt().isoformat(),
         warning_count=len(failed_warnings),
         error_count=len(failed_errors),
@@ -918,10 +944,8 @@ def build_summary(results: List[ValidationResult]) -> ValidationSummary:
 def write_validation_report(summary: ValidationSummary, path: str) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-    payload = asdict(summary)
-
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, default=str)
+        json.dump(asdict(summary), f, indent=2, default=str)
 
 
 def print_human_summary(summary: ValidationSummary) -> None:
@@ -946,14 +970,42 @@ def run_all_validations() -> ValidationSummary:
     cfg = get_config()
     results: List[ValidationResult] = []
 
+    signal_csv = resolve_latest_file(cfg.signal_output_csv_pattern)
+    portfolio_csv = resolve_latest_file(cfg.portfolio_output_csv_pattern)
+
+    add_result(
+        results,
+        "resolved_signal_output_file",
+        Severity.HARD_FAIL,
+        passed=signal_csv is not None,
+        message=(
+            f"Resolved signal output file: {signal_csv}"
+            if signal_csv
+            else f"No signal output file matched pattern: {cfg.signal_output_csv_pattern}"
+        ),
+        details={"pattern": cfg.signal_output_csv_pattern, "resolved_file": signal_csv},
+    )
+
+    add_result(
+        results,
+        "resolved_portfolio_output_file",
+        Severity.HARD_FAIL,
+        passed=portfolio_csv is not None,
+        message=(
+            f"Resolved portfolio output file: {portfolio_csv}"
+            if portfolio_csv
+            else f"No portfolio output file matched pattern: {cfg.portfolio_output_csv_pattern}"
+        ),
+        details={"pattern": cfg.portfolio_output_csv_pattern, "resolved_file": portfolio_csv},
+    )
+
     validate_environment(results)
     validate_outputs_folder(results, cfg.outputs_dir)
     validate_supabase_connectivity(results)
 
-    validate_signal_engine(results, cfg.signal_output_csv)
-    validate_portfolio_engine(results, cfg.portfolio_output_csv)
+    validate_signal_engine(results, signal_csv)
+    validate_portfolio_engine(results, portfolio_csv)
     validate_monitoring_outputs(results)
-
     validate_runtime_duration(results)
 
     summary = build_summary(results)
