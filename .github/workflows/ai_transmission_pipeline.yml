@@ -1,0 +1,76 @@
+name: AI Transmission Pipeline
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # Runs daily at 08:30 Singapore time
+    # GitHub Actions cron uses UTC, so 00:30 UTC = 08:30 SGT
+    - cron: "30 0 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  ai-transmission-scoring:
+    name: Run AI Transmission Scoring v1
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Verify required environment variables
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+
+          required = [
+              "SUPABASE_URL",
+              "SUPABASE_SERVICE_ROLE_KEY",
+          ]
+
+          missing = [name for name in required if not os.getenv(name)]
+
+          if missing:
+              print("[ERROR] Missing required secrets/env vars:")
+              for name in missing:
+                  print(f" - {name}")
+              sys.exit(1)
+
+          if not os.getenv("FMP_API_KEY"):
+              print("[WARN] FMP_API_KEY is missing. Market confirmation will use neutral scores.")
+
+          print("[OK] Required environment variables are present.")
+          PY
+
+      - name: Run AI transmission scoring
+        run: |
+          python ai_transmission_scoring_v1.py
+
+      - name: Confirm workflow completed
+        if: success()
+        run: |
+          echo "[OK] AI Transmission Pipeline completed successfully."
+
+      - name: Report workflow failure
+        if: failure()
+        run: |
+          echo "[ERROR] AI Transmission Pipeline failed."
+          echo "Check logs above for the failing step."
