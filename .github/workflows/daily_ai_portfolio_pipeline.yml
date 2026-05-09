@@ -148,6 +148,17 @@ jobs:
           ls -la outputs || true
           exit 1
 
+      - name: Run Step 4 - Production validation gates
+        if: success()
+        run: |
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+
+          echo "Pipeline runtime seconds before validation: $PIPELINE_RUNTIME_SECONDS"
+
+          PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
+          python scripts/run_production_validation_gates.py 2>&1 | tee logs/04_validation_gates.log
+
       - name: Write pipeline runtime metrics
         if: success()
         run: |
@@ -157,18 +168,7 @@ jobs:
           echo "Pipeline runtime seconds: $PIPELINE_RUNTIME_SECONDS"
 
           PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
-          python scripts/write_pipeline_metrics.py 2>&1 | tee logs/04_pipeline_metrics.log
-
-      - name: Upload logs and outputs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-portfolio-production-artifacts
-          path: |
-            logs/
-            outputs/
-          if-no-files-found: warn
-          retention-days: 14
+          python scripts/write_pipeline_metrics.py 2>&1 | tee logs/05_pipeline_metrics.log
 
       - name: Write pipeline failure metrics
         if: failure()
@@ -179,12 +179,42 @@ jobs:
           echo "Pipeline runtime seconds: $PIPELINE_RUNTIME_SECONDS"
 
           PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
-          python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/05_pipeline_failure_metrics.log
+          python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/06_pipeline_failure_metrics.log
 
       - name: Send Telegram failure notification
         if: failure()
         run: |
-          MESSAGE="🚨 AI Portfolio Pipeline FAILED%0A%0ARepo: ${{ github.repository }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0ABranch: ${{ github.ref_name }}%0ATime: $(TZ='Asia/Singapore' date '+%Y-%m-%d %H:%M:%S SGT')"
+          VALIDATION_SUMMARY=""
+
+          if [ -f "outputs/validation_report.json" ]; then
+            VALIDATION_SUMMARY=$(python - <<'PY'
+          import json
+
+          with open("outputs/validation_report.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          failed = [r for r in data.get("results", []) if not r.get("passed", True)]
+
+          lines = [
+              f"Validation status: {data.get('status', 'NA')}",
+              f"Warnings: {data.get('warning_count', 'NA')}",
+              f"Errors: {data.get('error_count', 'NA')}",
+              f"Hard fails: {data.get('hard_fail_count', 'NA')}",
+          ]
+
+          for r in failed[:5]:
+              lines.append(
+                  f"{r.get('severity', 'NA')} - {r.get('check_name', 'NA')}"
+              )
+
+          print("%0A".join(lines))
+          PY
+          )
+          else
+            VALIDATION_SUMMARY="Validation report: not available"
+          fi
+
+          MESSAGE="🚨 AI Portfolio Pipeline FAILED%0A%0ARepo: ${{ github.repository }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0ABranch: ${{ github.ref_name }}%0A${VALIDATION_SUMMARY}%0ATime: $(TZ='Asia/Singapore' date '+%Y-%m-%d %H:%M:%S SGT')"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
@@ -238,3 +268,14 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="$MESSAGE"
+
+      - name: Upload logs and outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-portfolio-production-artifacts
+          path: |
+            logs/
+            outputs/
+          if-no-files-found: warn
+          retention-days: 14
