@@ -25,6 +25,8 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       PYTHONUNBUFFERED: "1"
+      PIPELINE_NAME: AI_PORTFOLIO_PRODUCTION
+      ENVIRONMENT: prod
 
     steps:
       - name: Checkout repository
@@ -43,7 +45,7 @@ jobs:
 
       - name: Create runtime folders
         run: |
-          mkdir -p logs outputs
+          mkdir -p logs outputs archive_staging
 
       - name: Record pipeline start time
         run: |
@@ -159,6 +161,16 @@ jobs:
           PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
           python scripts/run_production_validation_gates.py 2>&1 | tee logs/04_validation_gates.log
 
+      - name: Mark pipeline success
+        if: success()
+        run: |
+          echo "PIPELINE_STATUS=SUCCESS" >> $GITHUB_ENV
+
+      - name: Mark pipeline failure
+        if: failure()
+        run: |
+          echo "PIPELINE_STATUS=FAILED" >> $GITHUB_ENV
+
       - name: Write pipeline runtime metrics
         if: success()
         run: |
@@ -180,6 +192,114 @@ jobs:
 
           PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
           python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/06_pipeline_failure_metrics.log
+
+      - name: Create archival manifest and checksum
+        if: always()
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import hashlib
+          import zipfile
+          from pathlib import Path
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          sgt = ZoneInfo("Asia/Singapore")
+          now = datetime.now(sgt)
+
+          github_run_id = os.getenv("GITHUB_RUN_ID", "unknown")
+          pipeline_status = os.getenv("PIPELINE_STATUS", "UNKNOWN")
+          pipeline_name = os.getenv("PIPELINE_NAME", "AI_PORTFOLIO_PRODUCTION")
+          repo = os.getenv("GITHUB_REPOSITORY", "")
+          branch = os.getenv("GITHUB_REF_NAME", "")
+          workflow = os.getenv("GITHUB_WORKFLOW", "")
+          sha = os.getenv("GITHUB_SHA", "")
+
+          archive_dir = Path("archive_staging")
+          archive_dir.mkdir(parents=True, exist_ok=True)
+
+          files = []
+          for base in [Path("outputs"), Path("logs")]:
+              if base.exists():
+                  for p in base.rglob("*"):
+                      if p.is_file():
+                          files.append(p)
+
+          def sha256_file(path):
+              h = hashlib.sha256()
+              with open(path, "rb") as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          file_records = []
+          for p in sorted(files):
+              file_records.append({
+                  "path": str(p).replace("\\", "/"),
+                  "size_bytes": p.stat().st_size,
+                  "sha256": sha256_file(p),
+              })
+
+          manifest = {
+              "archive_version": "lightweight_v1",
+              "created_at_sgt": now.isoformat(),
+              "run_date_sgt": now.date().isoformat(),
+              "pipeline_name": pipeline_name,
+              "pipeline_status": pipeline_status,
+              "github_run_id": github_run_id,
+              "github_workflow": workflow,
+              "github_repository": repo,
+              "github_branch": branch,
+              "github_sha": sha,
+              "file_count": len(file_records),
+              "files": file_records,
+          }
+
+          manifest_path = archive_dir / "manifest.json"
+          manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+          archive_name = f"{pipeline_name}_{now.strftime('%Y%m%d')}_run_{github_run_id}_{pipeline_status}.zip"
+          archive_path = archive_dir / archive_name
+
+          with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+              for p in files:
+                  zf.write(p, arcname=str(p).replace("\\", "/"))
+              zf.write(manifest_path, arcname="metadata/manifest.json")
+
+          archive_sha = sha256_file(archive_path)
+
+          checksum_path = archive_dir / "checksum.sha256"
+          checksum_path.write_text(f"{archive_sha}  {archive_name}\n", encoding="utf-8")
+
+          summary_path = archive_dir / "archive_summary.json"
+          summary_path.write_text(
+              json.dumps({
+                  "archive_file": str(archive_path),
+                  "archive_size_bytes": archive_path.stat().st_size,
+                  "archive_sha256": archive_sha,
+                  "file_count": len(file_records),
+                  "created_at_sgt": now.isoformat(),
+              }, indent=2),
+              encoding="utf-8",
+          )
+
+          print("Archive created successfully.")
+          print(f"Archive: {archive_path}")
+          print(f"SHA256: {archive_sha}")
+          print(f"Files archived: {len(file_records)}")
+          PY
+
+      - name: Send Telegram archival failure notification
+        if: always() && steps.create_archive.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          MESSAGE="⚠️ AI Portfolio Archival Step FAILED%0A%0ARepo: ${{ github.repository }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0ABranch: ${{ github.ref_name }}%0ATime: $(TZ='Asia/Singapore' date '+%Y-%m-%d %H:%M:%S SGT')"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE"
 
       - name: Send Telegram failure notification
         if: failure()
@@ -269,13 +389,14 @@ jobs:
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="$MESSAGE"
 
-      - name: Upload logs and outputs
+      - name: Upload logs, outputs and archive bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-portfolio-production-artifacts
+          name: ai-portfolio-production-artifacts-${{ github.run_id }}
           path: |
             logs/
             outputs/
+            archive_staging/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
