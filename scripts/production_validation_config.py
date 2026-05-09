@@ -1,14 +1,5 @@
 """
 production_validation_config.py
-
-Central configuration for institutional-style production validation gates.
-
-Assumptions:
-- 104-stock AI universe
-- Singapore timezone
-- GitHub Actions
-- Supabase REST API
-- outputs/ folder contains monitoring artifacts
 """
 
 from dataclasses import dataclass
@@ -17,16 +8,28 @@ from typing import List
 
 @dataclass(frozen=True)
 class ValidationConfig:
-    # General
     singapore_timezone: str = "Asia/Singapore"
+
     outputs_dir: str = "outputs"
+
     validation_report_path: str = "outputs/validation_report.json"
 
-    # Signal engine files / tables
-    signal_output_csv: str = "outputs/ai_signal_scores_latest.csv"
+    # ============================================================
+    # CORRECT PRODUCTION FILES
+    # ============================================================
+
+    signal_output_csv_pattern: str = "outputs/ai_stock_signal_scores_v7_*.csv"
+
+    portfolio_output_csv_pattern: str = "outputs/ai_portfolio_v7_holdings_*.csv"
+
+    monitoring_summary_csv: str = "outputs/ai_portfolio_v7_summary_latest.csv"
+
+    # ============================================================
+    # SIGNAL VALIDATION
+    # ============================================================
+
     expected_universe_size: int = 104
 
-    # Signal thresholds
     min_signal_rows_warning: int = 90
     min_signal_rows_error: int = 80
     min_signal_rows_hard_fail: int = 60
@@ -49,15 +52,17 @@ class ValidationConfig:
     max_signal_run_date_lag_days_error: int = 2
     max_signal_run_date_lag_days_hard_fail: int = 4
 
-    # Portfolio files
-    portfolio_output_csv: str = "outputs/ai_portfolio_v7_summary_latest.csv"
+    # ============================================================
+    # PORTFOLIO VALIDATION
+    # ============================================================
 
-    # Portfolio thresholds
     min_portfolio_rows_hard_fail: int = 1
+
     max_portfolio_rows_error: int = 30
 
     min_total_weight_error: float = 0.98
     max_total_weight_error: float = 1.02
+
     min_total_weight_hard_fail: float = 0.95
     max_total_weight_hard_fail: float = 1.05
 
@@ -73,16 +78,28 @@ class ValidationConfig:
     max_subsector_weight_error: float = 0.55
     max_subsector_weight_hard_fail: float = 0.70
 
-    # Monitoring artifacts
+    # ============================================================
+    # MONITORING
+    # ============================================================
+
     required_monitoring_files: List[str] = None
 
-    # Operational
+    # ============================================================
+    # OPERATIONAL
+    # ============================================================
+
     min_runtime_seconds_warning: float = 5.0
+
     max_runtime_seconds_warning: float = 1800.0
+
     max_runtime_seconds_error: float = 3600.0
 
-    # Failure policy
+    # ============================================================
+    # FAILURE POLICY
+    # ============================================================
+
     fail_on_warning: bool = False
+
     fail_on_error: bool = True
 
 
@@ -94,7 +111,6 @@ def get_config() -> ValidationConfig:
         "required_monitoring_files",
         [
             "outputs/ai_portfolio_v7_summary_latest.csv",
-            "outputs/ai_portfolio_v7_summary_latest.json",
         ],
     )
 
