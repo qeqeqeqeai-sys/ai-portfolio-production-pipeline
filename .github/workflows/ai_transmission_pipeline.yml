@@ -62,7 +62,7 @@ jobs:
 
       - name: Run AI transmission scoring
         run: |          
-          python production/ai_transmission/ai_transmission_scoring_v1.py
+          python ai_transmission/ai_transmission_scoring_v1.py          
 
       - name: Confirm workflow completed
         if: success()
