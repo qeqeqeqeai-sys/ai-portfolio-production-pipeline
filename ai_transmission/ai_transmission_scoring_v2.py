@@ -12,6 +12,8 @@ Reads:
 
 Writes:
     public.ai_transmission_scores
+    public.structural_theme_scores    -- Phase 1 generic dual-write
+    public.structural_theme_runs      -- Phase 1 run telemetry
 
 Compared with v1
 ----------------
@@ -56,6 +58,8 @@ Optional environment variables
 FMP_API_KEY
 OBS_LOOKBACK_DAYS
 PRICE_LOOKBACK_DAYS
+THEME_VERSION
+STRUCTURAL_THEME_DUAL_WRITE_ENABLED
 """
 
 from __future__ import annotations
@@ -86,6 +90,18 @@ FMP_API_KEY = os.getenv("FMP_API_KEY", "")
 MAP_TABLE = "ai_transmission_map"
 OBS_TABLE = "ai_transmission_observations"
 SCORES_TABLE = "ai_transmission_scores"
+
+# Phase 1 generic structural-theme dual-write config
+# Keep the legacy AI table write intact, then also write one generic
+# ticker-level AI theme score per run_date/theme/version/ticker.
+THEME_NAME = os.getenv("STRUCTURAL_THEME_NAME", "ai")
+THEME_VERSION = os.getenv("THEME_VERSION", "v1")
+STRUCTURAL_SCORES_TABLE = "structural_theme_scores"
+STRUCTURAL_RUNS_TABLE = "structural_theme_runs"
+STRUCTURAL_THEME_DUAL_WRITE_ENABLED = (
+    os.getenv("STRUCTURAL_THEME_DUAL_WRITE_ENABLED", "true").strip().lower()
+    not in ("0", "false", "no", "off")
+)
 
 REQUEST_TIMEOUT = 45
 MAX_RETRIES = 3
@@ -311,6 +327,32 @@ def supabase_upsert(
         )
 
     logger.info("Upserted %s row(s) into %s", len(rows), table)
+
+
+def supabase_insert(
+    table: str,
+    rows: List[Dict[str, Any]],
+) -> None:
+    if not rows:
+        logger.info("No rows to insert into %s", table)
+        return
+
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+
+    response = request_with_retries(
+        "POST",
+        url,
+        headers=supabase_headers(prefer="return=minimal"),
+        json_body=rows,
+    )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase INSERT failed for {table}: "
+            f"HTTP {response.status_code} - {response.text}"
+        )
+
+    logger.info("Inserted %s row(s) into %s", len(rows), table)
 
 
 # ============================================================
@@ -914,6 +956,283 @@ def add_ranks(rows: List[Dict[str, Any]]) -> None:
 
 
 # ============================================================
+# PHASE 1 GENERIC STRUCTURAL THEME DUAL-WRITE
+# ============================================================
+
+def _directional_driver_counts(row: Dict[str, Any]) -> Dict[str, int]:
+    """
+    Translate AI transmission direction into generic positive/negative
+    driver counts for the affected ticker.
+
+    For POSITIVE transmission, observations support positive drivers.
+    For NEGATIVE transmission, observations support negative drivers.
+    MIXED/UNCERTAIN are kept neutral at the driver-count level.
+    """
+    obs_count = int(row.get("observation_count") or 0)
+    direction = row.get("transmission_direction")
+
+    if direction == "POSITIVE":
+        return {"positive_driver_count": obs_count, "negative_driver_count": 0}
+
+    if direction == "NEGATIVE":
+        return {"positive_driver_count": 0, "negative_driver_count": obs_count}
+
+    return {"positive_driver_count": 0, "negative_driver_count": 0}
+
+
+def build_structural_theme_score_rows(
+    score_rows: List[Dict[str, Any]],
+    run_date_sgt: str,
+) -> List[Dict[str, Any]]:
+    """
+    Convert the existing relationship-level AI transmission scores into the
+    Phase 1 generic structural_theme_scores format.
+
+    Important design choice:
+    - ai_transmission_scores remains relationship-level, keyed by map_id.
+    - structural_theme_scores is ticker-level, keyed by
+      run_date_sgt + theme_name + theme_version + ticker.
+
+    If a ticker appears in multiple AI transmission map rows, this function
+    aggregates to one ticker-level theme row using the strongest relationship
+    as the headline score while preserving all relationship details in jsonb.
+    This avoids duplicate-key conflicts in the generic table and keeps the
+    current AI-specific table untouched.
+    """
+    by_ticker: Dict[str, List[Dict[str, Any]]] = {}
+
+    for row in score_rows:
+        ticker = row.get("affected_ticker")
+        if not ticker:
+            continue
+
+        ticker = str(ticker).upper().strip()
+        if not ticker:
+            continue
+
+        by_ticker.setdefault(ticker, []).append(row)
+
+    structural_rows: List[Dict[str, Any]] = []
+
+    for ticker, ticker_rows in by_ticker.items():
+        ranked = sorted(
+            ticker_rows,
+            key=lambda x: safe_float(x.get("transmission_score"), 0.0) or 0.0,
+            reverse=True,
+        )
+        headline = ranked[0]
+
+        score_values = [
+            safe_float(r.get("transmission_score"))
+            for r in ticker_rows
+            if safe_float(r.get("transmission_score")) is not None
+        ]
+        confidence_values = [
+            safe_float(r.get("confidence_score"))
+            for r in ticker_rows
+            if safe_float(r.get("confidence_score")) is not None
+        ]
+        exposure_values = [
+            safe_float(r.get("exposure_score"))
+            for r in ticker_rows
+            if safe_float(r.get("exposure_score")) is not None
+        ]
+        evidence_values = [
+            safe_float(r.get("evidence_score"))
+            for r in ticker_rows
+            if safe_float(r.get("evidence_score")) is not None
+        ]
+        sentiment_values = [
+            safe_float(r.get("sentiment_score"))
+            for r in ticker_rows
+            if safe_float(r.get("sentiment_score")) is not None
+        ]
+        market_values = [
+            safe_float(r.get("market_confirmation_score"))
+            for r in ticker_rows
+            if safe_float(r.get("market_confirmation_score")) is not None
+        ]
+
+        def avg(values: List[float], default: Optional[float] = None) -> Optional[float]:
+            if not values:
+                return default
+            return sum(values) / len(values)
+
+        total_observations = sum(int(r.get("observation_count") or 0) for r in ticker_rows)
+
+        positive_driver_count = 0
+        negative_driver_count = 0
+        for r in ticker_rows:
+            counts = _directional_driver_counts(r)
+            positive_driver_count += counts["positive_driver_count"]
+            negative_driver_count += counts["negative_driver_count"]
+
+        relationship_scores = []
+        positive_drivers = []
+        negative_drivers = []
+
+        for r in ranked:
+            relationship = {
+                "map_id": r.get("map_id"),
+                "ai_subsector": r.get("ai_subsector"),
+                "affected_sector": r.get("affected_sector"),
+                "affected_subsector": r.get("affected_subsector"),
+                "transmission_direction": r.get("transmission_direction"),
+                "transmission_type": r.get("transmission_type"),
+                "transmission_score": r.get("transmission_score"),
+                "transmission_regime": r.get("transmission_regime"),
+                "signal_label": r.get("signal_label"),
+                "rank_overall": r.get("rank_overall"),
+                "rank_sector": r.get("rank_sector"),
+            }
+            relationship_scores.append(relationship)
+
+            driver_text = (
+                f"{r.get('ai_subsector')} -> {ticker} "
+                f"({r.get('transmission_direction')}, score={r.get('transmission_score')})"
+            )
+            if r.get("transmission_direction") == "POSITIVE":
+                positive_drivers.append(driver_text)
+            elif r.get("transmission_direction") == "NEGATIVE":
+                negative_drivers.append(driver_text)
+
+        structural_rows.append(
+            {
+                "run_date_sgt": run_date_sgt,
+                "theme_name": THEME_NAME,
+                "theme_version": THEME_VERSION,
+                "ticker": ticker,
+                "company": headline.get("affected_company"),
+                "sector": headline.get("affected_sector"),
+                "subsector": headline.get("affected_subsector"),
+                "theme_score": headline.get("transmission_score"),
+                "confidence_score": round(clamp_score(avg(confidence_values, DEFAULT_CONFIDENCE_SCORE)), 4),
+                "interaction_score": None,
+                "evidence_count": total_observations,
+                "positive_driver_count": positive_driver_count,
+                "negative_driver_count": negative_driver_count,
+                "positive_drivers": positive_drivers[:10],
+                "negative_drivers": negative_drivers[:10],
+                "score_components": {
+                    "headline_method": "max_relationship_transmission_score",
+                    "relationship_count": len(ticker_rows),
+                    "headline_map_id": headline.get("map_id"),
+                    "headline_ai_subsector": headline.get("ai_subsector"),
+                    "headline_direction": headline.get("transmission_direction"),
+                    "max_transmission_score": headline.get("transmission_score"),
+                    "avg_transmission_score": round(avg(score_values, 0.0), 4),
+                    "avg_exposure_score": round(avg(exposure_values, DEFAULT_EXPOSURE_SCORE), 4),
+                    "avg_evidence_score": round(avg(evidence_values, DEFAULT_EVIDENCE_SCORE), 4),
+                    "avg_sentiment_score": round(avg(sentiment_values, DEFAULT_SENTIMENT_SCORE), 4),
+                    "avg_market_confirmation_score": round(avg(market_values, DEFAULT_MARKET_CONFIRMATION_SCORE), 4),
+                    "avg_confidence_score": round(avg(confidence_values, DEFAULT_CONFIDENCE_SCORE), 4),
+                    "relationship_scores": relationship_scores,
+                    "score_weights": {
+                        "exposure": WEIGHT_EXPOSURE,
+                        "evidence": WEIGHT_EVIDENCE,
+                        "sentiment": WEIGHT_SENTIMENT,
+                        "market_confirmation": WEIGHT_MARKET_CONFIRMATION,
+                        "confidence": WEIGHT_CONFIDENCE,
+                    },
+                },
+                "metadata": {
+                    "source_script": "ai_transmission_scoring_v2.py",
+                    "source_pipeline": PIPELINE_NAME,
+                    "source": SOURCE,
+                    "migration_phase": "phase_1_ai_layer_refactor",
+                    "legacy_table": SCORES_TABLE,
+                    "legacy_granularity": "relationship_level_map_id",
+                    "generic_granularity": "ticker_level_theme_score",
+                    "obs_lookback_days": OBS_LOOKBACK_DAYS,
+                    "price_lookback_days": PRICE_LOOKBACK_DAYS,
+                    "market_confirmation_enabled": MARKET_CONFIRMATION_ENABLED,
+                },
+            }
+        )
+
+    structural_rows.sort(
+        key=lambda x: safe_float(x.get("theme_score"), 0.0) or 0.0,
+        reverse=True,
+    )
+
+    return structural_rows
+
+
+def write_structural_theme_scores(
+    score_rows: List[Dict[str, Any]],
+    run_date_sgt: str,
+) -> int:
+    if not STRUCTURAL_THEME_DUAL_WRITE_ENABLED:
+        logger.info("Structural theme dual-write disabled by env setting.")
+        return 0
+
+    structural_rows = build_structural_theme_score_rows(score_rows, run_date_sgt)
+
+    if not structural_rows:
+        logger.warning("No structural theme score rows produced for dual-write.")
+        return 0
+
+    supabase_upsert(
+        STRUCTURAL_SCORES_TABLE,
+        structural_rows,
+        on_conflict="run_date_sgt,theme_name,theme_version,ticker",
+    )
+
+    return len(structural_rows)
+
+
+def write_structural_theme_run(
+    *,
+    run_date_sgt: str,
+    status: str,
+    runtime_seconds: float,
+    rows_processed: int,
+    rows_written: int,
+    evidence_rows: int,
+    score_rows: int,
+    error_message: Optional[str] = None,
+) -> None:
+    if not STRUCTURAL_THEME_DUAL_WRITE_ENABLED:
+        return
+
+    row = {
+        "run_date_sgt": run_date_sgt,
+        "pipeline_name": PIPELINE_NAME,
+        "theme_name": THEME_NAME,
+        "theme_version": THEME_VERSION,
+        "status": status,
+        "runtime_seconds": round(runtime_seconds, 2),
+        "rows_processed": rows_processed,
+        "rows_written": rows_written,
+        "evidence_rows": evidence_rows,
+        "score_rows": score_rows,
+        "github_run_id": os.getenv("GITHUB_RUN_ID"),
+        "github_workflow": os.getenv("GITHUB_WORKFLOW"),
+        "github_repository": os.getenv("GITHUB_REPOSITORY"),
+        "github_branch": os.getenv("GITHUB_REF_NAME"),
+        "error_message": error_message[:2000] if error_message else None,
+        "metadata": {
+            "source_script": "ai_transmission_scoring_v2.py",
+            "source": SOURCE,
+            "map_table": MAP_TABLE,
+            "observations_table": OBS_TABLE,
+            "legacy_scores_table": SCORES_TABLE,
+            "generic_scores_table": STRUCTURAL_SCORES_TABLE,
+            "obs_lookback_days": OBS_LOOKBACK_DAYS,
+            "price_lookback_days": PRICE_LOOKBACK_DAYS,
+            "market_confirmation_enabled": MARKET_CONFIRMATION_ENABLED,
+            "structural_theme_dual_write_enabled": STRUCTURAL_THEME_DUAL_WRITE_ENABLED,
+        },
+    }
+
+    try:
+        supabase_insert(STRUCTURAL_RUNS_TABLE, [row])
+    except Exception as exc:
+        # Telemetry must not break the scoring pipeline.
+        logger.warning("Failed to write structural theme run telemetry: %s", str(exc))
+
+
+# ============================================================
 # SUMMARY OUTPUT
 # ============================================================
 
@@ -968,15 +1287,24 @@ def print_summary(rows: List[Dict[str, Any]], obs_aggs: Dict[int, Dict[str, Any]
 
 def main() -> int:
     started = time.time()
+    run_date = today_sgt_str()
+
+    rows_processed = 0
+    rows_written = 0
+    evidence_rows_count = 0
+    score_rows_count = 0
 
     try:
         require_env()
 
-        run_date = today_sgt_str()
-
         logger.info("Starting %s", PIPELINE_NAME)
         logger.info("Run date SGT: %s", run_date)
         logger.info("Observation lookback days: %s", OBS_LOOKBACK_DAYS)
+        logger.info("Theme name/version: %s/%s", THEME_NAME, THEME_VERSION)
+        logger.info(
+            "Structural theme dual-write: %s",
+            "enabled" if STRUCTURAL_THEME_DUAL_WRITE_ENABLED else "disabled",
+        )
 
         if MARKET_CONFIRMATION_ENABLED:
             logger.info("FMP_API_KEY detected. Market confirmation is enabled.")
@@ -984,33 +1312,95 @@ def main() -> int:
             logger.info("FMP_API_KEY not detected. Market confirmation uses neutral score.")
 
         map_rows = load_active_transmission_map()
+        rows_processed = len(map_rows)
 
         if not map_rows:
             logger.warning("No active transmission mappings found. Nothing to score.")
+            elapsed = time.time() - started
+            write_structural_theme_run(
+                run_date_sgt=run_date,
+                status="SKIPPED",
+                runtime_seconds=elapsed,
+                rows_processed=0,
+                rows_written=0,
+                evidence_rows=0,
+                score_rows=0,
+                error_message="No active transmission mappings found.",
+            )
             return 0
 
         obs_rows = load_recent_observations()
+        evidence_rows_count = len(obs_rows)
+
         obs_aggs = aggregate_observations(obs_rows)
 
         score_rows = build_score_rows(map_rows, obs_aggs, run_date)
+        score_rows_count = len(score_rows)
 
+        # Existing legacy AI-specific write. Keep this unchanged.
         supabase_upsert(
             SCORES_TABLE,
             score_rows,
             on_conflict="run_date_sgt,map_id",
         )
+        rows_written += len(score_rows)
+
+        # Phase 1 generic structural-theme dual-write.
+        # This writes ticker-level AI theme scores into structural_theme_scores
+        # without changing the existing ai_transmission_scores output.
+        structural_rows_written = write_structural_theme_scores(score_rows, run_date)
+        rows_written += structural_rows_written
 
         print_summary(score_rows, obs_aggs)
 
         elapsed = time.time() - started
-        logger.info("%s completed successfully in %.2f seconds", PIPELINE_NAME, elapsed)
+
+        write_structural_theme_run(
+            run_date_sgt=run_date,
+            status="SUCCESS",
+            runtime_seconds=elapsed,
+            rows_processed=rows_processed,
+            rows_written=rows_written,
+            evidence_rows=evidence_rows_count,
+            score_rows=score_rows_count,
+            error_message=None,
+        )
+
+        logger.info(
+            "%s completed successfully in %.2f seconds | legacy_rows=%s | structural_rows=%s",
+            PIPELINE_NAME,
+            elapsed,
+            score_rows_count,
+            structural_rows_written,
+        )
 
         return 0
 
     except Exception as exc:
-        logger.exception("%s failed: %s", PIPELINE_NAME, str(exc))
-        return 1
+        elapsed = time.time() - started
+        error_message = str(exc)
 
+        logger.exception("%s failed: %s", PIPELINE_NAME, error_message)
+
+        try:
+            write_structural_theme_run(
+                run_date_sgt=run_date,
+                status="FAILED",
+                runtime_seconds=elapsed,
+                rows_processed=rows_processed,
+                rows_written=rows_written,
+                evidence_rows=evidence_rows_count,
+                score_rows=score_rows_count,
+                error_message=error_message,
+            )
+        except Exception as telemetry_exc:
+            logger.warning(
+                "Unable to write failure telemetry to %s: %s",
+                STRUCTURAL_RUNS_TABLE,
+                str(telemetry_exc),
+            )
+
+        return 1
 
 if __name__ == "__main__":
     sys.exit(main())
