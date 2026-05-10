@@ -71,7 +71,7 @@ jobs:
 
       - name: Run AI transmission scoring v2
         run: |
-          python ai_transmission/ai_transmission_scoring_v2.py
+          python ai_transmission/ai_transmission_scoring_v2_phase1_refactor_built.py
 
       - name: Confirm workflow completed
         if: success()
