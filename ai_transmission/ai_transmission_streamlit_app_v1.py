@@ -263,38 +263,6 @@ st.sidebar.subheader("Filters")
 # MAIN APP
 # ============================================================
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_ANON_KEY"]
-
-headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-}
-
-url = (
-    f"{SUPABASE_URL}/rest/v1/structural_theme_scores"
-    "?select=*"
-    "&theme_name=eq.ai"
-    "&order=theme_score.desc"
-    "&limit=20"
-)
-
-response = requests.get(url, headers=headers)
-
-st.write("HTTP Status:", response.status_code)
-
-if response.status_code == 200:
-    data = response.json()
-
-    st.write("Rows returned:", len(data))
-
-    df = pd.DataFrame(data)
-
-    st.dataframe(df)
-
-else:
-    st.error(response.text)
-
 st.title("AI Transmission Monitor v1")
 st.caption(
     "Tracks how AI infrastructure, software and semiconductor themes transmit into non-AI sectors and stocks."
