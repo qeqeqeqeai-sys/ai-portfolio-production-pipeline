@@ -40,8 +40,8 @@ jobs:
           pip install requests
 
       - name: Run AI transmission scoring dual-write
-        run: |
-          python ai_transmission/ai_transmission_scoring_v2.py
+        run: |         
+          python ai_transmission/ai_transmission_scoring_v2_phase1_refactor_built.py
 
       - name: Upload logs / outputs if available
         if: always()
