@@ -4,22 +4,28 @@ on:
   workflow_dispatch:
 
   schedule:
-    # Runs daily at 08:30 Singapore time
-    # GitHub Actions cron uses UTC, so 00:30 UTC = 08:30 SGT
-    - cron: "30 0 * * *"
+    # Runs daily at 09:00 Singapore time
+    # GitHub Actions cron uses UTC
+    # 01:00 UTC = 09:00 SGT
+    - cron: "0 1 * * *"
 
 permissions:
   contents: read
 
 jobs:
   ai-transmission-scoring:
-    name: Run AI Transmission Scoring v1
+    name: Run AI Transmission Scoring v2
     runs-on: ubuntu-latest
 
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+
+      # Optional runtime tuning
+      OBS_LOOKBACK_DAYS: "14"
+      PRICE_LOOKBACK_DAYS: "30"
+      MAX_TRANSMISSION_MAP_ROWS: "500"
 
     steps:
       - name: Checkout repository
@@ -54,23 +60,26 @@ jobs:
                   print(f" - {name}")
               sys.exit(1)
 
-          if not os.getenv("FMP_API_KEY"):
-              print("[WARN] FMP_API_KEY is missing. Market confirmation will use neutral scores.")
-
           print("[OK] Required environment variables are present.")
+
+          if not os.getenv("FMP_API_KEY"):
+              print("[WARN] FMP_API_KEY is missing.")
+              print("[WARN] Market confirmation will use neutral scores.")
+          else:
+              print("[OK] FMP market confirmation enabled.")
           PY
 
-      - name: Run AI transmission scoring
-        run: |          
-          python ai_transmission/ai_transmission_scoring_v1.py          
+      - name: Run AI transmission scoring v2
+        run: |
+          python ai_transmission/ai_transmission_scoring_v2.py
 
       - name: Confirm workflow completed
         if: success()
         run: |
-          echo "[OK] AI Transmission Pipeline completed successfully."
+          echo "[OK] AI Transmission Scoring v2 completed successfully."
 
       - name: Report workflow failure
         if: failure()
         run: |
-          echo "[ERROR] AI Transmission Pipeline failed."
-          echo "Check logs above for the failing step."
+          echo "[ERROR] AI Transmission Scoring v2 failed."
+          echo "Check logs above for details."
