@@ -1,0 +1,40 @@
+name: Historical Source Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: "Lookback window"
+        required: true
+        default: "90"
+
+jobs:
+  historical-backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests
+
+      - name: Run historical AI transmission backfill
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python transmission_layers/ai_transmission/historical_backfill/historical_ai_transmission_backfill.py
+
+      - name: Run validation gates
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python transmission_layers/ai_transmission/historical_backfill/historical_backfill_validation_gates.py
