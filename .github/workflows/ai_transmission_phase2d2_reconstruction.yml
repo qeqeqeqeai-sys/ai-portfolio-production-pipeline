@@ -14,7 +14,7 @@ on:
       chunk_days:
         description: "Chunk size in days"
         required: false
-        default: "30"
+        default: "45"
       rolling_window:
         description: "Rolling reconstruction window"
         required: false
