@@ -166,7 +166,7 @@ for i in range(0, len(all_dates), CHUNK_SIZE):
     written = upsert_rows(
         TARGET_TABLE,
         output_rows,
-        on_conflict="run_date_sgt,map_id,affected_ticker"
+        on_conflict="run_date_sgt,map_id"
     )
 
     rows_written_total += written
