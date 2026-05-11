@@ -56,4 +56,4 @@ jobs:
 
       - name: Run Phase 2D.2 Reconstruction Validation Gates
         run: |
-          python transmission_layers/ai_transmission/phase2d2_reconstruction_validation_gates.py
+          python transmission_layers/ai_transmission/phase2d2_reconstruction_validation_gates_schema_aligned.py
