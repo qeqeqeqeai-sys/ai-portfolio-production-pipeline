@@ -1,22 +1,6 @@
-from historical_backfill_utils import fetch_table, upsert_rows
+from historical_backfill_utils import upsert_rows
 
 CHECKPOINT_TABLE = "structural_theme_reconstruction_checkpoints"
-
-
-def get_checkpoint(process_name):
-    rows = fetch_table(
-        CHECKPOINT_TABLE,
-        filters={
-            "process_name": f"eq.{process_name}",
-            "order": "updated_at.desc",
-            "limit": 1
-        }
-    )
-
-    if not rows:
-        return None
-
-    return rows[0]
 
 
 def save_checkpoint(
@@ -29,16 +13,24 @@ def save_checkpoint(
 ):
 
     row = {
+        "pipeline_name": "HISTORICAL_SOURCE_STATE_BACKFILL",
+        "theme_name": "AI_TRANSMISSION",
+        "last_completed_date": last_processed_date,
+        "status": status,
         "process_name": process_name,
         "last_processed_date": last_processed_date,
         "rows_written": rows_written,
         "chunk_id": chunk_id,
         "runtime_seconds": runtime_seconds,
-        "status": status
+        "details": {
+            "source": "Phase 2D.2B Historical Source State Backfill Engine",
+            "rows_written": rows_written,
+            "chunk_id": chunk_id
+        }
     }
 
     upsert_rows(
         CHECKPOINT_TABLE,
         [row],
-        on_conflict="process_name"
+        on_conflict="pipeline_name,theme_name"
     )
