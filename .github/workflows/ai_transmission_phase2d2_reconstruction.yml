@@ -10,7 +10,7 @@ on:
       lookback_days:
         description: "Historical lookback days"
         required: false
-        default: "365"
+        default: "90"
       chunk_days:
         description: "Chunk size in days"
         required: false
