@@ -6,7 +6,7 @@ on:
       lookback_days:
         description: "Lookback window"
         required: true
-        default: "30"
+        default: "90"
 
 jobs:
   historical-backfill:
