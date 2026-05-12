@@ -2,13 +2,17 @@
 """
 Phase 2D.2 — Historical Reconstruction Engine
 
-PASS 2 UPDATED:
-- Migrated source loading from monolithic client.get(... limit=50000)
-  to paginated streaming retrieval.
-- Uses utils/paginated_rest_loader.py from Pass 1.
-- Uses utils/streaming_observation_loader.py for source-aware normalization.
-- Preserves output tables, checkpoint style, telemetry style and validation
-  compatibility.
+PASS 2 + PASS 3 UPDATED
+=======================
+
+Pass 2:
+- Source loading migrated from monolithic Supabase REST reads to paginated
+  streaming retrieval through utils/streaming_observation_loader.py.
+
+Pass 3:
+- Rolling momentum, acceleration, persistence, regime duration, evidence
+  intensity, and pathway stability calculations are delegated to:
+      utils/rolling_reconstruction_aggregators.py
 
 Schema-aligned target tables:
     1. structural_theme_momentum_history
@@ -25,6 +29,7 @@ Design:
     - Restart-safe checkpointing
     - Chunked historical reconstruction
     - Page-safe source loading
+    - Reusable rolling aggregation infrastructure
     - GitHub Actions compatible
 """
 
@@ -64,6 +69,10 @@ from utils.streaming_observation_loader import (  # noqa: E402
     SourceTableConfig,
     StreamingObservationLoader,
 )
+from utils.rolling_reconstruction_aggregators import (  # noqa: E402
+    RollingAggregationConfig,
+    RollingReconstructionAggregators,
+)
 
 
 # ============================================================
@@ -82,6 +91,10 @@ SLEEP_SECONDS = float(os.getenv("RECONSTRUCTION_SLEEP_SECONDS", "0.15"))
 # Keep enough prior history for 30d momentum + acceleration.
 RECONSTRUCTION_HISTORY_BUFFER_DAYS = int(
     os.getenv("RECONSTRUCTION_HISTORY_BUFFER_DAYS", str(ROLLING_WINDOW + 35))
+)
+
+ROLLING_AGGREGATION_STABILITY_WINDOW = int(
+    os.getenv("ROLLING_AGGREGATION_STABILITY_WINDOW", str(ROLLING_WINDOW))
 )
 
 SGT = timezone(timedelta(hours=8))
@@ -143,19 +156,6 @@ def mean(values: Iterable[float]) -> float:
     return sum(clean) / len(clean)
 
 
-def stddev(values: Iterable[float]) -> float:
-    clean = [safe_float(v) for v in values if v is not None]
-    if len(clean) < 2:
-        return 0.0
-
-    m = mean(clean)
-    return math.sqrt(sum((x - m) ** 2 for x in clean) / (len(clean) - 1))
-
-
-def clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
-    return max(low, min(high, value))
-
-
 def date_chunks(start_date: date, end_date: date, chunk_days: int) -> List[Tuple[date, date]]:
     chunks: List[Tuple[date, date]] = []
     cursor = start_date
@@ -166,52 +166,6 @@ def date_chunks(start_date: date, end_date: date, chunk_days: int) -> List[Tuple
         cursor = chunk_end + timedelta(days=1)
 
     return chunks
-
-
-def regime_from_score(score: float) -> str:
-    if score >= 75:
-        return "expansion"
-    if score >= 55:
-        return "constructive"
-    if score >= 40:
-        return "neutral"
-    if score >= 25:
-        return "weakening"
-    return "contraction"
-
-
-def transition_type(previous: Optional[str], current: str) -> str:
-    if previous is None:
-        return "initial_state"
-    if previous == current:
-        return "no_change"
-
-    rank = {
-        "contraction": 1,
-        "weakening": 2,
-        "neutral": 3,
-        "constructive": 4,
-        "expansion": 5,
-    }
-
-    prev_rank = rank.get(previous, 3)
-    curr_rank = rank.get(current, 3)
-
-    if curr_rank > prev_rank:
-        return "improvement"
-    if curr_rank < prev_rank:
-        return "deterioration"
-    return "state_change"
-
-
-def evidence_regime_from_score(score: float) -> str:
-    if score >= 75:
-        return "high_evidence_intensity"
-    if score >= 50:
-        return "moderate_evidence_intensity"
-    if score >= 25:
-        return "low_evidence_intensity"
-    return "minimal_evidence_intensity"
 
 
 # ============================================================
@@ -356,6 +310,10 @@ def detect_source_tables(client: SupabaseRestClient) -> List[SourceTableConfig]:
     available: List[SourceTableConfig] = []
 
     for cfg in CANDIDATE_SOURCE_TABLES:
+        if not getattr(cfg, "active", True):
+            print(f"Skipping inactive source table config: {cfg.table}")
+            continue
+
         if client.table_exists(cfg.table):
             available.append(cfg)
 
@@ -381,207 +339,79 @@ class HistoricalReconstructionEngine:
         self.theme_name = theme_name
         self.rolling_window = rolling_window
 
-    def _score_on_date(self, grouped: Dict[date, List[HistoricalObservation]], dates: List[date], idx: int) -> float:
-        idx = max(0, min(idx, len(dates) - 1))
-        return mean([x.score for x in grouped[dates[idx]]])
+        self.rolling = RollingReconstructionAggregators(
+            stability_window=ROLLING_AGGREGATION_STABILITY_WINDOW,
+            config=RollingAggregationConfig(
+                stability_window=ROLLING_AGGREGATION_STABILITY_WINDOW,
+            ),
+        )
 
-    def reconstruct_momentum(self, grouped: Dict[date, List[HistoricalObservation]]) -> List[Dict[str, Any]]:
+    def reconstruct_momentum(
+        self,
+        grouped: Dict[date, List[HistoricalObservation]],
+    ) -> List[Dict[str, Any]]:
         rows: List[Dict[str, Any]] = []
-        dates = list(grouped.keys())
 
-        for idx, run_date in enumerate(dates):
-            current_score = self._score_on_date(grouped, dates, idx)
-
-            score_1d_ago = self._score_on_date(grouped, dates, idx - 1)
-            score_7d_ago = self._score_on_date(grouped, dates, idx - 7)
-            score_8d_ago = self._score_on_date(grouped, dates, idx - 8)
-            score_30d_ago = self._score_on_date(grouped, dates, idx - 30)
-            score_31d_ago = self._score_on_date(grouped, dates, idx - 31)
-
-            momentum_7d = current_score - score_7d_ago
-            momentum_30d = current_score - score_30d_ago
-
-            previous_momentum_7d = score_1d_ago - score_8d_ago
-            previous_momentum_30d = score_1d_ago - score_31d_ago
-
-            acceleration_7d = momentum_7d - previous_momentum_7d
-            acceleration_30d = momentum_30d - previous_momentum_30d
-
-            persistence_days = 0
-            for j in range(idx, 0, -1):
-                today_score = self._score_on_date(grouped, dates, j)
-                yesterday_score = self._score_on_date(grouped, dates, j - 1)
-
-                if today_score >= yesterday_score:
-                    persistence_days += 1
-                else:
-                    break
-
-            structural_momentum_score = clamp(
-                50
-                + momentum_7d * 3
-                + momentum_30d * 1.5
-                + acceleration_7d * 2
-                + min(persistence_days, 30)
-            )
-
-            if structural_momentum_score >= 70:
-                momentum_regime = "positive_momentum"
-            elif structural_momentum_score >= 55:
-                momentum_regime = "constructive_momentum"
-            elif structural_momentum_score >= 45:
-                momentum_regime = "neutral_momentum"
-            elif structural_momentum_score >= 30:
-                momentum_regime = "weakening_momentum"
-            else:
-                momentum_regime = "negative_momentum"
-
+        for run_date, metrics in self.rolling.theme_momentum_metrics(grouped):
             rows.append({
                 "run_date_sgt": run_date.isoformat(),
                 "theme_name": self.theme_name,
                 "entity": "theme",
-                "theme_score": round(current_score, 4),
-                "momentum_7d": round(momentum_7d, 4),
-                "momentum_30d": round(momentum_30d, 4),
-                "acceleration_7d": round(acceleration_7d, 4),
-                "acceleration_30d": round(acceleration_30d, 4),
-                "momentum_persistence_days": int(persistence_days),
-                "structural_momentum_score": round(structural_momentum_score, 4),
-                "momentum_regime": momentum_regime,
+                "theme_score": metrics.current_score,
+                "momentum_7d": metrics.momentum_7d,
+                "momentum_30d": metrics.momentum_30d,
+                "acceleration_7d": metrics.acceleration_7d,
+                "acceleration_30d": metrics.acceleration_30d,
+                "momentum_persistence_days": metrics.persistence_days,
+                "structural_momentum_score": metrics.structural_momentum_score,
+                "momentum_regime": metrics.momentum_regime,
                 "created_at": now_sgt().isoformat(),
                 "updated_at": now_sgt().isoformat(),
             })
 
         return rows
 
-    def reconstruct_regime(self, grouped: Dict[date, List[HistoricalObservation]]) -> List[Dict[str, Any]]:
+    def reconstruct_regime(
+        self,
+        grouped: Dict[date, List[HistoricalObservation]],
+    ) -> List[Dict[str, Any]]:
         rows: List[Dict[str, Any]] = []
-        dates = list(grouped.keys())
 
-        previous_regime: Optional[str] = None
-        current_duration = 0
-
-        for idx, run_date in enumerate(dates):
-            current_score = self._score_on_date(grouped, dates, idx)
-            current_regime = regime_from_score(current_score)
-
-            changed = bool(previous_regime is not None and previous_regime != current_regime)
-
-            if previous_regime is None or changed:
-                current_duration = 1
-            else:
-                current_duration += 1
-
+        for run_date, metrics in self.rolling.theme_regime_metrics(grouped):
             rows.append({
                 "run_date_sgt": run_date.isoformat(),
                 "theme_name": self.theme_name,
                 "entity": "theme",
-                "previous_regime": previous_regime,
-                "current_regime": current_regime,
-                "regime_changed": changed,
-                "regime_duration_days": int(current_duration),
-                "transition_type": transition_type(previous_regime, current_regime),
+                "previous_regime": metrics.previous_regime,
+                "current_regime": metrics.current_regime,
+                "regime_changed": metrics.regime_changed,
+                "regime_duration_days": metrics.regime_duration_days,
+                "transition_type": metrics.transition_type,
                 "created_at": now_sgt().isoformat(),
             })
 
-            previous_regime = current_regime
-
         return rows
 
-    def reconstruct_propagation(self, grouped: Dict[date, List[HistoricalObservation]]) -> List[Dict[str, Any]]:
+    def reconstruct_propagation(
+        self,
+        grouped: Dict[date, List[HistoricalObservation]],
+    ) -> List[Dict[str, Any]]:
         rows: List[Dict[str, Any]] = []
         dates = list(grouped.keys())
 
         for idx, run_date in enumerate(dates):
             observations = grouped[run_date]
-            pathway_groups: Dict[Tuple[str, str, str], List[HistoricalObservation]] = {}
-
-            for obs in observations:
-                source_entity = "theme"
-                target_entity = obs.entity or "theme"
-                pathway_name = obs.pathway_name or "theme_pathway"
-                key = (source_entity, target_entity, pathway_name)
-                pathway_groups.setdefault(key, []).append(obs)
+            pathway_groups = self.rolling.pathway_groups_for_date(observations)
 
             for (source_entity, target_entity, pathway_name), obs_list in pathway_groups.items():
-                current_score = mean([x.score for x in obs_list])
-
-                previous_score = current_score
-                if idx > 0:
-                    prev_obs = [
-                        x for x in grouped[dates[idx - 1]]
-                        if (x.entity or "theme") == target_entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if prev_obs:
-                        previous_score = mean([x.score for x in prev_obs])
-
-                score_change = current_score - previous_score
-
-                score_7d_ago = current_score
-                score_30d_ago = current_score
-                score_8d_ago = previous_score
-                score_31d_ago = previous_score
-
-                if idx >= 7:
-                    d7_obs = [
-                        x for x in grouped[dates[idx - 7]]
-                        if (x.entity or "theme") == target_entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if d7_obs:
-                        score_7d_ago = mean([x.score for x in d7_obs])
-
-                if idx >= 30:
-                    d30_obs = [
-                        x for x in grouped[dates[idx - 30]]
-                        if (x.entity or "theme") == target_entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if d30_obs:
-                        score_30d_ago = mean([x.score for x in d30_obs])
-
-                if idx >= 8:
-                    d8_obs = [
-                        x for x in grouped[dates[idx - 8]]
-                        if (x.entity or "theme") == target_entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if d8_obs:
-                        score_8d_ago = mean([x.score for x in d8_obs])
-
-                if idx >= 31:
-                    d31_obs = [
-                        x for x in grouped[dates[idx - 31]]
-                        if (x.entity or "theme") == target_entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if d31_obs:
-                        score_31d_ago = mean([x.score for x in d31_obs])
-
-                momentum_7d = current_score - score_7d_ago
-                momentum_30d = current_score - score_30d_ago
-                prev_momentum_7d = previous_score - score_8d_ago
-                prev_momentum_30d = previous_score - score_31d_ago
-                acceleration_7d = momentum_7d - prev_momentum_7d
-                acceleration_30d = momentum_30d - prev_momentum_30d
-
-                evidence_intensity = mean([x.evidence_strength for x in obs_list])
-                attribution_strength = mean([x.attribution_strength for x in obs_list])
-
-                pathway_window_scores: List[float] = []
-                window_start = max(0, idx - self.rolling_window + 1)
-
-                for j in range(window_start, idx + 1):
-                    historical_obs = [
-                        x for x in grouped[dates[j]]
-                        if (x.entity or "theme") == target_entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if historical_obs:
-                        pathway_window_scores.append(mean([x.score for x in historical_obs]))
-
-                pathway_stability_score = clamp(100 - stddev(pathway_window_scores))
+                metrics = self.rolling.pathway_metrics(
+                    grouped,
+                    run_date=run_date,
+                    idx=idx,
+                    target_entity=target_entity,
+                    pathway_name=pathway_name,
+                    obs_list=obs_list,
+                )
 
                 rows.append({
                     "run_date_sgt": run_date.isoformat(),
@@ -589,74 +419,41 @@ class HistoricalReconstructionEngine:
                     "source_entity": source_entity,
                     "target_entity": target_entity,
                     "pathway_name": pathway_name,
-                    "propagation_score": round(current_score, 4),
-                    "previous_score": round(previous_score, 4),
-                    "score_change": round(score_change, 4),
-                    "momentum_7d": round(momentum_7d, 4),
-                    "momentum_30d": round(momentum_30d, 4),
-                    "acceleration_7d": round(acceleration_7d, 4),
-                    "acceleration_30d": round(acceleration_30d, 4),
-                    "evidence_intensity": round(evidence_intensity, 4),
-                    "attribution_strength": round(attribution_strength, 4),
-                    "pathway_stability_score": round(pathway_stability_score, 4),
-                    "regime": regime_from_score(current_score),
+                    "propagation_score": metrics.propagation_score,
+                    "previous_score": metrics.previous_score,
+                    "score_change": metrics.score_change,
+                    "momentum_7d": metrics.momentum_7d,
+                    "momentum_30d": metrics.momentum_30d,
+                    "acceleration_7d": metrics.acceleration_7d,
+                    "acceleration_30d": metrics.acceleration_30d,
+                    "evidence_intensity": metrics.evidence_intensity,
+                    "attribution_strength": metrics.attribution_strength,
+                    "pathway_stability_score": metrics.pathway_stability_score,
+                    "regime": metrics.regime,
                     "created_at": now_sgt().isoformat(),
                 })
 
         return rows
 
-    def reconstruct_evidence(self, grouped: Dict[date, List[HistoricalObservation]]) -> List[Dict[str, Any]]:
+    def reconstruct_evidence(
+        self,
+        grouped: Dict[date, List[HistoricalObservation]],
+    ) -> List[Dict[str, Any]]:
         rows: List[Dict[str, Any]] = []
         dates = list(grouped.keys())
 
         for idx, run_date in enumerate(dates):
-            evidence_groups: Dict[Tuple[str, str], List[HistoricalObservation]] = {}
-
-            for obs in grouped[run_date]:
-                entity = obs.entity or "theme"
-                pathway_name = obs.pathway_name or "theme_pathway"
-                evidence_groups.setdefault((entity, pathway_name), []).append(obs)
+            observations = grouped[run_date]
+            evidence_groups = self.rolling.evidence_groups_for_date(observations)
 
             for (entity, pathway_name), obs_list in evidence_groups.items():
-                evidence_count = sum([x.evidence_count for x in obs_list])
-                avg_strength = mean([x.evidence_strength for x in obs_list])
-
-                rolling_7_values: List[float] = []
-                rolling_30_values: List[float] = []
-
-                for j in range(max(0, idx - 6), idx + 1):
-                    day_obs = [
-                        x for x in grouped[dates[j]]
-                        if (x.entity or "theme") == entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if day_obs:
-                        rolling_7_values.append(mean([x.evidence_strength for x in day_obs]))
-
-                for j in range(max(0, idx - 29), idx + 1):
-                    day_obs = [
-                        x for x in grouped[dates[j]]
-                        if (x.entity or "theme") == entity
-                        and (x.pathway_name or "theme_pathway") == pathway_name
-                    ]
-                    if day_obs:
-                        rolling_30_values.append(mean([x.evidence_strength for x in day_obs]))
-
-                rolling_7 = mean(rolling_7_values)
-                rolling_30 = mean(rolling_30_values)
-
-                spike_score = 0.0
-                if len(rolling_30_values) >= 3:
-                    baseline = mean(rolling_30_values[:-1])
-                    baseline_std = stddev(rolling_30_values[:-1])
-                    if baseline_std > 0:
-                        spike_score = clamp(50 + ((avg_strength - baseline) / baseline_std) * 10)
-                    else:
-                        spike_score = clamp(50 + avg_strength - baseline)
-
-                high_conf_count = sum(
-                    1 for x in obs_list
-                    if x.evidence_strength >= 70 or x.score >= 70
+                metrics = self.rolling.evidence_metrics(
+                    grouped,
+                    dates=dates,
+                    idx=idx,
+                    entity=entity,
+                    pathway_name=pathway_name,
+                    obs_list=obs_list,
                 )
 
                 rows.append({
@@ -664,17 +461,20 @@ class HistoricalReconstructionEngine:
                     "theme_name": self.theme_name,
                     "entity": entity,
                     "pathway_name": pathway_name,
-                    "evidence_count": int(evidence_count),
-                    "high_confidence_evidence_count": int(high_conf_count),
-                    "avg_evidence_strength": round(avg_strength, 4),
-                    "rolling_evidence_7d": round(rolling_7, 4),
-                    "rolling_evidence_30d": round(rolling_30, 4),
-                    "evidence_spike_score": round(spike_score, 4),
-                    "evidence_regime": evidence_regime_from_score(avg_strength),
+                    "evidence_count": metrics.evidence_count,
+                    "high_confidence_evidence_count": metrics.high_confidence_evidence_count,
+                    "avg_evidence_strength": metrics.avg_evidence_strength,
+                    "rolling_evidence_7d": metrics.rolling_evidence_7d,
+                    "rolling_evidence_30d": metrics.rolling_evidence_30d,
+                    "evidence_spike_score": metrics.evidence_spike_score,
+                    "evidence_regime": metrics.evidence_regime,
                     "created_at": now_sgt().isoformat(),
                 })
 
         return rows
+
+    def rolling_telemetry(self) -> Dict[str, Any]:
+        return self.rolling.telemetry_dict()
 
 
 # ============================================================
@@ -738,7 +538,10 @@ def write_checkpoint(
 # TELEMETRY
 # ============================================================
 
-def compact_error_payload(base_message: Optional[str], payload: Optional[Dict[str, Any]] = None) -> Optional[str]:
+def compact_error_payload(
+    base_message: Optional[str],
+    payload: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
     if not base_message and not payload:
         return None
 
@@ -872,6 +675,7 @@ def run_reconstruction() -> None:
 
     total_rows_written = 0
     windows_processed = 0
+
     total_pages_loaded = 0
     total_rows_loaded = 0
     total_retry_count = 0
@@ -916,6 +720,7 @@ def run_reconstruction() -> None:
                         "chunk_end": chunk_end.isoformat(),
                         "fetch_start": fetch_start.isoformat(),
                         "pagination": chunk_telemetry.to_dict(),
+                        "rolling": engine.rolling_telemetry(),
                     },
                 )
                 continue
@@ -938,10 +743,12 @@ def run_reconstruction() -> None:
                         "chunk_end": chunk_end.isoformat(),
                         "fetch_start": fetch_start.isoformat(),
                         "pagination": chunk_telemetry.to_dict(),
+                        "rolling": engine.rolling_telemetry(),
                     },
                 )
                 continue
 
+            # PASS 3: rolling calculations are delegated to reusable infrastructure.
             momentum_rows = engine.reconstruct_momentum(grouped_chunk)
             regime_rows = engine.reconstruct_regime(grouped_chunk)
             propagation_rows = engine.reconstruct_propagation(grouped_chunk)
@@ -1000,6 +807,7 @@ def run_reconstruction() -> None:
                 "grouped_dates_loaded": len(grouped_all),
                 "grouped_chunk_dates": len(grouped_chunk),
                 "rows_written_so_far": total_rows_written,
+                "rolling": engine.rolling_telemetry(),
             })
             chunk_telemetry_records.append(chunk_record)
 
@@ -1017,6 +825,7 @@ def run_reconstruction() -> None:
                     "grouped_dates_loaded": len(grouped_all),
                     "grouped_chunk_dates": len(grouped_chunk),
                     "pagination": chunk_record,
+                    "rolling": engine.rolling_telemetry(),
                 },
             )
 
@@ -1041,6 +850,7 @@ def run_reconstruction() -> None:
             "pagination_runtime": round(total_pagination_runtime, 4),
             "normalization_runtime": round(total_normalization_runtime, 4),
             "chunk_count": len(chunk_telemetry_records),
+            "rolling": engine.rolling_telemetry(),
         }
 
         write_telemetry(
@@ -1054,7 +864,7 @@ def run_reconstruction() -> None:
         print("\nPhase 2D.2 historical reconstruction completed successfully.")
         print(f"Total rows written: {total_rows_written}")
         print(f"Runtime seconds: {round(runtime, 2)}")
-        print("Pagination telemetry:")
+        print("Pagination + rolling telemetry:")
         print(json.dumps(aggregate_payload, indent=2, default=str))
 
     except Exception as exc:
@@ -1080,6 +890,7 @@ def run_reconstruction() -> None:
                     "max_page_size": max_page_size,
                     "pagination_runtime": round(total_pagination_runtime, 4),
                     "normalization_runtime": round(total_normalization_runtime, 4),
+                    "rolling": engine.rolling_telemetry() if "engine" in locals() else {},
                 },
             )
         except Exception:
