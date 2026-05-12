@@ -36,6 +36,23 @@ jobs:
       RECONSTRUCTION_BATCH_SIZE: "500"
       MIN_RECONSTRUCTED_DAYS: "30"
 
+      # PASS 1 — Institutional Pagination Infrastructure
+
+      PAGINATION_PAGE_SIZE: "1000"
+      PAGINATION_THROTTLE_SECONDS: "0.10"
+      PAGINATION_REQUEST_TIMEOUT_SECONDS: "90"
+
+      PAGINATION_RETRY_MAX_ATTEMPTS: "3"
+      PAGINATION_RETRY_BASE_SLEEP_SECONDS: "2.0"
+
+      PAGINATION_VALIDATE_PAGES: "true"
+      PAGINATION_FAIL_ON_VALIDATION_ERROR: "true"
+
+      PAGINATION_CHECKPOINT_EVERY_PAGES: "1"
+
+      PAGINATION_DEFAULT_ORDER_COLUMN: "run_date_sgt"
+      PAGINATION_DEFAULT_ORDER_DIRECTION: "asc"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
