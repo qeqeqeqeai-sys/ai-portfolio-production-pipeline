@@ -1,19 +1,11 @@
 import os
 import time
-import urllib.parse
 from typing import Any, Dict, List, Optional
 
 import requests
 
 
 class SupabaseRestClient:
-    """
-    Minimal Supabase REST client.
-
-    Uses REST API only.
-    No Supabase Python SDK.
-    """
-
     def __init__(self):
         self.url = os.getenv("SUPABASE_URL")
         self.key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
@@ -43,8 +35,8 @@ class SupabaseRestClient:
         timeout: int = 60,
     ) -> Any:
         url = f"{self.base_url}/{path.lstrip('/')}"
-
         headers = dict(self.headers)
+
         if prefer:
             headers["Prefer"] = prefer
 
@@ -102,18 +94,16 @@ class SupabaseRestClient:
         table: str,
         rows: List[Dict[str, Any]],
         *,
-        return_rows: bool = True,
+        return_rows: bool = False,
     ) -> List[Dict[str, Any]]:
         if not rows:
             return []
-
-        prefer = "return=representation" if return_rows else "return=minimal"
 
         return self._request(
             "POST",
             table,
             json_body=rows,
-            prefer=prefer,
+            prefer="return=representation" if return_rows else "return=minimal",
         )
 
     def upsert(
@@ -122,42 +112,15 @@ class SupabaseRestClient:
         rows: List[Dict[str, Any]],
         *,
         on_conflict: str,
-        return_rows: bool = True,
+        return_rows: bool = False,
     ) -> List[Dict[str, Any]]:
         if not rows:
             return []
 
-        prefer_bits = ["resolution=merge-duplicates"]
-        prefer_bits.append("return=representation" if return_rows else "return=minimal")
-
-        params = {"on_conflict": on_conflict}
-
         return self._request(
             "POST",
             table,
-            params=params,
+            params={"on_conflict": on_conflict},
             json_body=rows,
-            prefer=",".join(prefer_bits),
+            prefer="resolution=merge-duplicates," + ("return=representation" if return_rows else "return=minimal"),
         )
-
-    def count(self, table: str, filters: Optional[Dict[str, str]] = None) -> int:
-        params = {"select": "id"}
-
-        if filters:
-            params.update(filters)
-
-        headers = dict(self.headers)
-        headers["Prefer"] = "count=exact"
-
-        url = f"{self.base_url}/{table}"
-
-        response = requests.get(url, headers=headers, params=params, timeout=60)
-
-        if response.status_code not in (200, 206):
-            raise RuntimeError(f"Count failed for {table}: {response.status_code}: {response.text}")
-
-        content_range = response.headers.get("Content-Range", "")
-        if "/" in content_range:
-            return int(content_range.split("/")[-1])
-
-        return len(response.json() if response.text else [])
