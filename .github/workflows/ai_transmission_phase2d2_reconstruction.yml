@@ -67,6 +67,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pandas numpy
 
+      - name: PASS 1 Pagination Smoke Test
+        run: |
+          python utils/paginated_rest_loader.py
+        env:
+          PAGINATION_TEST_TABLE: "structural_theme_scores"
+          PAGINATION_TEST_SELECT: "run_date_sgt,theme_name,theme_score"
+          PAGINATION_TEST_ORDER: "run_date_sgt.asc"
+
       - name: Run Phase 2D.2 Historical Reconstruction Engine
         run: |
           python transmission_layers/ai_transmission/phase2d2_historical_reconstruction_engine_schema_aligned_revised.py          
