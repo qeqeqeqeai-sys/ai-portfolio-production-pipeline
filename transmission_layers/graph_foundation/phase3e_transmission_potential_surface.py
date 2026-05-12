@@ -159,7 +159,7 @@ def make_row(scope,values,p_rows,t_rows,d_rows):
         "contributing_transition_rows":len(t_rows),
         "contributing_drift_rows":len(d_rows),
 
-        "pressure_metadata":{
+        "transmission_metadata":{
             "phase":"3E",
             "pipeline_name":PIPELINE_NAME,
         },
