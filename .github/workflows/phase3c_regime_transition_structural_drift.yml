@@ -1,0 +1,63 @@
+name: Phase 3C Regime Transition Structural Drift
+
+on:
+  workflow_dispatch:
+    inputs:
+      anchor_theme_name:
+        description: "Anchor theme name"
+        required: true
+        default: "ai"
+      theme_name:
+        description: "Optional theme filter. Leave blank for all themes under anchor."
+        required: false
+        default: ""
+      max_stability_rows:
+        description: "Max stability rows to read"
+        required: true
+        default: "20000"
+      drift_threshold_mild:
+        description: "Mild drift threshold"
+        required: true
+        default: "0.05"
+      drift_threshold_moderate:
+        description: "Moderate drift threshold"
+        required: true
+        default: "0.12"
+      drift_threshold_major:
+        description: "Major drift threshold"
+        required: true
+        default: "0.25"
+
+jobs:
+  phase3c-regime-transition-structural-drift:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name }}
+      THEME_NAME: ${{ github.event.inputs.theme_name }}
+      MAX_STABILITY_ROWS: ${{ github.event.inputs.max_stability_rows }}
+      DRIFT_THRESHOLD_MILD: ${{ github.event.inputs.drift_threshold_mild }}
+      DRIFT_THRESHOLD_MODERATE: ${{ github.event.inputs.drift_threshold_moderate }}
+      DRIFT_THRESHOLD_MAJOR: ${{ github.event.inputs.drift_threshold_major }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 3C Regime Transition Structural Drift
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python phase3c_regime_transition_structural_drift.py
