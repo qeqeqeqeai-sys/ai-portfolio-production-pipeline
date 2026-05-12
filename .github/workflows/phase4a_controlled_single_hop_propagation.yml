@@ -1,0 +1,63 @@
+name: Phase 4A Controlled Single-Hop Propagation
+
+on:
+  workflow_dispatch:
+    inputs:
+      anchor_theme_name:
+        description: "Anchor theme name"
+        required: true
+        default: "ai"
+      theme_name:
+        description: "Optional theme filter"
+        required: false
+        default: ""
+      max_rows:
+        description: "Max rows to read"
+        required: true
+        default: "20000"
+      min_edge_strength:
+        description: "Minimum edge strength"
+        required: true
+        default: "0.0"
+      min_transmission_potential:
+        description: "Minimum transmission potential when available"
+        required: true
+        default: "0.0"
+      max_transfer_weight:
+        description: "Maximum transfer weight cap"
+        required: true
+        default: "0.85"
+
+jobs:
+  phase4a-controlled-single-hop-propagation:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name }}
+      THEME_NAME: ${{ github.event.inputs.theme_name }}
+      MAX_ROWS: ${{ github.event.inputs.max_rows }}
+      MIN_EDGE_STRENGTH: ${{ github.event.inputs.min_edge_strength }}
+      MIN_TRANSMISSION_POTENTIAL: ${{ github.event.inputs.min_transmission_potential }}
+      MAX_TRANSFER_WEIGHT: ${{ github.event.inputs.max_transfer_weight }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 4A Controlled Single-Hop Propagation
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python phase4a_controlled_single_hop_propagation.py
