@@ -222,6 +222,64 @@ def snapshot(client,start_date,end_date,replay,memory,val,errs,warns):
     }])
     return sid
 
+def dedupe_replay_rows(rows):
+    """
+    Deduplicate replay rows by the table conflict key:
+    run_date_sgt, propagation_key
+
+    Keep the row with the highest propagated_pressure_score.
+    """
+    best = {}
+
+    for row in rows:
+        key = (
+            str(row.get("run_date_sgt") or ""),
+            str(row.get("propagation_key") or ""),
+        )
+
+        current_score = flt(row.get("propagated_pressure_score"), 0.0)
+
+        if key not in best:
+            best[key] = row
+            continue
+
+        existing_score = flt(best[key].get("propagated_pressure_score"), 0.0)
+
+        if current_score >= existing_score:
+            best[key] = row
+
+    return list(best.values())
+
+
+def dedupe_memory_rows(rows):
+    """
+    Deduplicate memory rows by the table conflict key:
+    run_date_sgt, memory_key
+
+    Keep the row with the highest carry_forward_score.
+    """
+    best = {}
+
+    for row in rows:
+        key = (
+            str(row.get("run_date_sgt") or ""),
+            str(row.get("memory_key") or ""),
+        )
+
+        current_score = flt(row.get("carry_forward_score"), 0.0)
+
+        if key not in best:
+            best[key] = row
+            continue
+
+        existing_score = flt(best[key].get("carry_forward_score"), 0.0)
+
+        if current_score >= existing_score:
+            best[key] = row
+
+    return list(best.values())
+
+
 def main():
     start=time.time(); client=SupabaseRestClient()
     start_date=(today()-timedelta(days=LOOKBACK_DAYS)).isoformat(); end_date=today().isoformat()
@@ -231,7 +289,9 @@ def main():
         pressures=fetch(client,"structural_theme_graph_pressure_accumulation")
         transmissions=fetch(client,"structural_theme_graph_transmission_potential")
         replay=generate(edges,pressures,transmissions)
+        replay=dedupe_replay_rows(replay)
         memory=build_memory(replay)
+        memory=dedupe_memory_rows(memory)
         val,errs,warns=validate(replay,memory)
         if val=="failed": raise RuntimeError("Phase 4E validation failed: "+" | ".join(errs[:10]))
         if replay: client.upsert("structural_theme_graph_single_hop_propagation",replay,on_conflict="run_date_sgt,propagation_key")
