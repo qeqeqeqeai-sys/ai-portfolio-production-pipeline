@@ -1,0 +1,53 @@
+name: Phase 3A.2 Cross-Theme Relationship Expansion
+
+on:
+  workflow_dispatch:
+    inputs:
+      theme_name:
+        description: "Theme name to read from structural_theme_evidence"
+        required: true
+        default: "ai"
+      anchor_theme_name:
+        description: "Anchor theme name"
+        required: true
+        default: "ai"
+      max_evidence_rows:
+        description: "Max evidence rows to read"
+        required: true
+        default: "3000"
+      min_evidence_score:
+        description: "Minimum evidence relevance score, 0-100"
+        required: true
+        default: "0"
+
+jobs:
+  phase3a2-cross-theme-relationship-expansion:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      THEME_NAME: ${{ github.event.inputs.theme_name }}
+      ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name }}
+      MAX_EVIDENCE_ROWS: ${{ github.event.inputs.max_evidence_rows }}
+      MIN_EVIDENCE_SCORE: ${{ github.event.inputs.min_evidence_score }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 3A.2 Cross-Theme Relationship Expansion
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python phase3a2_cross_theme_relationship_expansion.py
