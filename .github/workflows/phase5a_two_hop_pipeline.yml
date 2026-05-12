@@ -1,0 +1,78 @@
+name: Phase 5A Controlled Two-Hop Propagation
+
+on:
+  workflow_dispatch:
+    inputs:
+      theme_name:
+        description: Theme name
+        required: true
+        default: ai
+      run_date_sgt:
+        description: Run date in Singapore time, YYYY-MM-DD. Leave blank for today.
+        required: false
+        default: ""
+      top_k_neighbors:
+        description: Max outgoing neighbors per node
+        required: true
+        default: "10"
+      min_edge_confidence:
+        description: Minimum edge confidence
+        required: true
+        default: "0.20"
+      min_edge_transmission_potential:
+        description: Minimum edge transmission potential
+        required: true
+        default: "0.00"
+      hop_attenuation_factor:
+        description: Two-hop attenuation factor
+        required: true
+        default: "0.85"
+
+  schedule:
+    - cron: "30 23 * * *" # 07:30 SGT daily
+
+jobs:
+  phase5a-two-hop-propagation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      THEME_NAME: ${{ github.event.inputs.theme_name || 'ai' }}
+      RUN_DATE_SGT: ${{ github.event.inputs.run_date_sgt }}
+      TOP_K_NEIGHBORS: ${{ github.event.inputs.top_k_neighbors || '10' }}
+      MIN_EDGE_CONFIDENCE: ${{ github.event.inputs.min_edge_confidence || '0.20' }}
+      MIN_EDGE_TRANSMISSION_POTENTIAL: ${{ github.event.inputs.min_edge_transmission_potential || '0.00' }}
+      HOP_ATTENUATION_FACTOR: ${{ github.event.inputs.hop_attenuation_factor || '0.85' }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Resolve Singapore run date
+        shell: bash
+        run: |
+          if [ -z "$RUN_DATE_SGT" ]; then
+            echo "RUN_DATE_SGT=$(TZ=Asia/Singapore date +%F)" >> $GITHUB_ENV
+          fi
+
+      - name: Phase 5A — Generate and score controlled two-hop paths
+        run: |
+          python transmission_layers/phase5a_two_hop/phase5a_two_hop_propagation.py
+
+      - name: Phase 5A — Validation hooks
+        run: |
+          python transmission_layers/phase5a_two_hop/phase5a_validate_two_hop.py
