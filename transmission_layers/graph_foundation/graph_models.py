@@ -112,13 +112,11 @@ class GraphEdge:
     def to_row(self) -> Dict[str, Any]:
         if self.edge_type not in ALLOWED_EDGE_TYPES:
             raise ValueError(f"Invalid edge_type: {self.edge_type}")
-
+    
         self.edge_strength = clamp(self.edge_strength, 0, 1)
         self.directional_strength = clamp(self.directional_strength, -1, 1)
         self.confidence_score = clamp(self.confidence_score, 0, 1)
         self.evidence_intensity = clamp(self.evidence_intensity, 0, 1)
         self.persistence_score = clamp(self.persistence_score, 0, 1)
-
-        row = asdict(self)
-        row = {k: v for k, v in row.items() if v is not None}
-        return row
+    
+        return asdict(self)
