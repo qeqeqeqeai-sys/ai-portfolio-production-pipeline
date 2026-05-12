@@ -2,10 +2,14 @@
 """
 utils/paginated_rest_loader.py
 
-PASS 1 — Institutional Pagination Infrastructure
-================================================
+PASS 1 / PASS 2 — Institutional Pagination Infrastructure
+=========================================================
 
 Generic Supabase REST pagination infrastructure.
+
+This revised version fixes validator state isolation:
+- Each stream_pages() traversal gets its own PaginationValidator.
+- Sequential table loads no longer falsely trigger duplicate/overlap warnings.
 
 Scope:
 - HTTP Range pagination
@@ -16,12 +20,6 @@ Scope:
 - Checkpoint-aware offset resume
 - Pagination telemetry
 - Pagination validation hooks
-
-Deliberately NOT included in Pass 1:
-- streaming normalization
-- observation loader migration
-- reconstruction engine refactor
-- rolling aggregators
 
 Architecture:
 - Python only
@@ -42,7 +40,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional, Sequence, Tuple
 
 import requests
 
@@ -52,10 +50,6 @@ try:
 except Exception:
     pass
 
-
-# ---------------------------------------------------------------------
-# Import retry wrapper safely
-# ---------------------------------------------------------------------
 
 THIS_FILE = Path(__file__).resolve()
 PROJECT_ROOT = THIS_FILE.parents[1] if len(THIS_FILE.parents) > 1 else Path.cwd()
@@ -70,10 +64,6 @@ try:
 except Exception:
     request_with_retries = None
 
-
-# ---------------------------------------------------------------------
-# Time helpers
-# ---------------------------------------------------------------------
 
 SGT = timezone(timedelta(hours=8))
 
@@ -109,19 +99,8 @@ def env_bool(name: str, default: bool) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
-# ---------------------------------------------------------------------
-# Data contracts
-# ---------------------------------------------------------------------
-
 @dataclass
 class PaginationConfig:
-    """
-    Runtime pagination tuning.
-
-    Default env names are intentionally generic so the same loader can be used
-    by future structural themes, not only AI transmission.
-    """
-
     page_size: int = field(default_factory=lambda: env_int("PAGINATION_PAGE_SIZE", 1000))
     throttle_seconds: float = field(default_factory=lambda: env_float("PAGINATION_THROTTLE_SECONDS", 0.10))
     request_timeout_seconds: int = field(default_factory=lambda: env_int("PAGINATION_REQUEST_TIMEOUT_SECONDS", 90))
@@ -135,21 +114,12 @@ class PaginationConfig:
     fail_on_validation_error: bool = field(default_factory=lambda: env_bool("PAGINATION_FAIL_ON_VALIDATION_ERROR", True))
     checkpoint_every_pages: int = field(default_factory=lambda: env_int("PAGINATION_CHECKPOINT_EVERY_PAGES", 1))
 
-    # Ordering is strongly recommended. Supabase/PostgREST pagination is safest
-    # with deterministic ordering.
     default_order_column: Optional[str] = os.getenv("PAGINATION_DEFAULT_ORDER_COLUMN", "").strip() or None
     default_order_direction: str = os.getenv("PAGINATION_DEFAULT_ORDER_DIRECTION", "asc").strip().lower()
 
 
 @dataclass
 class PaginationCheckpoint:
-    """
-    Checkpoint state for restart-safe page traversal.
-
-    Store this inside your existing checkpoint table's details JSON.
-    No schema migration is required for Pass 1 if details is json/jsonb.
-    """
-
     table_name: str
     pipeline_name: str
     theme_name: Optional[str] = None
@@ -267,18 +237,7 @@ class ValidationResult:
             raise RuntimeError("Pagination validation failed: " + " | ".join(self.errors))
 
 
-# ---------------------------------------------------------------------
-# REST client
-# ---------------------------------------------------------------------
-
 class SupabaseRangeRestClient:
-    """
-    Minimal Supabase REST client using requests only.
-
-    This is intentionally separate from the reconstruction engine's
-    SupabaseRestClient so Pass 1 remains additive-only.
-    """
-
     def __init__(
         self,
         supabase_url: Optional[str] = None,
@@ -345,9 +304,9 @@ class SupabaseRangeRestClient:
                 service_name=service_name or f"Supabase paginated GET {table_name}",
             )
         else:
-            # Fallback retry implementation if api_retry_utils.py is not importable.
-            last_exc: Optional[Exception] = None
             response = None
+            last_exc: Optional[Exception] = None
+
             for attempt in range(1, retry_max_attempts + 1):
                 try:
                     response = requests.get(
@@ -442,22 +401,7 @@ class SupabaseRangeRestClient:
         return len(rows)
 
 
-# ---------------------------------------------------------------------
-# Validation hooks
-# ---------------------------------------------------------------------
-
 class PaginationValidator:
-    """
-    Page traversal validator.
-
-    Validates:
-    - duplicate page detection
-    - missing page detection
-    - monotonic traversal
-    - overlap detection
-    - checkpoint continuity
-    """
-
     def __init__(self) -> None:
         self.seen_ranges: set[Tuple[int, int]] = set()
         self.seen_page_indexes: set[int] = set()
@@ -559,10 +503,6 @@ def validate_checkpoint_continuity(
     return ValidationResult(ok=(len(errors) == 0), errors=errors, warnings=warnings)
 
 
-# ---------------------------------------------------------------------
-# Query helpers
-# ---------------------------------------------------------------------
-
 def build_select_param(columns: Optional[Sequence[str]]) -> str:
     if not columns:
         return "*"
@@ -576,7 +516,10 @@ def build_select_param(columns: Optional[Sequence[str]]) -> str:
     return ",".join(clean) if clean else "*"
 
 
-def build_order_param(order_by: Optional[Sequence[Tuple[str, str]]], config: PaginationConfig) -> Optional[str]:
+def build_order_param(
+    order_by: Optional[Sequence[Tuple[str, str]]],
+    config: PaginationConfig,
+) -> Optional[str]:
     pieces: List[str] = []
 
     if order_by:
@@ -619,10 +562,6 @@ def build_rest_params(
     return params
 
 
-# ---------------------------------------------------------------------
-# Checkpoint persistence helpers
-# ---------------------------------------------------------------------
-
 def load_pagination_checkpoint_from_details(
     details: Optional[Dict[str, Any]],
     *,
@@ -655,27 +594,7 @@ def merge_pagination_checkpoint_into_details(
     return details
 
 
-# ---------------------------------------------------------------------
-# Main loader
-# ---------------------------------------------------------------------
-
 class PaginatedRestLoader:
-    """
-    Generic range-based Supabase REST loader.
-
-    Usage:
-        client = SupabaseRangeRestClient()
-        loader = PaginatedRestLoader(client)
-
-        for page in loader.stream_pages(
-            table_name="historical_ai_transmission_scores",
-            select_columns=["run_date_sgt", "affected_ticker", "transmission_score"],
-            filters={"run_date_sgt": "gte.2026-01-01"},
-            order_by=[("run_date_sgt", "asc"), ("affected_ticker", "asc")],
-        ):
-            process(page.rows)
-    """
-
     def __init__(
         self,
         client: Optional[SupabaseRangeRestClient] = None,
@@ -683,7 +602,6 @@ class PaginatedRestLoader:
     ) -> None:
         self.client = client or SupabaseRangeRestClient()
         self.config = config or PaginationConfig()
-        self.validator = PaginationValidator()
 
     def stream_pages(
         self,
@@ -699,6 +617,8 @@ class PaginatedRestLoader:
         telemetry_callback: Optional[Callable[[PageTelemetry, PaginationTelemetry], None]] = None,
     ) -> Generator[PaginatedPage, None, PaginationTelemetry]:
         cfg = self.config
+        validator = PaginationValidator()  # Important: isolate validator state per traversal.
+
         effective_page_size = int(page_size or cfg.page_size)
 
         if effective_page_size <= 0:
@@ -775,7 +695,7 @@ class PaginatedRestLoader:
             )
 
             if cfg.validate_pages:
-                validation = self.validator.validate_page(
+                validation = validator.validate_page(
                     page_index=page_index,
                     range_start=range_start,
                     range_end=range_end,
@@ -859,13 +779,6 @@ class PaginatedRestLoader:
         start_offset: Optional[int] = None,
         page_size: Optional[int] = None,
     ) -> Tuple[List[Dict[str, Any]], PaginationTelemetry]:
-        """
-        Convenience method for compatibility with old code.
-
-        Not recommended for very large historical reconstruction, but useful
-        for small validation queries and tests.
-        """
-
         rows: List[Dict[str, Any]] = []
         telemetry = PaginationTelemetry(table_name=table_name, started_at_sgt=now_sgt().isoformat())
 
@@ -890,10 +803,6 @@ class PaginatedRestLoader:
         return rows, telemetry
 
 
-# ---------------------------------------------------------------------
-# Optional telemetry persistence
-# ---------------------------------------------------------------------
-
 def write_pagination_telemetry_to_production_runs(
     client: SupabaseRangeRestClient,
     *,
@@ -902,17 +811,6 @@ def write_pagination_telemetry_to_production_runs(
     rows_written: Optional[int] = None,
     error_message: Optional[str] = None,
 ) -> None:
-    """
-    Best-effort telemetry persistence into production_pipeline_runs.
-
-    This does not require schema changes. Pagination fields are encoded in
-    error_message if failed, and signal_rows/runtime_seconds are mapped to
-    existing columns commonly used in the user's platform.
-
-    For richer pagination telemetry, store telemetry.to_dict() inside the
-    checkpoint details JSON using merge_pagination_checkpoint_into_details().
-    """
-
     row = {
         "run_timestamp_sgt": now_sgt().isoformat(),
         "run_date_sgt": now_sgt().date().isoformat(),
@@ -948,21 +846,7 @@ def write_pagination_telemetry_to_production_runs(
         print(f"[WARN] Pagination telemetry insert skipped: {exc}", flush=True)
 
 
-# ---------------------------------------------------------------------
-# Smoke-test entrypoint
-# ---------------------------------------------------------------------
-
 def main() -> None:
-    """
-    Optional smoke test.
-
-    Example:
-        PAGINATION_TEST_TABLE=historical_ai_transmission_scores \
-        PAGINATION_TEST_SELECT=run_date_sgt,affected_ticker,transmission_score \
-        PAGINATION_PAGE_SIZE=250 \
-        python utils/paginated_rest_loader.py
-    """
-
     table_name = os.getenv("PAGINATION_TEST_TABLE", "").strip()
     if not table_name:
         raise RuntimeError("Set PAGINATION_TEST_TABLE to run the pagination smoke test.")
