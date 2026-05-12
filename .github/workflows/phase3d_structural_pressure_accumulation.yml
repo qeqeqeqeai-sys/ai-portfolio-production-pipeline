@@ -1,0 +1,63 @@
+name: Phase 3D Structural Pressure Accumulation
+
+on:
+  workflow_dispatch:
+    inputs:
+      anchor_theme_name:
+        description: "Anchor theme name"
+        required: true
+        default: "ai"
+      theme_name:
+        description: "Optional theme filter. Leave blank for all themes under anchor."
+        required: false
+        default: ""
+      max_rows:
+        description: "Max rows to read from each input table"
+        required: true
+        default: "20000"
+      pressure_moderate_threshold:
+        description: "Moderate pressure threshold"
+        required: true
+        default: "0.35"
+      pressure_high_threshold:
+        description: "High pressure threshold"
+        required: true
+        default: "0.65"
+      pressure_extreme_threshold:
+        description: "Extreme pressure threshold"
+        required: true
+        default: "0.82"
+
+jobs:
+  phase3d-structural-pressure-accumulation:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name }}
+      THEME_NAME: ${{ github.event.inputs.theme_name }}
+      MAX_ROWS: ${{ github.event.inputs.max_rows }}
+      PRESSURE_MODERATE_THRESHOLD: ${{ github.event.inputs.pressure_moderate_threshold }}
+      PRESSURE_HIGH_THRESHOLD: ${{ github.event.inputs.pressure_high_threshold }}
+      PRESSURE_EXTREME_THRESHOLD: ${{ github.event.inputs.pressure_extreme_threshold }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 3D Structural Pressure Accumulation
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python phase3d_structural_pressure_accumulation.py
