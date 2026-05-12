@@ -1,0 +1,85 @@
+name: AI Transmission Phase 2D.2 Historical Reconstruction
+
+on:
+  workflow_dispatch:
+    inputs:
+      theme_name:
+        description: "Theme name to reconstruct"
+        required: false
+        default: "ai"
+      lookback_days:
+        description: "Historical lookback days"
+        required: false
+        default: "365"
+      chunk_days:
+        description: "Chunk size in days"
+        required: false
+        default: "45"
+      rolling_window:
+        description: "Rolling reconstruction window"
+        required: false
+        default: "20"
+
+jobs:
+  phase2d2-historical-reconstruction:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      THEME_NAME: ${{ github.event.inputs.theme_name }}
+      RECONSTRUCTION_LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
+      RECONSTRUCTION_CHUNK_DAYS: ${{ github.event.inputs.chunk_days }}
+      RECONSTRUCTION_ROLLING_WINDOW: ${{ github.event.inputs.rolling_window }}
+      RECONSTRUCTION_BATCH_SIZE: "500"
+      RECONSTRUCTION_SLEEP_SECONDS: "0.15"
+      RECONSTRUCTION_HISTORY_BUFFER_DAYS: "55"
+      MIN_RECONSTRUCTED_DAYS: "30"
+
+      # PASS 1 / PASS 2 pagination settings
+      PAGINATION_PAGE_SIZE: "1000"
+      PAGINATION_THROTTLE_SECONDS: "0.10"
+      PAGINATION_REQUEST_TIMEOUT_SECONDS: "90"
+      PAGINATION_RETRY_MAX_ATTEMPTS: "3"
+      PAGINATION_RETRY_BASE_SLEEP_SECONDS: "2.0"
+      PAGINATION_VALIDATE_PAGES: "true"
+      PAGINATION_FAIL_ON_VALIDATION_ERROR: "true"
+      PAGINATION_CHECKPOINT_EVERY_PAGES: "1"
+      PAGINATION_DEFAULT_ORDER_COLUMN: "run_date_sgt"
+      PAGINATION_DEFAULT_ORDER_DIRECTION: "asc"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas numpy
+
+      - name: PASS 2 Pagination Smoke Test
+        run: |
+          python utils/paginated_rest_loader.py
+        env:
+          PAGINATION_TEST_TABLE: "structural_theme_scores"
+          PAGINATION_TEST_SELECT: "run_date_sgt,theme_name,theme_score"
+          PAGINATION_TEST_ORDER: "run_date_sgt.asc"
+          PAGINATION_PAGE_SIZE: "500"
+          PAGINATION_THROTTLE_SECONDS: "0.05"
+          PAGINATION_VALIDATE_PAGES: "true"
+          PAGINATION_FAIL_ON_VALIDATION_ERROR: "true"
+
+      - name: Run Phase 2D.2 Historical Reconstruction Engine
+        run: |
+          python transmission_layers/ai_transmission/phase2d2_historical_reconstruction_engine_schema_aligned_revised.py
+
+      - name: Run Phase 2D.2 Reconstruction Validation Gates
+        run: |
+          python transmission_layers/ai_transmission/phase2d2_reconstruction_validation_gates_schema_aligned.py
