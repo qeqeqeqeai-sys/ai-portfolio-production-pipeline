@@ -21,15 +21,8 @@ class SupabaseRestClient:
                 last=str(e)
             time.sleep(1.5*(attempt+1))
         raise RuntimeError(last)
-    def select(self,table,columns="*",filters=None,order=None,limit=None):
-        params={"select":columns}
-        if filters: params.update(filters)
-        if order: params["order"]=order
-        if limit is not None: params["limit"]=str(limit)
-        return self._request("GET",table,params=params)
-    def insert(self,table,rows,return_rows=False):
+    def insert(self,table,rows,return_rows=True):
         if not rows: return []
         return self._request("POST",table,json_body=rows,prefer="return=representation" if return_rows else "return=minimal")
-    def upsert(self,table,rows,on_conflict,return_rows=False):
-        if not rows: return []
-        return self._request("POST",table,params={"on_conflict":on_conflict},json_body=rows,prefer="resolution=merge-duplicates,"+("return=representation" if return_rows else "return=minimal"))
+    def update(self,table,filters,values,return_rows=False):
+        return self._request("PATCH",table,params=filters,json_body=values,prefer="return=representation" if return_rows else "return=minimal")
