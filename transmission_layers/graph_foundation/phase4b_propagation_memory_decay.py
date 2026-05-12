@@ -129,7 +129,12 @@ def compute_memory(k, hist):
     reinforcement=c01(max(0,change)*2.0 + max(0,slope)*5.0 + latest_pressure*0.30)
     decay=c01(max(0,-change)*2.0 + max(0,-slope)*5.0 + min(1,days_since/60)*0.25)
     exhaustion=c01((1-latest_pressure)*0.40 + decay*0.40 + (1 if latest_pressure<=0.05 else 0)*0.20)
-    carry=c01(latest_pressure*0.35 + persistence*0.30 + reinforcement*0.20 + avg(transfers)*0.15)
+    carry=c01(
+    latest_pressure*0.35
+    + persistence*0.30
+    + reinforcement*0.20
+    + ((sum(transfers)/len(transfers)) if transfers else 0.0)*0.15
+    )
 
     regime,status=classify(obs,change,vol,latest_pressure,days_since)
 
