@@ -1,5 +1,4 @@
 import os
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -13,9 +12,12 @@ APP_TITLE = "Phase 4C — Propagation Monitoring Dashboard"
 
 def get_secret(name: str, default: Optional[str] = None) -> Optional[str]:
     try:
-        return st.secrets.get(name, os.getenv(name, default))
+        value = st.secrets.get(name)
+        if value:
+            return value
     except Exception:
-        return os.getenv(name, default)
+        pass
+    return os.getenv(name, default)
 
 
 SUPABASE_URL = get_secret("SUPABASE_URL")
@@ -68,25 +70,40 @@ class SupabaseRestClient:
         return response.json() if response.text else []
 
 
-@st.cache_data(ttl=300)
-def load_table(table: str, filters: Dict[str, str], order: str, limit: int = 5000) -> pd.DataFrame:
+@st.cache_data(ttl=120)
+def load_table_unfiltered(table: str, order: str, limit: int = 5000) -> pd.DataFrame:
     client = SupabaseRestClient(SUPABASE_URL, SUPABASE_KEY)
-    rows = client.select(table, filters=filters, order=order, limit=limit)
+    rows = client.select(table, filters=None, order=order, limit=limit)
     return pd.DataFrame(rows)
 
 
-def safe_df(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or df.empty:
-        return pd.DataFrame()
-    return df.copy()
+def normalize_text(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def apply_anchor_theme_filter(df: pd.DataFrame, anchor_theme_name: str, theme_name: str = "") -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    out = df.copy()
+
+    if "anchor_theme_name" in out.columns and anchor_theme_name:
+        out = out[out["anchor_theme_name"].map(normalize_text) == normalize_text(anchor_theme_name)]
+
+    if "theme_name" in out.columns and theme_name:
+        out = out[out["theme_name"].map(normalize_text) == normalize_text(theme_name)]
+
+    return out
 
 
 def numeric(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
-    df = safe_df(df)
+    if df.empty:
+        return df
+    out = df.copy()
     for col in cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+    return out
 
 
 def date_filter(df: pd.DataFrame, date_col: str, selected_date: Optional[str]) -> pd.DataFrame:
@@ -95,15 +112,8 @@ def date_filter(df: pd.DataFrame, date_col: str, selected_date: Optional[str]) -
     return df[df[date_col].astype(str) == str(selected_date)]
 
 
-def latest_date(df: pd.DataFrame, col: str = "run_date_sgt") -> Optional[str]:
-    if df.empty or col not in df.columns:
-        return None
-    dates = sorted(df[col].dropna().astype(str).unique())
-    return dates[-1] if dates else None
-
-
-def metric_card(label: str, value: Any, help_text: Optional[str] = None):
-    st.metric(label, value if value is not None else "—", help=help_text)
+def metric_card(label: str, value: Any):
+    st.metric(label, value if value is not None else "—")
 
 
 def show_bar(df: pd.DataFrame, x: str, y: str, title: str):
@@ -129,12 +139,11 @@ def show_table(df: pd.DataFrame, columns: List[str], title: str, sort_by: Option
         return
 
     view = df.copy()
-
-    existing_cols = [c for c in columns if c in view.columns]
     if sort_by and sort_by in view.columns:
         view = view.sort_values(sort_by, ascending=False)
 
-    st.dataframe(view[existing_cols].head(n), use_container_width=True, hide_index=True)
+    existing = [c for c in columns if c in view.columns]
+    st.dataframe(view[existing].head(n), use_container_width=True, hide_index=True)
 
 
 def main():
@@ -155,63 +164,64 @@ def main():
         anchor_theme_name = st.text_input("Anchor theme", value="ai").strip().lower()
         theme_name = st.text_input("Theme filter (optional)", value="").strip().lower()
         limit = st.number_input("Max rows per table", min_value=100, max_value=50000, value=10000, step=100)
+        show_debug = st.checkbox("Show debug info", value=True)
 
-        filters = {"anchor_theme_name": f"eq.{anchor_theme_name}"}
-        if theme_name:
-            filters["theme_name"] = f"eq.{theme_name}"
-
-        refresh = st.button("Refresh data")
-        if refresh:
+        if st.button("Refresh data"):
             st.cache_data.clear()
+            st.rerun()
 
+    # Load unfiltered first, then filter locally.
     try:
-        prop_df = load_table(
+        prop_raw = load_table_unfiltered(
             "structural_theme_graph_single_hop_propagation",
-            filters=filters,
             order="run_date_sgt.desc",
             limit=int(limit),
         )
+        prop_df = apply_anchor_theme_filter(prop_raw, anchor_theme_name, theme_name)
     except Exception as exc:
         st.error(f"Could not load single-hop propagation table: {exc}")
+        prop_raw = pd.DataFrame()
         prop_df = pd.DataFrame()
 
     try:
-        mem_df = load_table(
+        mem_raw = load_table_unfiltered(
             "structural_theme_graph_propagation_memory",
-            filters=filters,
             order="run_date_sgt.desc",
             limit=int(limit),
         )
+        mem_df = apply_anchor_theme_filter(mem_raw, anchor_theme_name, theme_name)
     except Exception as exc:
         st.warning(f"Could not load propagation memory table yet: {exc}")
+        mem_raw = pd.DataFrame()
         mem_df = pd.DataFrame()
 
     try:
-        prop_snap_df = load_table(
+        prop_snap_raw = load_table_unfiltered(
             "structural_theme_graph_single_hop_snapshots",
-            filters=filters,
             order="run_date_sgt.desc",
             limit=500,
         )
+        prop_snap_df = apply_anchor_theme_filter(prop_snap_raw, anchor_theme_name, theme_name)
     except Exception as exc:
         st.warning(f"Could not load single-hop snapshots: {exc}")
+        prop_snap_raw = pd.DataFrame()
         prop_snap_df = pd.DataFrame()
 
     try:
-        mem_snap_df = load_table(
+        mem_snap_raw = load_table_unfiltered(
             "structural_theme_graph_propagation_memory_snapshots",
-            filters=filters,
             order="run_date_sgt.desc",
             limit=500,
         )
+        mem_snap_df = apply_anchor_theme_filter(mem_snap_raw, anchor_theme_name, theme_name)
     except Exception as exc:
         st.warning(f"Could not load memory snapshots: {exc}")
+        mem_snap_raw = pd.DataFrame()
         mem_snap_df = pd.DataFrame()
 
     try:
-        prop_tel_df = load_table(
+        prop_tel_df = load_table_unfiltered(
             "structural_theme_graph_single_hop_telemetry",
-            filters={},
             order="run_date_sgt.desc",
             limit=500,
         )
@@ -219,16 +229,38 @@ def main():
         prop_tel_df = pd.DataFrame()
 
     try:
-        mem_tel_df = load_table(
+        mem_tel_df = load_table_unfiltered(
             "structural_theme_graph_propagation_memory_telemetry",
-            filters={},
             order="run_date_sgt.desc",
             limit=500,
         )
     except Exception:
         mem_tel_df = pd.DataFrame()
 
-    numeric_cols_prop = [
+    if show_debug:
+        with st.expander("Debug: raw rows loaded", expanded=False):
+            st.write({
+                "single_hop_raw_rows": len(prop_raw),
+                "single_hop_after_filter": len(prop_df),
+                "memory_raw_rows": len(mem_raw),
+                "memory_after_filter": len(mem_df),
+                "single_hop_snapshot_raw_rows": len(prop_snap_raw),
+                "single_hop_snapshot_after_filter": len(prop_snap_df),
+                "memory_snapshot_raw_rows": len(mem_snap_raw),
+                "memory_snapshot_after_filter": len(mem_snap_df),
+                "anchor_filter": anchor_theme_name,
+                "theme_filter": theme_name,
+            })
+
+            if not prop_raw.empty and "anchor_theme_name" in prop_raw.columns:
+                st.write("single_hop anchor_theme_name counts")
+                st.dataframe(prop_raw["anchor_theme_name"].value_counts(dropna=False).reset_index())
+
+            if not prop_raw.empty:
+                st.write("single_hop sample")
+                st.dataframe(prop_raw.head(5), use_container_width=True)
+
+    prop_numeric_cols = [
         "source_pressure_score",
         "source_transmission_potential_score",
         "edge_strength",
@@ -246,7 +278,7 @@ def main():
         "confidence_modifier",
     ]
 
-    numeric_cols_mem = [
+    mem_numeric_cols = [
         "latest_propagated_pressure_score",
         "avg_propagated_pressure_score",
         "max_propagated_pressure_score",
@@ -260,8 +292,8 @@ def main():
         "half_life_proxy_days",
     ]
 
-    prop_df = numeric(prop_df, numeric_cols_prop)
-    mem_df = numeric(mem_df, numeric_cols_mem)
+    prop_df = numeric(prop_df, prop_numeric_cols)
+    mem_df = numeric(mem_df, mem_numeric_cols)
 
     all_dates = set()
     if not prop_df.empty and "run_date_sgt" in prop_df.columns:
@@ -282,6 +314,7 @@ def main():
 
     with c1:
         metric_card("Single-hop paths", len(prop_today))
+
     with c2:
         metric_card(
             "Avg propagated pressure",
@@ -289,6 +322,7 @@ def main():
             if not prop_today.empty and "propagated_pressure_score" in prop_today.columns
             else None,
         )
+
     with c3:
         metric_card(
             "Watchlist paths",
@@ -296,8 +330,10 @@ def main():
             if not prop_today.empty and "propagation_status" in prop_today.columns
             else None,
         )
+
     with c4:
         metric_card("Memory paths", len(mem_today))
+
     with c5:
         metric_card(
             "Avg carry-forward",
@@ -320,13 +356,11 @@ def main():
         st.subheader("Single-Hop Propagation Overview")
 
         col1, col2 = st.columns(2)
-
         with col1:
             if not prop_today.empty and "propagation_regime" in prop_today.columns:
                 counts = prop_today["propagation_regime"].value_counts().reset_index()
                 counts.columns = ["propagation_regime", "count"]
                 show_bar(counts, "propagation_regime", "count", "Propagation Regime Counts")
-
         with col2:
             if not prop_today.empty and "propagation_status" in prop_today.columns:
                 counts = prop_today["propagation_status"].value_counts().reset_index()
@@ -334,10 +368,8 @@ def main():
                 show_bar(counts, "propagation_status", "count", "Propagation Status Counts")
 
         col3, col4 = st.columns(2)
-
         with col3:
             show_hist(prop_today, "propagated_pressure_score", "Propagated Pressure Distribution")
-
         with col4:
             show_hist(prop_today, "propagation_transfer_weight", "Transfer Weight Distribution")
 
@@ -366,13 +398,11 @@ def main():
             st.info("No memory rows available yet. Run Phase 4B after Phase 4A.")
         else:
             col1, col2 = st.columns(2)
-
             with col1:
                 if "memory_regime" in mem_today.columns:
                     counts = mem_today["memory_regime"].value_counts().reset_index()
                     counts.columns = ["memory_regime", "count"]
                     show_bar(counts, "memory_regime", "count", "Memory Regime Counts")
-
             with col2:
                 if "memory_status" in mem_today.columns:
                     counts = mem_today["memory_status"].value_counts().reset_index()
@@ -380,10 +410,8 @@ def main():
                     show_bar(counts, "memory_status", "count", "Memory Status Counts")
 
             col3, col4 = st.columns(2)
-
             with col3:
                 show_hist(mem_today, "carry_forward_score", "Carry-Forward Score Distribution")
-
             with col4:
                 show_hist(mem_today, "propagation_decay_score", "Decay Score Distribution")
 
@@ -431,7 +459,6 @@ def main():
             )
 
             row = prop_today.iloc[selected_idx]
-
             st.markdown("### Selected Single-Hop Path")
             st.json(row.dropna().to_dict())
 
@@ -530,7 +557,16 @@ def main():
                 st.info("No Phase 4A telemetry found.")
             else:
                 show_table(
-                    numeric(prop_tel_df, ["runtime_seconds", "source_edges_read", "pressure_rows_read", "transmission_rows_read", "propagation_rows_upserted"]),
+                    numeric(
+                        prop_tel_df,
+                        [
+                            "runtime_seconds",
+                            "source_edges_read",
+                            "pressure_rows_read",
+                            "transmission_rows_read",
+                            "propagation_rows_upserted",
+                        ],
+                    ),
                     [
                         "run_date_sgt",
                         "pipeline_name",
