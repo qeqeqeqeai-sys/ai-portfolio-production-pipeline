@@ -1,0 +1,46 @@
+name: Multi-Theme Graph Foundation Pass 1
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_date_sgt:
+        description: "Optional run date in SGT, YYYY-MM-DD"
+        required: false
+        default: ""
+      snapshot_version:
+        description: "Snapshot version"
+        required: false
+        default: "pass1_v1"
+
+jobs:
+  multi-theme-graph-pass1:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Pass 1 generic graph foundation
+        run: |
+          if [ -z "${{ github.event.inputs.run_date_sgt }}" ]; then
+            python -m transmission_layers.graph_foundation.run_pass1_graph_foundation \
+              --snapshot-version "${{ github.event.inputs.snapshot_version }}"
+          else
+            python -m transmission_layers.graph_foundation.run_pass1_graph_foundation \
+              --run-date-sgt "${{ github.event.inputs.run_date_sgt }}" \
+              --snapshot-version "${{ github.event.inputs.snapshot_version }}"
+          fi
