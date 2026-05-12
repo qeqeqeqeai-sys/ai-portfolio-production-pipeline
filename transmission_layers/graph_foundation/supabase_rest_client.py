@@ -35,36 +35,40 @@ class SupabaseRestClient:
             "Prefer": "return=representation",
         }
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        url = f"{self.base_rest_url}/{path.lstrip('/')}"
-        last_error = None
+   def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+    url = f"{self.base_rest_url}/{path.lstrip('/')}"
 
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                response = requests.request(
-                    method=method,
-                    url=url,
-                    headers=self.headers,
-                    timeout=self.timeout_seconds,
-                    **kwargs,
-                )
+    # allow override headers safely
+    request_headers = kwargs.pop("headers", self.headers)
 
-                if response.status_code in (200, 201, 204):
-                    if not response.text:
-                        return None
-                    return response.json()
+    last_error = None
 
-                last_error = RuntimeError(
-                    f"Supabase REST error {response.status_code}: {response.text[:2000]}"
-                )
+    for attempt in range(1, self.max_retries + 1):
+        try:
+            response = requests.request(
+                method=method,
+                url=url,
+                headers=request_headers,
+                timeout=self.timeout_seconds,
+                **kwargs,
+            )
 
-            except Exception as exc:
-                last_error = exc
+            if response.status_code in (200, 201, 204):
+                if not response.text:
+                    return None
+                return response.json()
 
-            if attempt < self.max_retries:
-                time.sleep(min(2 ** attempt, 8))
+            last_error = RuntimeError(
+                f"Supabase REST error {response.status_code}: {response.text[:2000]}"
+            )
 
-        raise last_error
+        except Exception as exc:
+            last_error = exc
+
+        if attempt < self.max_retries:
+            time.sleep(min(2 ** attempt, 8))
+
+    raise last_error
 
     def select(
         self,
