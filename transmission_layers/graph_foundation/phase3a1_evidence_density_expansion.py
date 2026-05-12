@@ -49,6 +49,12 @@ COMPONENT_CATEGORY_MAP = {
     "transmission": "transmission",
     "reversal": "technical",
     "technical": "technical",
+    "sharpe": "backtest_performance",
+    "return": "backtest_performance",
+    "cagr": "backtest_performance",
+    "drawdown": "backtest_risk",
+    "volatility": "backtest_risk",
+    "hit_rate": "backtest_performance",
 }
 
 
@@ -83,8 +89,12 @@ def score_0_100(value: Any, default: float = 50.0) -> float:
     number = safe_float(value, default)
     if number is None:
         number = default
-    if number <= 1:
+
+    # Most strategy metrics like CAGR, returns, drawdown may be ratios.
+    # Normal score fields may be 0-1 or 0-100.
+    if -1 <= number <= 1:
         number *= 100
+
     return max(0.0, min(100.0, number))
 
 
@@ -157,7 +167,7 @@ def first_present(row: Dict[str, Any], fields: Iterable[str]) -> Any:
 def row_blob(row: Dict[str, Any]) -> str:
     values = []
 
-    for key, value in row.items():
+    for _, value in row.items():
         if value is None:
             continue
         if isinstance(value, (dict, list)):
@@ -191,14 +201,19 @@ def component_category(component_name: str) -> str:
 
 
 def base_identity(row: Dict[str, Any]) -> Dict[str, Any]:
+    run_date = first_present(row, ["run_date_sgt", "backtest_run_date_sgt", "date", "created_at"]) or run_date_sgt()
+
+    if isinstance(run_date, str) and "T" in run_date:
+        run_date = run_date[:10]
+
     return {
         "theme_name": slug(first_present(row, ["theme_name", "theme"]) or THEME_NAME),
         "theme_version": str(first_present(row, ["theme_version"]) or THEME_VERSION),
-        "ticker": str(first_present(row, ["ticker", "symbol", "asset"]) or "UNKNOWN").upper(),
-        "company": first_present(row, ["company", "company_name", "name"]),
+        "ticker": str(first_present(row, ["ticker", "symbol", "asset"]) or "PORTFOLIO").upper(),
+        "company": first_present(row, ["company", "company_name", "name", "strategy_name"]),
         "sector": first_present(row, ["sector"]),
         "subsector": first_present(row, ["subsector", "industry"]),
-        "run_date_sgt": str(first_present(row, ["run_date_sgt", "date"]) or run_date_sgt()),
+        "run_date_sgt": str(run_date),
     }
 
 
@@ -439,6 +454,76 @@ def evidence_from_score_table(rows: List[Dict[str, Any]], source_name: str) -> L
     return output
 
 
+def evidence_from_backtest_results(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    output = []
+
+    for row in rows:
+        identity = base_identity(row)
+        identity["ticker"] = "PORTFOLIO"
+        identity["company"] = row.get("strategy_name")
+
+        sharpe = safe_float(row.get("sharpe_ratio"), 0.0) or 0.0
+        cagr = safe_float(row.get("cagr"), 0.0) or 0.0
+        total_return = safe_float(row.get("total_return"), 0.0) or 0.0
+        max_drawdown = safe_float(row.get("max_drawdown"), 0.0) or 0.0
+        hit_rate = safe_float(row.get("hit_rate"), 0.0) or 0.0
+        observations = safe_float(row.get("observations"), 0.0) or 0.0
+
+        # Convert backtest quality into a rough 0-100 evidence score.
+        # This is intentionally simple and not a graph algorithm.
+        perf_score = 50.0
+        perf_score += min(25.0, max(-25.0, sharpe * 15.0))
+        perf_score += min(15.0, max(-15.0, cagr * 100.0))
+        perf_score += min(10.0, max(-10.0, total_return * 25.0))
+        perf_score -= min(20.0, abs(max_drawdown) * 100.0 if max_drawdown < 0 else max_drawdown)
+        perf_score += min(10.0, max(0.0, (hit_rate - 0.5) * 50.0))
+        perf_score = max(0.0, min(100.0, perf_score))
+
+        confidence = max(35.0, min(90.0, 35.0 + observations / 5.0))
+
+        evidence_text = (
+            f"Backtest strategy={row.get('strategy_name')}; "
+            f"frequency={row.get('rebalance_frequency')}; "
+            f"period={row.get('start_date')} to {row.get('end_date')}; "
+            f"long_bucket={row.get('long_bucket')}; short_bucket={row.get('short_bucket')}; "
+            f"total_return={row.get('total_return')}; cagr={row.get('cagr')}; "
+            f"volatility={row.get('volatility')}; sharpe={row.get('sharpe_ratio')}; "
+            f"max_drawdown={row.get('max_drawdown')}; hit_rate={row.get('hit_rate')}; "
+            f"observations={row.get('observations')}; notes={row.get('notes')}"
+        )
+
+        output.append(make_evidence_row(
+            identity=identity,
+            evidence_type="backtest_result",
+            source_name="ai_transmission_backtest_results",
+            evidence_title=f"Backtest evidence for {row.get('strategy_name')}",
+            evidence_text=evidence_text,
+            relevance_score=perf_score,
+            confidence_score=confidence,
+            driver_direction=infer_direction(perf_score),
+            driver_category="backtest_performance",
+            extracted_features={
+                "strategy_name": row.get("strategy_name"),
+                "rebalance_frequency": row.get("rebalance_frequency"),
+                "start_date": row.get("start_date"),
+                "end_date": row.get("end_date"),
+                "long_bucket": row.get("long_bucket"),
+                "short_bucket": row.get("short_bucket"),
+                "total_return": row.get("total_return"),
+                "cagr": row.get("cagr"),
+                "volatility": row.get("volatility"),
+                "sharpe_ratio": row.get("sharpe_ratio"),
+                "max_drawdown": row.get("max_drawdown"),
+                "hit_rate": row.get("hit_rate"),
+                "observations": row.get("observations"),
+                "derived_performance_score": perf_score,
+            },
+            raw_payload=row,
+        ))
+
+    return output
+
+
 def validate_evidence(rows: List[Dict[str, Any]]) -> Tuple[str, List[str], List[str]]:
     errors = []
     warnings = []
@@ -483,11 +568,17 @@ def fetch_source_rows(client: SupabaseRestClient, table: str) -> List[Dict[str, 
     if table in {"structural_theme_explanations", "structural_theme_scores"}:
         filters["theme_name"] = f"eq.{THEME_NAME}"
 
+    order_column_map = {
+        "ai_transmission_backtest_results": "backtest_run_date_sgt.desc",
+    }
+
+    order_column = order_column_map.get(table, "run_date_sgt.desc")
+
     return client.select(
         table,
         columns="*",
         filters=filters,
-        order="run_date_sgt.desc",
+        order=order_column,
         limit=MAX_ROWS_PER_SOURCE,
     )
 
@@ -545,6 +636,8 @@ def main():
 
                 if table == "structural_theme_explanations":
                     evidence = evidence_from_structural_explanations(rows)
+                elif table == "ai_transmission_backtest_results":
+                    evidence = evidence_from_backtest_results(rows)
                 else:
                     evidence = evidence_from_score_table(rows, table)
 
@@ -597,6 +690,7 @@ def main():
                 "source_counts": source_counts,
                 "generated_counts": generated_counts,
                 "unique_evidence_rows": len(deduped),
+                "source_tables": SOURCE_TABLES,
             },
         )
 
@@ -622,6 +716,7 @@ def main():
             metadata={
                 "source_counts": source_counts,
                 "generated_counts": generated_counts,
+                "source_tables": SOURCE_TABLES,
             },
         )
         raise
