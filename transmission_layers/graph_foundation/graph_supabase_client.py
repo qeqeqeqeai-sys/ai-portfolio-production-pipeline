@@ -17,7 +17,6 @@ class SupabaseRestClient:
             raise RuntimeError("Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY")
 
         self.base_url = self.url.rstrip("/") + "/rest/v1"
-
         self.headers = {
             "apikey": self.key,
             "Authorization": f"Bearer {self.key}",
