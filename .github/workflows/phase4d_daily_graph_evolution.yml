@@ -1,0 +1,191 @@
+name: Phase 4D Daily Graph Evolution Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      anchor_theme_name:
+        description: "Anchor theme name"
+        required: true
+        default: "ai"
+      theme_name:
+        description: "Optional theme filter"
+        required: false
+        default: ""
+      max_rows:
+        description: "Max rows for downstream phases"
+        required: true
+        default: "20000"
+      continue_on_phase_failure:
+        description: "Continue to later phases if one phase fails"
+        required: true
+        default: "false"
+  schedule:
+    # Daily 7:15 AM Singapore time = 23:15 UTC previous day.
+    - cron: "15 23 * * *"
+
+jobs:
+  daily-graph-evolution:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name || 'ai' }}
+      THEME_NAME: ${{ github.event.inputs.theme_name || '' }}
+      MAX_ROWS: ${{ github.event.inputs.max_rows || '20000' }}
+      MAX_ROWS_PER_SOURCE: ${{ github.event.inputs.max_rows || '20000' }}
+      MAX_EVIDENCE_ROWS: ${{ github.event.inputs.max_rows || '20000' }}
+      MAX_HISTORY_ROWS: ${{ github.event.inputs.max_rows || '20000' }}
+      MAX_STABILITY_ROWS: ${{ github.event.inputs.max_rows || '20000' }}
+      MAX_PROPAGATION_ROWS: ${{ github.event.inputs.max_rows || '20000' }}
+      CONTINUE_ON_PHASE_FAILURE: ${{ github.event.inputs.continue_on_phase_failure || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Start graph evolution run
+        id: start_run
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python start_graph_evolution_run.py | tee /tmp/evolution_run.txt
+          echo "EVOLUTION_RUN_ID=$(grep EVOLUTION_RUN_ID /tmp/evolution_run.txt | cut -d= -f2)" >> $GITHUB_ENV
+
+      - name: Phase 3A.1 Evidence Density Expansion
+        id: phase3a1
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3a1 1 started
+          python phase3a1_evidence_density_expansion.py
+          python write_graph_evolution_phase_event.py phase3a1 1 success
+
+      - name: Check Phase 3A.1
+        if: steps.phase3a1.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 3A Evidence Graph Expansion
+        id: phase3a
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3a 2 started
+          python phase3a_evidence_graph_expansion.py
+          python write_graph_evolution_phase_event.py phase3a 2 success
+
+      - name: Check Phase 3A
+        if: steps.phase3a.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 3A.2 Cross-Theme Relationship Expansion
+        id: phase3a2
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3a2 3 started
+          python phase3a2_cross_theme_relationship_expansion.py
+          python write_graph_evolution_phase_event.py phase3a2 3 success
+
+      - name: Check Phase 3A.2
+        if: steps.phase3a2.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 3B Relationship Persistence
+        id: phase3b
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3b 4 started
+          python phase3b_relationship_persistence.py
+          python write_graph_evolution_phase_event.py phase3b 4 success
+
+      - name: Check Phase 3B
+        if: steps.phase3b.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 3C Regime Transition Structural Drift
+        id: phase3c
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3c 5 started
+          python phase3c_regime_transition_structural_drift.py
+          python write_graph_evolution_phase_event.py phase3c 5 success
+
+      - name: Check Phase 3C
+        if: steps.phase3c.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 3D Structural Pressure Accumulation
+        id: phase3d
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3d 6 started
+          python phase3d_structural_pressure_accumulation.py
+          python write_graph_evolution_phase_event.py phase3d 6 success
+
+      - name: Check Phase 3D
+        if: steps.phase3d.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 3E Transmission Potential Surface
+        id: phase3e
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase3e 7 started
+          python phase3e_transmission_potential_surface.py
+          python write_graph_evolution_phase_event.py phase3e 7 success
+
+      - name: Check Phase 3E
+        if: steps.phase3e.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 4A Controlled Single-Hop Propagation
+        id: phase4a
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase4a 8 started
+          python phase4a_controlled_single_hop_propagation.py
+          python write_graph_evolution_phase_event.py phase4a 8 success
+
+      - name: Check Phase 4A
+        if: steps.phase4a.outcome == 'failure' && env.CONTINUE_ON_PHASE_FAILURE == 'false'
+        run: exit 1
+
+      - name: Phase 4B Propagation Memory Decay
+        id: phase4b
+        continue-on-error: true
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python write_graph_evolution_phase_event.py phase4b 9 started
+          python phase4b_propagation_memory_decay.py
+          python write_graph_evolution_phase_event.py phase4b 9 success
+
+      - name: Finalize graph evolution run
+        if: always()
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python finish_graph_evolution_run.py \
+            phase3a1=${{ steps.phase3a1.outcome }} \
+            phase3a=${{ steps.phase3a.outcome }} \
+            phase3a2=${{ steps.phase3a2.outcome }} \
+            phase3b=${{ steps.phase3b.outcome }} \
+            phase3c=${{ steps.phase3c.outcome }} \
+            phase3d=${{ steps.phase3d.outcome }} \
+            phase3e=${{ steps.phase3e.outcome }} \
+            phase4a=${{ steps.phase4a.outcome }} \
+            phase4b=${{ steps.phase4b.outcome }}
