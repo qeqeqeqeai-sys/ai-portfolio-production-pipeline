@@ -1,0 +1,163 @@
+import os
+import time
+import urllib.parse
+from typing import Any, Dict, List, Optional
+
+import requests
+
+
+class SupabaseRestClient:
+    """
+    Minimal Supabase REST client.
+
+    Uses REST API only.
+    No Supabase Python SDK.
+    """
+
+    def __init__(self):
+        self.url = os.getenv("SUPABASE_URL")
+        self.key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+        if not self.url:
+            raise RuntimeError("Missing SUPABASE_URL")
+
+        if not self.key:
+            raise RuntimeError("Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY")
+
+        self.base_url = self.url.rstrip("/") + "/rest/v1"
+
+        self.headers = {
+            "apikey": self.key,
+            "Authorization": f"Bearer {self.key}",
+            "Content-Type": "application/json",
+        }
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, str]] = None,
+        json_body: Optional[Any] = None,
+        prefer: Optional[str] = None,
+        timeout: int = 60,
+    ) -> Any:
+        url = f"{self.base_url}/{path.lstrip('/')}"
+
+        headers = dict(self.headers)
+        if prefer:
+            headers["Prefer"] = prefer
+
+        last_error = None
+
+        for attempt in range(3):
+            try:
+                response = requests.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    params=params,
+                    json=json_body,
+                    timeout=timeout,
+                )
+
+                if response.status_code in (200, 201, 204):
+                    if response.text:
+                        return response.json()
+                    return []
+
+                last_error = f"{response.status_code}: {response.text}"
+
+            except Exception as exc:
+                last_error = str(exc)
+
+            time.sleep(1.5 * (attempt + 1))
+
+        raise RuntimeError(f"Supabase REST request failed: {method} {url}: {last_error}")
+
+    def select(
+        self,
+        table: str,
+        *,
+        columns: str = "*",
+        filters: Optional[Dict[str, str]] = None,
+        order: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        params: Dict[str, str] = {"select": columns}
+
+        if filters:
+            params.update(filters)
+
+        if order:
+            params["order"] = order
+
+        if limit is not None:
+            params["limit"] = str(limit)
+
+        return self._request("GET", table, params=params)
+
+    def insert(
+        self,
+        table: str,
+        rows: List[Dict[str, Any]],
+        *,
+        return_rows: bool = True,
+    ) -> List[Dict[str, Any]]:
+        if not rows:
+            return []
+
+        prefer = "return=representation" if return_rows else "return=minimal"
+
+        return self._request(
+            "POST",
+            table,
+            json_body=rows,
+            prefer=prefer,
+        )
+
+    def upsert(
+        self,
+        table: str,
+        rows: List[Dict[str, Any]],
+        *,
+        on_conflict: str,
+        return_rows: bool = True,
+    ) -> List[Dict[str, Any]]:
+        if not rows:
+            return []
+
+        prefer_bits = ["resolution=merge-duplicates"]
+        prefer_bits.append("return=representation" if return_rows else "return=minimal")
+
+        params = {"on_conflict": on_conflict}
+
+        return self._request(
+            "POST",
+            table,
+            params=params,
+            json_body=rows,
+            prefer=",".join(prefer_bits),
+        )
+
+    def count(self, table: str, filters: Optional[Dict[str, str]] = None) -> int:
+        params = {"select": "id"}
+
+        if filters:
+            params.update(filters)
+
+        headers = dict(self.headers)
+        headers["Prefer"] = "count=exact"
+
+        url = f"{self.base_url}/{table}"
+
+        response = requests.get(url, headers=headers, params=params, timeout=60)
+
+        if response.status_code not in (200, 206):
+            raise RuntimeError(f"Count failed for {table}: {response.status_code}: {response.text}")
+
+        content_range = response.headers.get("Content-Range", "")
+        if "/" in content_range:
+            return int(content_range.split("/")[-1])
+
+        return len(response.json() if response.text else [])
