@@ -1,0 +1,63 @@
+name: Phase 4B Propagation Memory Decay
+
+on:
+  workflow_dispatch:
+    inputs:
+      anchor_theme_name:
+        description: "Anchor theme name"
+        required: true
+        default: "ai"
+      theme_name:
+        description: "Optional theme filter"
+        required: false
+        default: ""
+      max_propagation_rows:
+        description: "Max propagation rows to read"
+        required: true
+        default: "20000"
+      min_observations_for_memory:
+        description: "Minimum observations before memory classification"
+        required: true
+        default: "2"
+      decay_threshold:
+        description: "Decay threshold"
+        required: true
+        default: "0.05"
+      reinforcement_threshold:
+        description: "Reinforcement threshold"
+        required: true
+        default: "0.05"
+
+jobs:
+  phase4b-propagation-memory-decay:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name }}
+      THEME_NAME: ${{ github.event.inputs.theme_name }}
+      MAX_PROPAGATION_ROWS: ${{ github.event.inputs.max_propagation_rows }}
+      MIN_OBSERVATIONS_FOR_MEMORY: ${{ github.event.inputs.min_observations_for_memory }}
+      DECAY_THRESHOLD: ${{ github.event.inputs.decay_threshold }}
+      REINFORCEMENT_THRESHOLD: ${{ github.event.inputs.reinforcement_threshold }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 4B Propagation Memory Decay
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python phase4b_propagation_memory_decay.py
