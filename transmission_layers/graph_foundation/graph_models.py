@@ -73,10 +73,8 @@ class GraphNode:
     def to_row(self) -> Dict[str, Any]:
         if self.node_type not in ALLOWED_NODE_TYPES:
             raise ValueError(f"Invalid node_type: {self.node_type}")
-
-        row = asdict(self)
-        row = {k: v for k, v in row.items() if v is not None}
-        return row
+    
+        return asdict(self)
 
 
 @dataclass
