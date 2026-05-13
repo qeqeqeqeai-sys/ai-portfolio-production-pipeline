@@ -1,16 +1,32 @@
 """
 Phase 5A.2 — Structural Intermediary Detection
-Canonical Integration Fix V5
+Canonical Integrated V6 — Schema Aligned
 
 Fix:
-- Reads canonicalized edges from Phase 5A.4:
+- Reads canonical edges from Phase 5A.4:
   structural_theme_graph_canonical_edge_view_materialized
-- Also reads Phase 5A.3 seeded edges:
+- Reads directed seed edges from Phase 5A.3:
   structural_theme_graph_directed_seed_edges
-- Falls back to raw structural_theme_graph_edges if canonical/seed edges are unavailable.
+- Persists into the ACTUAL structural_theme_graph_intermediaries schema:
+
+  intermediary_key
+  canonical_name
+  intermediary_category
+  inbound_edge_count
+  outbound_edge_count
+  source_theme_count
+  target_theme_count
+  continuity_potential
+  intermediary_activation_score
+  evidence_density
+  regime_stability
+  persistence_stability
+  normalized_forms
+  component_scores
+  metadata
 
 Runtime marker:
-5A2_CANONICAL_INTEGRATED_V5
+5A2_CANONICAL_INTEGRATED_V6_SCHEMA_ALIGNED
 """
 
 from __future__ import annotations
@@ -21,6 +37,7 @@ import json
 import time
 import hashlib
 import requests
+
 from datetime import datetime, timezone
 from collections import defaultdict
 
@@ -39,6 +56,10 @@ RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 MIN_INBOUND = int(os.getenv("INTERMEDIARY_MIN_INBOUND", "1"))
 MIN_OUTBOUND = int(os.getenv("INTERMEDIARY_MIN_OUTBOUND", "1"))
+
+# Optional tables can be skipped safely if their schemas differ.
+WRITE_SCORE_TABLE = os.getenv("INTERMEDIARY_WRITE_SCORE_TABLE", "false").lower() == "true"
+WRITE_SNAPSHOT_TABLE = os.getenv("INTERMEDIARY_WRITE_SNAPSHOT_TABLE", "false").lower() == "true"
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -86,6 +107,28 @@ def normalize_node_key(value: str) -> str:
     return value.replace(" ", "_")
 
 
+def canonical_label(node_key: str) -> str:
+    if not node_key:
+        return "Unknown"
+
+    label_map = {
+        "ai": "Artificial Intelligence",
+        "data_center": "Data Center",
+        "utility": "Utility",
+        "power_grid": "Power Grid",
+        "copper": "Copper",
+        "gpu": "GPU",
+        "semiconductor": "Semiconductor",
+        "cloud": "Cloud",
+        "ai_compute": "AI Compute",
+        "electricity_demand": "Electricity Demand",
+        "cooling": "Cooling",
+        "capital_expenditure": "Capital Expenditure",
+    }
+
+    return label_map.get(node_key, node_key.replace("_", " ").title())
+
+
 def classify_intermediary(node_key: str) -> str:
     node = node_key.lower()
 
@@ -107,7 +150,7 @@ def classify_intermediary(node_key: str) -> str:
             if keyword in node:
                 return category
 
-    return "general"
+    return "uncategorized"
 
 
 def stable_hash(*parts: str) -> str:
@@ -193,9 +236,11 @@ def load_canonical_edges() -> list[dict]:
     )
 
     edges = []
+
     for row in rows:
         source = normalize_node_key(row.get("canonical_source_node_key"))
         target = normalize_node_key(row.get("canonical_target_node_key"))
+
         if source and target and source != target:
             edges.append(
                 {
@@ -215,9 +260,11 @@ def load_seed_edges() -> list[dict]:
     )
 
     edges = []
+
     for row in rows:
         source = normalize_node_key(row.get("source_node_key"))
         target = normalize_node_key(row.get("target_node_key"))
+
         if source and target and source != target:
             edges.append(
                 {
@@ -237,9 +284,11 @@ def load_raw_edges() -> list[dict]:
     )
 
     edges = []
+
     for row in rows:
         source = normalize_node_key(row.get("source_node_key"))
         target = normalize_node_key(row.get("target_node_key"))
+
         if source and target and source != target:
             edges.append(
                 {
@@ -258,13 +307,14 @@ def load_graph_edges() -> tuple[list[dict], dict]:
 
     combined = canonical_edges + seed_edges
 
+    raw_edges = []
+
     if not combined:
         raw_edges = load_raw_edges()
         combined = raw_edges
-    else:
-        raw_edges = []
 
     deduped = {}
+
     for edge in combined:
         key = (edge["source_node_key"], edge["target_node_key"])
         deduped[key] = edge
@@ -280,6 +330,7 @@ def load_graph_edges() -> tuple[list[dict], dict]:
 def detect_intermediaries(edges: list[dict]) -> list[dict]:
     inbound_counts = defaultdict(int)
     outbound_counts = defaultdict(int)
+
     inbound_sources = defaultdict(set)
     outbound_targets = defaultdict(set)
 
@@ -292,10 +343,12 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
 
         outbound_counts[source] += 1
         inbound_counts[target] += 1
+
         outbound_targets[source].add(target)
         inbound_sources[target].add(source)
 
     all_nodes = set(list(inbound_counts.keys()) + list(outbound_counts.keys()))
+
     intermediary_rows = []
 
     for node_key in all_nodes:
@@ -304,6 +357,7 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
 
         if inbound < MIN_INBOUND:
             continue
+
         if outbound < MIN_OUTBOUND:
             continue
 
@@ -312,20 +366,27 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
         regime_stability = continuity_reuse_frequency / max(1, propagation_participation)
         evidence_density = len(inbound_sources[node_key]) + len(outbound_targets[node_key])
 
+        inbound_score = inbound
+        outbound_score = outbound
+        continuity_score = continuity_reuse_frequency
+        propagation_score = propagation_participation
+
         intermediary_activation_score = (
-            (inbound * 0.20)
-            + (outbound * 0.20)
-            + (continuity_reuse_frequency * 0.25)
-            + (propagation_participation * 0.15)
+            (inbound_score * 0.20)
+            + (outbound_score * 0.20)
+            + (continuity_score * 0.25)
+            + (propagation_score * 0.15)
             + (regime_stability * 0.10)
             + (evidence_density * 0.10)
         )
+
+        intermediary_hash = stable_hash(node_key)
 
         intermediary_rows.append(
             {
                 "run_id": RUN_ID,
                 "node_key": node_key,
-                "intermediary_hash": stable_hash(node_key),
+                "intermediary_hash": intermediary_hash,
                 "classification": classify_intermediary(node_key),
                 "inbound_edge_count": inbound,
                 "outbound_edge_count": outbound,
@@ -336,6 +397,8 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
                 "intermediary_activation_score": round(intermediary_activation_score, 4),
                 "upstream_source_count": len(inbound_sources[node_key]),
                 "downstream_target_count": len(outbound_targets[node_key]),
+                "inbound_sources": sorted(inbound_sources[node_key]),
+                "outbound_targets": sorted(outbound_targets[node_key]),
                 "created_at": utc_now_iso(),
             }
         )
@@ -347,7 +410,63 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
     )
 
 
+def build_intermediary_table_rows(rows: list[dict]) -> list[dict]:
+    """
+    Aligns to the actual structural_theme_graph_intermediaries schema supplied by user.
+    """
+
+    output_rows = []
+
+    for row in rows:
+        node_key = row["node_key"]
+
+        component_scores = {
+            "inbound_connectivity_score": row["inbound_edge_count"],
+            "outbound_connectivity_score": row["outbound_edge_count"],
+            "continuity_reuse_score": row["continuity_reuse_frequency"],
+            "propagation_participation_score": row["propagation_participation"],
+            "regime_stability_score": row["regime_stability"],
+            "evidence_density_score": row["evidence_density"],
+            "overall_intermediary_score": row["intermediary_activation_score"],
+        }
+
+        metadata = {
+            "run_id": RUN_ID,
+            "intermediary_hash": row["intermediary_hash"],
+            "runtime_marker": "5A2_CANONICAL_INTEGRATED_V6_SCHEMA_ALIGNED",
+            "inbound_sources": row.get("inbound_sources", []),
+            "outbound_targets": row.get("outbound_targets", []),
+        }
+
+        output_rows.append(
+            {
+                "intermediary_key": node_key,
+                "canonical_name": canonical_label(node_key),
+                "intermediary_category": row["classification"],
+                "inbound_edge_count": row["inbound_edge_count"],
+                "outbound_edge_count": row["outbound_edge_count"],
+                "source_theme_count": row["upstream_source_count"],
+                "target_theme_count": row["downstream_target_count"],
+                "continuity_potential": row["continuity_reuse_frequency"],
+                "intermediary_activation_score": row["intermediary_activation_score"],
+                "evidence_density": row["evidence_density"],
+                "regime_stability": row["regime_stability"],
+                "persistence_stability": row["regime_stability"],
+                "normalized_forms": [node_key],
+                "component_scores": component_scores,
+                "metadata": metadata,
+                "updated_at": utc_now_iso(),
+            }
+        )
+
+    return output_rows
+
+
 def build_score_rows(intermediary_rows: list[dict]) -> list[dict]:
+    """
+    Optional output only. Disabled by default because score table schemas may differ.
+    """
+
     return [
         {
             "run_id": RUN_ID,
@@ -367,6 +486,10 @@ def build_score_rows(intermediary_rows: list[dict]) -> list[dict]:
 
 
 def build_snapshot_rows(intermediary_rows: list[dict]) -> list[dict]:
+    """
+    Optional output only. Disabled by default because snapshot table schemas may differ.
+    """
+
     return [
         {
             "run_id": RUN_ID,
@@ -382,22 +505,56 @@ def build_snapshot_rows(intermediary_rows: list[dict]) -> list[dict]:
 def persist_intermediaries(rows: list[dict]) -> int:
     if not rows:
         return 0
-    supabase_upsert(INTERMEDIARY_TABLE, rows, on_conflict="intermediary_hash")
-    return len(rows)
+
+    table_rows = build_intermediary_table_rows(rows)
+
+    supabase_upsert(
+        INTERMEDIARY_TABLE,
+        table_rows,
+        on_conflict="run_date_sgt,intermediary_key",
+    )
+
+    return len(table_rows)
 
 
 def persist_scores(rows: list[dict]) -> int:
+    if not WRITE_SCORE_TABLE:
+        return 0
+
     if not rows:
         return 0
-    supabase_upsert(INTERMEDIARY_SCORE_TABLE, rows, on_conflict="run_id,node_key")
-    return len(rows)
+
+    try:
+        supabase_upsert(
+            INTERMEDIARY_SCORE_TABLE,
+            rows,
+            on_conflict="run_id,node_key",
+        )
+        return len(rows)
+
+    except Exception as exc:
+        print(f"WARNING: score persistence skipped after error: {exc}")
+        return 0
 
 
 def persist_snapshots(rows: list[dict]) -> int:
+    if not WRITE_SNAPSHOT_TABLE:
+        return 0
+
     if not rows:
         return 0
-    supabase_upsert(INTERMEDIARY_SNAPSHOT_TABLE, rows, on_conflict="run_id,node_key,snapshot_type")
-    return len(rows)
+
+    try:
+        supabase_upsert(
+            INTERMEDIARY_SNAPSHOT_TABLE,
+            rows,
+            on_conflict="run_id,node_key,snapshot_type",
+        )
+        return len(rows)
+
+    except Exception as exc:
+        print(f"WARNING: snapshot persistence skipped after error: {exc}")
+        return 0
 
 
 def build_telemetry_payload(
@@ -427,10 +584,19 @@ def build_telemetry_payload(
 
 
 def persist_telemetry(payload: dict) -> None:
-    supabase_upsert(INTERMEDIARY_TELEMETRY_TABLE, [payload], on_conflict="run_id")
+    supabase_upsert(
+        INTERMEDIARY_TELEMETRY_TABLE,
+        [payload],
+        on_conflict="run_id",
+    )
 
 
-def persist_validation(status: str, message: str, observed_value: int, details: dict | None = None) -> None:
+def persist_validation(
+    status: str,
+    message: str,
+    observed_value: int,
+    details: dict | None = None,
+) -> None:
     payload = {
         "run_id": RUN_ID,
         "validation_name": "intermediary_detection",
@@ -453,7 +619,7 @@ def main() -> None:
 
     print("=" * 80)
     print("PHASE 5A.2 — STRUCTURAL INTERMEDIARY DETECTION")
-    print("RUNTIME MARKER: 5A2_CANONICAL_INTEGRATED_V5")
+    print("RUNTIME MARKER: 5A2_CANONICAL_INTEGRATED_V6_SCHEMA_ALIGNED")
     print("=" * 80)
 
     edges_loaded = 0
@@ -516,9 +682,11 @@ def main() -> None:
                     **load_details,
                     "scores_written": scores_written,
                     "snapshots_written": snapshots_written,
+                    "score_table_write_enabled": WRITE_SCORE_TABLE,
+                    "snapshot_table_write_enabled": WRITE_SNAPSHOT_TABLE,
                     "min_inbound": MIN_INBOUND,
                     "min_outbound": MIN_OUTBOUND,
-                    "runtime_marker": "5A2_CANONICAL_INTEGRATED_V5",
+                    "runtime_marker": "5A2_CANONICAL_INTEGRATED_V6_SCHEMA_ALIGNED",
                 },
             )
         )
@@ -531,6 +699,7 @@ def main() -> None:
     except Exception as exc:
         runtime_seconds = time.time() - started
         error_message = str(exc)
+
         print(f"ERROR: {error_message}")
 
         try:
@@ -546,7 +715,7 @@ def main() -> None:
                     error_message=error_message,
                     details={
                         **load_details,
-                        "runtime_marker": "5A2_CANONICAL_INTEGRATED_V5",
+                        "runtime_marker": "5A2_CANONICAL_INTEGRATED_V6_SCHEMA_ALIGNED",
                     },
                 )
             )
