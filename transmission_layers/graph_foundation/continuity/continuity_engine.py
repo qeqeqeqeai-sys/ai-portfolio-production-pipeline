@@ -243,6 +243,10 @@ def today_sgt() -> str:
     return (dt.datetime.utcnow() + dt.timedelta(hours=8)).date().isoformat()
 
 
+def now_utc_iso() -> str:
+    return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
 def clamp(value: Any, lo: float = 0.0, hi: float = 1.0) -> float:
     try:
         if value is None:
@@ -921,15 +925,12 @@ def build_snapshot_row(
         "run_id": run_id,
         "run_date_sgt": run_date_sgt,
         "theme_name": theme_name,
-
         "total_candidates": len(candidates),
         "total_scored_continuities": len(candidates),
         "total_active_continuities": len(accepted_edges),
-
         "rejected_cycles": rejected_cycles,
         "rejected_duplicates": rejected_duplicates,
         "rejected_low_score": rejected_low_score,
-
         "avg_path_continuity_score": (
             round(sum(path_scores) / len(path_scores), 6)
             if path_scores else None
@@ -942,12 +943,10 @@ def build_snapshot_row(
             round(sum(confidence_scores) / len(confidence_scores), 6)
             if confidence_scores else None
         ),
-
         "top_continuity_key": top_continuity_key,
         "top_continuity_score": (
             top_row.get("continuity_score") if top_row else None
         ),
-
         "snapshot_payload": {
             "top_continuities": [
                 {
@@ -985,24 +984,41 @@ def build_telemetry_row(
     duplicate_rejections: int,
     runtime_seconds: float,
     error_message: Optional[str] = None,
+    edges_loaded: int = 0,
 ) -> dict[str, Any]:
+
+    run_id = f"continuity_{run_date_sgt}_{theme_name}"
+
+    low_score_rejected = max(
+        0,
+        rejected_count - cycle_rejections - duplicate_rejections,
+    )
+
     return {
+        "run_id": run_id,
         "run_date_sgt": run_date_sgt,
-        "pipeline_name": "STRUCTURAL_CONTINUITY_ENGINE",
         "theme_name": theme_name,
+        "phase_name": "PHASE_5A1_STRUCTURAL_CONTINUITY_FORMATION",
         "status": status,
-        "candidates_generated": candidates_generated,
-        "candidates_validated": candidates_validated,
-        "continuities_accepted": accepted_count,
-        "continuities_rejected": rejected_count,
-        "cycle_rejections": cycle_rejections,
-        "duplicate_rejections": duplicate_rejections,
+        "started_at": None,
+        "completed_at": now_utc_iso(),
         "runtime_seconds": runtime_seconds,
+        "nodes_loaded": 0,
+        "edges_loaded": edges_loaded,
+        "candidates_generated": candidates_generated,
+        "continuities_scored": candidates_validated,
+        "continuities_activated": accepted_count,
+        "cycles_rejected": cycle_rejections,
+        "duplicates_rejected": duplicate_rejections,
+        "low_score_rejected": low_score_rejected,
         "error_message": error_message,
-        "github_run_id": os.getenv("GITHUB_RUN_ID"),
-        "github_workflow": os.getenv("GITHUB_WORKFLOW"),
-        "github_repository": os.getenv("GITHUB_REPOSITORY"),
-        "github_branch": os.getenv("GITHUB_REF_NAME"),
+        "telemetry_payload": {
+            "github_run_id": os.getenv("GITHUB_RUN_ID"),
+            "github_workflow": os.getenv("GITHUB_WORKFLOW"),
+            "github_repository": os.getenv("GITHUB_REPOSITORY"),
+            "github_branch": os.getenv("GITHUB_REF_NAME"),
+            "rejected_count": rejected_count,
+        },
     }
 
 
@@ -1108,9 +1124,11 @@ def run_continuity_engine(config: ContinuityConfig) -> dict[str, Any]:
     candidates_validated = 0
     cycle_rejections = 0
     duplicate_rejections = 0
+    edges_loaded = 0
 
     try:
         edges = fetch_edges(client, config)
+        edges_loaded = len(edges)
 
         persistence_rows = fetch_optional_table(
             client,
@@ -1232,6 +1250,7 @@ def run_continuity_engine(config: ContinuityConfig) -> dict[str, Any]:
             cycle_rejections=cycle_rejections,
             duplicate_rejections=duplicate_rejections,
             runtime_seconds=runtime_seconds,
+            edges_loaded=edges_loaded,
         )
 
         validation_rows = build_validation_rows(
@@ -1256,7 +1275,7 @@ def run_continuity_engine(config: ContinuityConfig) -> dict[str, Any]:
             "status": "success",
             "run_date_sgt": run_date,
             "theme_name": config.theme_name,
-            "edges_loaded": len(edges),
+            "edges_loaded": edges_loaded,
             "candidates_generated": candidates_generated,
             "candidates_validated": candidates_validated,
             "continuities_accepted": len(accepted_edge_rows),
@@ -1282,6 +1301,7 @@ def run_continuity_engine(config: ContinuityConfig) -> dict[str, Any]:
                 duplicate_rejections=duplicate_rejections,
                 runtime_seconds=runtime_seconds,
                 error_message=str(exc)[:1000],
+                edges_loaded=edges_loaded,
             )
 
             client.insert(
