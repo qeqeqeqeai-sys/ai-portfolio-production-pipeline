@@ -1,21 +1,14 @@
 """
-Phase 5A.2 — Structural Intermediary Formation
-Revised intermediary_detection_engine.py
+PHASE 5A.2 — STRUCTURAL INTERMEDIARY FORMATION
+intermediary_detection_engine.py
 
-Key Fix:
-- Removed duplicate `headers=headers` injections when calling
-  shared Supabase helper utilities.
+SELF-CONTAINED VERSION.
 
-This version assumes your shared helper already injects:
-- apikey
-- Authorization
-- Content-Type
+Replace this exact GitHub file:
+transmission_layers/graph_foundation/intermediaries/intermediary_detection_engine.py
 
-Compatible with:
-- semantic-key graph architecture
-- replay-safe regeneration
-- GitHub Actions
-- Supabase REST
+Runtime marker:
+5A2_SELF_CONTAINED_V3
 """
 
 from __future__ import annotations
@@ -24,23 +17,11 @@ import os
 import re
 import json
 import hashlib
+import requests
+
 from datetime import datetime, timezone
 from collections import defaultdict
 
-# ============================================================
-# SHARED HELPERS
-# ============================================================
-
-try:
-    from shared.supabase_rest import supabase_request
-except Exception:
-    # fallback local import pattern
-    from transmission_layers.shared.supabase_rest import supabase_request
-
-
-# ============================================================
-# CONFIG
-# ============================================================
 
 EDGE_TABLE = "structural_theme_graph_edges"
 
@@ -55,24 +36,94 @@ RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 MIN_INBOUND = int(os.getenv("INTERMEDIARY_MIN_INBOUND", "1"))
 MIN_OUTBOUND = int(os.getenv("INTERMEDIARY_MIN_OUTBOUND", "1"))
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
 
-# ============================================================
-# NORMALIZATION
-# ============================================================
+
+def supabase_headers(prefer: str | None = None) -> dict:
+    if not SUPABASE_URL:
+        raise RuntimeError("Missing SUPABASE_URL environment variable.")
+
+    if not SUPABASE_KEY:
+        raise RuntimeError(
+            "Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY environment variable."
+        )
+
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    if prefer:
+        headers["Prefer"] = prefer
+
+    return headers
+
+
+def supabase_request(
+    method: str,
+    endpoint: str,
+    payload=None,
+    prefer: str | None = None,
+):
+    base_url = SUPABASE_URL.rstrip("/")
+    url = f"{base_url}/rest/v1/{endpoint}"
+
+    method = method.upper()
+    headers = supabase_headers(prefer=prefer)
+
+    if method == "GET":
+        response = requests.get(url, headers=headers, timeout=60)
+    elif method == "POST":
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+    elif method == "PATCH":
+        response = requests.patch(url, headers=headers, json=payload, timeout=120)
+    else:
+        raise ValueError(f"Unsupported method: {method}")
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase request failed: {method} {endpoint} "
+            f"status={response.status_code} body={response.text}"
+        )
+
+    if not response.text:
+        return None
+
+    try:
+        return response.json()
+    except Exception:
+        return response.text
+
+
+def supabase_upsert(
+    table_name: str,
+    rows: list[dict],
+    on_conflict: str,
+):
+    if not rows:
+        return None
+
+    endpoint = f"{table_name}?on_conflict={on_conflict}"
+
+    return supabase_request(
+        "POST",
+        endpoint,
+        payload=rows,
+        prefer="resolution=merge-duplicates,return=minimal",
+    )
+
 
 def normalize_node_key(value: str) -> str:
-    """
-    Deterministic normalization for semantic graph keys.
-    """
-
     if not value:
         return ""
 
-    value = value.lower().strip()
-
+    value = str(value).lower().strip()
     value = value.replace("-", " ")
     value = value.replace("_", " ")
-
     value = re.sub(r"\s+", " ", value)
 
     synonym_map = {
@@ -81,32 +132,34 @@ def normalize_node_key(value: str) -> str:
         "datacenters": "data_center",
         "power grid": "power_grid",
         "power-grid": "power_grid",
+        "utilities": "utility",
+        "utility companies": "utility",
+        "electric utilities": "utility",
+        "ai chips": "ai_chip",
+        "chips": "chip",
+        "semiconductors": "semiconductor",
     }
 
     value = synonym_map.get(value, value)
-
     value = value.replace(" ", "_")
 
     return value
 
 
-# ============================================================
-# CLASSIFICATION
-# ============================================================
-
 def classify_intermediary(node_key: str) -> str:
-
     node = node_key.lower()
 
     rules = {
-        "compute": ["gpu", "compute", "server"],
-        "semiconductor": ["semiconductor", "chip", "wafer"],
-        "energy": ["power", "grid", "utility", "electric"],
-        "infrastructure": ["data_center", "infrastructure"],
-        "industrial": ["industrial", "factory"],
-        "logistics": ["shipping", "logistics", "freight"],
-        "supply_chain": ["supply", "materials"],
-        "capital_flow": ["capital", "financing", "liquidity"],
+        "compute": ["gpu", "compute", "server", "ai_compute", "cloud"],
+        "semiconductor": ["semiconductor", "chip", "wafer", "foundry"],
+        "energy": ["power", "grid", "utility", "electric", "energy"],
+        "infrastructure": ["data_center", "infrastructure", "fiber", "network"],
+        "industrial": ["industrial", "factory", "automation"],
+        "logistics": ["shipping", "logistics", "freight", "transport"],
+        "supply_chain": ["supply", "materials", "mining", "copper", "rare_earth"],
+        "capital_flow": ["capital", "financing", "liquidity", "credit", "funding"],
+        "policy": ["regulation", "policy", "government", "export_control"],
+        "demand_transmission": ["demand", "consumption", "adoption"],
     }
 
     for category, keywords in rules.items():
@@ -117,87 +170,68 @@ def classify_intermediary(node_key: str) -> str:
     return "general"
 
 
-# ============================================================
-# HASH IDENTITY
-# ============================================================
-
 def stable_intermediary_hash(node_key: str) -> str:
-
     return hashlib.sha256(node_key.encode("utf-8")).hexdigest()
 
 
-# ============================================================
-# LOAD GRAPH EDGES
-# ============================================================
+def load_graph_edges() -> list[dict]:
+    endpoint = f"{EDGE_TABLE}?select=source_node_key,target_node_key"
 
-def load_graph_edges():
-
-    endpoint = (
-        f"{EDGE_TABLE}"
-        "?select=source_node_key,target_node_key"
-    )
-
-    rows = supabase_request(
-        "GET",
-        endpoint,
-    )
+    rows = supabase_request("GET", endpoint)
 
     if not rows:
         return []
 
+    if not isinstance(rows, list):
+        raise RuntimeError(
+            f"Expected list from Supabase edge query, got {type(rows)}"
+        )
+
     return rows
 
 
-# ============================================================
-# DETECT INTERMEDIARIES
-# ============================================================
-
-def detect_intermediaries(edges):
-
+def detect_intermediaries(edges: list[dict]) -> list[dict]:
     inbound_counts = defaultdict(int)
     outbound_counts = defaultdict(int)
-
     inbound_sources = defaultdict(set)
     outbound_targets = defaultdict(set)
 
     for row in edges:
-
-        source = normalize_node_key(
-            row.get("source_node_key", "")
-        )
-
-        target = normalize_node_key(
-            row.get("target_node_key", "")
-        )
+        source = normalize_node_key(row.get("source_node_key", ""))
+        target = normalize_node_key(row.get("target_node_key", ""))
 
         if not source or not target:
             continue
 
         outbound_counts[source] += 1
         inbound_counts[target] += 1
-
         outbound_targets[source].add(target)
         inbound_sources[target].add(source)
 
+    all_nodes = set(list(inbound_counts.keys()) + list(outbound_counts.keys()))
     intermediary_rows = []
 
-    for node_key in set(list(inbound_counts.keys()) + list(outbound_counts.keys())):
-
+    for node_key in all_nodes:
         inbound = inbound_counts[node_key]
         outbound = outbound_counts[node_key]
 
         if inbound < MIN_INBOUND:
             continue
-
         if outbound < MIN_OUTBOUND:
             continue
 
         continuity_reuse_frequency = min(inbound, outbound)
+        propagation_participation = inbound + outbound
+        regime_stability = continuity_reuse_frequency / max(1, propagation_participation)
+        evidence_density = len(inbound_sources[node_key]) + len(outbound_targets[node_key])
 
-        intermediary_score = (
-            (inbound * 0.35)
-            + (outbound * 0.35)
-            + (continuity_reuse_frequency * 0.30)
+        intermediary_activation_score = (
+            (inbound * 0.20)
+            + (outbound * 0.20)
+            + (continuity_reuse_frequency * 0.25)
+            + (propagation_participation * 0.15)
+            + (regime_stability * 0.10)
+            + (evidence_density * 0.10)
         )
 
         intermediary_rows.append(
@@ -209,112 +243,115 @@ def detect_intermediaries(edges):
                 "inbound_edge_count": inbound,
                 "outbound_edge_count": outbound,
                 "continuity_reuse_frequency": continuity_reuse_frequency,
-                "intermediary_activation_score": round(intermediary_score, 4),
+                "propagation_participation": propagation_participation,
+                "regime_stability": round(regime_stability, 4),
+                "evidence_density": evidence_density,
+                "intermediary_activation_score": round(intermediary_activation_score, 4),
                 "upstream_source_count": len(inbound_sources[node_key]),
                 "downstream_target_count": len(outbound_targets[node_key]),
                 "created_at": datetime.utcnow().isoformat(),
             }
         )
 
-    intermediary_rows = sorted(
+    return sorted(
         intermediary_rows,
-        key=lambda x: x["intermediary_activation_score"],
-        reverse=True
+        key=lambda row: row["intermediary_activation_score"],
+        reverse=True,
     )
 
-    return intermediary_rows
+
+def build_score_rows(intermediary_rows: list[dict]) -> list[dict]:
+    score_rows = []
+
+    for row in intermediary_rows:
+        score_rows.append(
+            {
+                "run_id": RUN_ID,
+                "node_key": row["node_key"],
+                "intermediary_hash": row["intermediary_hash"],
+                "inbound_connectivity_score": row["inbound_edge_count"],
+                "outbound_connectivity_score": row["outbound_edge_count"],
+                "continuity_reuse_score": row["continuity_reuse_frequency"],
+                "propagation_participation_score": row["propagation_participation"],
+                "regime_stability_score": row["regime_stability"],
+                "evidence_density_score": row["evidence_density"],
+                "overall_intermediary_score": row["intermediary_activation_score"],
+                "created_at": datetime.utcnow().isoformat(),
+            }
+        )
+
+    return score_rows
 
 
-# ============================================================
-# SNAPSHOTS
-# ============================================================
-
-def persist_snapshots(rows):
-
-    if not rows:
-        return 0
-
+def build_snapshot_rows(intermediary_rows: list[dict]) -> list[dict]:
     snapshot_rows = []
 
-    for row in rows:
-
+    for row in intermediary_rows:
         snapshot_rows.append(
             {
                 "run_id": RUN_ID,
                 "node_key": row["node_key"],
                 "snapshot_type": "daily",
-                "snapshot_payload": json.dumps(row),
+                "snapshot_payload": row,
                 "created_at": datetime.utcnow().isoformat(),
             }
         )
 
-    endpoint = (
-        f"{INTERMEDIARY_SNAPSHOT_TABLE}"
-        "?on_conflict=run_id,node_key,snapshot_type"
-    )
-
-    # FIXED:
-    # removed headers=headers
-    supabase_request(
-        "POST",
-        endpoint,
-        snapshot_rows
-    )
-
-    return len(snapshot_rows)
+    return snapshot_rows
 
 
-# ============================================================
-# PERSIST INTERMEDIARIES
-# ============================================================
-
-def persist_intermediaries(rows):
-
+def persist_intermediaries(rows: list[dict]) -> int:
     if not rows:
         return 0
 
-    endpoint = (
-        f"{INTERMEDIARY_TABLE}"
-        "?on_conflict=intermediary_hash"
-    )
-
-    # FIXED:
-    # removed headers=headers
-    supabase_request(
-        "POST",
-        endpoint,
-        rows
+    supabase_upsert(
+        INTERMEDIARY_TABLE,
+        rows,
+        on_conflict="intermediary_hash",
     )
 
     return len(rows)
 
 
-# ============================================================
-# TELEMETRY
-# ============================================================
+def persist_scores(rows: list[dict]) -> int:
+    if not rows:
+        return 0
 
-def persist_telemetry(payload):
-
-    endpoint = (
-        f"{INTERMEDIARY_TELEMETRY_TABLE}"
-        "?on_conflict=run_id"
+    supabase_upsert(
+        INTERMEDIARY_SCORE_TABLE,
+        rows,
+        on_conflict="run_id,node_key",
     )
 
-    # FIXED:
-    # removed headers=headers
-    supabase_request(
-        "POST",
-        endpoint,
-        [payload]
+    return len(rows)
+
+
+def persist_snapshots(rows: list[dict]) -> int:
+    if not rows:
+        return 0
+
+    supabase_upsert(
+        INTERMEDIARY_SNAPSHOT_TABLE,
+        rows,
+        on_conflict="run_id,node_key,snapshot_type",
+    )
+
+    return len(rows)
+
+
+def persist_telemetry(payload: dict) -> None:
+    supabase_upsert(
+        INTERMEDIARY_TELEMETRY_TABLE,
+        [payload],
+        on_conflict="run_id",
     )
 
 
-# ============================================================
-# VALIDATION
-# ============================================================
-
-def persist_validation(status, message, observed_value):
-
+def persist_validation(
+    status: str,
+    message: str,
+    observed_value: int,
+) -> None:
     payload = {
         "run_id": RUN_ID,
         "validation_name": "intermediary_detection",
@@ -324,70 +361,64 @@ def persist_validation(status, message, observed_value):
         "created_at": datetime.utcnow().isoformat(),
     }
 
-    endpoint = (
-        f"{INTERMEDIARY_VALIDATION_TABLE}"
-        "?on_conflict=run_id,validation_name"
-    )
-
-    supabase_request(
-        "POST",
-        endpoint,
-        [payload]
+    supabase_upsert(
+        INTERMEDIARY_VALIDATION_TABLE,
+        [payload],
+        on_conflict="run_id,validation_name",
     )
 
 
-# ============================================================
-# MAIN
-# ============================================================
-
-def main():
-
+def main() -> None:
     print("=" * 80)
     print("PHASE 5A.2 — STRUCTURAL INTERMEDIARY DETECTION")
+    print("SELF-CONTAINED VERSION — CHECKSUM 5A2_SELF_CONTAINED_V3")
     print("=" * 80)
 
     edges = load_graph_edges()
-
     edges_loaded = len(edges)
-
     print(f"edges_loaded={edges_loaded}")
 
     intermediary_rows = detect_intermediaries(edges)
-
     intermediaries_detected = len(intermediary_rows)
-
     print(f"intermediaries_detected={intermediaries_detected}")
 
-    persisted = persist_intermediaries(intermediary_rows)
+    score_rows = build_score_rows(intermediary_rows)
+    snapshot_rows = build_snapshot_rows(intermediary_rows)
 
-    snapshots = persist_snapshots(intermediary_rows)
+    rows_persisted = persist_intermediaries(intermediary_rows)
+    scores_written = persist_scores(score_rows)
+    snapshots_written = persist_snapshots(snapshot_rows)
 
     telemetry_payload = {
         "run_id": RUN_ID,
         "edges_loaded": edges_loaded,
         "intermediaries_detected": intermediaries_detected,
-        "rows_persisted": persisted,
-        "snapshots_written": snapshots,
+        "rows_persisted": rows_persisted,
+        "scores_written": scores_written,
+        "snapshots_written": snapshots_written,
+        "min_inbound": MIN_INBOUND,
+        "min_outbound": MIN_OUTBOUND,
         "created_at": datetime.utcnow().isoformat(),
     }
 
     persist_telemetry(telemetry_payload)
 
     if intermediaries_detected == 0:
-
         persist_validation(
             status="warning",
             message="No intermediary nodes detected.",
             observed_value=0,
         )
-
     else:
-
         persist_validation(
             status="passed",
             message="Intermediary nodes successfully detected.",
             observed_value=intermediaries_detected,
         )
+
+    print(f"rows_persisted={rows_persisted}")
+    print(f"scores_written={scores_written}")
+    print(f"snapshots_written={snapshots_written}")
 
     print("=" * 80)
     print("COMPLETE")
