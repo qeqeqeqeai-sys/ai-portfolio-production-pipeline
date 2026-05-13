@@ -1,0 +1,38 @@
+name: Phase 5A.4 Canonical Structural Ontology
+
+on:
+  workflow_dispatch:
+    inputs:
+      min_mapping_confidence:
+        description: "Minimum ontology alias confidence score"
+        required: false
+        default: "0.70"
+
+jobs:
+  canonical-structural-ontology:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      CANONICAL_ONTOLOGY_MIN_CONFIDENCE: ${{ github.event.inputs.min_mapping_confidence }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run canonical structural ontology engine
+        run: |
+          cd transmission_layers/graph_foundation/intermediaries
+          python canonical_structural_ontology_engine.py
