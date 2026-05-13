@@ -1,27 +1,16 @@
 """
-PHASE 5A.2 — STRUCTURAL INTERMEDIARY FORMATION
-intermediary_detection_engine.py
+Phase 5A.2 — Structural Intermediary Detection
+Canonical Integration Fix V5
 
-SELF-CONTAINED VERSION V4.
-
-Fix included:
-- Telemetry payload is now aligned to this actual schema:
-
-  structural_theme_graph_intermediary_telemetry:
-    run_id
-    status
-    edges_loaded
-    candidate_nodes_loaded
-    intermediaries_detected
-    intermediaries_persisted
-    validation_failures
-    runtime_seconds
-    error_message
-    details
-    created_at
+Fix:
+- Reads canonicalized edges from Phase 5A.4:
+  structural_theme_graph_canonical_edge_view_materialized
+- Also reads Phase 5A.3 seeded edges:
+  structural_theme_graph_directed_seed_edges
+- Falls back to raw structural_theme_graph_edges if canonical/seed edges are unavailable.
 
 Runtime marker:
-5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED
+5A2_CANONICAL_INTEGRATED_V5
 """
 
 from __future__ import annotations
@@ -32,12 +21,13 @@ import json
 import time
 import hashlib
 import requests
-
 from datetime import datetime, timezone
 from collections import defaultdict
 
 
-EDGE_TABLE = "structural_theme_graph_edges"
+RAW_EDGE_TABLE = "structural_theme_graph_edges"
+CANONICAL_EDGE_TABLE = "structural_theme_graph_canonical_edge_view_materialized"
+SEED_EDGE_TABLE = "structural_theme_graph_directed_seed_edges"
 
 INTERMEDIARY_TABLE = "structural_theme_graph_intermediaries"
 INTERMEDIARY_SCORE_TABLE = "structural_theme_graph_intermediary_scores"
@@ -60,14 +50,76 @@ def utc_now_iso() -> str:
     return datetime.utcnow().isoformat()
 
 
+def normalize_node_key(value: str) -> str:
+    if not value:
+        return ""
+
+    value = str(value).lower().strip()
+    value = value.replace("&", " and ")
+    value = value.replace("-", " ")
+    value = value.replace("/", " ")
+    value = value.replace("_", " ")
+    value = re.sub(r"[^a-z0-9\s]", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+
+    phrase_map = {
+        "artificial intelligence": "ai",
+        "generative ai": "generative_ai",
+        "gen ai": "genai",
+        "data centers": "data_center",
+        "data center": "data_center",
+        "data centres": "data_center",
+        "data centre": "data_center",
+        "power grid": "power_grid",
+        "electric grid": "power_grid",
+        "electric utilities": "utility",
+        "electric utility": "utility",
+        "utility companies": "utility",
+        "utilities": "utility",
+        "power demand": "electricity_demand",
+        "electricity load": "electricity_demand",
+        "copper demand": "copper",
+        "copper supply": "copper",
+    }
+
+    value = phrase_map.get(value, value)
+    return value.replace(" ", "_")
+
+
+def classify_intermediary(node_key: str) -> str:
+    node = node_key.lower()
+
+    rules = {
+        "compute": ["gpu", "compute", "server", "ai_compute", "cloud"],
+        "semiconductor": ["semiconductor", "chip", "wafer", "foundry"],
+        "energy": ["power", "grid", "utility", "electric", "energy", "electricity"],
+        "infrastructure": ["data_center", "infrastructure", "fiber", "network", "cooling"],
+        "industrial": ["industrial", "factory", "automation"],
+        "logistics": ["shipping", "logistics", "freight", "transport"],
+        "supply_chain": ["supply", "materials", "mining", "copper", "rare_earth"],
+        "capital_flow": ["capital", "financing", "liquidity", "credit", "funding", "capex"],
+        "policy": ["regulation", "policy", "government", "export_control"],
+        "demand_transmission": ["demand", "consumption", "adoption"],
+    }
+
+    for category, keywords in rules.items():
+        for keyword in keywords:
+            if keyword in node:
+                return category
+
+    return "general"
+
+
+def stable_hash(*parts: str) -> str:
+    raw = "|".join(str(p or "") for p in parts)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
 def supabase_headers(prefer: str | None = None) -> dict:
     if not SUPABASE_URL:
         raise RuntimeError("Missing SUPABASE_URL environment variable.")
-
     if not SUPABASE_KEY:
-        raise RuntimeError(
-            "Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY environment variable."
-        )
+        raise RuntimeError("Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY environment variable.")
 
     headers = {
         "apikey": SUPABASE_KEY,
@@ -81,15 +133,9 @@ def supabase_headers(prefer: str | None = None) -> dict:
     return headers
 
 
-def supabase_request(
-    method: str,
-    endpoint: str,
-    payload=None,
-    prefer: str | None = None,
-):
+def supabase_request(method: str, endpoint: str, payload=None, prefer: str | None = None):
     base_url = SUPABASE_URL.rstrip("/")
     url = f"{base_url}/rest/v1/{endpoint}"
-
     method = method.upper()
     headers = supabase_headers(prefer=prefer)
 
@@ -97,8 +143,6 @@ def supabase_request(
         response = requests.get(url, headers=headers, timeout=60)
     elif method == "POST":
         response = requests.post(url, headers=headers, json=payload, timeout=120)
-    elif method == "PATCH":
-        response = requests.patch(url, headers=headers, json=payload, timeout=120)
     else:
         raise ValueError(f"Unsupported method: {method}")
 
@@ -117,95 +161,120 @@ def supabase_request(
         return response.text
 
 
-def supabase_upsert(
-    table_name: str,
-    rows: list[dict],
-    on_conflict: str,
-):
+def supabase_upsert(table_name: str, rows: list[dict], on_conflict: str):
     if not rows:
         return None
 
-    endpoint = f"{table_name}?on_conflict={on_conflict}"
-
     return supabase_request(
         "POST",
-        endpoint,
+        f"{table_name}?on_conflict={on_conflict}",
         payload=rows,
         prefer="resolution=merge-duplicates,return=minimal",
     )
 
 
-def normalize_node_key(value: str) -> str:
-    if not value:
-        return ""
-
-    value = str(value).lower().strip()
-    value = value.replace("-", " ")
-    value = value.replace("_", " ")
-    value = re.sub(r"\s+", " ", value)
-
-    synonym_map = {
-        "data centers": "data_center",
-        "data center": "data_center",
-        "datacenters": "data_center",
-        "power grid": "power_grid",
-        "power-grid": "power_grid",
-        "utilities": "utility",
-        "utility companies": "utility",
-        "electric utilities": "utility",
-        "ai chips": "ai_chip",
-        "chips": "chip",
-        "semiconductors": "semiconductor",
-    }
-
-    value = synonym_map.get(value, value)
-    value = value.replace(" ", "_")
-
-    return value
-
-
-def classify_intermediary(node_key: str) -> str:
-    node = node_key.lower()
-
-    rules = {
-        "compute": ["gpu", "compute", "server", "ai_compute", "cloud"],
-        "semiconductor": ["semiconductor", "chip", "wafer", "foundry"],
-        "energy": ["power", "grid", "utility", "electric", "energy"],
-        "infrastructure": ["data_center", "infrastructure", "fiber", "network"],
-        "industrial": ["industrial", "factory", "automation"],
-        "logistics": ["shipping", "logistics", "freight", "transport"],
-        "supply_chain": ["supply", "materials", "mining", "copper", "rare_earth"],
-        "capital_flow": ["capital", "financing", "liquidity", "credit", "funding"],
-        "policy": ["regulation", "policy", "government", "export_control"],
-        "demand_transmission": ["demand", "consumption", "adoption"],
-    }
-
-    for category, keywords in rules.items():
-        for keyword in keywords:
-            if keyword in node:
-                return category
-
-    return "general"
-
-
-def stable_intermediary_hash(node_key: str) -> str:
-    return hashlib.sha256(node_key.encode("utf-8")).hexdigest()
-
-
-def load_graph_edges() -> list[dict]:
-    endpoint = f"{EDGE_TABLE}?select=source_node_key,target_node_key"
-
-    rows = supabase_request("GET", endpoint)
-
-    if not rows:
+def safe_get(endpoint: str) -> list[dict]:
+    try:
+        rows = supabase_request("GET", endpoint)
+        if not rows:
+            return []
+        if not isinstance(rows, list):
+            return []
+        return rows
+    except Exception as exc:
+        print(f"WARNING: failed to load {endpoint}: {exc}")
         return []
 
-    if not isinstance(rows, list):
-        raise RuntimeError(
-            f"Expected list from Supabase edge query, got {type(rows)}"
-        )
 
-    return rows
+def load_canonical_edges() -> list[dict]:
+    rows = safe_get(
+        f"{CANONICAL_EDGE_TABLE}"
+        "?select=canonical_source_node_key,canonical_target_node_key"
+    )
+
+    edges = []
+    for row in rows:
+        source = normalize_node_key(row.get("canonical_source_node_key"))
+        target = normalize_node_key(row.get("canonical_target_node_key"))
+        if source and target and source != target:
+            edges.append(
+                {
+                    "source_node_key": source,
+                    "target_node_key": target,
+                    "edge_source": "canonical_view",
+                }
+            )
+
+    return edges
+
+
+def load_seed_edges() -> list[dict]:
+    rows = safe_get(
+        f"{SEED_EDGE_TABLE}"
+        "?select=source_node_key,target_node_key"
+    )
+
+    edges = []
+    for row in rows:
+        source = normalize_node_key(row.get("source_node_key"))
+        target = normalize_node_key(row.get("target_node_key"))
+        if source and target and source != target:
+            edges.append(
+                {
+                    "source_node_key": source,
+                    "target_node_key": target,
+                    "edge_source": "directed_seed",
+                }
+            )
+
+    return edges
+
+
+def load_raw_edges() -> list[dict]:
+    rows = safe_get(
+        f"{RAW_EDGE_TABLE}"
+        "?select=source_node_key,target_node_key"
+    )
+
+    edges = []
+    for row in rows:
+        source = normalize_node_key(row.get("source_node_key"))
+        target = normalize_node_key(row.get("target_node_key"))
+        if source and target and source != target:
+            edges.append(
+                {
+                    "source_node_key": source,
+                    "target_node_key": target,
+                    "edge_source": "raw_edge",
+                }
+            )
+
+    return edges
+
+
+def load_graph_edges() -> tuple[list[dict], dict]:
+    canonical_edges = load_canonical_edges()
+    seed_edges = load_seed_edges()
+
+    combined = canonical_edges + seed_edges
+
+    if not combined:
+        raw_edges = load_raw_edges()
+        combined = raw_edges
+    else:
+        raw_edges = []
+
+    deduped = {}
+    for edge in combined:
+        key = (edge["source_node_key"], edge["target_node_key"])
+        deduped[key] = edge
+
+    return list(deduped.values()), {
+        "canonical_edges_loaded": len(canonical_edges),
+        "seed_edges_loaded": len(seed_edges),
+        "raw_edges_loaded": len(raw_edges),
+        "deduped_edges_loaded": len(deduped),
+    }
 
 
 def detect_intermediaries(edges: list[dict]) -> list[dict]:
@@ -218,7 +287,7 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
         source = normalize_node_key(row.get("source_node_key", ""))
         target = normalize_node_key(row.get("target_node_key", ""))
 
-        if not source or not target:
+        if not source or not target or source == target:
             continue
 
         outbound_counts[source] += 1
@@ -256,7 +325,7 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
             {
                 "run_id": RUN_ID,
                 "node_key": node_key,
-                "intermediary_hash": stable_intermediary_hash(node_key),
+                "intermediary_hash": stable_hash(node_key),
                 "classification": classify_intermediary(node_key),
                 "inbound_edge_count": inbound,
                 "outbound_edge_count": outbound,
@@ -279,81 +348,55 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
 
 
 def build_score_rows(intermediary_rows: list[dict]) -> list[dict]:
-    score_rows = []
-
-    for row in intermediary_rows:
-        score_rows.append(
-            {
-                "run_id": RUN_ID,
-                "node_key": row["node_key"],
-                "intermediary_hash": row["intermediary_hash"],
-                "inbound_connectivity_score": row["inbound_edge_count"],
-                "outbound_connectivity_score": row["outbound_edge_count"],
-                "continuity_reuse_score": row["continuity_reuse_frequency"],
-                "propagation_participation_score": row["propagation_participation"],
-                "regime_stability_score": row["regime_stability"],
-                "evidence_density_score": row["evidence_density"],
-                "overall_intermediary_score": row["intermediary_activation_score"],
-                "created_at": utc_now_iso(),
-            }
-        )
-
-    return score_rows
+    return [
+        {
+            "run_id": RUN_ID,
+            "node_key": row["node_key"],
+            "intermediary_hash": row["intermediary_hash"],
+            "inbound_connectivity_score": row["inbound_edge_count"],
+            "outbound_connectivity_score": row["outbound_edge_count"],
+            "continuity_reuse_score": row["continuity_reuse_frequency"],
+            "propagation_participation_score": row["propagation_participation"],
+            "regime_stability_score": row["regime_stability"],
+            "evidence_density_score": row["evidence_density"],
+            "overall_intermediary_score": row["intermediary_activation_score"],
+            "created_at": utc_now_iso(),
+        }
+        for row in intermediary_rows
+    ]
 
 
 def build_snapshot_rows(intermediary_rows: list[dict]) -> list[dict]:
-    snapshot_rows = []
-
-    for row in intermediary_rows:
-        snapshot_rows.append(
-            {
-                "run_id": RUN_ID,
-                "node_key": row["node_key"],
-                "snapshot_type": "daily",
-                "snapshot_payload": row,
-                "created_at": utc_now_iso(),
-            }
-        )
-
-    return snapshot_rows
+    return [
+        {
+            "run_id": RUN_ID,
+            "node_key": row["node_key"],
+            "snapshot_type": "daily",
+            "snapshot_payload": row,
+            "created_at": utc_now_iso(),
+        }
+        for row in intermediary_rows
+    ]
 
 
 def persist_intermediaries(rows: list[dict]) -> int:
     if not rows:
         return 0
-
-    supabase_upsert(
-        INTERMEDIARY_TABLE,
-        rows,
-        on_conflict="intermediary_hash",
-    )
-
+    supabase_upsert(INTERMEDIARY_TABLE, rows, on_conflict="intermediary_hash")
     return len(rows)
 
 
 def persist_scores(rows: list[dict]) -> int:
     if not rows:
         return 0
-
-    supabase_upsert(
-        INTERMEDIARY_SCORE_TABLE,
-        rows,
-        on_conflict="run_id,node_key",
-    )
-
+    supabase_upsert(INTERMEDIARY_SCORE_TABLE, rows, on_conflict="run_id,node_key")
     return len(rows)
 
 
 def persist_snapshots(rows: list[dict]) -> int:
     if not rows:
         return 0
-
-    supabase_upsert(
-        INTERMEDIARY_SNAPSHOT_TABLE,
-        rows,
-        on_conflict="run_id,node_key,snapshot_type",
-    )
-
+    supabase_upsert(INTERMEDIARY_SNAPSHOT_TABLE, rows, on_conflict="run_id,node_key,snapshot_type")
     return len(rows)
 
 
@@ -384,24 +427,17 @@ def build_telemetry_payload(
 
 
 def persist_telemetry(payload: dict) -> None:
-    supabase_upsert(
-        INTERMEDIARY_TELEMETRY_TABLE,
-        [payload],
-        on_conflict="run_id",
-    )
+    supabase_upsert(INTERMEDIARY_TELEMETRY_TABLE, [payload], on_conflict="run_id")
 
 
-def persist_validation(
-    status: str,
-    message: str,
-    observed_value: int,
-) -> None:
+def persist_validation(status: str, message: str, observed_value: int, details: dict | None = None) -> None:
     payload = {
         "run_id": RUN_ID,
         "validation_name": "intermediary_detection",
         "validation_status": status,
         "message": message,
         "observed_value": observed_value,
+        "details": details or {},
         "created_at": utc_now_iso(),
     }
 
@@ -417,26 +453,26 @@ def main() -> None:
 
     print("=" * 80)
     print("PHASE 5A.2 — STRUCTURAL INTERMEDIARY DETECTION")
-    print("SELF-CONTAINED VERSION — CHECKSUM 5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED")
+    print("RUNTIME MARKER: 5A2_CANONICAL_INTEGRATED_V5")
     print("=" * 80)
 
     edges_loaded = 0
-    candidate_nodes_loaded = 0
     intermediaries_detected = 0
     rows_persisted = 0
     scores_written = 0
     snapshots_written = 0
     validation_failures = 0
+    load_details = {}
 
     try:
-        edges = load_graph_edges()
+        edges, load_details = load_graph_edges()
         edges_loaded = len(edges)
 
         print(f"edges_loaded={edges_loaded}")
+        print(f"load_details={load_details}")
 
         intermediary_rows = detect_intermediaries(edges)
         intermediaries_detected = len(intermediary_rows)
-        candidate_nodes_loaded = intermediaries_detected
 
         print(f"intermediaries_detected={intermediaries_detected}")
 
@@ -449,73 +485,71 @@ def main() -> None:
 
         if intermediaries_detected == 0:
             validation_failures = 1
+            status = "warning"
             persist_validation(
                 status="warning",
-                message="No intermediary nodes detected.",
+                message="No intermediary nodes detected after canonical/seed integration.",
                 observed_value=0,
+                details=load_details,
             )
-            run_status = "warning"
         else:
+            status = "success"
             persist_validation(
                 status="passed",
-                message="Intermediary nodes successfully detected.",
+                message="Intermediary nodes detected using canonical/seed integrated graph.",
                 observed_value=intermediaries_detected,
+                details=load_details,
             )
-            run_status = "success"
 
         runtime_seconds = time.time() - started
 
-        telemetry_payload = build_telemetry_payload(
-            status=run_status,
-            edges_loaded=edges_loaded,
-            candidate_nodes_loaded=candidate_nodes_loaded,
-            intermediaries_detected=intermediaries_detected,
-            intermediaries_persisted=rows_persisted,
-            validation_failures=validation_failures,
-            runtime_seconds=runtime_seconds,
-            error_message=None,
-            details={
-                "scores_written": scores_written,
-                "snapshots_written": snapshots_written,
-                "min_inbound": MIN_INBOUND,
-                "min_outbound": MIN_OUTBOUND,
-                "runtime_marker": "5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED",
-            },
+        persist_telemetry(
+            build_telemetry_payload(
+                status=status,
+                edges_loaded=edges_loaded,
+                candidate_nodes_loaded=intermediaries_detected,
+                intermediaries_detected=intermediaries_detected,
+                intermediaries_persisted=rows_persisted,
+                validation_failures=validation_failures,
+                runtime_seconds=runtime_seconds,
+                details={
+                    **load_details,
+                    "scores_written": scores_written,
+                    "snapshots_written": snapshots_written,
+                    "min_inbound": MIN_INBOUND,
+                    "min_outbound": MIN_OUTBOUND,
+                    "runtime_marker": "5A2_CANONICAL_INTEGRATED_V5",
+                },
+            )
         )
-
-        persist_telemetry(telemetry_payload)
 
         print(f"rows_persisted={rows_persisted}")
         print(f"scores_written={scores_written}")
         print(f"snapshots_written={snapshots_written}")
-        print(f"status={run_status}")
+        print(f"status={status}")
 
     except Exception as exc:
         runtime_seconds = time.time() - started
         error_message = str(exc)
-
         print(f"ERROR: {error_message}")
 
-        failure_payload = build_telemetry_payload(
-            status="failed",
-            edges_loaded=edges_loaded,
-            candidate_nodes_loaded=candidate_nodes_loaded,
-            intermediaries_detected=intermediaries_detected,
-            intermediaries_persisted=rows_persisted,
-            validation_failures=max(1, validation_failures),
-            runtime_seconds=runtime_seconds,
-            error_message=error_message,
-            details={
-                "scores_written": scores_written,
-                "snapshots_written": snapshots_written,
-                "min_inbound": MIN_INBOUND,
-                "min_outbound": MIN_OUTBOUND,
-                "runtime_marker": "5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED",
-            },
-        )
-
         try:
-            persist_telemetry(failure_payload)
+            persist_telemetry(
+                build_telemetry_payload(
+                    status="failed",
+                    edges_loaded=edges_loaded,
+                    candidate_nodes_loaded=intermediaries_detected,
+                    intermediaries_detected=intermediaries_detected,
+                    intermediaries_persisted=rows_persisted,
+                    validation_failures=max(1, validation_failures),
+                    runtime_seconds=runtime_seconds,
+                    error_message=error_message,
+                    details={
+                        **load_details,
+                        "runtime_marker": "5A2_CANONICAL_INTEGRATED_V5",
+                    },
+                )
+            )
         except Exception as telemetry_exc:
             print(f"WARNING: failed to persist failure telemetry: {telemetry_exc}")
 
