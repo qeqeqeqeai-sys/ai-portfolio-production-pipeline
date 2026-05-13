@@ -22,5 +22,8 @@ jobs:
           pip install requests
 
       - name: Run Continuity Engine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           python transmission_layers/graph_foundation/continuity/continuity_engine.py
