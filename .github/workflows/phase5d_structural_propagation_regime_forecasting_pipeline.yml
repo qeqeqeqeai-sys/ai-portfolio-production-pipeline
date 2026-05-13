@@ -1,0 +1,45 @@
+name: Phase 5D Structural Propagation Regime Forecasting
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: Historical dynamics lookback window
+        required: false
+        default: "180"
+      forecast_horizon_days:
+        description: Deterministic forecast horizon
+        required: false
+        default: "30"
+  schedule:
+    - cron: "40 1 * * *"
+
+jobs:
+  phase5d-regime-forecasting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 5D structural propagation regime forecasting engine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '180' }}
+          FORECAST_HORIZON_DAYS: ${{ github.event.inputs.forecast_horizon_days || '30' }}
+        run: |
+          python transmission_layers/graph_foundation/phase5d_structural_propagation_regime_forecasting_engine.py
