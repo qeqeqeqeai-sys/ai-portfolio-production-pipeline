@@ -1,13 +1,15 @@
 """
 Phase 5A.3 — Directed Intermediary Seeding Layer
+Canonical Integration Fix V2
 
-Purpose:
-- Deterministically seed A -> B and B -> C edges from explicit bridge rules.
-- Convert shallow star-like graph structure into reusable intermediary topology.
-- Keep the system replay-safe, auditable, and SQL/Supabase compatible.
+Fix:
+- Reads canonicalized edge view from Phase 5A.4.
+- Removes the overly strict source-presence gate that caused zero seed generation.
+- Seeds all active explicit rules above the confidence threshold.
+- Writes only to structural_theme_graph_directed_seed_edges by default.
 
 Runtime marker:
-5A3_DIRECTED_INTERMEDIARY_SEEDING_V1
+5A3_CANONICAL_INTEGRATED_V2
 """
 
 from __future__ import annotations
@@ -18,10 +20,11 @@ import time
 import hashlib
 import requests
 from datetime import datetime, timezone
-from collections import defaultdict
 
 
-EDGE_TABLE = "structural_theme_graph_edges"
+RAW_EDGE_TABLE = "structural_theme_graph_edges"
+CANONICAL_EDGE_TABLE = "structural_theme_graph_canonical_edge_view_materialized"
+
 SEED_RULE_TABLE = "structural_theme_graph_directed_seed_rules"
 SEED_EDGE_TABLE = "structural_theme_graph_directed_seed_edges"
 SEED_TELEMETRY_TABLE = "structural_theme_graph_directed_seed_telemetry"
@@ -35,7 +38,6 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
 
 MIN_CONFIDENCE_SCORE = float(os.getenv("DIRECTED_SEED_MIN_CONFIDENCE", "0.60"))
-PERSIST_TO_MAIN_EDGE_TABLE = os.getenv("DIRECTED_SEED_WRITE_MAIN_EDGES", "false").lower() == "true"
 
 
 def utc_now_iso() -> str:
@@ -47,23 +49,40 @@ def normalize_node_key(value: str) -> str:
         return ""
 
     value = str(value).lower().strip()
+    value = value.replace("&", " and ")
     value = value.replace("-", " ")
+    value = value.replace("/", " ")
     value = value.replace("_", " ")
-    value = re.sub(r"\s+", " ", value)
+    value = re.sub(r"[^a-z0-9\s]", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
 
-    synonym_map = {
+    phrase_map = {
+        "artificial intelligence": "ai",
+        "generative ai": "generative_ai",
+        "gen ai": "genai",
         "data centers": "data_center",
         "data center": "data_center",
-        "datacenters": "data_center",
+        "data centres": "data_center",
+        "data centre": "data_center",
         "power grid": "power_grid",
-        "utilities": "utility",
+        "electric grid": "power_grid",
         "electric utilities": "utility",
-        "semiconductors": "semiconductor",
-        "chips": "chip",
+        "electric utility": "utility",
+        "utility companies": "utility",
+        "utilities": "utility",
+        "power demand": "electricity_demand",
+        "electricity load": "electricity_demand",
+        "copper demand": "copper",
+        "copper supply": "copper",
     }
 
-    value = synonym_map.get(value, value)
+    value = phrase_map.get(value, value)
     return value.replace(" ", "_")
+
+
+def stable_hash(*parts: str) -> str:
+    raw = "|".join(str(p or "") for p in parts)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def supabase_headers(prefer: str | None = None) -> dict:
@@ -124,19 +143,51 @@ def supabase_upsert(table_name: str, rows: list[dict], on_conflict: str):
     )
 
 
-def stable_hash(*parts: str) -> str:
-    raw = "|".join(str(p or "") for p in parts)
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def load_existing_edges() -> list[dict]:
-    endpoint = f"{EDGE_TABLE}?select=source_node_key,target_node_key"
-    rows = supabase_request("GET", endpoint)
-    if not rows:
+def safe_get(endpoint: str) -> list[dict]:
+    try:
+        rows = supabase_request("GET", endpoint)
+        if not rows or not isinstance(rows, list):
+            return []
+        return rows
+    except Exception as exc:
+        print(f"WARNING: failed to load {endpoint}: {exc}")
         return []
-    if not isinstance(rows, list):
-        raise RuntimeError(f"Expected edge list, got {type(rows)}")
-    return rows
+
+
+def load_existing_edges() -> tuple[list[dict], dict]:
+    canonical_rows = safe_get(
+        f"{CANONICAL_EDGE_TABLE}"
+        "?select=canonical_source_node_key,canonical_target_node_key"
+    )
+
+    edges = []
+    for row in canonical_rows:
+        source = normalize_node_key(row.get("canonical_source_node_key"))
+        target = normalize_node_key(row.get("canonical_target_node_key"))
+        if source and target and source != target:
+            edges.append({"source_node_key": source, "target_node_key": target})
+
+    raw_rows = []
+    if not edges:
+        raw_rows = safe_get(
+            f"{RAW_EDGE_TABLE}"
+            "?select=source_node_key,target_node_key"
+        )
+        for row in raw_rows:
+            source = normalize_node_key(row.get("source_node_key"))
+            target = normalize_node_key(row.get("target_node_key"))
+            if source and target and source != target:
+                edges.append({"source_node_key": source, "target_node_key": target})
+
+    deduped = {}
+    for edge in edges:
+        deduped[(edge["source_node_key"], edge["target_node_key"])] = edge
+
+    return list(deduped.values()), {
+        "canonical_edges_loaded": len(canonical_rows),
+        "raw_edges_loaded": len(raw_rows),
+        "deduped_edges_loaded": len(deduped),
+    }
 
 
 def load_active_seed_rules() -> list[dict]:
@@ -146,13 +197,17 @@ def load_active_seed_rules() -> list[dict]:
         "edge_1_relation,edge_2_relation,seed_category,confidence_score,evidence_basis"
         "&is_active=eq.true"
     )
+
     rows = supabase_request("GET", endpoint)
+
     if not rows:
         return []
+
     if not isinstance(rows, list):
         raise RuntimeError(f"Expected seed rule list, got {type(rows)}")
 
     filtered = []
+
     for row in rows:
         confidence = float(row.get("confidence_score") or 0)
         if confidence >= MIN_CONFIDENCE_SCORE:
@@ -161,20 +216,15 @@ def load_active_seed_rules() -> list[dict]:
     return filtered
 
 
-def build_edge_index(edges: list[dict]) -> set[tuple[str, str]]:
-    edge_pairs = set()
-    for row in edges:
-        source = normalize_node_key(row.get("source_node_key", ""))
-        target = normalize_node_key(row.get("target_node_key", ""))
-        if source and target:
-            edge_pairs.add((source, target))
-    return edge_pairs
+def generate_seed_edges(seed_rules: list[dict], existing_edges: list[dict]) -> list[dict]:
+    existing_pairs = {
+        (
+            normalize_node_key(edge.get("source_node_key")),
+            normalize_node_key(edge.get("target_node_key")),
+        )
+        for edge in existing_edges
+    }
 
-
-def generate_seed_edges(
-    seed_rules: list[dict],
-    existing_edge_pairs: set[tuple[str, str]],
-) -> list[dict]:
     seed_edges = []
 
     for rule in seed_rules:
@@ -185,18 +235,8 @@ def generate_seed_edges(
 
         confidence = float(rule.get("confidence_score") or 0)
         evidence_basis = rule.get("evidence_basis")
-        seed_category = rule.get("seed_category") or "structural_intermediary"
 
         if not source or not intermediary or not target:
-            continue
-
-        # Deterministic gate:
-        # seed only if the source already has at least one relevant graph connection,
-        # or if the source->intermediary edge already exists.
-        source_is_present = any(pair[0] == source or pair[1] == source for pair in existing_edge_pairs)
-        source_to_intermediary_exists = (source, intermediary) in existing_edge_pairs
-
-        if not source_is_present and not source_to_intermediary_exists:
             continue
 
         edge_specs = [
@@ -215,12 +255,18 @@ def generate_seed_edges(
         ]
 
         for edge in edge_specs:
-            edge_hash = stable_hash(
+            seed_hash = stable_hash(
+                "phase5a3_v2",
                 rule_id,
                 edge["source_node_key"],
                 edge["target_node_key"],
                 edge["edge_role"],
             )
+
+            already_in_graph = (
+                edge["source_node_key"],
+                edge["target_node_key"],
+            ) in existing_pairs
 
             seed_edges.append(
                 {
@@ -233,12 +279,11 @@ def generate_seed_edges(
                     "relation_type": edge["relation_type"],
                     "confidence_score": confidence,
                     "evidence_basis": evidence_basis,
-                    "seed_hash": edge_hash,
+                    "seed_hash": seed_hash,
                     "created_at": utc_now_iso(),
                 }
             )
 
-    # Dedupe within run by seed_hash
     deduped = {}
     for row in seed_edges:
         deduped[row["seed_hash"]] = row
@@ -246,65 +291,12 @@ def generate_seed_edges(
     return list(deduped.values())
 
 
-def build_main_edge_rows(seed_edges: list[dict]) -> list[dict]:
-    """
-    Optional compatibility output for structural_theme_graph_edges.
-
-    This is deliberately conservative because your edge table schema may differ.
-    Enable only after confirming structural_theme_graph_edges accepts these columns.
-    """
-    rows = []
-
-    for row in seed_edges:
-        edge_hash = stable_hash(
-            "phase5a3_main_edge",
-            row["source_node_key"],
-            row["target_node_key"],
-        )
-
-        rows.append(
-            {
-                "source_node_key": row["source_node_key"],
-                "target_node_key": row["target_node_key"],
-                "edge_type": "directed_intermediary_seed",
-                "relationship_type": row["relation_type"],
-                "confidence_score": row["confidence_score"],
-                "evidence_basis": row["evidence_basis"],
-                "edge_hash": edge_hash,
-                "created_at": utc_now_iso(),
-            }
-        )
-
-    return rows
-
-
 def persist_seed_edges(seed_edges: list[dict]) -> int:
     if not seed_edges:
         return 0
 
-    supabase_upsert(
-        SEED_EDGE_TABLE,
-        seed_edges,
-        on_conflict="seed_hash",
-    )
-
+    supabase_upsert(SEED_EDGE_TABLE, seed_edges, on_conflict="seed_hash")
     return len(seed_edges)
-
-
-def persist_main_edges_if_enabled(seed_edges: list[dict]) -> int:
-    if not PERSIST_TO_MAIN_EDGE_TABLE or not seed_edges:
-        return 0
-
-    main_edge_rows = build_main_edge_rows(seed_edges)
-
-    # Only enable after checking your main edge table has compatible columns.
-    supabase_upsert(
-        EDGE_TABLE,
-        main_edge_rows,
-        on_conflict="edge_hash",
-    )
-
-    return len(main_edge_rows)
 
 
 def persist_validation(
@@ -326,11 +318,7 @@ def persist_validation(
         "created_at": utc_now_iso(),
     }
 
-    supabase_upsert(
-        SEED_VALIDATION_TABLE,
-        [payload],
-        on_conflict="run_id,validation_name",
-    )
+    supabase_upsert(SEED_VALIDATION_TABLE, [payload], on_conflict="run_id,validation_name")
 
 
 def build_telemetry_payload(
@@ -360,11 +348,7 @@ def build_telemetry_payload(
 
 
 def persist_telemetry(payload: dict) -> None:
-    supabase_upsert(
-        SEED_TELEMETRY_TABLE,
-        [payload],
-        on_conflict="run_id",
-    )
+    supabase_upsert(SEED_TELEMETRY_TABLE, [payload], on_conflict="run_id")
 
 
 def main() -> None:
@@ -372,34 +356,33 @@ def main() -> None:
 
     print("=" * 80)
     print("PHASE 5A.3 — DIRECTED INTERMEDIARY SEEDING LAYER")
-    print("RUNTIME MARKER: 5A3_DIRECTED_INTERMEDIARY_SEEDING_V1")
+    print("RUNTIME MARKER: 5A3_CANONICAL_INTEGRATED_V2")
     print("=" * 80)
 
     active_rules_loaded = 0
     source_edges_loaded = 0
     seed_edges_generated = 0
     seed_edges_persisted = 0
-    main_edges_persisted = 0
     validation_failures = 0
+    load_details = {}
 
     try:
-        source_edges = load_existing_edges()
+        source_edges, load_details = load_existing_edges()
         source_edges_loaded = len(source_edges)
-        existing_edge_pairs = build_edge_index(source_edges)
 
         seed_rules = load_active_seed_rules()
         active_rules_loaded = len(seed_rules)
 
         print(f"source_edges_loaded={source_edges_loaded}")
+        print(f"load_details={load_details}")
         print(f"active_rules_loaded={active_rules_loaded}")
 
-        seed_edges = generate_seed_edges(seed_rules, existing_edge_pairs)
+        seed_edges = generate_seed_edges(seed_rules, source_edges)
         seed_edges_generated = len(seed_edges)
 
         print(f"seed_edges_generated={seed_edges_generated}")
 
         seed_edges_persisted = persist_seed_edges(seed_edges)
-        main_edges_persisted = persist_main_edges_if_enabled(seed_edges)
 
         if active_rules_loaded == 0:
             validation_failures += 1
@@ -422,26 +405,25 @@ def main() -> None:
 
         if seed_edges_generated == 0:
             validation_failures += 1
+            status = "warning"
             persist_validation(
                 "seed_generation",
                 "warning",
                 0,
                 1,
-                "No seed edges generated. Graph may still lack matching source nodes.",
-                {
-                    "min_confidence": MIN_CONFIDENCE_SCORE,
-                },
+                "No seed edges generated.",
+                load_details,
             )
-            status = "warning"
         else:
+            status = "success"
             persist_validation(
                 "seed_generation",
                 "passed",
                 seed_edges_generated,
                 1,
                 "Directed intermediary seed edges generated.",
+                load_details,
             )
-            status = "success"
 
         runtime_seconds = time.time() - started
 
@@ -455,22 +437,19 @@ def main() -> None:
                 validation_failures=validation_failures,
                 runtime_seconds=runtime_seconds,
                 details={
-                    "main_edges_persisted": main_edges_persisted,
-                    "write_main_edges_enabled": PERSIST_TO_MAIN_EDGE_TABLE,
+                    **load_details,
                     "min_confidence": MIN_CONFIDENCE_SCORE,
-                    "runtime_marker": "5A3_DIRECTED_INTERMEDIARY_SEEDING_V1",
+                    "runtime_marker": "5A3_CANONICAL_INTEGRATED_V2",
                 },
             )
         )
 
         print(f"seed_edges_persisted={seed_edges_persisted}")
-        print(f"main_edges_persisted={main_edges_persisted}")
         print(f"status={status}")
 
     except Exception as exc:
         runtime_seconds = time.time() - started
         error_message = str(exc)
-
         print(f"ERROR: {error_message}")
 
         try:
@@ -485,10 +464,8 @@ def main() -> None:
                     runtime_seconds=runtime_seconds,
                     error_message=error_message,
                     details={
-                        "main_edges_persisted": main_edges_persisted,
-                        "write_main_edges_enabled": PERSIST_TO_MAIN_EDGE_TABLE,
-                        "min_confidence": MIN_CONFIDENCE_SCORE,
-                        "runtime_marker": "5A3_DIRECTED_INTERMEDIARY_SEEDING_V1",
+                        **load_details,
+                        "runtime_marker": "5A3_CANONICAL_INTEGRATED_V2",
                     },
                 )
             )
