@@ -46,4 +46,4 @@ jobs:
 
       - name: Run Phase 5B corridor engine
         run: |
-          python transmission_layers/structural_theme_graph/phase5b_propagation_corridor_engine.py
+          python transmission_layers/graph_foundation/phase5b_propagation_corridor_engine.py
