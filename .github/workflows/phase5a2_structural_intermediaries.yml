@@ -1,0 +1,56 @@
+name: Phase 5A.2 Structural Intermediary Formation
+
+on:
+  workflow_dispatch:
+    inputs:
+      min_inbound:
+        description: Minimum inbound edges required
+        required: false
+        default: '1'
+      min_outbound:
+        description: Minimum outbound edges required
+        required: false
+        default: '1'
+      edge_tables:
+        description: Comma-separated edge tables to scan
+        required: false
+        default: 'structural_theme_graph_edges,structural_theme_graph_continuity_edges,structural_theme_graph_two_hop_edges,structural_theme_graph_transmission_edges'
+  schedule:
+    - cron: '25 23 * * *'
+
+jobs:
+  phase5a2-structural-intermediaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      INTERMEDIARY_MIN_INBOUND: ${{ github.event.inputs.min_inbound || '1' }}
+      INTERMEDIARY_MIN_OUTBOUND: ${{ github.event.inputs.min_outbound || '1' }}
+      INTERMEDIARY_EDGE_TABLES: ${{ github.event.inputs.edge_tables || 'structural_theme_graph_edges,structural_theme_graph_continuity_edges,structural_theme_graph_two_hop_edges,structural_theme_graph_transmission_edges' }}
+      INTERMEDIARY_LIMIT_PER_TABLE: '5000'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run structural intermediary formation engine
+        working-directory: transmission_layers/graph_foundation/intermediaries
+        run: |
+          python intermediary_detection_engine.py \
+            --run-id "${GITHUB_RUN_ID}" \
+            --min-inbound "${INTERMEDIARY_MIN_INBOUND}" \
+            --min-outbound "${INTERMEDIARY_MIN_OUTBOUND}" \
+            --edge-tables "${INTERMEDIARY_EDGE_TABLES}"
