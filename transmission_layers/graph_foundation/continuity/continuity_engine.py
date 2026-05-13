@@ -270,30 +270,39 @@ def theme_filter(theme_name: str) -> dict[str, str]:
 
 
 def normalize_edge(row: dict[str, Any]) -> Optional[dict[str, Any]]:
-    source_id = get_first(row, ["source_node_id", "from_node_id", "parent_node_id"])
-    target_id = get_first(row, ["target_node_id", "to_node_id", "child_node_id"])
+    """
+    Normalize graph edges.
 
-    if source_id is None or target_id is None:
+    Current graph foundation edges are semantic-key based, not numeric-ID based.
+    Therefore this engine uses source_node_key / target_node_key as stable IDs
+    for continuity generation.
+
+    This keeps the engine compatible with tables that do not contain
+    source_node_id / target_node_id.
+    """
+
+    source_key = get_first(
+        row,
+        ["source_node_key", "from_node_key", "source_key", "source_name"],
+    )
+
+    target_key = get_first(
+        row,
+        ["target_node_key", "to_node_key", "target_key", "target_name"],
+    )
+
+    if not source_key or not target_key:
         return None
 
-    try:
-        source_id = int(source_id)
-        target_id = int(target_id)
-    except (TypeError, ValueError):
-        return None
+    source_key = str(source_key)
+    target_key = str(target_key)
 
     return {
         **row,
-        "source_node_id": source_id,
-        "target_node_id": target_id,
-        "source_node_key": get_first(
-            row,
-            ["source_node_key", "from_node_key", "source_key", "source_name"],
-        ),
-        "target_node_key": get_first(
-            row,
-            ["target_node_key", "to_node_key", "target_key", "target_name"],
-        ),
+        "source_node_id": source_key,
+        "target_node_id": target_key,
+        "source_node_key": source_key,
+        "target_node_key": target_key,
         "theme_name": row.get("theme_name") or "generic",
     }
 
@@ -350,7 +359,7 @@ def fetch_optional_table(
 # Index Builders
 # ============================================================
 
-def index_by_edge(rows: list[dict[str, Any]]) -> dict[tuple[int, int], dict[str, Any]]:
+def index_by_edge(rows: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
     indexed = {}
 
     for row in rows:
@@ -361,14 +370,14 @@ def index_by_edge(rows: list[dict[str, Any]]) -> dict[tuple[int, int], dict[str,
             continue
 
         try:
-            indexed[(int(source_id), int(target_id))] = row
+            indexed[(str(source_id), str(target_id))] = row
         except (TypeError, ValueError):
             continue
 
     return indexed
 
 
-def index_pressure(rows: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+def index_pressure(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     indexed = {}
 
     for row in rows:
@@ -378,14 +387,14 @@ def index_pressure(rows: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
             continue
 
         try:
-            indexed[int(node_id)] = row
+            indexed[str(node_id)] = row
         except (TypeError, ValueError):
             continue
 
     return indexed
 
 
-def index_regime(rows: list[dict[str, Any]]) -> dict[tuple[int, int], str]:
+def index_regime(rows: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
     indexed = {}
 
     for row in rows:
@@ -400,14 +409,14 @@ def index_regime(rows: list[dict[str, Any]]) -> dict[tuple[int, int], str]:
             continue
 
         try:
-            indexed[(int(source_id), int(target_id))] = str(regime)
+            indexed[(str(source_id), str(target_id))] = str(regime)
         except (TypeError, ValueError):
             continue
 
     return indexed
 
 
-def build_propagation_support(rows: list[dict[str, Any]]) -> dict[tuple[int, int], float]:
+def build_propagation_support(rows: list[dict[str, Any]]) -> dict[tuple[str, str], float]:
     support = {}
 
     for row in rows:
@@ -430,7 +439,7 @@ def build_propagation_support(rows: list[dict[str, Any]]) -> dict[tuple[int, int
         )
 
         try:
-            key = (int(source_id), int(target_id))
+            key = (str(source_id), str(target_id))
             support[key] = max(support.get(key, 0.0), clamp(score))
         except (TypeError, ValueError):
             continue
@@ -663,17 +672,17 @@ def score_candidate(candidate: dict[str, Any], config: ContinuityConfig) -> dict
 
 def generate_candidates(
     edges: list[dict[str, Any]],
-    persistence_index: dict[tuple[int, int], dict[str, Any]],
-    pressure_index: dict[int, dict[str, Any]],
-    regime_index: dict[tuple[int, int], str],
-    propagation_support: dict[tuple[int, int], float],
+    persistence_index: dict[tuple[str, str], dict[str, Any]],
+    pressure_index: dict[str, dict[str, Any]],
+    regime_index: dict[tuple[str, str], str],
+    propagation_support: dict[tuple[str, str], float],
     config: ContinuityConfig,
 ) -> list[dict[str, Any]]:
 
-    downstream_by_source: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    downstream_by_source: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     for edge in edges:
-        downstream_by_source[int(edge["source_node_id"])].append(edge)
+        downstream_by_source[str(edge["source_node_id"])].append(edge)
 
     upstream_edges = sorted(
         edges,
@@ -684,8 +693,8 @@ def generate_candidates(
     candidates = []
 
     for upstream in upstream_edges:
-        source_id = int(upstream["source_node_id"])
-        intermediate_id = int(upstream["target_node_id"])
+        source_id = str(upstream["source_node_id"])
+        intermediate_id = str(upstream["target_node_id"])
 
         downstream_edges = downstream_by_source.get(intermediate_id, [])
 
@@ -699,7 +708,7 @@ def generate_candidates(
         )[: config.max_downstream_edges_per_intermediate]
 
         for downstream in downstream_edges:
-            target_id = int(downstream["target_node_id"])
+            target_id = str(downstream["target_node_id"])
 
             candidate = {
                 "upstream_edge": upstream,
@@ -746,7 +755,7 @@ def generate_candidates(
 # Validation
 # ============================================================
 
-def is_cycle_safe(source_id: int, intermediate_id: int, target_id: int) -> bool:
+def is_cycle_safe(source_id: str, intermediate_id: str, target_id: str) -> bool:
     return (
         source_id != intermediate_id
         and intermediate_id != target_id
@@ -756,13 +765,13 @@ def is_cycle_safe(source_id: int, intermediate_id: int, target_id: int) -> bool:
 
 def validate_candidate(
     candidate: dict[str, Any],
-    seen_keys: set[tuple[int, int, int, str]],
+    seen_keys: set[tuple[str, str, str, str]],
     config: ContinuityConfig,
 ) -> tuple[bool, Optional[str]]:
 
-    source_id = int(candidate["source_node_id"])
-    intermediate_id = int(candidate["intermediate_node_id"])
-    target_id = int(candidate["target_node_id"])
+    source_id = str(candidate["source_node_id"])
+    intermediate_id = str(candidate["intermediate_node_id"])
+    target_id = str(candidate["target_node_id"])
     theme_name = str(candidate.get("theme_name") or "generic")
 
     if not is_cycle_safe(source_id, intermediate_id, target_id):
@@ -1193,7 +1202,7 @@ def run_continuity_engine(config: ContinuityConfig) -> dict[str, Any]:
 
         candidates_generated = len(candidates)
 
-        seen_keys: set[tuple[int, int, int, str]] = set()
+        seen_keys: set[tuple[str, str, str, str]] = set()
         candidate_rows = []
         accepted_edge_rows = []
         rejected_candidate_rows = []
@@ -1227,9 +1236,9 @@ def run_continuity_engine(config: ContinuityConfig) -> dict[str, Any]:
             if is_valid:
                 seen_keys.add(
                     (
-                        int(candidate["source_node_id"]),
-                        int(candidate["intermediate_node_id"]),
-                        int(candidate["target_node_id"]),
+                        str(candidate["source_node_id"]),
+                        str(candidate["intermediate_node_id"]),
+                        str(candidate["target_node_id"]),
                         str(candidate.get("theme_name") or "generic"),
                     )
                 )
