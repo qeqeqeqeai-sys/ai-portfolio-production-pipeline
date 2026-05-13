@@ -2,13 +2,26 @@
 PHASE 5A.2 — STRUCTURAL INTERMEDIARY FORMATION
 intermediary_detection_engine.py
 
-SELF-CONTAINED VERSION.
+SELF-CONTAINED VERSION V4.
 
-Replace this exact GitHub file:
-transmission_layers/graph_foundation/intermediaries/intermediary_detection_engine.py
+Fix included:
+- Telemetry payload is now aligned to this actual schema:
+
+  structural_theme_graph_intermediary_telemetry:
+    run_id
+    status
+    edges_loaded
+    candidate_nodes_loaded
+    intermediaries_detected
+    intermediaries_persisted
+    validation_failures
+    runtime_seconds
+    error_message
+    details
+    created_at
 
 Runtime marker:
-5A2_SELF_CONTAINED_V3
+5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED
 """
 
 from __future__ import annotations
@@ -16,6 +29,7 @@ from __future__ import annotations
 import os
 import re
 import json
+import time
 import hashlib
 import requests
 
@@ -40,6 +54,10 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
+
+
+def utc_now_iso() -> str:
+    return datetime.utcnow().isoformat()
 
 
 def supabase_headers(prefer: str | None = None) -> dict:
@@ -249,7 +267,7 @@ def detect_intermediaries(edges: list[dict]) -> list[dict]:
                 "intermediary_activation_score": round(intermediary_activation_score, 4),
                 "upstream_source_count": len(inbound_sources[node_key]),
                 "downstream_target_count": len(outbound_targets[node_key]),
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": utc_now_iso(),
             }
         )
 
@@ -276,7 +294,7 @@ def build_score_rows(intermediary_rows: list[dict]) -> list[dict]:
                 "regime_stability_score": row["regime_stability"],
                 "evidence_density_score": row["evidence_density"],
                 "overall_intermediary_score": row["intermediary_activation_score"],
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": utc_now_iso(),
             }
         )
 
@@ -293,7 +311,7 @@ def build_snapshot_rows(intermediary_rows: list[dict]) -> list[dict]:
                 "node_key": row["node_key"],
                 "snapshot_type": "daily",
                 "snapshot_payload": row,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": utc_now_iso(),
             }
         )
 
@@ -339,6 +357,32 @@ def persist_snapshots(rows: list[dict]) -> int:
     return len(rows)
 
 
+def build_telemetry_payload(
+    status: str,
+    edges_loaded: int,
+    candidate_nodes_loaded: int,
+    intermediaries_detected: int,
+    intermediaries_persisted: int,
+    validation_failures: int,
+    runtime_seconds: float,
+    error_message: str | None = None,
+    details: dict | None = None,
+) -> dict:
+    return {
+        "run_id": RUN_ID,
+        "status": status,
+        "edges_loaded": int(edges_loaded or 0),
+        "candidate_nodes_loaded": int(candidate_nodes_loaded or 0),
+        "intermediaries_detected": int(intermediaries_detected or 0),
+        "intermediaries_persisted": int(intermediaries_persisted or 0),
+        "validation_failures": int(validation_failures or 0),
+        "runtime_seconds": round(float(runtime_seconds or 0), 4),
+        "error_message": error_message,
+        "details": details or {},
+        "created_at": utc_now_iso(),
+    }
+
+
 def persist_telemetry(payload: dict) -> None:
     supabase_upsert(
         INTERMEDIARY_TELEMETRY_TABLE,
@@ -358,7 +402,7 @@ def persist_validation(
         "validation_status": status,
         "message": message,
         "observed_value": observed_value,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": utc_now_iso(),
     }
 
     supabase_upsert(
@@ -369,56 +413,113 @@ def persist_validation(
 
 
 def main() -> None:
+    started = time.time()
+
     print("=" * 80)
     print("PHASE 5A.2 — STRUCTURAL INTERMEDIARY DETECTION")
-    print("SELF-CONTAINED VERSION — CHECKSUM 5A2_SELF_CONTAINED_V3")
+    print("SELF-CONTAINED VERSION — CHECKSUM 5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED")
     print("=" * 80)
 
-    edges = load_graph_edges()
-    edges_loaded = len(edges)
-    print(f"edges_loaded={edges_loaded}")
+    edges_loaded = 0
+    candidate_nodes_loaded = 0
+    intermediaries_detected = 0
+    rows_persisted = 0
+    scores_written = 0
+    snapshots_written = 0
+    validation_failures = 0
 
-    intermediary_rows = detect_intermediaries(edges)
-    intermediaries_detected = len(intermediary_rows)
-    print(f"intermediaries_detected={intermediaries_detected}")
+    try:
+        edges = load_graph_edges()
+        edges_loaded = len(edges)
 
-    score_rows = build_score_rows(intermediary_rows)
-    snapshot_rows = build_snapshot_rows(intermediary_rows)
+        print(f"edges_loaded={edges_loaded}")
 
-    rows_persisted = persist_intermediaries(intermediary_rows)
-    scores_written = persist_scores(score_rows)
-    snapshots_written = persist_snapshots(snapshot_rows)
+        intermediary_rows = detect_intermediaries(edges)
+        intermediaries_detected = len(intermediary_rows)
+        candidate_nodes_loaded = intermediaries_detected
 
-    telemetry_payload = {
-        "run_id": RUN_ID,
-        "edges_loaded": edges_loaded,
-        "intermediaries_detected": intermediaries_detected,
-        "rows_persisted": rows_persisted,
-        "scores_written": scores_written,
-        "snapshots_written": snapshots_written,
-        "min_inbound": MIN_INBOUND,
-        "min_outbound": MIN_OUTBOUND,
-        "created_at": datetime.utcnow().isoformat(),
-    }
+        print(f"intermediaries_detected={intermediaries_detected}")
 
-    persist_telemetry(telemetry_payload)
+        score_rows = build_score_rows(intermediary_rows)
+        snapshot_rows = build_snapshot_rows(intermediary_rows)
 
-    if intermediaries_detected == 0:
-        persist_validation(
-            status="warning",
-            message="No intermediary nodes detected.",
-            observed_value=0,
+        rows_persisted = persist_intermediaries(intermediary_rows)
+        scores_written = persist_scores(score_rows)
+        snapshots_written = persist_snapshots(snapshot_rows)
+
+        if intermediaries_detected == 0:
+            validation_failures = 1
+            persist_validation(
+                status="warning",
+                message="No intermediary nodes detected.",
+                observed_value=0,
+            )
+            run_status = "warning"
+        else:
+            persist_validation(
+                status="passed",
+                message="Intermediary nodes successfully detected.",
+                observed_value=intermediaries_detected,
+            )
+            run_status = "success"
+
+        runtime_seconds = time.time() - started
+
+        telemetry_payload = build_telemetry_payload(
+            status=run_status,
+            edges_loaded=edges_loaded,
+            candidate_nodes_loaded=candidate_nodes_loaded,
+            intermediaries_detected=intermediaries_detected,
+            intermediaries_persisted=rows_persisted,
+            validation_failures=validation_failures,
+            runtime_seconds=runtime_seconds,
+            error_message=None,
+            details={
+                "scores_written": scores_written,
+                "snapshots_written": snapshots_written,
+                "min_inbound": MIN_INBOUND,
+                "min_outbound": MIN_OUTBOUND,
+                "runtime_marker": "5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED",
+            },
         )
-    else:
-        persist_validation(
-            status="passed",
-            message="Intermediary nodes successfully detected.",
-            observed_value=intermediaries_detected,
+
+        persist_telemetry(telemetry_payload)
+
+        print(f"rows_persisted={rows_persisted}")
+        print(f"scores_written={scores_written}")
+        print(f"snapshots_written={snapshots_written}")
+        print(f"status={run_status}")
+
+    except Exception as exc:
+        runtime_seconds = time.time() - started
+        error_message = str(exc)
+
+        print(f"ERROR: {error_message}")
+
+        failure_payload = build_telemetry_payload(
+            status="failed",
+            edges_loaded=edges_loaded,
+            candidate_nodes_loaded=candidate_nodes_loaded,
+            intermediaries_detected=intermediaries_detected,
+            intermediaries_persisted=rows_persisted,
+            validation_failures=max(1, validation_failures),
+            runtime_seconds=runtime_seconds,
+            error_message=error_message,
+            details={
+                "scores_written": scores_written,
+                "snapshots_written": snapshots_written,
+                "min_inbound": MIN_INBOUND,
+                "min_outbound": MIN_OUTBOUND,
+                "runtime_marker": "5A2_SELF_CONTAINED_V4_TELEMETRY_SCHEMA_ALIGNED",
+            },
         )
 
-    print(f"rows_persisted={rows_persisted}")
-    print(f"scores_written={scores_written}")
-    print(f"snapshots_written={snapshots_written}")
+        try:
+            persist_telemetry(failure_payload)
+        except Exception as telemetry_exc:
+            print(f"WARNING: failed to persist failure telemetry: {telemetry_exc}")
+
+        raise
 
     print("=" * 80)
     print("COMPLETE")
