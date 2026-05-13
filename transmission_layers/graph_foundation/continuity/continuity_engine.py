@@ -1031,38 +1031,50 @@ def build_validation_rows(
     duplicate_rejections: int,
 ) -> list[dict[str, Any]]:
 
+    run_id = f"continuity_{run_date_sgt}_{theme_name}"
+
     total = accepted_count + rejected_count
     acceptance_rate = accepted_count / total if total else 0.0
 
     return [
         {
+            "run_id": run_id,
             "run_date_sgt": run_date_sgt,
             "theme_name": theme_name,
             "validation_name": "acceptance_rate_nonzero",
             "validation_status": "pass" if accepted_count > 0 else "warn",
-            "validation_value": round(acceptance_rate, 6),
+            "observed_value": round(acceptance_rate, 6),
             "threshold_value": 0.0,
+            "message": (
+                "Continuity activations found"
+                if accepted_count > 0
+                else "No continuity activations found"
+            ),
             "details": {
                 "accepted_count": accepted_count,
                 "rejected_count": rejected_count,
             },
         },
         {
+            "run_id": run_id,
             "run_date_sgt": run_date_sgt,
             "theme_name": theme_name,
             "validation_name": "cycle_rejection_monitor",
             "validation_status": "pass",
-            "validation_value": float(cycle_rejections),
+            "observed_value": float(cycle_rejections),
             "threshold_value": None,
+            "message": "Cycle rejection count recorded",
             "details": {"cycle_rejections": cycle_rejections},
         },
         {
+            "run_id": run_id,
             "run_date_sgt": run_date_sgt,
             "theme_name": theme_name,
             "validation_name": "duplicate_rejection_monitor",
             "validation_status": "pass",
-            "validation_value": float(duplicate_rejections),
+            "observed_value": float(duplicate_rejections),
             "threshold_value": None,
+            "message": "Duplicate rejection count recorded",
             "details": {"duplicate_rejections": duplicate_rejections},
         },
     ]
