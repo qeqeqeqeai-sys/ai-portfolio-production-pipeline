@@ -1,0 +1,49 @@
+name: Phase 5B - Propagation Corridor Intelligence Layer
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: "Lookback days for replay context"
+        required: false
+        default: "90"
+      min_corridor_score:
+        description: "Minimum corridor intelligence score to persist"
+        required: false
+        default: "0.05"
+      max_multi_hop_chains:
+        description: "Maximum multi-hop chains to evaluate"
+        required: false
+        default: "250"
+  schedule:
+    - cron: "35 23 * * *" # 07:35 Singapore time
+
+jobs:
+  phase5b-propagation-corridors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '90' }}
+      MIN_CORRIDOR_SCORE: ${{ github.event.inputs.min_corridor_score || '0.05' }}
+      MAX_MULTI_HOP_CHAINS: ${{ github.event.inputs.max_multi_hop_chains || '250' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Phase 5B corridor engine
+        run: |
+          python transmission_layers/structural_theme_graph/phase5b_propagation_corridor_engine.py
