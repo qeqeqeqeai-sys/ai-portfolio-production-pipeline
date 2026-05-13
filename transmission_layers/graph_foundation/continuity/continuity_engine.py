@@ -858,29 +858,97 @@ def build_snapshot_row(
     config: ContinuityConfig,
 ) -> dict[str, Any]:
 
-    scores = [
+    run_id = (
+        config.replay_run_id
+        if config.replay_run_id
+        else f"continuity_{run_date_sgt}_{theme_name}"
+    )
+
+    continuity_scores = [
         float(row["continuity_score"])
         for row in accepted_edges
         if row.get("continuity_score") is not None
     ]
 
-    top_continuities = sorted(
-        accepted_edges,
-        key=lambda row: float(row.get("continuity_score") or 0.0),
-        reverse=True,
-    )[:25]
+    confidence_scores = [
+        float(row["continuity_confidence"])
+        for row in accepted_edges
+        if row.get("continuity_confidence") is not None
+    ]
+
+    path_scores = [
+        float(row["continuity_score"])
+        for row in candidates
+        if row.get("continuity_score") is not None
+    ]
+
+    top_row = None
+    if accepted_edges:
+        top_row = max(
+            accepted_edges,
+            key=lambda row: float(row.get("continuity_score") or 0.0),
+        )
+
+    rejected_cycles = sum(
+        1 for row in rejected_candidates
+        if row.get("rejection_reason") == "cycle_or_self_loop"
+    )
+
+    rejected_duplicates = sum(
+        1 for row in rejected_candidates
+        if row.get("rejection_reason") == "duplicate_candidate"
+    )
+
+    rejected_low_score = sum(
+        1 for row in rejected_candidates
+        if row.get("rejection_reason") in {
+            "below_min_continuity_score",
+            "below_min_continuity_confidence",
+            "below_min_evidence_score",
+            "below_min_compatibility_score",
+        }
+    )
+
+    top_continuity_key = None
+    if top_row:
+        top_continuity_key = (
+            f"{top_row.get('source_node_key')}→"
+            f"{top_row.get('intermediate_node_key')}→"
+            f"{top_row.get('target_node_key')}"
+        )
 
     return {
+        "run_id": run_id,
         "run_date_sgt": run_date_sgt,
         "theme_name": theme_name,
-        "snapshot_type": "daily_continuity_state",
-        "candidate_count": len(candidates),
-        "accepted_count": len(accepted_edges),
-        "rejected_count": len(rejected_candidates),
-        "avg_continuity_score": round(sum(scores) / len(scores), 6) if scores else None,
-        "max_continuity_score": round(max(scores), 6) if scores else None,
-        "min_continuity_score": round(min(scores), 6) if scores else None,
-        "continuity_payload": {
+
+        "total_candidates": len(candidates),
+        "total_scored_continuities": len(candidates),
+        "total_active_continuities": len(accepted_edges),
+
+        "rejected_cycles": rejected_cycles,
+        "rejected_duplicates": rejected_duplicates,
+        "rejected_low_score": rejected_low_score,
+
+        "avg_path_continuity_score": (
+            round(sum(path_scores) / len(path_scores), 6)
+            if path_scores else None
+        ),
+        "avg_continuity_score": (
+            round(sum(continuity_scores) / len(continuity_scores), 6)
+            if continuity_scores else None
+        ),
+        "avg_confidence_score": (
+            round(sum(confidence_scores) / len(confidence_scores), 6)
+            if confidence_scores else None
+        ),
+
+        "top_continuity_key": top_continuity_key,
+        "top_continuity_score": (
+            top_row.get("continuity_score") if top_row else None
+        ),
+
+        "snapshot_payload": {
             "top_continuities": [
                 {
                     "source_node_key": row.get("source_node_key"),
@@ -890,11 +958,18 @@ def build_snapshot_row(
                     "continuity_score": row.get("continuity_score"),
                     "continuity_confidence": row.get("continuity_confidence"),
                 }
-                for row in top_continuities
-            ]
+                for row in sorted(
+                    accepted_edges,
+                    key=lambda r: float(r.get("continuity_score") or 0.0),
+                    reverse=True,
+                )[:25]
+            ],
+            "rejected_summary": {
+                "cycles": rejected_cycles,
+                "duplicates": rejected_duplicates,
+                "low_score": rejected_low_score,
+            },
         },
-        "is_replay_generated": config.is_replay_generated,
-        "replay_run_id": config.replay_run_id or "live",
     }
 
 
@@ -1005,7 +1080,7 @@ def persist_outputs(
     client.upsert(
         table=CONTINUITY_SNAPSHOTS_TABLE,
         rows=[snapshot_row],
-        on_conflict="run_date_sgt,theme_name,snapshot_type,replay_run_id",
+        on_conflict="run_id,theme_name",
     )
 
     client.insert(
