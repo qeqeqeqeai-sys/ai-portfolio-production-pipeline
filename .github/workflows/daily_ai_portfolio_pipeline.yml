@@ -46,6 +46,9 @@ jobs:
       ARCHIVE_BUCKET: ai-production-archives
       EXECUTION_CONTEXT_FILE: logs/execution_context.json
       DAILY_CONTEXT_UPDATE_FILE: logs/daily_ai_portfolio_generation_context.json
+      VALIDATION_SUMMARY_FILE: logs/validation_summary.json
+      TELEMETRY_CONTEXT_SNAPSHOT_FILE: logs/telemetry_context_snapshot.json
+      CONTEXT_ARTIFACT_MANIFEST_FILE: logs/context_artifact_manifest.json
 
     steps:
       - name: Checkout repository
@@ -295,6 +298,7 @@ jobs:
           PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
 
           echo "Pipeline runtime seconds: $PIPELINE_RUNTIME_SECONDS"
+          echo "PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS" >> $GITHUB_ENV
 
           PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
           python scripts/write_pipeline_metrics.py 2>&1 | tee logs/05_pipeline_metrics.log
@@ -309,6 +313,91 @@ jobs:
 
           PIPELINE_RUNTIME_SECONDS=$PIPELINE_RUNTIME_SECONDS \
           python scripts/write_pipeline_failure_metrics.py 2>&1 | tee logs/06_pipeline_failure_metrics.log
+
+      # ------------------------------------------------------------------
+      # Tier 3D — Context-aware validation, telemetry and artifact manifest
+      # ------------------------------------------------------------------
+      - name: Prepare Tier 3D validation summary inputs
+        if: success()
+        run: |
+          python - <<'PY' >> "$GITHUB_ENV"
+          import json
+          from pathlib import Path
+
+          report_file = Path("outputs/validation_report.json")
+
+          validation_status = "passed"
+          warnings_count = 0
+          errors_count = 0
+          hard_fail_count = 0
+
+          if report_file.exists():
+              with report_file.open("r", encoding="utf-8") as f:
+                  data = json.load(f)
+
+              raw_status = str(data.get("status", "passed") or "passed").strip().lower()
+              validation_status = raw_status
+              warnings_count = int(data.get("warning_count", data.get("warnings_count", 0)) or 0)
+              errors_count = int(data.get("error_count", data.get("errors_count", 0)) or 0)
+              hard_fail_count = int(data.get("hard_fail_count", data.get("hard_fails_count", 0)) or 0)
+
+              results = data.get("results", [])
+              if isinstance(results, list):
+                  errors_count = max(
+                      errors_count,
+                      sum(
+                          1
+                          for r in results
+                          if not r.get("passed", True)
+                          and str(r.get("severity", "")).lower() in {"error", "critical"}
+                      ),
+                  )
+                  hard_fail_count = max(
+                      hard_fail_count,
+                      sum(
+                          1
+                          for r in results
+                          if not r.get("passed", True)
+                          and str(r.get("severity", "")).lower() in {"hard_fail", "fatal"}
+                      ),
+                  )
+
+          print(f"TIER3D_VALIDATION_STATUS={validation_status}")
+          print(f"TIER3D_WARNINGS_COUNT={warnings_count}")
+          print(f"TIER3D_ERRORS_COUNT={errors_count}")
+          print(f"TIER3D_HARD_FAIL_COUNT={hard_fail_count}")
+          PY
+
+      - name: Generate Tier 3D validation summary
+        if: success()
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --source production_validation_gate \
+            --validation-status "${TIER3D_VALIDATION_STATUS:-passed}" \
+            --warnings-count "${TIER3D_WARNINGS_COUNT:-0}" \
+            --errors-count "${TIER3D_ERRORS_COUNT:-0}" \
+            --hard-fail-count "${TIER3D_HARD_FAIL_COUNT:-0}" \
+            --output-file "$VALIDATION_SUMMARY_FILE"
+
+      - name: Generate Tier 3D telemetry context snapshot
+        if: success()
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --pipeline-status "${PIPELINE_STATUS:-SUCCESS}" \
+            --runtime-seconds "${PIPELINE_RUNTIME_SECONDS:-0}" \
+            --output-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE"
+
+      - name: Generate Tier 3D context artifact manifest
+        if: success()
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --telemetry-snapshot-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE" \
+            --output-file "$CONTEXT_ARTIFACT_MANIFEST_FILE"
 
       - name: Persistent archive production reports to Supabase Storage
         id: persistent_archive
