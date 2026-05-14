@@ -2,6 +2,15 @@ name: Daily AI Portfolio Production Pipeline
 
 on:
   workflow_dispatch:
+    inputs:
+      run_date_sgt:
+        description: "Optional run_date_sgt override, YYYY-MM-DD"
+        required: false
+        default: ""
+      theme_name:
+        description: "Theme name"
+        required: false
+        default: "ai"
 
   schedule:
     # 05:30 Singapore time, Tuesday to Saturday
@@ -20,6 +29,8 @@ jobs:
     env:
       TZ: Asia/Singapore
       PYTHONUNBUFFERED: "1"
+      PYTHONPATH: ${{ github.workspace }}
+
 
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -33,6 +44,8 @@ jobs:
       LOGS_DIR: logs
       ARCHIVE_STAGING_DIR: archive_staging
       ARCHIVE_BUCKET: ai-production-archives
+      EXECUTION_CONTEXT_FILE: logs/execution_context.json
+      DAILY_CONTEXT_UPDATE_FILE: logs/daily_ai_portfolio_generation_context.json
 
     steps:
       - name: Checkout repository
@@ -80,6 +93,25 @@ jobs:
           PY
 
       # ------------------------------------------------------------------
+      # Tier 3C — Shared execution context
+      # ------------------------------------------------------------------
+      - name: Resolve shared execution context
+        run: |
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "${{ github.event.inputs.theme_name || 'ai' }}" \
+            --requested-run-date-sgt "${{ github.event.inputs.run_date_sgt || '' }}" \
+            --output-file "$EXECUTION_CONTEXT_FILE"
+
+      - name: Export initial execution context to GitHub env
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --github-env-file "$GITHUB_ENV"
+
+      # ------------------------------------------------------------------
       # Tier 3B — Advisory-only orchestration preflight
       # ------------------------------------------------------------------
       - name: Tier 3B preflight orchestration guardrails
@@ -91,8 +123,7 @@ jobs:
         run: |
           python -m core.orchestration_guardrails.cli preflight \
             --workflow-name "${{ github.workflow }}" \
-            --run-id "${{ github.run_id }}" \
-            --run-mode "${{ github.event_name }}"
+            --theme-name "$THEME_NAME"
 
       - name: Run Step 1 - Daily stock alpha scoring
         run: |
@@ -170,6 +201,71 @@ jobs:
           echo "ERROR: No suitable summary file found."
           ls -la outputs || true
           exit 1
+
+      - name: Normalize daily portfolio run date into execution context update JSON
+        if: success()
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import os
+          from pathlib import Path
+
+          summary_file = Path("outputs/ai_portfolio_v7_summary_latest.csv")
+          output_file = Path(os.getenv("DAILY_CONTEXT_UPDATE_FILE", "logs/daily_ai_portfolio_generation_context.json"))
+          output_file.parent.mkdir(parents=True, exist_ok=True)
+
+          run_date_sgt = os.getenv("RUN_DATE_SGT", "")
+          source_field = "RUN_DATE_SGT_env_fallback"
+
+          if summary_file.exists():
+              with summary_file.open("r", encoding="utf-8-sig", newline="") as f:
+                  rows = list(csv.DictReader(f))
+
+              row = rows[0] if rows else {}
+              candidates = [
+                  "portfolio_date_used",
+                  "signal_date_used",
+                  "run_date_sgt_requested",
+                  "run_date_sgt",
+              ]
+
+              for field in candidates:
+                  value = str(row.get(field, "") or "").strip()
+                  if value and value.lower() not in {"nan", "none", "na"}:
+                      run_date_sgt = value
+                      source_field = field
+                      break
+
+          payload = {
+              "run_date_sgt": run_date_sgt,
+              "source_field": source_field,
+              "source_file": str(summary_file),
+          }
+
+          with output_file.open("w", encoding="utf-8") as f:
+              json.dump(payload, f, indent=2, sort_keys=True)
+
+          print(f"Normalized daily AI portfolio run_date_sgt={run_date_sgt}")
+          print(f"Source field={source_field}")
+          print(f"Wrote context update JSON to {output_file}")
+          PY
+
+      - name: Update execution context from daily portfolio output
+        if: success()
+        run: |
+          python -m core.orchestration_guardrails.cli context update-from-json \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --source-json "$DAILY_CONTEXT_UPDATE_FILE" \
+            --field run_date_sgt \
+            --target-field resolved_run_date_sgt
+
+      - name: Export final execution context to GitHub env
+        if: success()
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --github-env-file "$GITHUB_ENV"
 
       - name: Run Step 4 - Production validation gates
         if: success()
