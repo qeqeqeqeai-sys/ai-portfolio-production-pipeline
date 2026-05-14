@@ -79,6 +79,21 @@ jobs:
           print("All required secrets are present.")
           PY
 
+      # ------------------------------------------------------------------
+      # Tier 3B — Advisory-only orchestration preflight
+      # ------------------------------------------------------------------
+      - name: Tier 3B preflight orchestration guardrails
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUARDRAILS_STRICT_MODE: "false"
+          GUARDRAILS_EXPECTED_WORKFLOW_ROLE: "daily_ai_portfolio"
+        run: |
+          python -m core.orchestration_guardrails.cli preflight \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}"
+
       - name: Run Step 1 - Daily stock alpha scoring
         run: |
           python scripts/ai_signal_scoring_v7_alpha_model_efficiency_github_actions.py 2>&1 | tee logs/01_signal_scoring.log
