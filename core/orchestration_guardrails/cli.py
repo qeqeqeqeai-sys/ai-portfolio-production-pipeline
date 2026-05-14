@@ -222,6 +222,28 @@ def cmd_aggregate_operational_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+
+
+# ----------------------------------------------------------------------
+# Tier 3F — Operational trend intelligence commands
+# ----------------------------------------------------------------------
+def cmd_trend_analyze(args: argparse.Namespace) -> int:
+    from core.orchestration_guardrails.operational_trends import analyze_operational_trends
+
+    result = analyze_operational_trends(
+        logs_dir=args.logs_dir,
+        analysis_window_days=args.analysis_window_days,
+    )
+
+    print("[operational_trends] files written:")
+    for path in result["files_written"]:
+        print(f"[operational_trends] - {path}")
+    print(f"[operational_trends] trend_confidence={result['trend_confidence']}")
+    print(f"[operational_trends] health_score={result['health_score']}")
+
+    return 0
+
+
 # ----------------------------------------------------------------------
 # Parser construction
 # ----------------------------------------------------------------------
@@ -371,6 +393,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     operational_summary.add_argument("--output-dir", default="logs")
     operational_summary.set_defaults(func=cmd_aggregate_operational_summary)
+
+    # ------------------------------------------------------------------
+    # Tier 3F operational trend commands
+    # ------------------------------------------------------------------
+    trend = subparsers.add_parser("trend")
+    trend_subparsers = trend.add_subparsers(dest="trend_command")
+
+    trend_analyze = trend_subparsers.add_parser("analyze")
+    trend_analyze.add_argument("--logs-dir", default="logs")
+    trend_analyze.add_argument("--analysis-window-days", type=int, default=14)
+    trend_analyze.set_defaults(func=cmd_trend_analyze)
 
     return parser
 
