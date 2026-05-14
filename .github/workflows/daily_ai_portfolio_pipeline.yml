@@ -399,6 +399,28 @@ jobs:
             --telemetry-snapshot-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE" \
             --output-file "$CONTEXT_ARTIFACT_MANIFEST_FILE"
 
+      - name: Tier 3D.1 advisory consistency checks
+        if: always()
+        continue-on-error: true
+        run: |
+          python -m core.orchestration_guardrails.cli validation check-env-consistency \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --telemetry-snapshot-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE" \
+            --artifact-manifest-file "$CONTEXT_ARTIFACT_MANIFEST_FILE"
+
+      - name: Tier 3E cross-workflow operational aggregation
+        if: always()
+        continue-on-error: true
+        run: |
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --telemetry-snapshot-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE" \
+            --artifact-manifest-file "$CONTEXT_ARTIFACT_MANIFEST_FILE" \
+            --output-dir logs
+
+
       - name: Persistent archive production reports to Supabase Storage
         id: persistent_archive
         if: always()
