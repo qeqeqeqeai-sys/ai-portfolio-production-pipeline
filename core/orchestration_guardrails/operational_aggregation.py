@@ -74,6 +74,7 @@ def aggregate_operational_summary(
     run_date_sgt = _to_str(context.get("resolved_run_date_sgt"))
 
     pipeline_status = _to_str((telemetry or {}).get("pipeline_status")) or _to_str(context.get("status"))
+    pipeline_status_normalized = (pipeline_status or "").strip().lower()
     validation_status = _to_str((validation or {}).get("validation_status"))
     runtime_seconds = _to_int((telemetry or {}).get("runtime_seconds"), default=0)
 
@@ -82,12 +83,12 @@ def aggregate_operational_summary(
     hard_fail_count = _to_int((validation or {}).get("hard_fail_count"), default=0)
     consistency_status = _to_str((validation or {}).get("consistency_status"))
 
-    if pipeline_status != "SUCCESS" or errors_count > 0 or hard_fail_count > 0:
+    if pipeline_status_normalized in {"failure", "failed", "cancelled", "canceled", "timed_out"} or errors_count > 0 or hard_fail_count > 0:
         operational_status = "failed"
+    elif pipeline_status_normalized == "success" and validation_status == "passed" and hard_fail_count == 0:
+        operational_status = "success"
     elif warnings_count > 0 or advisory_warnings:
         operational_status = "warning"
-    elif pipeline_status == "SUCCESS" and validation_status == "passed" and hard_fail_count == 0:
-        operational_status = "healthy"
     else:
         operational_status = "warning"
 
