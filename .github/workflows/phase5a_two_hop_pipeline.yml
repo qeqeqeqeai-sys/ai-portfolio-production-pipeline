@@ -227,6 +227,17 @@ jobs:
             --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
             --artifact-manifest-file logs/context_artifact_manifest.json
 
+
+      - name: Tier 3E cross-workflow operational aggregation
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --artifact-manifest-file logs/context_artifact_manifest.json \
+            --output-dir logs
+
       - name: Upload Phase 5A execution logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -239,3 +250,7 @@ jobs:
             logs/validation_summary.json
             logs/telemetry_context_snapshot.json
             logs/context_artifact_manifest.json
+            logs/platform_pipeline_index.json
+            logs/platform_runtime_summary.json
+            logs/platform_validation_summary.json
+            logs/platform_operational_summary.json
