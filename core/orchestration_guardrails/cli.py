@@ -139,6 +139,10 @@ def cmd_validation_check_env_consistency(args: argparse.Namespace) -> int:
         run_date_sgt=args.run_date_sgt,
         github_run_id=args.github_run_id,
         theme_name=args.theme_name,
+        workflow_name=args.workflow_name,
+        validation_summary_file=args.validation_summary_file,
+        telemetry_snapshot_file=args.telemetry_snapshot_file,
+        artifact_manifest_file=args.artifact_manifest_file,
     )
 
     if warnings:
@@ -261,6 +265,19 @@ def build_parser() -> argparse.ArgumentParser:
     validation_check_env.add_argument("--run-date-sgt", default="")
     validation_check_env.add_argument("--github-run-id", default="")
     validation_check_env.add_argument("--theme-name", default="")
+    validation_check_env.add_argument("--workflow-name", default="")
+    validation_check_env.add_argument(
+        "--validation-summary-file",
+        default=DEFAULT_VALIDATION_SUMMARY_FILE,
+    )
+    validation_check_env.add_argument(
+        "--telemetry-snapshot-file",
+        default=DEFAULT_TELEMETRY_SNAPSHOT_FILE,
+    )
+    validation_check_env.add_argument(
+        "--artifact-manifest-file",
+        default=DEFAULT_ARTIFACT_MANIFEST_FILE,
+    )
     validation_check_env.set_defaults(func=cmd_validation_check_env_consistency)
 
     # ------------------------------------------------------------------
