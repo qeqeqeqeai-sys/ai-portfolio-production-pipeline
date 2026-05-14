@@ -17,8 +17,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      PYTHONPATH: ${{ github.workspace }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXECUTION_CONTEXT_FILE: logs/execution_context.json
+      VALIDATION_SUMMARY_FILE: logs/validation_summary.json
+      TELEMETRY_CONTEXT_SNAPSHOT_FILE: logs/telemetry_context_snapshot.json
+      CONTEXT_ARTIFACT_MANIFEST_FILE: logs/context_artifact_manifest.json
 
     steps:
       - name: Checkout repository
@@ -34,6 +39,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Create runtime folders
+        run: |
+          mkdir -p logs outputs
+
+      - name: Capture pipeline start timestamp
+        shell: bash
+        run: |
+          echo "PIPELINE_START_TS=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Tier 3C resolve shared execution context
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "multi_theme" \
+            --requested-run-date-sgt "${{ github.event.inputs.run_date_sgt || '' }}" \
+            --output-file "$EXECUTION_CONTEXT_FILE"
+
+      - name: Tier 3C export execution context to GitHub env
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --github-env-file "$GITHUB_ENV"
+
       - name: Run Pass 1 generic graph foundation
         run: |
           if [ -z "${{ github.event.inputs.run_date_sgt }}" ]; then
@@ -44,3 +76,76 @@ jobs:
               --run-date-sgt "${{ github.event.inputs.run_date_sgt }}" \
               --snapshot-version "${{ github.event.inputs.snapshot_version }}"
           fi
+
+      - name: Mark pipeline status success
+        shell: bash
+        run: |
+          echo "PIPELINE_STATUS=SUCCESS" >> "$GITHUB_ENV"
+
+      - name: Capture pipeline runtime seconds
+        shell: bash
+        run: |
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+          echo "PIPELINE_RUNTIME_SECONDS=${PIPELINE_RUNTIME_SECONDS}" >> "$GITHUB_ENV"
+          echo "Pipeline runtime seconds: ${PIPELINE_RUNTIME_SECONDS}"
+
+      - name: Tier 3D generate validation summary
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --source multi_theme_graph_pass1_execution \
+            --validation-status passed \
+            --warnings-count 0 \
+            --errors-count 0 \
+            --hard-fail-count 0 \
+            --output-file "$VALIDATION_SUMMARY_FILE"
+
+      - name: Tier 3D generate telemetry context snapshot
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --pipeline-status "${PIPELINE_STATUS:-SUCCESS}" \
+            --runtime-seconds "${PIPELINE_RUNTIME_SECONDS:-0}" \
+            --output-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE"
+
+      - name: Tier 3D generate context artifact manifest
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --telemetry-snapshot-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE" \
+            --output-file "$CONTEXT_ARTIFACT_MANIFEST_FILE"
+
+      - name: Tier 3E cross-workflow operational aggregation
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --context-file "$EXECUTION_CONTEXT_FILE" \
+            --validation-summary-file "$VALIDATION_SUMMARY_FILE" \
+            --telemetry-snapshot-file "$TELEMETRY_CONTEXT_SNAPSHOT_FILE" \
+            --artifact-manifest-file "$CONTEXT_ARTIFACT_MANIFEST_FILE" \
+            --output-dir logs
+
+      - name: Upload Multi-Theme Pass 1 execution logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-theme-graph-pass1-execution-logs
+          path: |
+            logs/execution_context.json
+            logs/validation_summary.json
+            logs/telemetry_context_snapshot.json
+            logs/context_artifact_manifest.json
+            logs/platform_pipeline_index.json
+            logs/platform_runtime_summary.json
+            logs/platform_validation_summary.json
+            logs/platform_operational_summary.json
+          if-no-files-found: ignore
