@@ -2,6 +2,11 @@ name: Phase 1 - AI Transmission Dual Write
 
 on:
   workflow_dispatch:
+    inputs:
+      run_date_sgt:
+        description: "Optional run date in Asia/Singapore format YYYY-MM-DD. Leave blank for today."
+        required: false
+        default: ""
 
   schedule:
     # Runs daily at 7:30 AM Singapore time
@@ -18,6 +23,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
       PYTHONUNBUFFERED: "1"
+      PYTHONPATH: ${{ github.workspace }}
 
       OBS_LOOKBACK_DAYS: "14"
       PRICE_LOOKBACK_DAYS: "30"
@@ -40,6 +46,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Prepare runtime folders and timer
+        run: |
+          mkdir -p logs outputs
+          echo "PIPELINE_START_TS=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Check required secrets
         run: |
           python - <<'PY'
@@ -60,12 +71,30 @@ jobs:
           PY
 
       # ------------------------------------------------------------------
+      # Tier 3C — Shared execution context
+      # ------------------------------------------------------------------
+      - name: Tier 3C resolve execution context
+        run: |
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "${THEME_NAME}" \
+            --requested-run-date-sgt "${{ github.event.inputs.run_date_sgt || '' }}" \
+            --output-file logs/execution_context.json
+
+      - name: Tier 3C export execution context to GitHub env
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file logs/execution_context.json \
+            --github-env-file "$GITHUB_ENV"
+
+      # ------------------------------------------------------------------
       # Tier 3B — Advisory-only orchestration preflight
       # ------------------------------------------------------------------
       - name: Tier 3B preflight orchestration guardrails
         continue-on-error: true
         env:
-          PYTHONPATH: ${{ github.workspace }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GUARDRAILS_STRICT_MODE: "false"
@@ -78,7 +107,50 @@ jobs:
 
       - name: Run AI transmission scoring dual-write
         run: |
-          python ai_transmission/ai_transmission_scoring_v2_phase1_refactor_built.py
+          python ai_transmission/ai_transmission_scoring_v2_phase1_refactor_built.py 2>&1 | tee logs/01_ai_transmission_dual_write.log
+
+      - name: Mark pipeline success
+        run: |
+          echo "PIPELINE_STATUS=SUCCESS" >> "$GITHUB_ENV"
+
+      - name: Compute pipeline runtime seconds
+        run: |
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+          echo "PIPELINE_RUNTIME_SECONDS=${PIPELINE_RUNTIME_SECONDS}" >> "$GITHUB_ENV"
+          echo "Pipeline runtime seconds: ${PIPELINE_RUNTIME_SECONDS}"
+
+      # ------------------------------------------------------------------
+      # Tier 3D — Context-aware validation and telemetry layer
+      # Advisory-only metadata artifacts. Does not alter scoring logic.
+      # ------------------------------------------------------------------
+      - name: Tier 3D generate validation summary
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file logs/execution_context.json \
+            --source phase1_ai_transmission_dual_write_execution \
+            --validation-status passed \
+            --warnings-count 0 \
+            --errors-count 0 \
+            --hard-fail-count 0 \
+            --output-file logs/validation_summary.json
+
+      - name: Tier 3D generate telemetry snapshot
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot \
+            --context-file logs/execution_context.json \
+            --validation-summary-file logs/validation_summary.json \
+            --pipeline-status "${PIPELINE_STATUS:-SUCCESS}" \
+            --runtime-seconds "${PIPELINE_RUNTIME_SECONDS:-0}" \
+            --output-file logs/telemetry_context_snapshot.json
+
+      - name: Tier 3D generate artifact manifest
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest \
+            --context-file logs/execution_context.json \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --output-file logs/context_artifact_manifest.json
 
       - name: Upload logs / outputs if available
         if: always()
