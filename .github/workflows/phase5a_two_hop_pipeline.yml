@@ -69,6 +69,23 @@ jobs:
             echo "RUN_DATE_SGT=$(TZ=Asia/Singapore date +%F)" >> $GITHUB_ENV
           fi
 
+      # ------------------------------------------------------------------
+      # Tier 3B — Advisory-only orchestration preflight
+      # ------------------------------------------------------------------
+      - name: Tier 3B preflight orchestration guardrails
+        continue-on-error: true
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUARDRAILS_STRICT_MODE: "false"
+          GUARDRAILS_EXPECTED_WORKFLOW_ROLE: "phase5a_two_hop"
+        run: |
+          python -m core.orchestration_guardrails.cli preflight \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}"
+
       - name: Phase 5A — Generate and score controlled two-hop paths
         run: |
           python transmission_layers/phase5a_two_hop/phase5a_two_hop_propagation.py
