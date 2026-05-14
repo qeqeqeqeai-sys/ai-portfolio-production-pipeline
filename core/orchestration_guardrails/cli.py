@@ -195,6 +195,33 @@ def cmd_artifact_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
+
+
+# ----------------------------------------------------------------------
+# Tier 3E — Cross-workflow operational aggregation commands
+# ----------------------------------------------------------------------
+def cmd_aggregate_operational_summary(args: argparse.Namespace) -> int:
+    from core.orchestration_guardrails.operational_aggregation import (
+        aggregate_operational_summary,
+    )
+
+    result = aggregate_operational_summary(
+        context_file=args.context_file,
+        validation_summary_file=args.validation_summary_file,
+        telemetry_snapshot_file=args.telemetry_snapshot_file,
+        artifact_manifest_file=args.artifact_manifest_file,
+        output_dir=args.output_dir,
+    )
+
+    print("[operational_aggregation] files written:")
+    for path in result["files_written"]:
+        print(f"[operational_aggregation] - {path}")
+    print(f"[operational_aggregation] operational_status={result['operational_status']}")
+    print(f"[operational_aggregation] warnings_count={result['warnings_count']}")
+
+    return 0
+
+
 # ----------------------------------------------------------------------
 # Parser construction
 # ----------------------------------------------------------------------
@@ -321,6 +348,29 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_ARTIFACT_MANIFEST_FILE,
     )
     artifact_manifest.set_defaults(func=cmd_artifact_manifest)
+
+    # ------------------------------------------------------------------
+    # Tier 3E aggregation commands
+    # ------------------------------------------------------------------
+    aggregate = subparsers.add_parser("aggregate")
+    aggregate_subparsers = aggregate.add_subparsers(dest="aggregate_command")
+
+    operational_summary = aggregate_subparsers.add_parser("operational-summary")
+    operational_summary.add_argument("--context-file", default=DEFAULT_CONTEXT_FILE)
+    operational_summary.add_argument(
+        "--validation-summary-file",
+        default=DEFAULT_VALIDATION_SUMMARY_FILE,
+    )
+    operational_summary.add_argument(
+        "--telemetry-snapshot-file",
+        default=DEFAULT_TELEMETRY_SNAPSHOT_FILE,
+    )
+    operational_summary.add_argument(
+        "--artifact-manifest-file",
+        default=DEFAULT_ARTIFACT_MANIFEST_FILE,
+    )
+    operational_summary.add_argument("--output-dir", default="logs")
+    operational_summary.set_defaults(func=cmd_aggregate_operational_summary)
 
     return parser
 
