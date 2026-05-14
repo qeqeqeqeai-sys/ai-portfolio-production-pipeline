@@ -67,7 +67,13 @@ def main():
     client = SupabaseRestClient()
     run_id = os.getenv("EVOLUTION_RUN_ID")
     if run_id:
-        client.update("structural_theme_graph_evolution_runs", {"id": f"eq.{run_id}"}, update, return_rows=False)
+        client._request(
+            "PATCH",
+            "structural_theme_graph_evolution_runs",
+            params={"id": f"eq.{run_id}"},
+            json_body=update,
+            prefer="return=minimal",
+        )
     else:
         client.insert("structural_theme_graph_evolution_runs", [update], return_rows=False)
 
