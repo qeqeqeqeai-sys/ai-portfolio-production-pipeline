@@ -17,6 +17,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+      PYTHONUNBUFFERED: "1"
 
       OBS_LOOKBACK_DAYS: "14"
       PRICE_LOOKBACK_DAYS: "30"
@@ -39,8 +40,44 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Check required secrets
+        run: |
+          python - <<'PY'
+          import os
+
+          required = [
+              "SUPABASE_URL",
+              "SUPABASE_SERVICE_ROLE_KEY",
+              "FMP_API_KEY",
+          ]
+
+          missing = [x for x in required if not os.getenv(x)]
+
+          if missing:
+              raise SystemExit(f"Missing required GitHub Secrets: {missing}")
+
+          print("All required secrets are present.")
+          PY
+
+      # ------------------------------------------------------------------
+      # Tier 3B — Advisory-only orchestration preflight
+      # ------------------------------------------------------------------
+      - name: Tier 3B preflight orchestration guardrails
+        continue-on-error: true
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUARDRAILS_STRICT_MODE: "false"
+          GUARDRAILS_EXPECTED_WORKFLOW_ROLE: "phase1_ai_transmission_dual_write"
+        run: |
+          python -m core.orchestration_guardrails.cli preflight \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}"
+
       - name: Run AI transmission scoring dual-write
-        run: |         
+        run: |
           python ai_transmission/ai_transmission_scoring_v2_phase1_refactor_built.py
 
       - name: Upload logs / outputs if available
