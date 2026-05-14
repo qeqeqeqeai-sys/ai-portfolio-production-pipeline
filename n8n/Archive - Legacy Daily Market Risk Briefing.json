@@ -1,0 +1,171 @@
+{
+  "name": "Archive - Legacy Daily Market Risk Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "0e63daef-fa78-495f-ac3d-642d4d0d094f",
+      "name": "Daily Briefing Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/daily_signal_scores?select=*&order=run_date_sgt.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "61d3c9ff-c239-4bc4-a8ec-180de4653cbe",
+      "name": "Get Latest Signal Score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst score = Array.isArray(raw) ? raw[0] : raw;\n\nif (!score || !score.run_date_sgt) {\n  return [{ json: { subject: 'Daily Market Risk Briefing - No Data', emailBody: 'No daily signal score was found.', telegramText: 'No daily signal score was found.' } }];\n}\n\nconst fmt = (v) => v === null || v === undefined || v === '' ? 'N/A' : v;\n\nconst risk = Number(score.overall_risk_score);\nconst label = fmt(score.signal_label);\nconst bias = fmt(score.action_bias);\n\nlet tone = 'Market conditions are broadly balanced.';\nif (risk >= 75) tone = 'Market risk is at an extreme level. The system favours a defensive stance.';\nelse if (risk >= 60) tone = 'Market risk is elevated. The system favours reducing risk and monitoring downside triggers.';\nelse if (risk >= 40) tone = 'Market risk is in watch mode. Conditions are not alarming, but several drivers require monitoring.';\nelse tone = 'Market risk is normal. The system does not currently detect broad stress.';\n\nconst drivers = [\n  `Valuation: ${fmt(score.valuation_score)}/100`,\n  `Macro: ${fmt(score.macro_score)}/100`,\n  `Market Stress: ${fmt(score.stress_score)}/100`,\n  `Momentum: ${fmt(score.momentum_score)}/100`,\n  `Sentiment: ${fmt(score.sentiment_score)}/100`\n];\n\nconst watchlist = [\n  'VIX moving above 20',\n  'SPY or QQQ weakening below the 200-day moving average',\n  'US 10Y yield rising sharply over 20 trading days',\n  'Forward P/E expanding while momentum weakens',\n  'Risk score crossing 60 or 75 thresholds'\n];\n\nconst subject = `Daily Market Risk Briefing - ${score.run_date_sgt}`;\n\nconst emailBody = `\n<h2>Daily Market Risk Briefing</h2>\n<p><b>Date:</b> ${score.run_date_sgt}</p>\n<p><b>Overall Signal:</b> ${label}</p>\n<p><b>Risk Score:</b> ${fmt(score.overall_risk_score)} / 100</p>\n<p><b>Action Bias:</b> ${bias}</p>\n\n<h3>1. Main Signal</h3>\n<p>${tone}</p>\n\n<h3>2. Signal Drivers</h3>\n<ul>\n  ${drivers.map(d => `<li>${d}</li>`).join('\\n')}\n</ul>\n\n<h3>3. Key Evidence</h3>\n<p>${fmt(score.key_drivers)}</p>\n\n<h3>4. Watchlist</h3>\n<ul>\n  ${watchlist.map(w => `<li>${w}</li>`).join('\\n')}\n</ul>\n\n<p><i>Generated automatically by the Decision-Grade Market Risk Signal System.</i></p>\n`.trim();\n\nconst telegramText = `📊 <b>Daily Market Risk Briefing</b>\\n\\n` +\n`<b>Date:</b> ${score.run_date_sgt}\\n` +\n`<b>Overall Signal:</b> ${label}\\n` +\n`<b>Risk Score:</b> ${fmt(score.overall_risk_score)} / 100\\n` +\n`<b>Action Bias:</b> ${bias}\\n\\n` +\n`<b>1. Main Signal</b>\\n${tone}\\n\\n` +\n`<b>2. Signal Drivers</b>\\n` +\n`${drivers.map(d => `• ${d}`).join('\\n')}\\n\\n` +\n`<b>3. Key Evidence</b>\\n${fmt(score.key_drivers)}\\n\\n` +\n`<b>4. Watchlist</b>\\n` +\n`${watchlist.map(w => `• ${w}`).join('\\n')}`;\n\nreturn [{\n  json: {\n    subject,\n    emailBody,\n    telegramText,\n    run_date_sgt: score.run_date_sgt,\n    overall_risk_score: score.overall_risk_score,\n    signal_label: score.signal_label,\n    action_bias: score.action_bias\n  }\n}];"
+      },
+      "id": "f8e87433-125b-4fa0-870f-1b98da81898c",
+      "name": "Prepare Daily Briefing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "zenfusion@gmail.com",
+        "subject": "={{$json.subject}}",
+        "message": "={{$json.emailBody}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        -96
+      ],
+      "id": "bd4a3e2f-1fbb-4104-9d0c-05d7278be5e7",
+      "name": "Send a message",
+      "webhookId": "a78eb091-1c33-4c4b-91a5-22ccd4c88787",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "WaymjWZjBUCPk9tq",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-5226318541",
+        "text": "={{$json.telegramText}}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        96
+      ],
+      "id": "41de27f7-80e8-4fd2-a195-2e511ff65433",
+      "name": "Send a text message",
+      "webhookId": "7bed11be-1782-4bdc-89e5-9c1743f24793",
+      "credentials": {
+        "telegramApi": {
+          "id": "aVIb8ffTXWrMpnWH",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Briefing Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Latest Signal Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest Signal Score": {
+      "main": [
+        [
+          {
+            "node": "Prepare Daily Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Daily Briefing": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e0d9d047-0784-4b62-9e56-49424fa75bdc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "tzvzGn4kadziDvR5",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

@@ -1,0 +1,316 @@
+{
+  "name": "Research - Historical AI Score Reconstruction with Reversal Filter",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "5257a2ef-8d35-4f30-a70f-fe17b6c3560b",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Singapore',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit'\n}).formatToParts(new Date());\n\nconst today = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n\nconst d = new Date(`${today}T00:00:00+08:00`);\nd.setDate(d.getDate() - 370);\nconst startDate = d.toISOString().slice(0, 10);\n\nreturn [{ json: { today_sgt: today, start_date: startDate } }];"
+      },
+      "id": "8ec86362-de9e-4d8c-8de8-1e6aca13495a",
+      "name": "Build Reconstruction Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1840,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics?select=metric_date,ticker,company_name,ai_subsector,latest_price,previous_close,day_change_pct,ma200,valuation_proxy,momentum_score&metric_date=gte.{{ $json.start_date }}&metric_date=lte.{{ $json.today_sgt }}&latest_price=not.is.null&order=ticker.asc,metric_date.asc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "73cd8a90-25d4-4d91-b6b4-23107dab0eb2",
+      "name": "Fetch Historical Price Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1584,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) out.push(...item.json);\n  else if (Array.isArray(item.json.data)) out.push(...item.json.data);\n  else if (Array.isArray(item.json.rows)) out.push(...item.json.rows);\n  else out.push(item.json);\n}\nreturn [{\n  json: {\n    start_date: $('Build Reconstruction Params').first().json.start_date,\n    today_sgt: $('Build Reconstruction Params').first().json.today_sgt,\n    price_rows: out\n  }\n}];"
+      },
+      "id": "0a18aaae-8323-4418-adbe-d8bcec1281c8",
+      "name": "Wrap Price Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_fmp_historical_metrics?select=fiscal_date,ticker,company_name,ai_subsector,valuation_score,fundamental_score&fiscal_date=lte.{{ $json.today_sgt }}&order=ticker.asc,fiscal_date.asc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "990899a7-9f4b-46f3-b24b-5d0a8e998a00",
+      "name": "Fetch Historical FMP Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1056,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) out.push(...item.json);\n  else if (Array.isArray(item.json.data)) out.push(...item.json.data);\n  else if (Array.isArray(item.json.rows)) out.push(...item.json.rows);\n  else out.push(item.json);\n}\nreturn [{\n  json: {\n    start_date: $('Wrap Price Rows').first().json.start_date,\n    today_sgt: $('Wrap Price Rows').first().json.today_sgt,\n    price_rows: $('Wrap Price Rows').first().json.price_rows || [],\n    fmp_rows: out\n  }\n}];"
+      },
+      "id": "a8e0374c-3ced-45e2-8559-04782da654c7",
+      "name": "Wrap FMP Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nconst clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));\n\nconst priceRows = Array.isArray($json.price_rows) ? $json.price_rows : [];\nconst fmpRows = Array.isArray($json.fmp_rows) ? $json.fmp_rows : [];\n\nconst fmpByTicker = {};\nfor (const r of fmpRows) {\n  if (!r || !r.ticker || !r.fiscal_date) continue;\n  const ticker = String(r.ticker).toUpperCase();\n  if (!fmpByTicker[ticker]) fmpByTicker[ticker] = [];\n  fmpByTicker[ticker].push({ ...r, ticker, fiscal_date: String(r.fiscal_date) });\n}\nfor (const ticker of Object.keys(fmpByTicker)) {\n  fmpByTicker[ticker].sort((a, b) => a.fiscal_date.localeCompare(b.fiscal_date));\n}\n\nconst pricesByTicker = {};\nfor (const p of priceRows) {\n  if (!p || !p.ticker || !p.metric_date) continue;\n  const ticker = String(p.ticker).toUpperCase();\n  if (!pricesByTicker[ticker]) pricesByTicker[ticker] = [];\n  pricesByTicker[ticker].push({ ...p, ticker, metric_date: String(p.metric_date) });\n}\nfor (const ticker of Object.keys(pricesByTicker)) {\n  pricesByTicker[ticker].sort((a, b) => a.metric_date.localeCompare(b.metric_date));\n}\n\nfunction latestFmpAsOf(ticker, date) {\n  const arr = fmpByTicker[ticker] || [];\n  if (!arr.length) return null;\n  for (let i = arr.length - 1; i >= 0; i--) {\n    if (arr[i].fiscal_date <= date) return arr[i];\n  }\n  return arr[0] || null;\n}\n\nfunction proxyToOverheatingScore(valuationProxy) {\n  const p = toNum(valuationProxy);\n  if (p === null) return null;\n  return round2(clamp(50 + p));\n}\n\nfunction reversalScoreFromMomentumChange(change) {\n  const c = toNum(change);\n  if (c === null) return 50;\n  return round2(clamp(50 - c * 2));\n}\n\nfunction signalLabel(score, change, reversalSignal) {\n  if (reversalSignal) return 'Reversal Short Candidate';\n  if (score === null || score === undefined) return 'No Score';\n  if (score >= 70) return 'Expensive / Watch for Reversal';\n  if (score >= 60) return 'Overvalued but Trend Intact';\n  if (score >= 45) return 'Neutral';\n  if (score >= 30) return 'Low Risk / Reasonable';\n  return 'Potential Value / Depressed';\n}\n\nconst reconstructed = [];\n\nfor (const [ticker, rows] of Object.entries(pricesByTicker)) {\n  for (let i = 0; i < rows.length; i++) {\n    const p = rows[i];\n    const tradeDate = p.metric_date;\n    const f = latestFmpAsOf(ticker, tradeDate);\n    if (!f) continue;\n\n    const valuationScore = toNum(f.valuation_score);\n    const fundamentalScore = toNum(f.fundamental_score);\n    const momentumScore = toNum(p.momentum_score);\n    const overheatingScore = proxyToOverheatingScore(p.valuation_proxy);\n    const prior = i >= 5 ? rows[i - 5] : null;\n    const priorMomentum = prior ? toNum(prior.momentum_score) : null;\n    const momentumChange5d = momentumScore !== null && priorMomentum !== null ? momentumScore - priorMomentum : null;\n    const reversalScore = reversalScoreFromMomentumChange(momentumChange5d);\n\n    let overall = null;\n    if (valuationScore !== null && momentumScore !== null && overheatingScore !== null) {\n      overall = (100 - valuationScore) * 0.70 + overheatingScore * 0.15 + reversalScore * 0.15;\n    } else if (fundamentalScore !== null && momentumScore !== null && overheatingScore !== null) {\n      overall = (100 - fundamentalScore) * 0.70 + overheatingScore * 0.15 + reversalScore * 0.15;\n    }\n\n    overall = round2(overall);\n    if (overall === null) continue;\n\n    const reversalSignal =\n      overall >= 75 &&\n      momentumChange5d !== null &&\n      momentumChange5d < -5;\n\n    reconstructed.push({\n      run_date_sgt: tradeDate,\n      ticker,\n      momentum_score: round2(momentumScore),\n      valuation_score: round2(valuationScore),\n      overheating_score: round2(overheatingScore),\n      ai_hype_score: null,\n      overall_ai_risk_score: overall,\n      momentum_change_5d: round2(momentumChange5d),\n      reversal_score: round2(reversalScore),\n      reversal_signal: reversalSignal,\n      signal_label: signalLabel(overall, momentumChange5d, reversalSignal),\n      explanation: [\n        'Historical reconstructed score with hard momentum reversal filter.',\n        'Score formula: 70% valuation risk + 15% overheating + 15% reversal risk.',\n        'Reversal signal rule: overall_ai_risk_score >= 75 AND momentum_change_5d < -5.',\n        `Price date ${tradeDate}.`,\n        `FMP fiscal date used: ${f.fiscal_date}.`,\n        `Momentum change 5 trading days: ${round2(momentumChange5d)}.`,\n        `Reversal risk score: ${round2(reversalScore)}.`,\n        `Reversal signal: ${reversalSignal}.`\n      ].join(' ')\n    });\n  }\n}\n\nconst chunkSize = 500;\nconst chunks = [];\nfor (let i = 0; i < reconstructed.length; i += chunkSize) {\n  chunks.push({\n    json: {\n      rows: reconstructed.slice(i, i + chunkSize),\n      row_count: Math.min(chunkSize, reconstructed.length - i),\n      debug_price_rows: priceRows.length,\n      debug_fmp_rows: fmpRows.length,\n      debug_total_reconstructed: reconstructed.length\n    }\n  });\n}\n\nreturn chunks.length ? chunks : [{\n  json: {\n    rows: [],\n    row_count: 0,\n    debug_price_rows: priceRows.length,\n    debug_fmp_rows: fmpRows.length,\n    debug_total_reconstructed: 0,\n    note: 'No historical score rows reconstructed.'\n  }\n}];"
+      },
+      "id": "e1f8b6eb-56ec-4d2c-a58f-3dd0ec24aeb1",
+      "name": "Build Historical Scores With Reversal Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ Number($json.row_count || 0) > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "37c2bf5a-cb5e-4c03-b19f-bd897d867255",
+      "name": "IF Has Historical Scores",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_scores?on_conflict=run_date_sgt,ticker",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.rows }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f8b366e1-62ef-428c-acb6-ffda0afafffd",
+      "name": "Upsert Historical Scores With Reversal Filter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Reconstruction Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reconstruction Params": {
+      "main": [
+        [
+          {
+            "node": "Fetch Historical Price Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Historical Price Metrics": {
+      "main": [
+        [
+          {
+            "node": "Wrap Price Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Price Rows": {
+      "main": [
+        [
+          {
+            "node": "Fetch Historical FMP Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Historical FMP Metrics": {
+      "main": [
+        [
+          {
+            "node": "Wrap FMP Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap FMP Rows": {
+      "main": [
+        [
+          {
+            "node": "Build Historical Scores With Reversal Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Historical Scores With Reversal Filter": {
+      "main": [
+        [
+          {
+            "node": "IF Has Historical Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Historical Scores": {
+      "main": [
+        [
+          {
+            "node": "Upsert Historical Scores With Reversal Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3b295c5d-2489-4268-81f6-4919f06dba03",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "tpI4Oar8gVHRzerp",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

@@ -1,0 +1,631 @@
+{
+  "name": "Production - Get News and Price and Compute Hype Scores",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "43e16ed2-4b6a-4d17-ae11-27c817fca01b",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 22
+            }
+          ]
+        }
+      },
+      "id": "fee74cfe-5bae-4564-9de0-5f3e1fa59334",
+      "name": "Daily Trigger - 10PM SGT",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_universe",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "ticker,company_name,ai_subsector"
+            },
+            {
+              "name": "is_active",
+              "value": "eq.true"
+            },
+            {
+              "name": "order",
+              "value": "ticker.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "22ada323-4897-4b09-8126-a69789892f47",
+      "name": "Fetch Active Universe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -800,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let rows = [];\n\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) rows.push(...item.json);\n  else if (Array.isArray(item.json?.data)) rows.push(...item.json.data);\n  else if (Array.isArray(item.json?.rows)) rows.push(...item.json.rows);\n  else rows.push(item.json);\n}\n\nrows = rows\n  .filter(r => r && r.ticker)\n  .map(r => ({\n    json: {\n      ticker: String(r.ticker).trim().toUpperCase(),\n      company: r.company_name || r.company || String(r.ticker).trim().toUpperCase(),\n      company_name: r.company_name || r.company || null,\n      ai_subsector: r.ai_subsector || null\n    }\n  }));\n\nif (!rows.length) {\n  throw new Error('No active tickers found in ai_stock_universe.');\n}\n\nreturn rows;"
+      },
+      "id": "4f7f86f0-28f6-4b9b-bf7c-8b0a53c1e6df",
+      "name": "Normalize Universe Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "928967c1-d30b-4529-8c0e-6148cb0c0091",
+      "name": "Split Stocks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -320,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "tavily_key"
+            },
+            {
+              "name": "query",
+              "value": "={{$json.company + ' ' + $json.ticker + ' AI stock hype artificial intelligence news investor sentiment latest'}}"
+            },
+            {
+              "name": "search_depth",
+              "value": "basic"
+            },
+            {
+              "name": "topic",
+              "value": "news"
+            },
+            {
+              "name": "days",
+              "value": 7
+            },
+            {
+              "name": "max_results",
+              "value": 6
+            },
+            {
+              "name": "include_answer",
+              "value": false
+            },
+            {
+              "name": "include_raw_content",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4487452b-bf0d-46d9-bb70-3075b8a53a3b",
+      "name": "Tavily News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stock = $('Split Stocks').item.json;\nconst results = $json.results || [];\n\nconst headlines = results.slice(0, 6).map(r => ({\n  title: r.title || '',\n  url: r.url || '',\n  content: r.content || '',\n  published_date: r.published_date || null\n}));\n\nfunction cleanText(s) {\n  return String(s || '')\n    .replace(/https?:\\/\\/\\S+/g, '')\n    .replace(/[^\\w\\s.,:%$+-]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nlet text = headlines\n  .map(h => cleanText(h.title).slice(0, 180))\n  .join('. ')\n  .slice(0, 1000);\n\nif (!text) text = `${stock.company} ${stock.ticker} AI stock news`;\n\nreturn {\n  json: {\n    ...stock,\n    article_count: headlines.length,\n    headlines_json: headlines,\n    text\n  }\n};"
+      },
+      "id": "d12d67a7-f214-4d81-b61b-c7fa2b1dd4f6",
+      "name": "Prepare Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/hf-inference/models/ProsusAI/finbert",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer huggingface_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "inputs",
+              "value": "={{$json.text}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1346831-a521-4a9a-b5f4-fda6184fc35b",
+      "name": "FinBERT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base = $('Prepare Text').item.json;\nconst raw = $json;\n\nlet rows = [];\nif (Array.isArray(raw)) rows = Array.isArray(raw[0]) ? raw[0] : raw;\n\nlet pos = 0;\nlet neg = 0;\nlet neu = 0;\n\nfor (const r of rows) {\n  const label = String(r.label || '').toLowerCase();\n  const score = Number(r.score || 0);\n  if (label.includes('positive')) pos = score;\n  if (label.includes('negative')) neg = score;\n  if (label.includes('neutral')) neu = score;\n}\n\nreturn {\n  json: {\n    ...base,\n    positive_count: pos,\n    neutral_count: neu,\n    negative_count: neg,\n    avg_sentiment_score: pos - neg\n  }\n};"
+      },
+      "id": "06ef1acf-6269-4c96-9599-9f77ba33f14f",
+      "name": "Sentiment Calc",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{'https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=' + $json.ticker + '&from=' + new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().slice(0,10) + '&to=' + new Date().toISOString().slice(0,10) + '&apikey=FMP_key'}}",
+        "options": {}
+      },
+      "id": "dce3247b-9ecd-4e1a-abed-bc428499b53d",
+      "name": "FMP Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        816,
+        224
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base = $json;\n\nlet hist = Array.isArray(base.fmp_price_rows)\n  ? base.fmp_price_rows\n  : [];\n\nhist = hist\n  .filter(x => x && x.date && Number.isFinite(Number(x.close)))\n  .sort((a, b) => new Date(b.date) - new Date(a.date));\n\nconst volumes = hist.map(x => Number(x.volume || 0)).filter(Number.isFinite);\nconst prices = hist.map(x => Number(x.close)).filter(Number.isFinite);\n\nconst latestVolume = volumes[0] || 0;\nconst avgVol20 = volumes.slice(0, 20).reduce((a, b) => a + b, 0) / Math.max(1, volumes.slice(0, 20).length);\nconst volume_z = avgVol20 > 0 ? (latestVolume / avgVol20) - 1 : 0;\n\nconst latestPrice = prices[0] || null;\nconst price20 = prices[20] || prices[prices.length - 1] || null;\nconst trend_z = latestPrice && price20 ? latestPrice / price20 - 1 : 0;\n\nconst news_volume_z = Math.min(3, (base.article_count || 0) / 5);\nconst sentiment_z = base.avg_sentiment_score || 0;\n\nconst hype_score =\n  news_volume_z * 30 +\n  sentiment_z * 40 +\n  volume_z * 15 +\n  trend_z * 15;\n\nlet hype_regime = 'Normal';\nif (hype_score >= 70) hype_regime = 'Extreme';\nelse if (hype_score >= 40) hype_regime = 'High';\nelse if (hype_score <= -20) hype_regime = 'Negative';\n\nlet signal = 'NEUTRAL';\nlet signal_score = 0;\nlet signal_reason = 'No strong hype signal.';\n\nif (hype_score >= 40 && trend_z > 0) {\n  signal = 'WATCH_OVERHEATED';\n  signal_score = hype_score;\n  signal_reason = 'High hype score with positive price trend.';\n} else if (hype_score >= 40 && trend_z <= 0) {\n  signal = 'HYPE_WITH_WEAK_PRICE';\n  signal_score = hype_score;\n  signal_reason = 'High hype score but price trend is weak.';\n}\n\nconst run_date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });\n\nconst { fmp_price_rows, text, ...cleanBase } = base;\n\nreturn {\n  json: {\n    ...cleanBase,\n    run_date,\n    volume: latestVolume,\n    volume_z,\n    news_volume_z,\n    sentiment_z,\n    trend_z,\n    hype_score: Number(hype_score.toFixed(4)),\n    hype_regime,\n    hype_score_z: Number(hype_score.toFixed(4)),\n    signal,\n    signal_score: Number(signal_score.toFixed(4)),\n    signal_reason\n  }\n};"
+      },
+      "id": "b6827cf2-3cb5-48ea-8cb3-ce088cf16452",
+      "name": "Feature Build",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_hype_scores?on_conflict=ticker,run_date",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "ticker",
+              "value": "={{$json.ticker}}"
+            },
+            {
+              "name": "company",
+              "value": "={{$json.company}}"
+            },
+            {
+              "name": "run_date",
+              "value": "={{$json.run_date}}"
+            },
+            {
+              "name": "article_count",
+              "value": "={{$json.article_count}}"
+            },
+            {
+              "name": "avg_sentiment_score",
+              "value": "={{$json.avg_sentiment_score}}"
+            },
+            {
+              "name": "volume",
+              "value": "={{$json.volume}}"
+            },
+            {
+              "name": "volume_z",
+              "value": "={{$json.volume_z}}"
+            },
+            {
+              "name": "news_volume_z",
+              "value": "={{$json.news_volume_z}}"
+            },
+            {
+              "name": "sentiment_z",
+              "value": "={{$json.sentiment_z}}"
+            },
+            {
+              "name": "trend_z",
+              "value": "={{$json.trend_z}}"
+            },
+            {
+              "name": "hype_score",
+              "value": "={{$json.hype_score}}"
+            },
+            {
+              "name": "hype_regime",
+              "value": "={{$json.hype_regime}}"
+            },
+            {
+              "name": "headlines_json",
+              "value": "={{JSON.stringify($json.headlines_json)}}"
+            },
+            {
+              "name": "positive_count",
+              "value": "={{$json.positive_count}}"
+            },
+            {
+              "name": "neutral_count",
+              "value": "={{$json.neutral_count}}"
+            },
+            {
+              "name": "negative_count",
+              "value": "={{$json.negative_count}}"
+            },
+            {
+              "name": "hype_score_z",
+              "value": "={{$json.hype_score_z}}"
+            },
+            {
+              "name": "signal",
+              "value": "={{$json.signal}}"
+            },
+            {
+              "name": "signal_score",
+              "value": "={{$json.signal_score}}"
+            },
+            {
+              "name": "signal_reason",
+              "value": "={{$json.signal_reason}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "938b123c-9b6b-49cf-90bf-d32bcf65130b",
+      "name": "Write Hype Scores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "869ccda6-243e-4b99-8247-34ca0473bead",
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    status: 'completed',\n    message: 'AI hype scoring completed for all active universe stocks.',\n    completed_at_sgt: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Singapore' })\n  }\n}];"
+      },
+      "id": "365fe96e-4ae1-4f43-a0f4-2cf0b12fb5d3",
+      "name": "Workflow Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "2790fc9a-e7ea-4433-a825-68c8588312fe",
+      "name": "Wait 1 Second",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1616,
+        192
+      ],
+      "webhookId": "2c63aa11-89a9-4e08-a9e5-19f277bb2e72"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Sentiment Calc').first().json;\n\nlet hist = [];\n\nfor (const item of $input.all()) {\n  const j = item.json;\n\n  if (Array.isArray(j)) hist.push(...j);\n  else if (Array.isArray(j?.data)) hist.push(...j.data);\n  else if (Array.isArray(j?.historical)) hist.push(...j.historical);\n  else if (Array.isArray(j?.results)) hist.push(...j.results);\n  else if (j?.date) hist.push(j);\n}\n\nreturn [{\n  json: {\n    ...base,\n    fmp_price_rows: hist\n  }\n}];"
+      },
+      "id": "46cff621-0442-4c7e-872e-9a79944dabef",
+      "name": "Wrap FMP Price Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -16
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Trigger - 10PM SGT": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Stocks": {
+      "main": [
+        [
+          {
+            "node": "Workflow Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily News": {
+      "main": [
+        [
+          {
+            "node": "Prepare Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Text": {
+      "main": [
+        [
+          {
+            "node": "FinBERT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FinBERT": {
+      "main": [
+        [
+          {
+            "node": "Sentiment Calc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentiment Calc": {
+      "main": [
+        [
+          {
+            "node": "FMP Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FMP Price": {
+      "main": [
+        [
+          {
+            "node": "Wrap FMP Price Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feature Build": {
+      "main": [
+        [
+          {
+            "node": "Write Hype Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Hype Scores": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue Loop": {
+      "main": [
+        [
+          {
+            "node": "Split Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Universe": {
+      "main": [
+        [
+          {
+            "node": "Normalize Universe Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Universe Rows": {
+      "main": [
+        [
+          {
+            "node": "Split Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Second": {
+      "main": [
+        [
+          {
+            "node": "Continue Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap FMP Price Rows": {
+      "main": [
+        [
+          {
+            "node": "Feature Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "edd2fe44-1a46-4103-8d6c-8a551df8e22d",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "lnOwVyAjmvW2R118",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

@@ -1,0 +1,408 @@
+{
+  "name": "Archive - Legacy AI Sector Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "bcb50c7d-1f79-4a46-bd96-ebe4aab9bfc5",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const API_KEY = 'twelvedata_key';\n\nconst tickers = [\n  'NVDA', 'MSFT', 'GOOGL', 'META', 'AMZN', 'AVGO',\n  'AMD', 'TSM', 'ASML', 'PLTR', 'SMCI', 'TSLA'\n];\n\nreturn tickers.map(ticker => ({\n  json: {\n    ticker,\n    url: `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=300&apikey=${API_KEY}`\n  }\n}));"
+      },
+      "id": "b6cb088e-526f-44df-8f05-760a6f3a1786",
+      "name": "AI Stock Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ec90edf6-19ec-4072-a778-ac103e61ff9c",
+      "name": "Split in Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -224,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "62c6ee57-318a-4e85-8937-b26b070f116c",
+      "name": "Fetch Twelve Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 8
+      },
+      "id": "734a4b6e-eea6-4ff7-bd75-5412432b04b8",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        272
+      ],
+      "webhookId": "23c1ae3d-fc29-40d3-b3bc-28ffdd6c48d3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const runDate = new Date().toLocaleDateString('en-CA', {\n  timeZone: 'Asia/Singapore'\n});\n\nconst ticker =\n  $json.meta?.symbol ||\n  $json.ticker ||\n  'UNKNOWN';\n\nconst values = $json.values;\n\nif (!Array.isArray(values) || values.length < 30) {\n  return [];\n}\n\nconst ordered = [...values].reverse();\n\nconst closes = ordered\n  .map(v => Number(v.close))\n  .filter(v => Number.isFinite(v));\n\nif (closes.length < 30) return [];\n\nconst pct = (a, b) => {\n  if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return null;\n  return ((a / b) - 1) * 100;\n};\n\nconst avg = arr => {\n  const nums = arr.filter(v => Number.isFinite(v));\n  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;\n};\n\nconst round = x => Number.isFinite(x) ? Number(x.toFixed(4)) : null;\n\nconst latest = closes.at(-1);\nconst previous = closes.at(-2);\nconst close20 = closes.at(-21);\nconst ma50 = avg(closes.slice(-50));\nconst ma200 = avg(closes.slice(-200));\nconst high52 = Math.max(...closes.slice(-252));\n\nreturn [\n  { json: { run_date_sgt: runDate, ticker, metric: 'close', value: round(latest), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'change_pct', value: round(pct(latest, previous)), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'return_20d', value: round(pct(latest, close20)), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'ma_50', value: round(ma50), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'ma_200', value: round(ma200), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'price_vs_50dma_pct', value: round(pct(latest, ma50)), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'price_vs_200dma_pct', value: round(pct(latest, ma200)), source: 'twelve_data' } },\n  { json: { run_date_sgt: runDate, ticker, metric: 'drawdown_52w_pct', value: round(pct(latest, high52)), source: 'twelve_data' } }\n];"
+      },
+      "id": "ac937d9d-5ddd-455d-96a1-9fb5977a5229",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_observations?on_conflict=run_date_sgt,ticker,metric",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "run_date_sgt",
+              "value": "={{$json.run_date_sgt}}"
+            },
+            {
+              "name": "ticker",
+              "value": "={{$json.ticker}}"
+            },
+            {
+              "name": "metric",
+              "value": "={{$json.metric}}"
+            },
+            {
+              "name": "value",
+              "value": "={{$json.value}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$json.source}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "bf66ddd6-151e-4955-91c6-aac6e989b36b",
+      "name": "Upsert Observations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        688,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_valuation_inputs?select=*&order=run_date_sgt.desc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c0cde429-1195-47e7-9f9a-5dd13d233305",
+      "name": "Get Valuations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -16,
+        -192
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const obs = $('Normalize').all().map(i => i.json);\n\nlet rawVals = [];\ntry {\n  rawVals = $('Get Valuations').first().json;\n} catch (e) {\n  rawVals = [];\n}\n\nconst vals = Array.isArray(rawVals) ? rawVals : [];\n\nfunction getMetric(ticker, metric) {\n  return obs.find(r => r.ticker === ticker && r.metric === metric)?.value;\n}\n\nfunction getValuation(ticker) {\n  return vals.find(v => v.ticker === ticker) || {\n    ticker,\n    forward_pe: null,\n    ev_sales: null,\n    revenue_growth: null\n  };\n}\n\nconst tickers = [...new Set(obs.map(r => r.ticker))];\nconst out = [];\n\nfor (const ticker of tickers) {\n  const r20 = Number(getMetric(ticker, 'return_20d'));\n  const vs200 = Number(getMetric(ticker, 'price_vs_200dma_pct'));\n  const drawdown = Number(getMetric(ticker, 'drawdown_52w_pct'));\n\n  const valuationInput = getValuation(ticker);\n  const forwardPe = Number(valuationInput.forward_pe);\n  const evSales = Number(valuationInput.ev_sales);\n  const revenueGrowth = Number(valuationInput.revenue_growth);\n\n  let momentumScore = 50;\n  if (Number.isFinite(r20)) {\n    if (r20 < 0) momentumScore = 30;\n    else if (r20 < 10) momentumScore = 50;\n    else if (r20 < 20) momentumScore = 70;\n    else momentumScore = 90;\n  }\n\n  let peScore = 60;\n  if (Number.isFinite(forwardPe)) {\n    if (forwardPe < 25) peScore = 30;\n    else if (forwardPe < 40) peScore = 50;\n    else if (forwardPe < 70) peScore = 70;\n    else peScore = 90;\n  }\n\n  let salesScore = 60;\n  if (Number.isFinite(evSales)) {\n    if (evSales < 6) salesScore = 30;\n    else if (evSales < 10) salesScore = 50;\n    else if (evSales < 18) salesScore = 70;\n    else salesScore = 90;\n  }\n\n  let growthOffset = 0;\n  if (Number.isFinite(revenueGrowth)) {\n    if (revenueGrowth > 40) growthOffset = -10;\n    else if (revenueGrowth > 20) growthOffset = -5;\n    else if (revenueGrowth < 5) growthOffset = 10;\n  }\n\n  const valuationScore = Math.max(\n    20,\n    Math.min(95, peScore * 0.55 + salesScore * 0.45 + growthOffset)\n  );\n\n  let overheatingScore = 50;\n  if (Number.isFinite(vs200)) {\n    if (vs200 < 0) overheatingScore = 30;\n    else if (vs200 < 15) overheatingScore = 50;\n    else if (vs200 < 30) overheatingScore = 70;\n    else overheatingScore = 90;\n  }\n\n  if (Number.isFinite(drawdown)) {\n    if (drawdown > -5) overheatingScore += 10;\n    else if (drawdown < -25) overheatingScore -= 10;\n  }\n\n  overheatingScore = Math.max(20, Math.min(95, overheatingScore));\n\n  const aiHypeScore = 50;\n\n  const overallScore =\n    momentumScore * 0.25 +\n    valuationScore * 0.35 +\n    overheatingScore * 0.25 +\n    aiHypeScore * 0.15;\n\n  let signalLabel = 'Normal';\n  if (overallScore >= 75) signalLabel = 'Bubble Risk';\n  else if (overallScore >= 60) signalLabel = 'Overheated';\n  else if (overallScore >= 40) signalLabel = 'Watch';\n\n  out.push({\n    json: {\n      run_date_sgt: new Date().toLocaleDateString('en-CA', {\n        timeZone: 'Asia/Singapore'\n      }),\n      ticker,\n      momentum_score: Number(momentumScore.toFixed(1)),\n      valuation_score: Number(valuationScore.toFixed(1)),\n      overheating_score: Number(overheatingScore.toFixed(1)),\n      ai_hype_score: aiHypeScore,\n      overall_ai_risk_score: Number(overallScore.toFixed(1)),\n      signal_label: signalLabel,\n      explanation:\n        `${ticker}: ${signalLabel}. ` +\n        `Overall AI risk score ${overallScore.toFixed(1)}/100. ` +\n        `Momentum=${momentumScore}, Valuation=${valuationScore.toFixed(1)}, ` +\n        `Overheating=${overheatingScore}, Hype=${aiHypeScore}.`\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "64b85d7b-0856-4767-a2a1-62d7ce9d361a",
+      "name": "AI Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_scores?on_conflict=run_date_sgt,ticker",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "run_date_sgt",
+              "value": "={{$json.run_date_sgt}}"
+            },
+            {
+              "name": "ticker",
+              "value": "={{$json.ticker}}"
+            },
+            {
+              "name": "momentum_score",
+              "value": "={{$json.momentum_score}}"
+            },
+            {
+              "name": "valuation_score",
+              "value": "={{$json.valuation_score}}"
+            },
+            {
+              "name": "overheating_score",
+              "value": "={{$json.overheating_score}}"
+            },
+            {
+              "name": "ai_hype_score",
+              "value": "={{$json.ai_hype_score}}"
+            },
+            {
+              "name": "overall_ai_risk_score",
+              "value": "={{$json.overall_ai_risk_score}}"
+            },
+            {
+              "name": "signal_label",
+              "value": "={{$json.signal_label}}"
+            },
+            {
+              "name": "explanation",
+              "value": "={{$json.explanation}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d20a9178-33e9-4c81-a45a-0467cc305e49",
+      "name": "Upsert Scores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        432,
+        -192
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Stock Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Stock Config": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches": {
+      "main": [
+        [
+          {
+            "node": "Get Valuations",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Twelve Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twelve Data": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Upsert Observations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Observations": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Stock Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Valuations": {
+      "main": [
+        [
+          {
+            "node": "AI Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Scoring": {
+      "main": [
+        [
+          {
+            "node": "Upsert Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "eedf49f5-770c-46df-900a-6d79b0a73563",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "rI6k5PipiuXZYg5i",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

@@ -1,0 +1,268 @@
+{
+  "name": "Research - Market News Sentiment Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "1e70c7df-0d80-4bfc-8071-7b7b731374f3",
+      "name": "Daily News Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer tavily_key"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  query: 'stock market outlook valuation risk inflation rates AI bubble earnings recession overvaluation',\n  search_depth: 'advanced',\n  topic: 'news',\n  days: 1,\n  max_results: 8,\n  include_answer: false,\n  include_raw_content: false\n} }}",
+        "options": {}
+      },
+      "id": "262eab52-1907-4692-90ae-b6668c99ab87",
+      "name": "Tavily Market Risk Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const runDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });\nconst results = $json.results || [];\n\nreturn results.map(r => ({\n  json: {\n    run_date_sgt: runDate,\n    title: r.title || '',\n    url: r.url || '',\n    source: r.source || 'tavily',\n    published_at: r.published_date || null,\n    content: r.content || r.snippet || '',\n    prompt: `You are a financial market risk analyst.\\n\\nAssess the following article for market risk sentiment.\\n\\nReturn only valid JSON. Do not include markdown.\\n\\nArticle title:\\n${r.title || ''}\\n\\nArticle URL:\\n${r.url || ''}\\n\\nArticle content:\\n${r.content || r.snippet || ''}\\n\\nScore the article from 0 to 100, where:\\n0 = strongly risk-on / bullish / calm\\n50 = neutral or mixed\\n100 = strongly risk-off / bearish / systemic stress / bubble warning\\n\\nReturn this JSON structure exactly:\\n{\\n  \"summary\": \"one sentence summary\",\\n  \"sentiment_label\": \"Calm | Neutral | Cautious | Risk-Off\",\\n  \"risk_score\": 0,\\n  \"key_risk_tags\": \"comma-separated risk tags\"\\n}`\n  }\n}));"
+      },
+      "id": "2afe4c3f-f5a8-4c11-9e03-a3465e74ae94",
+      "name": "Prepare Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer openai_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  model: 'gpt-5.4-mini',\n  input: $json.prompt,\n  temperature: 0.1\n} }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "d50ec8f6-c23f-4f0f-914d-6c2e915e094e",
+      "name": "OpenAI Sentiment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Prepare Articles').all();\nconst input = $input.all();\n\nfunction extract(resp) {\n  if (resp.output_text) return resp.output_text;\n  try {\n    for (const out of resp.output || []) {\n      for (const c of out.content || []) {\n        if (c.text) return c.text;\n      }\n    }\n  } catch {}\n  return '';\n}\n\nfunction parseModelJson(text) {\n  try {\n    return JSON.parse(text);\n  } catch {}\n\n  const match = String(text).match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try {\n      return JSON.parse(match[0]);\n    } catch {}\n  }\n\n  return {\n    summary: 'Unable to parse model output.',\n    sentiment_label: 'Neutral',\n    risk_score: 50,\n    key_risk_tags: 'parse_error'\n  };\n}\n\nreturn input.map((item, i) => {\n  const base = original[i]?.json || {};\n  const text = extract(item.json);\n  const parsed = parseModelJson(text);\n\n  let riskScore = Number(parsed.risk_score);\n  if (!Number.isFinite(riskScore)) riskScore = 50;\n  riskScore = Math.max(0, Math.min(100, riskScore));\n\n  return {\n    json: {\n      run_date_sgt: base.run_date_sgt,\n      title: base.title,\n      url: base.url,\n      source: base.source,\n      published_at: base.published_at,\n      summary: parsed.summary || '',\n      sentiment_label: parsed.sentiment_label || 'Neutral',\n      risk_score: riskScore,\n      key_risk_tags: parsed.key_risk_tags || ''\n    }\n  };\n});"
+      },
+      "id": "96fabf2d-9128-49af-9603-43136a91b9ae",
+      "name": "Parse Sentiment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/market_news?on_conflict=run_date_sgt,url",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "run_date_sgt",
+              "value": "={{$json.run_date_sgt}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "url",
+              "value": "={{$json.url}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$json.source}}"
+            },
+            {
+              "name": "published_at",
+              "value": "={{$json.published_at}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{$json.summary}}"
+            },
+            {
+              "name": "sentiment_label",
+              "value": "={{$json.sentiment_label}}"
+            },
+            {
+              "name": "risk_score",
+              "value": "={{$json.risk_score}}"
+            },
+            {
+              "name": "key_risk_tags",
+              "value": "={{$json.key_risk_tags}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "428b4eea-68f3-4333-a773-a594f0a833a3",
+      "name": "Upsert market_news",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily News Trigger": {
+      "main": [
+        [
+          {
+            "node": "Tavily Market Risk Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Market Risk Search": {
+      "main": [
+        [
+          {
+            "node": "Prepare Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Articles": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Sentiment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Sentiment": {
+      "main": [
+        [
+          {
+            "node": "Parse Sentiment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Sentiment": {
+      "main": [
+        [
+          {
+            "node": "Upsert market_news",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dff5fb50-440e-4f8c-9e84-b0bf34a38755",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "5SzZGuYgnMElAXuy",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

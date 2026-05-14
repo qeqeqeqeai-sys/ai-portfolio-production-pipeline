@@ -1,0 +1,291 @@
+{
+  "name": "Production Support - Macro Regime and Stress Signal Engine",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "adec2436-1355-4aed-bffa-a11381260265",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const API_KEY = 'FRED_key';\n\nconst series = [\n  { series_id: 'VIXCLS', series_name: 'CBOE VIX', category: 'Volatility Complacency', score_direction: 'inverse', asset: 'Macro', asset_class: 'Volatility' },\n  { series_id: 'BAMLH0A0HYM2', series_name: 'US High Yield Spread', category: 'Credit Excess', score_direction: 'inverse', asset: 'Credit', asset_class: 'Credit' },\n  { series_id: 'BAMLC0A0CM', series_name: 'US Investment Grade Spread', category: 'Credit Excess', score_direction: 'inverse', asset: 'Credit', asset_class: 'Credit' },\n  { series_id: 'BAMLC0A4CBBB', series_name: 'US BBB Spread', category: 'Credit Excess', score_direction: 'inverse', asset: 'Credit', asset_class: 'Credit' }\n];\n\nreturn series.map(s => ({\n  json: {\n    ...s,\n    url: `https://api.stlouisfed.org/fred/series/observations?series_id=${s.series_id}&api_key=${API_KEY}&file_type=json&observation_start=2010-01-01`\n  }\n}));"
+      },
+      "id": "2f80f731-7489-4a82-bd5f-930252a47c6b",
+      "name": "Series Config (FRED)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "6939e3e1-7d4d-4f00-8c7f-82df4c509f54",
+      "name": "Fetch FRED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function toNum(v){return (v==='.'||v==null||v==='')?null:Number(v)}\nfunction pctRank(arr,val){const c=arr.filter(x=>Number.isFinite(x));if(!c.length)return null;return c.filter(x=>x<=val).length/c.length}\nfunction regime(s){if(s>=85)return'Extreme';if(s>=70)return'High';if(s>=55)return'Elevated';if(s>=40)return'Normal';return'Low'}\n\nconst configItems=$items('Series Config (FRED)');\nconst httpItems=$input.all();\nconst out=[];\n\nfor(let i=0;i<httpItems.length;i++){\n  const meta=configItems[i].json;\n  const api=httpItems[i].json;\n  const obs=api.observations||[];\n\n  const cleaned=obs.map(o=>({date:o.date,value:toNum(o.value)})).filter(o=>o.value!=null&&Number.isFinite(o.value));\n  if(!cleaned.length) continue;\n\n  const latest=cleaned[cleaned.length-1];\n  const values=cleaned.map(o=>o.value);\n  const pct=pctRank(values,latest.value);\n  const score=meta.score_direction==='inverse'?Math.round((1-pct)*100):Math.round(pct*100);\n\n  out.push({json:{\n    asset: meta.asset,\n    asset_class: meta.asset_class,\n    series_id: meta.series_id,\n    series_name: meta.series_name,\n    category: meta.category,\n    latest_date: latest.date,\n    latest_value: latest.value,\n    percentile: Number(pct.toFixed(4)),\n    score,\n    regime: regime(score)\n  }});\n}\nreturn out;"
+      },
+      "id": "cd92b311-7c2a-4927-8839-5df4426ae38f",
+      "name": "Calculate FRED Scores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=1y&interval=1d",
+        "options": {}
+      },
+      "id": "4c2577bf-0608-4ad0-96be-7fce63d7ed48",
+      "name": "Fetch S&P 500",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data=$json.chart.result[0];\nconst ts=data.timestamp;\nconst px=data.indicators.quote[0].close;\n\nconst out=[];\nfor(let i=0;i<ts.length;i++){\n  if(!px[i]) continue;\n  const date=new Date(ts[i]*1000).toISOString().split('T')[0];\n  out.push({json:{date,price:px[i]}});\n}\nreturn out;"
+      },
+      "id": "a54dd0ef-d521-4603-abae-0b901903b80e",
+      "name": "Parse S&P 500",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\n\nif (rows.length < 21) {\n  return [];\n}\n\nconst latestIndex = rows.length - 1;\nconst prevIndex = latestIndex - 20;\n\nconst current = rows[latestIndex].json.price;\nconst prev = rows[prevIndex].json.price;\n\nif (!current || !prev) {\n  return [];\n}\n\nconst momentum = (current / prev - 1) * 100;\n\nconst score = Math.min(100, Math.max(0, 50 + momentum));\n\nconst regime =\n  score >= 85 ? \"Extreme\" :\n  score >= 70 ? \"High\" :\n  score >= 55 ? \"Elevated\" :\n  score >= 40 ? \"Normal\" :\n  \"Low\";\n\nreturn [\n  {\n    json: {\n      asset: \"S&P 500\",\n      asset_class: \"Equity\",\n      series_id: \"SPX_MOM_1M\",\n      series_name: \"S&P 500 1M Momentum\",\n      category: \"Equity Momentum\",\n      latest_date: rows[latestIndex].json.date,\n      latest_value: Number(momentum.toFixed(2)),\n      percentile: null,\n      score: Math.round(score),\n      regime\n    }\n  }\n];"
+      },
+      "id": "659a2e50-e3ef-47fc-97a3-2c71562d412b",
+      "name": "Calculate S&P 500 Momentum",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        256
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "37938707-950a-420f-ad47-20f9883bf762",
+      "name": "Combine All Indicators",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        656,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json);\n\nfunction avg(a){return Math.round(a.reduce((x,y)=>x+y,0)/a.length)}\n\nconst vol=rows.filter(r=>r.category==='Volatility Complacency');\nconst cred=rows.filter(r=>r.category==='Credit Excess');\n\nconst volScore=avg(vol.map(r=>r.score));\nconst credScore=avg(cred.map(r=>r.score));\nconst combined=avg([volScore,credScore]);\n\nconst run_date_sgt=new Date().toISOString().split('T')[0];\n\nreturn [{json:{run_date_sgt,volScore,credScore,combined,rows}}];"
+      },
+      "id": "6f90ae48-33ef-4253-a575-b7433ce722b3",
+      "name": "Aggregate Scores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$json;\nreturn $json.rows.map(r=>({json:{...r,run_date_sgt:d.run_date_sgt}}));"
+      },
+      "id": "f0d629de-dd60-4db3-89bf-376d207eda02",
+      "name": "Prepare Indicator Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/daily_indicator_scores?on_conflict=run_date_sgt,series_id",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{ \"apikey\": \"Supabase_key\", \"Authorization\": \"Bearer Supabase_key\", \"Content-Type\": \"application/json\",  \"Prefer\": \"resolution=merge-duplicates,return=representation\" }",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "4346c7c7-5e20-49e0-93eb-4c62116a6c23",
+      "name": "Write Indicators",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1408,
+        208
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Series Config (FRED)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch S&P 500",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Series Config (FRED)": {
+      "main": [
+        [
+          {
+            "node": "Fetch FRED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FRED": {
+      "main": [
+        [
+          {
+            "node": "Calculate FRED Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate FRED Scores": {
+      "main": [
+        [
+          {
+            "node": "Combine All Indicators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch S&P 500": {
+      "main": [
+        [
+          {
+            "node": "Parse S&P 500",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse S&P 500": {
+      "main": [
+        [
+          {
+            "node": "Calculate S&P 500 Momentum",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate S&P 500 Momentum": {
+      "main": [
+        [
+          {
+            "node": "Combine All Indicators",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine All Indicators": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Scores": {
+      "main": [
+        [
+          {
+            "node": "Prepare Indicator Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Indicator Rows": {
+      "main": [
+        [
+          {
+            "node": "Write Indicators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "34326d5e-5820-4862-8d20-bd052ef3c8c6",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "PFgTREYo4zSWZRx2",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

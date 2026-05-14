@@ -1,0 +1,957 @@
+{
+  "name": "Production - Get Daily Fundamental Data From FMP and Do Quant Scoring",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1ede6584-51eb-49a4-b194-fad13a26d761",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": 45
+            }
+          ]
+        }
+      },
+      "id": "d224ce8d-770a-4c67-b1dc-54dff5105eec",
+      "name": "Daily Schedule 6:45am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1104,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_universe",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "ticker,company_name,ai_subsector"
+            },
+            {
+              "name": "is_active",
+              "value": "eq.true"
+            },
+            {
+              "name": "order",
+              "value": "ticker.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "5e6f83d0-7fab-4233-a9d3-69430125a81b",
+      "name": "Fetch Active Universe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -816,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let rows = [];\n\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) rows.push(...item.json);\n  else if (Array.isArray(item.json?.data)) rows.push(...item.json.data);\n  else rows.push(item.json);\n}\n\nrows = rows\n  .filter(r => r && r.ticker)\n  .map(r => ({\n    json: {\n      ticker: String(r.ticker).trim().toUpperCase(),\n      company_name: r.company_name || null,\n      ai_subsector: r.ai_subsector || null\n    }\n  }));\n\nif (!rows.length) {\n  throw new Error('No active tickers found in ai_stock_universe.');\n}\n\nreturn rows;"
+      },
+      "id": "d1bc9c24-1e91-4bf8-bc04-d7b0915e7423",
+      "name": "Normalize Universe Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "8ce47671-6a84-4407-b9d1-defb6cfc89f4",
+      "name": "Loop Over AI Stocks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/ratios-ttm",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.ticker }}"
+            },
+            {
+              "name": "apikey",
+              "value": "fmp_key"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fbae1275-4d64-494f-930b-1897d0afcc8a",
+      "name": "Fetch FMP Ratios TTM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/key-metrics-ttm",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.ticker }}"
+            },
+            {
+              "name": "apikey",
+              "value": "fmp_key"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "4fcc7a06-ded2-430f-9932-39f00dd32b86",
+      "name": "Fetch FMP Key Metrics TTM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/financial-growth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.ticker }}"
+            },
+            {
+              "name": "period",
+              "value": "annual"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "apikey",
+              "value": "fmp_key"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "ffa796aa-e6bc-4af0-a7bb-ef91122f8373",
+      "name": "Fetch FMP Financial Growth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "a32383d6-b202-4f16-8d38-ffa5cbe51aa5",
+      "name": "Merge Ratios + Key Metrics",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        288,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "f245cb36-3682-42cf-b896-c5761b027a91",
+      "name": "Merge With Growth",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        528,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function firstNode(name) {\n  try {\n    const arr = $(name).all();\n    if (!arr || !arr.length) return {};\n    return arr[0].json;\n  } catch (e) {\n    return {};\n  }\n}\n\nconst base = firstNode('Loop Over AI Stocks');\nconst ratiosRaw = firstNode('Fetch FMP Ratios TTM');\nconst keyRaw = firstNode('Fetch FMP Key Metrics TTM');\nconst growthRaw = firstNode('Fetch FMP Financial Growth');\n\nconst ratios = Array.isArray(ratiosRaw) ? (ratiosRaw[0] || {}) : ratiosRaw;\nconst key = Array.isArray(keyRaw) ? (keyRaw[0] || {}) : keyRaw;\nconst growth = Array.isArray(growthRaw) ? (growthRaw[0] || {}) : growthRaw;\n\nconst toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/,/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v =>\n  v === null || v === undefined || !Number.isFinite(v)\n    ? null\n    : Math.round(v * 100) / 100;\n\nconst round4 = v =>\n  v === null || v === undefined || !Number.isFinite(v)\n    ? null\n    : Math.round(v * 10000) / 10000;\n\nconst clamp = v => Math.max(0, Math.min(100, v));\n\nconst scoreInverse = (value, cheap, expensive) => {\n  const v = toNum(value);\n  if (v === null || v <= 0) return null;\n  return clamp(100 - ((v - cheap) / (expensive - cheap)) * 100);\n};\n\nconst scoreDirect = (value, weak, strong) => {\n  const v = toNum(value);\n  if (v === null) return null;\n  return clamp(((v - weak) / (strong - weak)) * 100);\n};\n\nconst weightedAverage = pairs => {\n  const valid = pairs.filter(\n    p => p.score !== null && p.score !== undefined && Number.isFinite(p.score)\n  );\n\n  if (!valid.length) return null;\n\n  const totalW = valid.reduce((s, p) => s + p.weight, 0);\n  return valid.reduce((s, p) => s + p.score * p.weight, 0) / totalW;\n};\n\nconst safeDiv = (a, b) => {\n  if (\n    a === null ||\n    a === undefined ||\n    b === null ||\n    b === undefined ||\n    !Number.isFinite(a) ||\n    !Number.isFinite(b) ||\n    b === 0\n  ) {\n    return null;\n  }\n\n  return a / b;\n};\n\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Singapore',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n}).formatToParts(new Date());\n\nconst runDate = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n\nconst ticker = String(\n  base.ticker || key.symbol || ratios.symbol || growth.symbol || ''\n).toUpperCase();\n\nif (!ticker) {\n  return [\n    {\n      json: {\n        run_date_sgt: runDate,\n        ticker: null,\n        error: 'Ticker could not be resolved.',\n        source: 'financial_modeling_prep',\n      },\n    },\n  ];\n}\n\n// ============================================================\n// Valuation Inputs\n// ============================================================\n\nconst pe = toNum(\n  key.peRatioTTM ??\n  ratios.peRatioTTM ??\n  ratios.priceEarningsRatioTTM\n);\n\nconst evEbitda = toNum(\n  key.enterpriseValueOverEBITDATTM ??\n  key.evToEbitdaTTM ??\n  ratios.enterpriseValueMultipleTTM\n);\n\nconst evSales = toNum(\n  key.evToSalesTTM ??\n  key.enterpriseValueOverRevenueTTM\n);\n\nconst ps = toNum(\n  ratios.priceToSalesRatioTTM ??\n  key.priceToSalesRatioTTM\n);\n\nconst pb = toNum(\n  ratios.priceToBookRatioTTM ??\n  key.pbRatioTTM\n);\n\nconst fcfYield = toNum(\n  key.freeCashFlowYieldTTM ??\n  key.fcfYieldTTM\n);\n\nconst earningsYield = pe && pe > 0 ? 1 / pe : null;\n\nconst price = toNum(\n  key.stockPrice ??\n  key.price\n);\n\nconst marketCap = toNum(\n  key.marketCapTTM ??\n  key.marketCap\n);\n\n// ============================================================\n// FMP Field Mapping + Derived Efficiency Inputs\n// ============================================================\n\nconst enterpriseValue = toNum(\n  key.enterpriseValueTTM ??\n  key.enterpriseValue ??\n  key.evTTM ??\n  key.ev\n);\n\nlet revenue = toNum(\n  key.revenueTTM ??\n  key.revenue ??\n  key.totalRevenueTTM ??\n  key.totalRevenue\n);\n\nlet ebitda = toNum(\n  key.ebitdaTTM ??\n  key.ebitda\n);\n\nlet freeCashFlow = toNum(\n  key.freeCashFlowTTM ??\n  key.freeCashFlow ??\n  key.fcfTTM ??\n  key.fcf\n);\n\n// Fallback derivations.\n// These are mathematically consistent with the ratio fields:\n// revenue / EV = 1 / EV/Sales\n// EBITDA / EV = 1 / EV/EBITDA\n// FCF = FCF yield * market cap\nif (revenue === null && enterpriseValue !== null && evSales !== null && evSales !== 0) {\n  revenue = enterpriseValue / evSales;\n}\n\nif (ebitda === null && enterpriseValue !== null && evEbitda !== null && evEbitda !== 0) {\n  ebitda = enterpriseValue / evEbitda;\n}\n\nif (freeCashFlow === null && fcfYield !== null && marketCap !== null) {\n  freeCashFlow = fcfYield * marketCap;\n}\n\nconst revenuePerEV = safeDiv(revenue, enterpriseValue);\nconst ebitdaPerEV = safeDiv(ebitda, enterpriseValue);\nconst fcfPerEV = safeDiv(freeCashFlow, enterpriseValue);\n\n// ============================================================\n// Growth / Quality Inputs\n// ============================================================\n\nconst revenueGrowth = toNum(\n  growth.revenueGrowth ??\n  growth.growthRevenue\n);\n\nconst netIncomeGrowth = toNum(\n  growth.netIncomeGrowth ??\n  growth.growthNetIncome\n);\n\nconst grossMargin = toNum(\n  ratios.grossProfitMarginTTM ??\n  ratios.grossProfitMargin\n);\n\nconst operatingMargin = toNum(\n  ratios.operatingProfitMarginTTM ??\n  ratios.operatingProfitMargin\n);\n\nconst netMargin = toNum(\n  ratios.netProfitMarginTTM ??\n  ratios.netProfitMargin\n);\n\nconst roe = toNum(\n  ratios.returnOnEquityTTM ??\n  ratios.roeTTM\n);\n\nconst roic = toNum(\n  ratios.returnOnInvestedCapitalTTM ??\n  ratios.roicTTM\n);\n\nconst debtToEquity = toNum(\n  ratios.debtEquityRatioTTM ??\n  ratios.debtToEquityTTM\n);\n\nconst netDebtToEbitda = toNum(\n  key.netDebtToEBITDATTM ??\n  key.netDebtToEbitdaTTM\n);\n\n// ============================================================\n// Component Scores\n// ============================================================\n\nconst peScore = scoreInverse(pe, 15, 80);\nconst evEbitdaScore = scoreInverse(evEbitda, 8, 45);\nconst fcfYieldScore = scoreDirect(fcfYield, -0.02, 0.08);\nconst evSalesScore = scoreInverse(evSales, 3, 25);\n\nconst growthScore = weightedAverage([\n  { score: scoreDirect(revenueGrowth, -0.10, 0.30), weight: 0.65 },\n  { score: scoreDirect(netIncomeGrowth, -0.20, 0.40), weight: 0.35 },\n]);\n\nconst qualityScore = weightedAverage([\n  { score: scoreDirect(grossMargin, 0.25, 0.80), weight: 0.20 },\n  { score: scoreDirect(operatingMargin, 0.05, 0.40), weight: 0.25 },\n  { score: scoreDirect(netMargin, 0.00, 0.35), weight: 0.20 },\n  { score: scoreDirect(roe, 0.05, 0.40), weight: 0.20 },\n  { score: scoreDirect(roic, 0.04, 0.25), weight: 0.15 },\n]);\n\nconst balanceSheetScore = weightedAverage([\n  { score: scoreInverse(debtToEquity, 0.2, 3.0), weight: 0.55 },\n  { score: scoreInverse(netDebtToEbitda, 0.0, 5.0), weight: 0.45 },\n]);\n\nconst valuationScore = weightedAverage([\n  { score: peScore, weight: 0.35 },\n  { score: evEbitdaScore, weight: 0.30 },\n  { score: fcfYieldScore, weight: 0.25 },\n  { score: evSalesScore, weight: 0.10 },\n]);\n\nconst growthQualityScore = weightedAverage([\n  { score: growthScore, weight: 0.45 },\n  { score: qualityScore, weight: 0.40 },\n  { score: balanceSheetScore, weight: 0.15 },\n]);\n\nconst fundamentalScore = weightedAverage([\n  { score: valuationScore, weight: 0.55 },\n  { score: growthQualityScore, weight: 0.45 },\n]);\n\nconst overvaluationRiskScore =\n  valuationScore === null ? null : 100 - valuationScore;\n\n// ============================================================\n// Data Quality\n// ============================================================\n\nconst required = {\n  pe_ratio: pe,\n  ev_ebitda: evEbitda,\n  fcf_yield: fcfYield,\n  ev_sales: evSales,\n  revenue_growth: revenueGrowth,\n  gross_margin: grossMargin,\n  operating_margin: operatingMargin,\n  roe: roe,\n  enterprise_value: enterpriseValue,\n  revenue_per_ev: revenuePerEV,\n  ebitda_per_ev: ebitdaPerEV,\n  fcf_per_ev: fcfPerEV,\n};\n\nconst missing = Object.entries(required)\n  .filter(([k, v]) => v === null || v === undefined || !Number.isFinite(v))\n  .map(([k]) => k);\n\nconst dataQualityScore = round2(\n  ((Object.keys(required).length - missing.length) /\n    Object.keys(required).length) *\n    100\n);\n\n// ============================================================\n// Final Output\n// ============================================================\n\nreturn [\n  {\n    json: {\n      run_date_sgt: runDate,\n      ticker,\n      company_name: base.company_name || null,\n      ai_subsector: base.ai_subsector || null,\n\n      price: round2(price),\n      market_cap: marketCap,\n\n      pe_ratio: round2(pe),\n      ev_ebitda: round2(evEbitda),\n      ev_sales: round2(evSales),\n      price_to_sales: round2(ps),\n      price_to_book: round2(pb),\n      fcf_yield: round4(fcfYield),\n      earnings_yield: round4(earningsYield),\n\n      enterprise_value: enterpriseValue,\n      revenue: revenue,\n      ebitda: ebitda,\n      free_cash_flow: freeCashFlow,\n\n      revenue_per_ev: round4(revenuePerEV),\n      ebitda_per_ev: round4(ebitdaPerEV),\n      fcf_per_ev: round4(fcfPerEV),\n\n      revenue_growth: round4(revenueGrowth),\n      net_income_growth: round4(netIncomeGrowth),\n      gross_margin: round4(grossMargin),\n      operating_margin: round4(operatingMargin),\n      net_margin: round4(netMargin),\n      roe: round4(roe),\n      roic: round4(roic),\n\n      debt_to_equity: round2(debtToEquity),\n      net_debt_to_ebitda: round2(netDebtToEbitda),\n\n      pe_score: round2(peScore),\n      ev_ebitda_score: round2(evEbitdaScore),\n      fcf_yield_score: round2(fcfYieldScore),\n      ev_sales_score: round2(evSalesScore),\n      growth_score: round2(growthScore),\n      quality_score: round2(qualityScore),\n      balance_sheet_score: round2(balanceSheetScore),\n      valuation_score: round2(valuationScore),\n      growth_quality_score: round2(growthQualityScore),\n      fundamental_score: round2(fundamentalScore),\n      overvaluation_risk_score: round2(overvaluationRiskScore),\n\n      data_quality_score: dataQualityScore,\n      missing_fields: missing.join(', '),\n      source: 'financial_modeling_prep',\n    },\n  },\n];"
+      },
+      "id": "df2d327a-7f60-455c-8feb-380b9857f4ae",
+      "name": "Build FMP Quant Scores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "b2743961-2c9f-4b1e-beb3-abe9f4dff188",
+      "name": "IF Valid Quant Row",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_fmp_quant_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "run_date_sgt,ticker"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9eb28bc0-3fdd-4144-82df-9e8ca3831f25",
+      "name": "Upsert FMP Quant Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "metric_date,ticker,company_name,ai_subsector,latest_price,day_change_pct,momentum_score,valuation_proxy,composite_score"
+            },
+            {
+              "name": "metric_date",
+              "value": "={{ 'eq.' + $json.run_date_sgt }}"
+            },
+            {
+              "name": "ticker",
+              "value": "={{ 'eq.' + $json.ticker }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "42550782-7da2-4cb2-9107-f8b3b6d9988d",
+      "name": "Fetch Today Stock Daily Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    run_date_sgt: $json.run_date_sgt,\n    ticker: $json.ticker,\n    pe_ratio: $json.pe_ratio,\n    ev_ebitda: $json.ev_ebitda,\n    fcf_yield: $json.fcf_yield,\n    pe_score: $json.pe_score,\n    ev_ebitda_score: $json.ev_ebitda_score,\n    fcf_yield_score: $json.fcf_yield_score,\n    valuation_score: $json.valuation_score,\n    source: 'financial_modeling_prep'\n  }\n}];"
+      },
+      "id": "44006b99-7dcd-4be0-80a3-88e0434f5849",
+      "name": "Build Simple Valuation Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_valuation_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "run_date_sgt,ticker"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a2ff1773-f442-4f97-be96-12cdf64034d6",
+      "name": "Upsert Simple Valuation Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "908c0cae-6b27-48c9-b7b2-2de27553aba6",
+      "name": "Merge Quant + Daily Metrics",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1568,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => (v === null || v === undefined || !Number.isFinite(v)) ? null : Math.round(v * 100) / 100;\n\nlet daily = {};\ntry {\n  const d = $('Fetch Today Stock Daily Metrics').first().json;\n  daily = Array.isArray(d) ? (d[0] || {}) : d;\n} catch (e) {}\n\nconst q = $json || {};\nconst momentum = toNum(daily.momentum_score);\nconst valuationProxy = toNum(daily.valuation_proxy);\nconst overvaluationRisk = toNum(q.overvaluation_risk_score);\nconst fundamental = toNum(q.fundamental_score);\n\nlet signal = 'Neutral';\nif (overvaluationRisk !== null && momentum !== null) {\n  if (overvaluationRisk >= 70 && momentum >= 65) signal = 'Overheated AI Risk';\n  else if (overvaluationRisk >= 70 && momentum < 50) signal = 'Expensive / Losing Momentum';\n  else if (overvaluationRisk <= 35 && momentum >= 60) signal = 'Fundamental Momentum Leader';\n  else if (overvaluationRisk <= 35 && momentum < 50) signal = 'Potential Value Watch';\n}\n\nconst explanationParts = [];\nif (q.valuation_score !== null && q.valuation_score !== undefined) explanationParts.push(`Valuation score ${q.valuation_score}`);\nif (fundamental !== null) explanationParts.push(`fundamental score ${round2(fundamental)}`);\nif (momentum !== null) explanationParts.push(`momentum score ${round2(momentum)}`);\nif (valuationProxy !== null) explanationParts.push(`price-vs-200DMA proxy ${round2(valuationProxy)}%`);\n\nreturn [{\n  json: {\n    run_date_sgt: q.run_date_sgt,\n    ticker: q.ticker || daily.ticker,\n    company_name: q.company_name || daily.company_name || null,\n    ai_subsector: q.ai_subsector || daily.ai_subsector || null,\n    latest_price: daily.latest_price ?? q.price ?? null,\n    day_change_pct: daily.day_change_pct ?? null,\n    momentum_score: daily.momentum_score ?? null,\n    valuation_proxy: daily.valuation_proxy ?? null,\n    composite_score: daily.composite_score ?? null,\n    valuation_score: q.valuation_score ?? null,\n    growth_quality_score: q.growth_quality_score ?? null,\n    fundamental_score: q.fundamental_score ?? null,\n    overvaluation_risk_score: q.overvaluation_risk_score ?? null,\n    signal_label: signal,\n    explanation: explanationParts.join(' | '),\n    source: 'fmp_quant_stack'\n  }\n}];"
+      },
+      "id": "8aa28c63-be6f-4f5b-9882-eb13ab4c74e9",
+      "name": "Build Backtest Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_signal_backtest_snapshots",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "run_date_sgt,ticker"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "cd87d60c-edd5-4e55-b1c6-ddfd0a18f754",
+      "name": "Upsert Backtest Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "25e14712-0b99-4fa9-ba1f-86a520ad5482",
+      "name": "Wait 1 Second",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2352,
+        448
+      ],
+      "webhookId": "071f164a-8ac4-4d9d-b7b9-45059d1d63ea"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Singapore',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit'\n}).formatToParts(new Date());\n\nconst run_date_sgt = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n\nreturn [{ json: { run_date_sgt } }];"
+      },
+      "id": "44666332-854f-464c-817a-a23ad1790f49",
+      "name": "Build SGT Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_fmp_quant_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "run_date_sgt,ticker,ai_subsector,valuation_score,growth_quality_score,fundamental_score,overvaluation_risk_score,data_quality_score"
+            },
+            {
+              "name": "run_date_sgt",
+              "value": "={{ 'eq.' + $json.run_date_sgt }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "19cbb590-b6c7-4641-9d70-6f6122976465",
+      "name": "Fetch Today FMP Quant Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        288,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => (v === null || v === undefined || !Number.isFinite(v)) ? null : Math.round(v * 100) / 100;\n\nconst avg = arr => {\n  const nums = arr.map(toNum).filter(v => v !== null);\n  if (!nums.length) return null;\n  return nums.reduce((a,b) => a+b, 0) / nums.length;\n};\n\nlet rows = [];\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) rows.push(...item.json);\n  else if (Array.isArray(item.json?.data)) rows.push(...item.json.data);\n  else rows.push(item.json);\n}\n\nrows = rows.filter(r => r && r.run_date_sgt && r.ai_subsector);\n\nconst groups = {};\nfor (const r of rows) {\n  const key = `${r.run_date_sgt}||${r.ai_subsector}`;\n  if (!groups[key]) groups[key] = [];\n  groups[key].push(r);\n}\n\nconst out = [];\nfor (const [key, group] of Object.entries(groups)) {\n  const [runDate, subsector] = key.split('||');\n  const valid = group.filter(r => toNum(r.fundamental_score) !== null);\n  const weak = [...valid].sort((a,b) => toNum(a.fundamental_score) - toNum(b.fundamental_score));\n  const strong = [...valid].sort((a,b) => toNum(b.fundamental_score) - toNum(a.fundamental_score));\n\n  out.push({\n    json: {\n      run_date_sgt: runDate,\n      ai_subsector: subsector,\n      stock_count: group.length,\n      avg_valuation_score: round2(avg(group.map(r => r.valuation_score))),\n      avg_growth_quality_score: round2(avg(group.map(r => r.growth_quality_score))),\n      avg_fundamental_score: round2(avg(group.map(r => r.fundamental_score))),\n      avg_overvaluation_risk_score: round2(avg(group.map(r => r.overvaluation_risk_score))),\n      avg_data_quality_score: round2(avg(group.map(r => r.data_quality_score))),\n      weakest_ticker: weak.length ? weak[0].ticker : null,\n      strongest_ticker: strong.length ? strong[0].ticker : null\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "f5d1f19f-78c0-4be7-831b-18f19de73007",
+      "name": "Build FMP Subsector Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_subsector_fmp_quant_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "run_date_sgt,ai_subsector"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "32b894c1-00bb-43ab-9a3f-6f4570fafafe",
+      "name": "Upsert FMP Subsector Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Schedule 6:45am": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Universe": {
+      "main": [
+        [
+          {
+            "node": "Normalize Universe Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Universe Rows": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over AI Stocks": {
+      "main": [
+        [
+          {
+            "node": "Build SGT Date",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch FMP Ratios TTM",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch FMP Key Metrics TTM",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch FMP Financial Growth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FMP Ratios TTM": {
+      "main": [
+        [
+          {
+            "node": "Merge Ratios + Key Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FMP Key Metrics TTM": {
+      "main": [
+        [
+          {
+            "node": "Merge Ratios + Key Metrics",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Ratios + Key Metrics": {
+      "main": [
+        [
+          {
+            "node": "Merge With Growth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FMP Financial Growth": {
+      "main": [
+        [
+          {
+            "node": "Merge With Growth",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge With Growth": {
+      "main": [
+        [
+          {
+            "node": "Build FMP Quant Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build FMP Quant Scores": {
+      "main": [
+        [
+          {
+            "node": "IF Valid Quant Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid Quant Row": {
+      "main": [
+        [
+          {
+            "node": "Upsert FMP Quant Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Today Stock Daily Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Simple Valuation Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Simple Valuation Row": {
+      "main": [
+        [
+          {
+            "node": "Upsert Simple Valuation Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert FMP Quant Metrics": {
+      "main": [
+        [
+          {
+            "node": "Merge Quant + Daily Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Today Stock Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Merge Quant + Daily Metrics",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Quant + Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build Backtest Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Backtest Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Upsert Backtest Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Backtest Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Second": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SGT Date": {
+      "main": [
+        [
+          {
+            "node": "Fetch Today FMP Quant Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Today FMP Quant Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build FMP Subsector Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build FMP Subsector Metrics": {
+      "main": [
+        [
+          {
+            "node": "Upsert FMP Subsector Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2cc9418b-fa1f-407b-a694-63b53a9ee774",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "9AqOaZLhDXxa2SPc",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

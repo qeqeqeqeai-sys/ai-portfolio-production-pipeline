@@ -1,0 +1,351 @@
+{
+  "name": "Validation - AI Stock Backtest QA Layer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "61960e57-4311-4eaf-bfac-93ef4746939e",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1840,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Singapore',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit'\n}).formatToParts(new Date());\n\nconst today = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n\nconst d = new Date(`${today}T00:00:00+08:00`);\nd.setDate(d.getDate() - 370);\nconst startDate = d.toISOString().slice(0, 10);\n\nreturn [{\n  json: {\n    today_sgt: today,\n    start_date: startDate,\n    horizons: [1, 5, 10, 20],\n    note: 'Manual validation backtest only. Python remains the primary backtest and portfolio engine.'\n  }\n}];"
+      },
+      "id": "5c49b9a6-daaa-4a4f-89cc-14fb50e7f126",
+      "name": "Build Backtest Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1568,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_scores",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "run_date_sgt,ticker,momentum_score,valuation_score,overheating_score,overall_ai_risk_score,signal_label,momentum_change_5d,reversal_score,reversal_signal"
+            },
+            {
+              "name": "run_date_sgt",
+              "value": "={{ 'gte.' + $json.start_date }}"
+            },
+            {
+              "name": "run_date_sgt",
+              "value": "={{ 'lte.' + $json.today_sgt }}"
+            },
+            {
+              "name": "overall_ai_risk_score",
+              "value": "not.is.null"
+            },
+            {
+              "name": "order",
+              "value": "run_date_sgt.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "ba47c439-4434-46c6-9a47-6191bf1c2656",
+      "name": "Fetch AI Stock Scores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1312,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) out.push(...item.json);\n  else if (Array.isArray(item.json?.data)) out.push(...item.json.data);\n  else if (Array.isArray(item.json?.rows)) out.push(...item.json.rows);\n  else out.push(item.json);\n}\n\nreturn [{\n  json: {\n    today_sgt: $('Build Backtest Params').first().json.today_sgt,\n    start_date: $('Build Backtest Params').first().json.start_date,\n    horizons: $('Build Backtest Params').first().json.horizons,\n    score_rows: out\n  }\n}];"
+      },
+      "id": "9bd5d543-f5f3-45a2-9e99-5566ab87a58e",
+      "name": "Wrap Score Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "metric_date,ticker,latest_price"
+            },
+            {
+              "name": "metric_date",
+              "value": "={{ 'gte.' + $json.start_date }}"
+            },
+            {
+              "name": "metric_date",
+              "value": "={{ 'lte.' + $json.today_sgt }}"
+            },
+            {
+              "name": "latest_price",
+              "value": "not.is.null"
+            },
+            {
+              "name": "order",
+              "value": "ticker.asc,metric_date.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "74f51878-b2b1-481b-a4d4-4d71c2d030c7",
+      "name": "Fetch Daily Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -800,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nconst flatten = items => {\n  const out = [];\n  for (const item of items) {\n    if (Array.isArray(item.json)) out.push(...item.json);\n    else if (Array.isArray(item.json?.data)) out.push(...item.json.data);\n    else if (Array.isArray(item.json?.rows)) out.push(...item.json.rows);\n    else out.push(item.json);\n  }\n  return out;\n};\n\nconst params = $('Build Backtest Params').first().json;\nconst horizons = Array.isArray(params.horizons) ? params.horizons : [1, 5, 10, 20];\n\nconst scoreRows = $('Wrap Score Rows').first().json.score_rows || [];\nconst rawPriceRows = flatten($input.all());\n\nconst priceMap = {};\nfor (const r of rawPriceRows) {\n  if (!r || !r.metric_date || !r.ticker) continue;\n  const ticker = String(r.ticker).toUpperCase();\n  const date = String(r.metric_date);\n  const price = toNum(r.latest_price);\n  if (price === null) continue;\n  priceMap[`${ticker}||${date}`] = { ticker, date, price };\n}\n\nconst pricesByTicker = {};\nfor (const p of Object.values(priceMap)) {\n  if (!pricesByTicker[p.ticker]) pricesByTicker[p.ticker] = [];\n  pricesByTicker[p.ticker].push(p);\n}\n\nfor (const ticker of Object.keys(pricesByTicker)) {\n  pricesByTicker[ticker].sort((a, b) => a.date.localeCompare(b.date));\n}\n\nconst scoreMap = {};\nfor (const s of scoreRows) {\n  if (!s || !s.run_date_sgt || !s.ticker) continue;\n  if (toNum(s.overall_ai_risk_score) === null) continue;\n\n  const ticker = String(s.ticker).toUpperCase();\n  const date = String(s.run_date_sgt);\n  scoreMap[`${date}||${ticker}`] = { ...s, ticker, run_date_sgt: date };\n}\n\nconst cleanScoreRows = Object.values(scoreMap)\n  .sort((a, b) => String(a.run_date_sgt).localeCompare(String(b.run_date_sgt)));\n\nfunction findEntryIndex(arr, signalDate) {\n  let idx = arr.findIndex(p => p.date === signalDate);\n  if (idx >= 0) return idx;\n  return arr.findIndex(p => p.date > signalDate);\n}\n\nconst results = [];\n\nfor (const s of cleanScoreRows) {\n  const ticker = String(s.ticker).toUpperCase();\n  const prices = pricesByTicker[ticker] || [];\n  if (!prices.length) continue;\n\n  const entryIdx = findEntryIndex(prices, s.run_date_sgt);\n  if (entryIdx < 0) continue;\n\n  const entry = prices[entryIdx];\n  if (!entry || !entry.price) continue;\n\n  for (const h of horizons) {\n    const horizon = Number(h);\n    const exitIdx = entryIdx + horizon;\n    if (exitIdx >= prices.length) continue;\n\n    const exit = prices[exitIdx];\n    if (!exit || !exit.price) continue;\n    if (exit.date <= entry.date) continue;\n\n    const window = prices\n      .slice(entryIdx, exitIdx + 1)\n      .map(p => p.price)\n      .filter(v => v !== null);\n\n    const minPrice = window.length ? Math.min(...window) : null;\n\n    const forwardReturnPct = ((exit.price / entry.price) - 1) * 100;\n    const maxDrawdownPct = minPrice !== null ? ((minPrice / entry.price) - 1) * 100 : null;\n\n    results.push({\n      signal_date_sgt: s.run_date_sgt,\n      ticker,\n      horizon_days: horizon,\n      signal_label: s.signal_label || null,\n      valuation_score: round2(toNum(s.valuation_score)),\n      momentum_score: round2(toNum(s.momentum_score)),\n      overheating_score: round2(toNum(s.overheating_score)),\n      overall_ai_risk_score: round2(toNum(s.overall_ai_risk_score)),\n      momentum_change_5d: round2(toNum(s.momentum_change_5d)),\n      reversal_score: round2(toNum(s.reversal_score)),\n      reversal_signal: Boolean(s.reversal_signal),\n      entry_date: entry.date,\n      entry_price: round2(entry.price),\n      exit_date: exit.date,\n      exit_price: round2(exit.price),\n      forward_return_pct: round2(forwardReturnPct),\n      max_drawdown_pct: round2(maxDrawdownPct),\n      source: 'n8n_manual_validation_backtest'\n    });\n  }\n}\n\nconst chunkSize = 500;\nconst chunks = [];\n\nfor (let i = 0; i < results.length; i += chunkSize) {\n  chunks.push({\n    json: {\n      rows: results.slice(i, i + chunkSize),\n      row_count: Math.min(chunkSize, results.length - i),\n      debug_score_rows: cleanScoreRows.length,\n      debug_price_rows_raw: rawPriceRows.length,\n      debug_price_rows_deduped: Object.values(priceMap).length,\n      debug_backtest_rows: results.length\n    }\n  });\n}\n\nreturn chunks.length ? chunks : [{\n  json: {\n    rows: [],\n    row_count: 0,\n    debug_score_rows: cleanScoreRows.length,\n    debug_price_rows_raw: rawPriceRows.length,\n    debug_price_rows_deduped: Object.values(priceMap).length,\n    debug_backtest_rows: 0,\n    note: 'No completed backtest rows available yet.'\n  }\n}];"
+      },
+      "id": "21c42fab-836d-4add-b08d-8a4f1cc6fdb5",
+      "name": "Build Backtest Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ Number($json.row_count || 0) > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "ca06d25b-9455-48e7-96d2-51b3077375f1",
+      "name": "IF Has Backtest Rows",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_backtest_results",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "signal_date_sgt,ticker,horizon_days"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.rows }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d7a44790-3258-483e-a739-2909f5549cf9",
+      "name": "Upsert Backtest Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Backtest Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Backtest Params": {
+      "main": [
+        [
+          {
+            "node": "Fetch AI Stock Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch AI Stock Scores": {
+      "main": [
+        [
+          {
+            "node": "Wrap Score Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Score Rows": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Prices": {
+      "main": [
+        [
+          {
+            "node": "Build Backtest Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Backtest Results": {
+      "main": [
+        [
+          {
+            "node": "IF Has Backtest Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Backtest Rows": {
+      "main": [
+        [
+          {
+            "node": "Upsert Backtest Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1f38cfdd-e40e-418a-ba7e-f3cc921f9a9a",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "agIkFvZ732uuT2mY",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

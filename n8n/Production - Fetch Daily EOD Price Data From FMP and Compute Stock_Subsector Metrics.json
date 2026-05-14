@@ -1,0 +1,550 @@
+{
+  "name": "Production - Fetch Daily EOD Price Data From FMP and Compute Stock/Subsector Metrics",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f3126c07-8e18-4bae-a5e0-2398eaa46a01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "0f4d1f16-707d-40cd-81cd-baeaa245318d",
+      "name": "Daily Schedule 6:30am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_universe",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "ticker,company_name,ai_subsector"
+            },
+            {
+              "name": "is_active",
+              "value": "eq.true"
+            },
+            {
+              "name": "order",
+              "value": "ticker.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f205aea2-a110-44c8-8ab6-f6abd6db6ce2",
+      "name": "Fetch Active Universe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -848,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let rows = [];\n\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) rows.push(...item.json);\n  else if (Array.isArray(item.json?.data)) rows.push(...item.json.data);\n  else rows.push(item.json);\n}\n\nrows = rows\n  .filter(r => r && r.ticker)\n  .map(r => ({\n    json: {\n      ticker: String(r.ticker).trim().toUpperCase(),\n      company_name: r.company_name || null,\n      ai_subsector: r.ai_subsector || null\n    }\n  }));\n\nif (!rows.length) {\n  throw new Error('No active tickers found in ai_stock_universe.');\n}\n\nreturn rows;"
+      },
+      "id": "e8e6fdf1-d717-49fe-b1db-087a988a60de",
+      "name": "Normalize Universe Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "72e575b4-7df9-4bbb-9b05-eaa29a92dae5",
+      "name": "Loop Over AI Stocks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/historical-price-eod/full",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.ticker }}"
+            },
+            {
+              "name": "apikey",
+              "value": "fmp_key"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "3af18f2e-e1ce-403a-a93b-3c7c234bed1f",
+      "name": "Fetch FMP Historical EOD",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/,/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nfunction getSgtDate() {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone: 'Asia/Singapore',\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit'\n  }).formatToParts(new Date());\n\n  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n}\n\nlet base = {};\ntry {\n  base = $('Loop Over AI Stocks').first().json || {};\n} catch (e) {}\n\nlet rows = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n\n  if (Array.isArray(j)) rows.push(...j);\n  else if (Array.isArray(j?.historical)) rows.push(...j.historical);\n  else if (Array.isArray(j?.data)) rows.push(...j.data);\n  else if (Array.isArray(j?.results)) rows.push(...j.results);\n  else rows.push(j);\n}\n\nrows = rows\n  .filter(r => r && (r.date || r.price_date || r.metric_date))\n  .map(r => ({\n    date: r.date || r.price_date || r.metric_date,\n    close: toNum(r.close ?? r.adjClose ?? r.adj_close ?? r.price),\n    volume: toNum(r.volume)\n  }))\n  .filter(r => r.date && r.close !== null)\n  .sort((a, b) => String(b.date).localeCompare(String(a.date)));\n\nconst ticker = String(base.ticker || '').toUpperCase();\n\nif (!ticker) {\n  return [{\n    json: {\n      metric_date: getSgtDate(),\n      ticker: null,\n      error: 'Ticker could not be resolved from Loop Over AI Stocks.',\n      rows_received: rows.length,\n      source: 'fmp_historical_price_eod'\n    }\n  }];\n}\n\nif (rows.length < 2) {\n  return [{\n    json: {\n      metric_date: getSgtDate(),\n      ticker,\n      company_name: base.company_name || null,\n      ai_subsector: base.ai_subsector || null,\n      error: `Insufficient FMP historical EOD data for ${ticker}`,\n      rows_received: rows.length,\n      source: 'fmp_historical_price_eod'\n    }\n  }];\n}\n\nconst latest = rows[0];\nconst previous = rows[1];\n\nconst latestPrice = latest.close;\nconst previousClose = previous.close;\nconst volume = latest.volume;\n\nlet dayChange = null;\nlet dayChangePct = null;\n\nif (latestPrice !== null && previousClose !== null && previousClose !== 0) {\n  dayChange = latestPrice - previousClose;\n  dayChangePct = (dayChange / previousClose) * 100;\n}\n\nconst closes200 = rows.slice(0, 200).map(r => r.close).filter(v => v !== null);\n\nlet ma200 = null;\nif (closes200.length >= 200) {\n  ma200 = closes200.reduce((a, b) => a + b, 0) / closes200.length;\n}\n\nreturn [{\n  json: {\n    metric_date: getSgtDate(),\n    ticker,\n    company_name: base.company_name || null,\n    ai_subsector: base.ai_subsector || null,\n    latest_price: round2(latestPrice),\n    previous_close: round2(previousClose),\n    day_change: round2(dayChange),\n    day_change_pct: round2(dayChangePct),\n    volume,\n    ma200: round2(ma200),\n    momentum_score: null,\n    valuation_proxy: null,\n    composite_score: null,\n    regime: null,\n    quadrant: null,\n    source: 'fmp_historical_price_eod'\n  }\n}];"
+      },
+      "id": "728dab16-3844-4406-a1d2-539e9590408a",
+      "name": "Normalize FMP Price Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "f14c0bd2-0bfc-468e-bda7-dbc6feb03ad0",
+      "name": "IF Valid Record",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        592,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "metric_date,ticker"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "58f4b21d-7aa1-4926-aaf5-0f82dd21644f",
+      "name": "Upsert Stock Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "0ee8d069-186c-4483-a3d1-196e4efe6284",
+      "name": "Wait 1 Second",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        320
+      ],
+      "webhookId": "436fbe41-ceb9-411f-81d1-1b832a165b30"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Singapore',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit'\n}).formatToParts(new Date());\n\nconst metricDate = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n\nreturn [{ json: { metric_date: metricDate } }];"
+      },
+      "id": "f382c845-b699-4219-a735-3f1f6feca7a7",
+      "name": "Build SGT Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "metric_date,ticker,ai_subsector,latest_price,previous_close,day_change_pct,ma200,momentum_score,valuation_proxy,composite_score"
+            },
+            {
+              "name": "metric_date",
+              "value": "={{ 'eq.' + $json.metric_date }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8ad89b74-c5ac-448b-bd95-f12fddc11606",
+      "name": "Fetch Today's Stock Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nconst avg = arr => {\n  const nums = arr.map(toNum).filter(v => v !== null);\n  if (!nums.length) return null;\n  return nums.reduce((a, b) => a + b, 0) / nums.length;\n};\n\nconst stddev = arr => {\n  const nums = arr.map(toNum).filter(v => v !== null);\n  if (nums.length < 2) return null;\n  const mean = nums.reduce((a, b) => a + b, 0) / nums.length;\n  const variance = nums.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (nums.length - 1);\n  return Math.sqrt(variance);\n};\n\nlet rows = [];\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) rows.push(...item.json);\n  else if (Array.isArray(item.json?.data)) rows.push(...item.json.data);\n  else rows.push(item.json);\n}\n\nrows = rows.filter(r => r && r.metric_date && r.ai_subsector);\n\nconst groups = {};\nfor (const row of rows) {\n  const key = `${row.metric_date}||${row.ai_subsector}`;\n  if (!groups[key]) groups[key] = [];\n  groups[key].push(row);\n}\n\nconst output = [];\n\nfor (const [key, group] of Object.entries(groups)) {\n  const [metricDate, aiSubsector] = key.split('||');\n\n  const valuationValues = group.map(r => toNum(r.valuation_proxy)).filter(v => v !== null);\n  const avgValuation = avg(group.map(r => r.valuation_proxy));\n  const avgMomentum = avg(group.map(r => r.momentum_score));\n  const avgComposite = avg(group.map(r => r.composite_score));\n  const avgDayChangePct = avg(group.map(r => r.day_change_pct));\n\n  let valuationRegime = 'Fair Value';\n  if (avgValuation !== null) {\n    if (avgValuation >= 25) valuationRegime = 'Highly Overvalued';\n    else if (avgValuation >= 10) valuationRegime = 'Moderately Overvalued';\n    else if (avgValuation <= -10) valuationRegime = 'Undervalued';\n  }\n\n  let subsectorRegime = 'Neutral';\n  if (avgComposite !== null) {\n    if (avgComposite >= 60) subsectorRegime = 'Strong';\n    else if (avgComposite <= 40) subsectorRegime = 'Weak';\n  }\n\n  output.push({\n    json: {\n      metric_date: metricDate,\n      ai_subsector: aiSubsector,\n      stock_count: group.length,\n      avg_valuation_proxy: round2(avgValuation),\n      min_valuation_proxy: valuationValues.length ? round2(Math.min(...valuationValues)) : null,\n      max_valuation_proxy: valuationValues.length ? round2(Math.max(...valuationValues)) : null,\n      valuation_dispersion: round2(stddev(group.map(r => r.valuation_proxy))),\n      avg_momentum_score: round2(avgMomentum),\n      avg_composite_score: round2(avgComposite),\n      avg_day_change_pct: round2(avgDayChangePct),\n      valuation_regime: valuationRegime,\n      subsector_regime: subsectorRegime\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "4516dedd-09f7-4e6f-af50-23b435d2652d",
+      "name": "Build Subsector Daily Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_subsector_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "metric_date,ai_subsector"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "60c08aaf-3d28-4eff-8deb-f63888782864",
+      "name": "Upsert Subsector Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Schedule 6:30am": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Universe": {
+      "main": [
+        [
+          {
+            "node": "Normalize Universe Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Universe Rows": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over AI Stocks": {
+      "main": [
+        [
+          {
+            "node": "Build SGT Date",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch FMP Historical EOD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch FMP Historical EOD": {
+      "main": [
+        [
+          {
+            "node": "Normalize FMP Price Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize FMP Price Data": {
+      "main": [
+        [
+          {
+            "node": "IF Valid Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid Record": {
+      "main": [
+        [
+          {
+            "node": "Upsert Stock Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Stock Metrics": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Second": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SGT Date": {
+      "main": [
+        [
+          {
+            "node": "Fetch Today's Stock Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Today's Stock Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build Subsector Daily Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Subsector Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Upsert Subsector Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3ba5c93a-44ac-4f58-8fdf-80cac342cdaa",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "EjvgF15UEArTVXPG",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

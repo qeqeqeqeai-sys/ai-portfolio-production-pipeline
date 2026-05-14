@@ -1,0 +1,393 @@
+{
+  "name": "Production - Merge Price and Fundamental Data and Compute Reversal Scores",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b0342a6f-ecfd-4fa5-a00d-f21b5a156d2c",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "2b964bee-6eb0-4d00-bd86-206380007dd0",
+      "name": "Daily Schedule 7:00am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Singapore',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit'\n}).formatToParts(new Date());\n\nconst today = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n\nconst d = new Date(`${today}T00:00:00+08:00`);\nd.setDate(d.getDate() - 30);\nconst lookback_start_date = d.toISOString().slice(0, 10);\n\nreturn [{\n  json: {\n    run_date_sgt: today,\n    lookback_start_date\n  }\n}];"
+      },
+      "id": "12824234-153b-438a-88b3-09a441941c76",
+      "name": "Build Scoring Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "metric_date,ticker,company_name,ai_subsector,latest_price,previous_close,day_change_pct,ma200"
+            },
+            {
+              "name": "metric_date",
+              "value": "={{ 'gte.' + $json.lookback_start_date }}"
+            },
+            {
+              "name": "metric_date",
+              "value": "={{ 'lte.' + $json.run_date_sgt }}"
+            },
+            {
+              "name": "order",
+              "value": "ticker.asc,metric_date.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8e78b018-d96d-4eb7-8813-09e0d02b6026",
+      "name": "Fetch Recent Price Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) out.push(...item.json);\n  else if (Array.isArray(item.json?.data)) out.push(...item.json.data);\n  else if (Array.isArray(item.json?.rows)) out.push(...item.json.rows);\n  else out.push(item.json);\n}\n\nreturn [{\n  json: {\n    run_date_sgt: $('Build Scoring Params').first().json.run_date_sgt,\n    lookback_start_date: $('Build Scoring Params').first().json.lookback_start_date,\n    price_rows: out\n  }\n}];"
+      },
+      "id": "dd930bce-86bb-4a4a-ae29-a15f62b4a871",
+      "name": "Wrap Price Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_fmp_quant_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "run_date_sgt,ticker,company_name,ai_subsector,price,market_cap,pe_ratio,ev_ebitda,fcf_yield,valuation_score,growth_quality_score,fundamental_score,overvaluation_risk_score,data_quality_score,missing_fields"
+            },
+            {
+              "name": "run_date_sgt",
+              "value": "={{ 'eq.' + $json.run_date_sgt }}"
+            },
+            {
+              "name": "order",
+              "value": "ticker.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "3dfe0743-69e8-445f-b684-403efa4083b7",
+      "name": "Fetch Today's FMP Quant Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1072,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nconst clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));\n\nconst flatten = items => {\n  const out = [];\n  for (const item of items) {\n    if (Array.isArray(item.json)) out.push(...item.json);\n    else if (Array.isArray(item.json?.data)) out.push(...item.json.data);\n    else if (Array.isArray(item.json?.rows)) out.push(...item.json.rows);\n    else out.push(item.json);\n  }\n  return out;\n};\n\nconst runDate = $('Wrap Price Rows').first().json.run_date_sgt;\nconst priceRows = $('Wrap Price Rows').first().json.price_rows || [];\nconst quantRows = flatten($input.all());\n\nconst quantByTicker = {};\nfor (const q of quantRows) {\n  if (!q || !q.ticker) continue;\n  quantByTicker[String(q.ticker).trim().toUpperCase()] = q;\n}\n\nconst pricesByTicker = {};\nfor (const p of priceRows) {\n  if (!p || !p.ticker || !p.metric_date) continue;\n  const ticker = String(p.ticker).trim().toUpperCase();\n  if (!pricesByTicker[ticker]) pricesByTicker[ticker] = [];\n  pricesByTicker[ticker].push({ ...p, ticker });\n}\n\nfor (const ticker of Object.keys(pricesByTicker)) {\n  pricesByTicker[ticker].sort((a, b) =>\n    String(a.metric_date).localeCompare(String(b.metric_date))\n  );\n}\n\nfunction calcMomentumScore(dayChangePct) {\n  const d = toNum(dayChangePct);\n  if (d === null) return null;\n  return round2(clamp(50 + d * 5));\n}\n\nfunction calcValuationProxy(latestPrice, ma200) {\n  const p = toNum(latestPrice);\n  const m = toNum(ma200);\n  if (p === null || m === null || m === 0) return null;\n  return round2(((p - m) / m) * 100);\n}\n\nfunction proxyToOverheatingScore(valuationProxy) {\n  const p = toNum(valuationProxy);\n  if (p === null) return null;\n  return round2(clamp(50 + p));\n}\n\nfunction reversalScoreFromMomentumChange(change) {\n  const c = toNum(change);\n  if (c === null) return 50;\n  return round2(clamp(50 - c * 2));\n}\n\nfunction signalLabel(score, momentumChange5d, reversalSignal) {\n  if (reversalSignal) return 'Reversal Short Candidate';\n  if (score === null || score === undefined) return 'No Score';\n  if (score >= 75) return 'High AI Risk';\n  if (score >= 65) return 'Expensive / Watch for Reversal';\n  if (score >= 55) return 'Overvalued but Trend Intact';\n  if (score >= 40) return 'Neutral';\n  if (score >= 25) return 'Low Risk / Reasonable';\n  return 'Potential Value / Depressed';\n}\n\nconst output = [];\n\n// IMPORTANT:\n// Loop over quant rows, not price rows.\n// This ensures all 45 FMP quant tickers are scored even if priceRows has fewer tickers.\nfor (const ticker of Object.keys(quantByTicker)) {\n  const q = quantByTicker[ticker] || {};\n  const rows = pricesByTicker[ticker] || [];\n\n  const todayRow =\n    [...rows].reverse().find(r => r.metric_date === runDate) ||\n    rows[rows.length - 1] ||\n    {};\n\n  const todayIdx = rows.findIndex(r => r.metric_date === todayRow.metric_date);\n  const priorRow = todayIdx >= 5 ? rows[todayIdx - 5] : null;\n\n  const rawMomentum = calcMomentumScore(todayRow.day_change_pct);\n  const priorMomentum = priorRow ? calcMomentumScore(priorRow.day_change_pct) : null;\n\n  const momentum = rawMomentum !== null ? rawMomentum : 50;\n\n  const momentumChange5d =\n    rawMomentum !== null && priorMomentum !== null\n      ? rawMomentum - priorMomentum\n      : null;\n\n  const valuationProxy = calcValuationProxy(todayRow.latest_price, todayRow.ma200);\n  const rawOverheatingScore = proxyToOverheatingScore(valuationProxy);\n  const overheatingScoreFinal = rawOverheatingScore !== null ? rawOverheatingScore : 50;\n\n  const valuationScore = toNum(q.valuation_score);\n  const overvaluationRiskRaw = toNum(\n    q.overvaluation_risk_score ?? (valuationScore !== null ? 100 - valuationScore : null)\n  );\n\n  const overvaluationRiskFinal =\n    overvaluationRiskRaw !== null ? overvaluationRiskRaw : 50;\n\n  const fundamentalScore = toNum(q.fundamental_score);\n  const growthQualityScore = toNum(q.growth_quality_score);\n  const dataQualityScore = toNum(q.data_quality_score);\n\n  const reversalScoreFinal = reversalScoreFromMomentumChange(momentumChange5d);\n\n  const overall = round2(\n    overvaluationRiskFinal * 0.70 +\n    overheatingScoreFinal * 0.15 +\n    reversalScoreFinal * 0.15\n  );\n\n  const reversalSignal =\n    overall !== null &&\n    overall >= 75 &&\n    momentumChange5d !== null &&\n    momentumChange5d < -5;\n\n  output.push({\n    json: {\n      run_date_sgt: runDate,\n      ticker,\n      company_name: todayRow.company_name || q.company_name || null,\n      ai_subsector: todayRow.ai_subsector || q.ai_subsector || null,\n\n      latest_price: round2(toNum(todayRow.latest_price)),\n      ma200: round2(toNum(todayRow.ma200)),\n      day_change_pct: round2(toNum(todayRow.day_change_pct)),\n\n      momentum_score: round2(momentum),\n      valuation_proxy: round2(valuationProxy),\n      valuation_score: round2(valuationScore),\n      fundamental_score: round2(fundamentalScore),\n      growth_quality_score: round2(growthQualityScore),\n\n      overvaluation_risk_score: round2(overvaluationRiskFinal),\n      overheating_score: round2(overheatingScoreFinal),\n\n      ai_hype_score: null,\n      overall_ai_risk_score: overall,\n\n      momentum_change_5d: round2(momentumChange5d),\n      reversal_score: round2(reversalScoreFinal),\n      reversal_signal: reversalSignal,\n\n      signal_label: signalLabel(overall, momentumChange5d, reversalSignal),\n      data_quality_score: round2(dataQualityScore),\n      missing_fields: q.missing_fields || null,\n\n      explanation: [\n        'Workflow 03 revised for full-universe scoring.',\n        'Node now loops over FMP quant tickers, not only price tickers.',\n        'Missing price-derived momentum defaults to neutral 50.',\n        'Missing price-vs-MA200 overheating defaults to neutral 50.',\n        'Missing overvaluation risk defaults to neutral 50.',\n        'Score formula: 70% FMP overvaluation risk + 15% price-vs-MA200 overheating + 15% reversal risk.',\n        'Reversal signal rule: overall_ai_risk_score >= 75 AND momentum_change_5d < -5.',\n        `Momentum change 5 trading days: ${round2(momentumChange5d)}.`,\n        `Reversal risk score: ${round2(reversalScoreFinal)}.`,\n        `Reversal signal: ${reversalSignal}.`\n      ].join(' '),\n\n      source: 'workflow_03_fmp_reversal_filter_v3_full_universe'\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "73fef322-33f0-4ee2-96c0-31a5d2765ffe",
+      "name": "Build Scores With Reversal Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ String($json.overall_ai_risk_score ?? '') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "3c5b00a7-8c95-415b-a52d-f377dc68c803",
+      "name": "IF Score Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_scores",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "run_date_sgt,ticker"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8505bb93-f424-4663-86b1-542afa190c0a",
+      "name": "Upsert Scores With Reversal Filter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1984,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const x = item.json;\n\n  return {\n    json: {\n      run_date_sgt: x.run_date_sgt,\n      ticker: x.ticker,\n      momentum_score: x.momentum_score,\n      valuation_score: x.valuation_score,\n      overheating_score: x.overheating_score,\n      ai_hype_score: x.ai_hype_score,\n      overall_ai_risk_score: x.overall_ai_risk_score,\n      signal_label: x.signal_label,\n      explanation: x.explanation,\n      momentum_change_5d: x.momentum_change_5d,\n      reversal_score: x.reversal_score,\n      reversal_signal: x.reversal_signal\n    }\n  };\n});"
+      },
+      "id": "d32fbe3f-ec92-4749-bbab-658429adbd8c",
+      "name": "Prepare ai_stock_scores Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        32
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Scoring Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Schedule 7:00am": {
+      "main": [
+        [
+          {
+            "node": "Build Scoring Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scoring Params": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Price Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Price Metrics": {
+      "main": [
+        [
+          {
+            "node": "Wrap Price Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Price Rows": {
+      "main": [
+        [
+          {
+            "node": "Fetch Today's FMP Quant Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Today's FMP Quant Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build Scores With Reversal Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scores With Reversal Filter": {
+      "main": [
+        [
+          {
+            "node": "IF Score Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Score Exists": {
+      "main": [
+        [
+          {
+            "node": "Prepare ai_stock_scores Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare ai_stock_scores Row": {
+      "main": [
+        [
+          {
+            "node": "Upsert Scores With Reversal Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "58cdb78e-c3bf-4c4a-9673-84a2a5aa494f",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "HO0bE6rpxIMXw7Pk",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

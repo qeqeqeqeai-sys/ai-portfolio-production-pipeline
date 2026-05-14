@@ -1,0 +1,524 @@
+{
+  "name": "Research - Historical Fundamental Factor Builder",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a11a47f3-8274-4a8e-ba94-080d88bb43e1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const stocks = [\n  { ticker: 'NVDA', company_name: 'NVIDIA', ai_subsector: 'AI Semiconductors' },\n  { ticker: 'AMD', company_name: 'Advanced Micro Devices', ai_subsector: 'AI Semiconductors' },\n  { ticker: 'AVGO', company_name: 'Broadcom', ai_subsector: 'AI Semiconductors' },\n  { ticker: 'MSFT', company_name: 'Microsoft', ai_subsector: 'AI Cloud Infrastructure' },\n  { ticker: 'AMZN', company_name: 'Amazon', ai_subsector: 'AI Cloud Infrastructure' },\n  { ticker: 'GOOGL', company_name: 'Alphabet', ai_subsector: 'AI Cloud Infrastructure' },\n  { ticker: 'PLTR', company_name: 'Palantir', ai_subsector: 'AI Software / Applications' },\n  { ticker: 'CRM', company_name: 'Salesforce', ai_subsector: 'AI Software / Applications' },\n  { ticker: 'NOW', company_name: 'ServiceNow', ai_subsector: 'AI Software / Applications' },\n  { ticker: 'VRT', company_name: 'Vertiv', ai_subsector: 'AI Power / Data Centre Enablers' },\n  { ticker: 'ETN', company_name: 'Eaton', ai_subsector: 'AI Power / Data Centre Enablers' },\n  { ticker: 'CEG', company_name: 'Constellation Energy', ai_subsector: 'AI Power / Data Centre Enablers' }\n];\nreturn stocks.map(s => ({ json: s }));"
+      },
+      "id": "334d29ef-0d90-436d-aac5-4716bf812e99",
+      "name": "AI Stock Universe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "56dc5350-99df-415f-8122-62d48d742a95",
+      "name": "Loop Over AI Stocks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticker = String($json.ticker || '').toUpperCase();\nreturn [{\n  json: {\n    ...$json,\n    ticker,\n    fmp_api_key: 'fmp_key',\n    limit: 40\n  }\n}];"
+      },
+      "id": "f6b98431-9526-43a4-8760-2ae2f1754d37",
+      "name": "Prepare FMP Historical Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/key-metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.ticker }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $json.limit }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $json.fmp_api_key }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d0d7f052-d3b1-4b8a-b9c0-84b3a34be274",
+      "name": "Fetch Stable Historical Key Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst meta = $('Prepare FMP Historical Request').item.json;\n\nreturn [{\n  json: {\n    ...meta,\n    key_metrics: rows,\n    key_metrics_count: rows.length\n  }\n}];"
+      },
+      "id": "90001aff-caee-4abc-8ba5-06a23d704ab1",
+      "name": "Wrap Key Metrics Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "83ac09fc-5018-4570-aaa7-a6807f7f0d14",
+      "name": "Wait 3 Seconds Before Ratios",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        208
+      ],
+      "webhookId": "wait-three-seconds-before-ratios"
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/ratios",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $('Prepare FMP Historical Request').item.json.ticker }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $('Prepare FMP Historical Request').item.json.limit }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $('Prepare FMP Historical Request').item.json.fmp_api_key }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f303afb8-fdcb-4bd0-81a0-f9c0005c4725",
+      "name": "Fetch Stable Historical Ratios",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst meta = $('Wrap Key Metrics Response').first().json;\n\nreturn [{\n  json: {\n    ...meta,\n    ratios: rows,\n    ratios_count: rows.length\n  }\n}];"
+      },
+      "id": "ba63717c-c087-42ee-a6be-28f3d3b10c69",
+      "name": "Wrap Ratios Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "d5efe42f-b9d7-40a9-9970-504a15ea5055",
+      "name": "Wait 3 Seconds Before Growth",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        208
+      ],
+      "webhookId": "wait-three-seconds-before-growth"
+    },
+    {
+      "parameters": {
+        "url": "https://financialmodelingprep.com/stable/financial-growth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $('Prepare FMP Historical Request').item.json.ticker }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $('Prepare FMP Historical Request').item.json.limit }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $('Prepare FMP Historical Request').item.json.fmp_api_key }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "5e83a8e6-e72b-480c-ac47-12a8d3421f0e",
+      "name": "Fetch Stable Historical Financial Growth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst meta = $('Wrap Ratios Response').first().json;\n\nreturn [{\n  json: {\n    ...meta,\n    growth: rows,\n    growth_count: rows.length\n  }\n}];"
+      },
+      "id": "b5702ef5-1c22-4ba0-ac7d-bfb1992d93f9",
+      "name": "Wrap Growth Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $('Wrap Growth Response').first().json;\nconst ticker = String(meta.ticker || '').toUpperCase();\n\nconst toArray = v => Array.isArray(v) ? v : [];\n\nconst toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/,/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nconst round4 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 10000) / 10000;\n};\n\nconst clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));\n\nconst scoreInverse = (val, min, max) => {\n  val = toNum(val);\n  if (val === null || val <= 0) return null;\n  return round2(clamp(100 - ((val - min) / (max - min)) * 100));\n};\n\nconst scoreDirect = (val, min, max) => {\n  val = toNum(val);\n  if (val === null) return null;\n  return round2(clamp(((val - min) / (max - min)) * 100));\n};\n\nconst weightedScore = pairs => {\n  const valid = pairs.filter(p => p.score !== null && p.score !== undefined && Number.isFinite(Number(p.score)) && Number.isFinite(Number(p.weight)));\n  const totalWeight = valid.reduce((s, p) => s + Number(p.weight), 0);\n  if (!valid.length || totalWeight === 0) return null;\n  return round2(valid.reduce((s, p) => s + Number(p.score) * Number(p.weight), 0) / totalWeight);\n};\n\nconst keyMetrics = toArray(meta.key_metrics);\nconst ratios = toArray(meta.ratios);\nconst growth = toArray(meta.growth);\n\nconst byDate = {};\n\nfunction ensure(date) {\n  if (!date) return null;\n  if (!byDate[date]) byDate[date] = {\n    fiscal_date: date,\n    calendar_year: null,\n    period: null,\n    ticker,\n    company_name: meta.company_name || null,\n    ai_subsector: meta.ai_subsector || null,\n    source: 'financial_modeling_prep'\n  };\n  return byDate[date];\n}\n\nfor (const r of keyMetrics) {\n  const date = r.date || r.fiscalDateEnding || r.calendarDate || r.fiscal_date;\n  const row = ensure(date);\n  if (!row) continue;\n\n  row.calendar_year = r.calendarYear || r.calendar_year || row.calendar_year || null;\n  row.period = r.period || row.period || null;\n\n  row.pe_ratio = toNum(r.peRatio) ?? toNum(r.peRatioTTM) ?? row.pe_ratio ?? null;\n  row.ev_ebitda = toNum(r.enterpriseValueOverEBITDA) ?? toNum(r.evToEbitda) ?? row.ev_ebitda ?? null;\n  row.ev_sales = toNum(r.evToSales) ?? toNum(r.enterpriseValueOverRevenue) ?? row.ev_sales ?? null;\n  row.fcf_yield = toNum(r.freeCashFlowYield) ?? row.fcf_yield ?? null;\n  row.roe = toNum(r.roe) ?? row.roe ?? null;\n  row.roic = toNum(r.roic) ?? row.roic ?? null;\n  row.debt_to_equity = toNum(r.debtToEquity) ?? row.debt_to_equity ?? null;\n  row.net_debt_to_ebitda = toNum(r.netDebtToEBITDA) ?? row.net_debt_to_ebitda ?? null;\n}\n\nfor (const r of ratios) {\n  const date = r.date || r.fiscalDateEnding || r.calendarDate || r.fiscal_date;\n  const row = ensure(date);\n  if (!row) continue;\n\n  row.calendar_year = r.calendarYear || r.calendar_year || row.calendar_year || null;\n  row.period = r.period || row.period || null;\n\n  row.pe_ratio = toNum(r.priceEarningsRatio) ?? toNum(r.peRatio) ?? row.pe_ratio ?? null;\n  row.gross_margin = toNum(r.grossProfitMargin) ?? row.gross_margin ?? null;\n  row.operating_margin = toNum(r.operatingProfitMargin) ?? row.operating_margin ?? null;\n  row.net_margin = toNum(r.netProfitMargin) ?? row.net_margin ?? null;\n  row.roe = toNum(r.returnOnEquity) ?? row.roe ?? null;\n  row.roic = toNum(r.returnOnCapitalEmployed) ?? toNum(r.returnOnInvestedCapital) ?? row.roic ?? null;\n  row.debt_to_equity = toNum(r.debtEquityRatio) ?? row.debt_to_equity ?? null;\n  row.current_ratio = toNum(r.currentRatio) ?? row.current_ratio ?? null;\n}\n\nfor (const r of growth) {\n  const date = r.date || r.fiscalDateEnding || r.calendarDate || r.fiscal_date;\n  const row = ensure(date);\n  if (!row) continue;\n\n  row.calendar_year = r.calendarYear || r.calendar_year || row.calendar_year || null;\n  row.period = r.period || row.period || null;\n\n  row.revenue_growth = toNum(r.revenueGrowth) ?? row.revenue_growth ?? null;\n  row.ebitda_growth = toNum(r.ebitgrowth) ?? toNum(r.ebitdaGrowth) ?? row.ebitda_growth ?? null;\n  row.fcf_growth = toNum(r.freeCashFlowGrowth) ?? row.fcf_growth ?? null;\n  row.eps_growth = toNum(r.epsgrowth) ?? toNum(r.epsGrowth) ?? row.eps_growth ?? null;\n}\n\nconst rows = [];\n\nfor (const row of Object.values(byDate)) {\n  const peScore = scoreInverse(row.pe_ratio, 10, 60);\n  const evEbitdaScore = scoreInverse(row.ev_ebitda, 5, 35);\n  const fcfYieldScore = scoreDirect(row.fcf_yield, 0, 0.08);\n\n  const valuationScore = weightedScore([\n    { score: peScore, weight: 0.40 },\n    { score: evEbitdaScore, weight: 0.35 },\n    { score: fcfYieldScore, weight: 0.25 }\n  ]);\n\n  const roeScore = scoreDirect(row.roe, 0, 0.35);\n  const roicScore = scoreDirect(row.roic, 0, 0.30);\n  const marginScore = scoreDirect(row.operating_margin ?? row.net_margin, 0, 0.35);\n  const leverageScore = scoreInverse(row.debt_to_equity, 0, 3);\n\n  const qualityScore = weightedScore([\n    { score: roeScore, weight: 0.30 },\n    { score: roicScore, weight: 0.35 },\n    { score: marginScore, weight: 0.25 },\n    { score: leverageScore, weight: 0.10 }\n  ]);\n\n  const revenueGrowthScore = scoreDirect(row.revenue_growth, -0.10, 0.40);\n  const fcfGrowthScore = scoreDirect(row.fcf_growth, -0.20, 0.50);\n  const epsGrowthScore = scoreDirect(row.eps_growth, -0.20, 0.50);\n\n  const growthScore = weightedScore([\n    { score: revenueGrowthScore, weight: 0.50 },\n    { score: fcfGrowthScore, weight: 0.25 },\n    { score: epsGrowthScore, weight: 0.25 }\n  ]);\n\n  const fundamentalScore = weightedScore([\n    { score: valuationScore, weight: 0.45 },\n    { score: qualityScore, weight: 0.35 },\n    { score: growthScore, weight: 0.20 }\n  ]);\n\n  rows.push({\n    fiscal_date: row.fiscal_date,\n    calendar_year: row.calendar_year,\n    period: row.period,\n    ticker: row.ticker,\n    company_name: row.company_name,\n    ai_subsector: row.ai_subsector,\n    pe_ratio: round4(row.pe_ratio),\n    ev_ebitda: round4(row.ev_ebitda),\n    ev_sales: round4(row.ev_sales),\n    fcf_yield: round4(row.fcf_yield),\n    revenue_growth: round4(row.revenue_growth),\n    ebitda_growth: round4(row.ebitda_growth),\n    fcf_growth: round4(row.fcf_growth),\n    eps_growth: round4(row.eps_growth),\n    gross_margin: round4(row.gross_margin),\n    operating_margin: round4(row.operating_margin),\n    net_margin: round4(row.net_margin),\n    roe: round4(row.roe),\n    roic: round4(row.roic),\n    debt_to_equity: round4(row.debt_to_equity),\n    net_debt_to_ebitda: round4(row.net_debt_to_ebitda),\n    current_ratio: round4(row.current_ratio),\n    pe_score: peScore,\n    ev_ebitda_score: evEbitdaScore,\n    fcf_yield_score: fcfYieldScore,\n    valuation_score: valuationScore,\n    quality_score: qualityScore,\n    growth_score: growthScore,\n    fundamental_score: fundamentalScore,\n    source: 'financial_modeling_prep'\n  });\n}\n\nrows.sort((a, b) => String(a.fiscal_date || '').localeCompare(String(b.fiscal_date || '')));\n\nreturn [{\n  json: {\n    ticker,\n    row_count: rows.length,\n    rows,\n    key_metrics_count: keyMetrics.length,\n    ratios_count: ratios.length,\n    growth_count: growth.length,\n    note: rows.length ? null : 'No historical FMP rows returned'\n  }\n}];"
+      },
+      "id": "6090c038-7650-4394-acc4-88816362fdd0",
+      "name": "Build Historical FMP Metrics Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.row_count > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "35a9282f-d946-42ef-8a60-44486af14359",
+      "name": "IF Has Historical Rows",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_fmp_historical_metrics?on_conflict=fiscal_date,ticker",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.rows }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "abc11ea0-1a24-4057-a844-a405a519dfa0",
+      "name": "Upsert Historical FMP Metrics Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e487e6ae-8fd6-4c48-a1de-339b7351083c",
+      "name": "Wait 5 Seconds Between Stocks",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2896,
+        176
+      ],
+      "webhookId": "wait-3-seconds-between-stocks"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Stock Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Stock Universe": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over AI Stocks": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare FMP Historical Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare FMP Historical Request": {
+      "main": [
+        [
+          {
+            "node": "Fetch Stable Historical Key Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Stable Historical Key Metrics": {
+      "main": [
+        [
+          {
+            "node": "Wrap Key Metrics Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Key Metrics Response": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Seconds Before Ratios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Seconds Before Ratios": {
+      "main": [
+        [
+          {
+            "node": "Fetch Stable Historical Ratios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Stable Historical Ratios": {
+      "main": [
+        [
+          {
+            "node": "Wrap Ratios Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Ratios Response": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Seconds Before Growth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Seconds Before Growth": {
+      "main": [
+        [
+          {
+            "node": "Fetch Stable Historical Financial Growth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Stable Historical Financial Growth": {
+      "main": [
+        [
+          {
+            "node": "Wrap Growth Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Growth Response": {
+      "main": [
+        [
+          {
+            "node": "Build Historical FMP Metrics Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Historical FMP Metrics Batch": {
+      "main": [
+        [
+          {
+            "node": "IF Has Historical Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Historical Rows": {
+      "main": [
+        [
+          {
+            "node": "Upsert Historical FMP Metrics Batch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 5 Seconds Between Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Historical FMP Metrics Batch": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 Seconds Between Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 Seconds Between Stocks": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9f368be8-0b6c-433a-92d1-47c7fa86256b",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "nzP4VYOvuR5SzjUz",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

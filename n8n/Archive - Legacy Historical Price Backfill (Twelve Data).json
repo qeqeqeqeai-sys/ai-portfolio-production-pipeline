@@ -1,0 +1,300 @@
+{
+  "name": "Archive - Legacy Historical Price Backfill (Twelve Data)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6067e11e-81e6-47af-a175-f4d74bf5a822",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const stocks = [\n  { ticker: 'NVDA', company_name: 'NVIDIA', ai_subsector: 'AI Semiconductors' },\n  { ticker: 'AMD', company_name: 'Advanced Micro Devices', ai_subsector: 'AI Semiconductors' },\n  { ticker: 'AVGO', company_name: 'Broadcom', ai_subsector: 'AI Semiconductors' },\n  { ticker: 'MSFT', company_name: 'Microsoft', ai_subsector: 'AI Cloud Infrastructure' },\n  { ticker: 'AMZN', company_name: 'Amazon', ai_subsector: 'AI Cloud Infrastructure' },\n  { ticker: 'GOOGL', company_name: 'Alphabet', ai_subsector: 'AI Cloud Infrastructure' },\n  { ticker: 'PLTR', company_name: 'Palantir', ai_subsector: 'AI Software / Applications' },\n  { ticker: 'CRM', company_name: 'Salesforce', ai_subsector: 'AI Software / Applications' },\n  { ticker: 'NOW', company_name: 'ServiceNow', ai_subsector: 'AI Software / Applications' },\n  { ticker: 'VRT', company_name: 'Vertiv', ai_subsector: 'AI Power / Data Centre Enablers' },\n  { ticker: 'ETN', company_name: 'Eaton', ai_subsector: 'AI Power / Data Centre Enablers' },\n  { ticker: 'CEG', company_name: 'Constellation Energy', ai_subsector: 'AI Power / Data Centre Enablers' }\n];\nreturn stocks.map(stock => ({ json: stock }));"
+      },
+      "id": "49266441-cd42-41cd-b7ea-394f71ad54f0",
+      "name": "AI Stock Universe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2ff681dd-0de2-4f96-a4ab-a29db1f03393",
+      "name": "Loop Over AI Stocks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.twelvedata.com/time_series",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.ticker }}"
+            },
+            {
+              "name": "interval",
+              "value": "1day"
+            },
+            {
+              "name": "outputsize",
+              "value": "250"
+            },
+            {
+              "name": "apikey",
+              "value": "twelvedata_key"
+            },
+            {
+              "name": "format",
+              "value": "JSON"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "bda1ce4c-67cf-4bf5-8bbf-21008821da88",
+      "name": "Fetch 250D Time Series",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = {\n  NVDA: { company_name: 'NVIDIA', ai_subsector: 'AI Semiconductors' },\n  AMD: { company_name: 'Advanced Micro Devices', ai_subsector: 'AI Semiconductors' },\n  AVGO: { company_name: 'Broadcom', ai_subsector: 'AI Semiconductors' },\n  MSFT: { company_name: 'Microsoft', ai_subsector: 'AI Cloud Infrastructure' },\n  AMZN: { company_name: 'Amazon', ai_subsector: 'AI Cloud Infrastructure' },\n  GOOGL: { company_name: 'Alphabet', ai_subsector: 'AI Cloud Infrastructure' },\n  PLTR: { company_name: 'Palantir', ai_subsector: 'AI Software / Applications' },\n  CRM: { company_name: 'Salesforce', ai_subsector: 'AI Software / Applications' },\n  NOW: { company_name: 'ServiceNow', ai_subsector: 'AI Software / Applications' },\n  VRT: { company_name: 'Vertiv', ai_subsector: 'AI Power / Data Centre Enablers' },\n  ETN: { company_name: 'Eaton', ai_subsector: 'AI Power / Data Centre Enablers' },\n  CEG: { company_name: 'Constellation Energy', ai_subsector: 'AI Power / Data Centre Enablers' }\n};\n\nconst toNum = v => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/,/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\n\nconst round2 = v => {\n  if (v === null || v === undefined || !Number.isFinite(v)) return null;\n  return Math.round(v * 100) / 100;\n};\n\nconst data = $json;\nif (data.status === 'error') {\n  return [{ json: { rows: [], row_count: 0, error: data.message || 'Twelve Data error' } }];\n}\n\nconst ticker = String(data.meta?.symbol || $('Loop Over AI Stocks').item.json.ticker || '').toUpperCase();\nconst m = meta[ticker] || {\n  company_name: $('Loop Over AI Stocks').item.json.company_name || ticker,\n  ai_subsector: $('Loop Over AI Stocks').item.json.ai_subsector || 'Unclassified AI'\n};\n\nlet values = Array.isArray(data.values) ? data.values : [];\nvalues = values\n  .map(v => ({\n    date: v.datetime,\n    open: toNum(v.open),\n    high: toNum(v.high),\n    low: toNum(v.low),\n    close: toNum(v.close),\n    volume: toNum(v.volume)\n  }))\n  .filter(v => v.date && v.close !== null)\n  .sort((a, b) => a.date.localeCompare(b.date));\n\nif (values.length < 2) {\n  return [{ json: { rows: [], row_count: 0, error: `Insufficient time series data for ${ticker}` } }];\n}\n\nconst rows = [];\n\nfor (let i = 0; i < values.length; i++) {\n  const cur = values[i];\n  const prev = i > 0 ? values[i - 1] : null;\n\n  const latestPrice = cur.close;\n  const previousClose = prev ? prev.close : null;\n\n  let dayChange = null;\n  let dayChangePct = null;\n  if (latestPrice !== null && previousClose !== null && previousClose !== 0) {\n    dayChange = latestPrice - previousClose;\n    dayChangePct = (dayChange / previousClose) * 100;\n  }\n\n  const start = Math.max(0, i - 199);\n  const closes = values.slice(start, i + 1).map(v => v.close).filter(v => v !== null);\n  const ma200 = closes.length >= 200 ? closes.reduce((a, b) => a + b, 0) / closes.length : null;\n\n  let valuationProxy = null;\n  if (latestPrice !== null && ma200 !== null && ma200 !== 0) {\n    valuationProxy = ((latestPrice - ma200) / ma200) * 100;\n  }\n\n  let momentumScore = null;\n  if (dayChangePct !== null) {\n    momentumScore = Math.max(0, Math.min(100, 50 + dayChangePct * 5));\n  }\n\n  let compositeScore = null;\n  if (momentumScore !== null && valuationProxy !== null) {\n    compositeScore = (momentumScore * 0.6) - (valuationProxy * 0.4);\n  }\n\n  let regime = 'Neutral';\n  if (momentumScore !== null) {\n    if (momentumScore >= 70) regime = 'Strong Momentum';\n    else if (momentumScore <= 30) regime = 'Weak Momentum';\n  }\n\n  let quadrant = 'Neutral';\n  if (momentumScore !== null && valuationProxy !== null) {\n    if (momentumScore >= 60 && valuationProxy >= 20) quadrant = 'Overheated Leader';\n    else if (momentumScore >= 60 && valuationProxy < 20) quadrant = 'Emerging Leader';\n    else if (momentumScore < 60 && valuationProxy >= 20) quadrant = 'Weak & Expensive';\n    else if (momentumScore < 60 && valuationProxy < 20) quadrant = 'Depressed / Value';\n  }\n\n  rows.push({\n    metric_date: cur.date,\n    ticker,\n    company_name: m.company_name,\n    ai_subsector: m.ai_subsector,\n    latest_price: round2(latestPrice),\n    previous_close: round2(previousClose),\n    day_change: round2(dayChange),\n    day_change_pct: round2(dayChangePct),\n    volume: cur.volume,\n    ma200: round2(ma200),\n    valuation_proxy: round2(valuationProxy),\n    momentum_score: round2(momentumScore),\n    composite_score: round2(compositeScore),\n    regime,\n    quadrant,\n    source: 'twelvedata_historical_backfill'\n  });\n}\n\nreturn [{ json: { ticker, rows, row_count: rows.length } }];"
+      },
+      "id": "4464426f-60dc-4212-b27e-118444edb431",
+      "name": "Expand Historical Daily Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.row_count > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "3673474a-de64-46dd-adbe-b985585b07aa",
+      "name": "IF Has Rows",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/ai_stock_daily_metrics?on_conflict=metric_date,ticker",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.rows }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "2406ec3e-1d8e-40b7-9f97-4666c7cb7b63",
+      "name": "Upsert Historical Daily Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1584,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "82ea36e5-b598-43d1-82b1-c62baed98f65",
+      "name": "Wait 1 Second",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        80
+      ],
+      "webhookId": "14d3e56d-8779-420e-83d1-eec5a772b48d"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Stock Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Stock Universe": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over AI Stocks": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fetch 250D Time Series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch 250D Time Series": {
+      "main": [
+        [
+          {
+            "node": "Expand Historical Daily Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Historical Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "IF Has Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Rows": {
+      "main": [
+        [
+          {
+            "node": "Upsert Historical Daily Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Historical Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Second": {
+      "main": [
+        [
+          {
+            "node": "Loop Over AI Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a30ea8d9-bc2d-4e16-9b32-9f85c49f1071",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "avYNUCXOn3DNOHXP",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}

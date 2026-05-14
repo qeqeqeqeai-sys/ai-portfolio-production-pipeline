@@ -1,0 +1,290 @@
+{
+  "name": "Production Support - Track Commodity Prices and Compute Stress Scores",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "139a32c2-4e3c-4f39-8cc4-c9d42712d34d",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const API_KEY = 'twelvedata_key';\n\nconst commodities = [\n  { commodity: 'Gold', symbol: 'XAU/USD' },\n  { commodity: 'Copper', symbol: 'HG' },\n  { commodity: 'Brent Oil', symbol: 'BZ' }\n];\n\nreturn commodities.map(c => ({\n  json: {\n    commodity: c.commodity,\n    symbol: c.symbol,\n    url: `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(c.symbol)}&interval=1day&outputsize=300&apikey=${API_KEY}`\n  }\n}));"
+      },
+      "id": "b27356ac-d5c7-4d63-aee9-1ff60207c11a",
+      "name": "Commodity Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a4e0301e-442e-491c-9e14-e0001ede7759",
+      "name": "Split in Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        432,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f6beb205-0bed-4928-bd3a-b493901b6703",
+      "name": "Fetch Twelve Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 8
+      },
+      "id": "5d102220-eae5-4c2c-90f6-a2337c14f76a",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        144
+      ],
+      "webhookId": "commodity-wait-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const runDate = new Date().toLocaleDateString('en-CA', {\n  timeZone: 'Asia/Singapore'\n});\n\nconst configItems = $('Commodity Config').all().map(i => i.json);\n\nconst responseSymbol = $json.meta?.symbol || $json.symbol || null;\n\nlet config = configItems.find(c => c.symbol === responseSymbol);\n\nif (!config && responseSymbol) {\n  config = configItems.find(c =>\n    String(c.symbol).toUpperCase() === String(responseSymbol).toUpperCase()\n  );\n}\n\nif (!config) {\n  config = $input.item.json;\n}\n\nconst commodity = config.commodity || 'Unknown Commodity';\nconst symbol = config.symbol || responseSymbol || 'UNKNOWN';\nconst values = $json.values;\n\nconst round = x => Number.isFinite(x) ? Number(x.toFixed(4)) : null;\nconst avg = arr => {\n  const nums = arr.filter(v => Number.isFinite(v));\n  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;\n};\nconst pct = (a, b) => {\n  if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return null;\n  return ((a / b) - 1) * 100;\n};\n\nif (!Array.isArray(values) || values.length < 30) {\n  return [{\n    json: {\n      run_date_sgt: runDate,\n      commodity,\n      symbol,\n      source: 'twelve_data',\n      price: null,\n      daily_change_pct: null,\n      return_20d_pct: null,\n      price_vs_50dma_pct: null,\n      price_vs_200dma_pct: null,\n      momentum_score: 40,\n      stress_score: 40,\n      signal_label: 'Data Error',\n      explanation: `${commodity}: insufficient Twelve Data history or unsupported symbol ${symbol}.`\n    }\n  }];\n}\n\nconst ordered = [...values].reverse();\nconst closes = ordered.map(v => Number(v.close)).filter(v => Number.isFinite(v));\n\nif (closes.length < 30) {\n  return [{\n    json: {\n      run_date_sgt: runDate,\n      commodity,\n      symbol,\n      source: 'twelve_data',\n      price: null,\n      daily_change_pct: null,\n      return_20d_pct: null,\n      price_vs_50dma_pct: null,\n      price_vs_200dma_pct: null,\n      momentum_score: 40,\n      stress_score: 40,\n      signal_label: 'Data Error',\n      explanation: `${commodity}: not enough valid close prices.`\n    }\n  }];\n}\n\nconst latest = closes.at(-1);\nconst previous = closes.at(-2);\nconst close20 = closes.at(-21);\nconst ma50 = avg(closes.slice(-50));\nconst ma200 = avg(closes.slice(-200));\n\nconst dailyChange = pct(latest, previous);\nconst return20d = pct(latest, close20);\nconst vs50 = pct(latest, ma50);\nconst vs200 = pct(latest, ma200);\n\nlet momentumScore = 40;\n\nif (Number.isFinite(return20d)) {\n  if (return20d < -5) momentumScore = 25;\n  else if (return20d < 0) momentumScore = 35;\n  else if (return20d < 5) momentumScore = 50;\n  else if (return20d < 10) momentumScore = 65;\n  else momentumScore = 80;\n}\n\nlet stressScore = momentumScore;\n\nif (Number.isFinite(dailyChange)) {\n  if (Math.abs(dailyChange) >= 3) stressScore += 15;\n  else if (Math.abs(dailyChange) >= 1.5) stressScore += 8;\n}\n\nif (Number.isFinite(vs50)) {\n  if (Math.abs(vs50) >= 10) stressScore += 8;\n  else if (Math.abs(vs50) >= 5) stressScore += 4;\n}\n\nstressScore = Math.max(20, Math.min(95, stressScore));\n\nlet signalLabel = 'Normal';\nif (stressScore >= 75) signalLabel = 'Stress';\nelse if (stressScore >= 60) signalLabel = 'Watch';\n\nlet explanation = '';\n\nif (commodity === 'Gold') {\n  explanation = dailyChange > 0\n    ? 'Gold is rising, suggesting risk-off demand, inflation concern, or safe-haven buying.'\n    : 'Gold is falling, suggesting weaker safe-haven demand.';\n}\n\nif (commodity === 'Copper') {\n  explanation = dailyChange > 0\n    ? 'Copper is rising, suggesting stronger growth or industrial demand expectations.'\n    : 'Copper is falling, suggesting weaker global growth expectations.';\n}\n\nif (commodity === 'WTI Oil') {\n  explanation = dailyChange > 0\n    ? 'WTI oil is rising, adding inflation or geopolitical pressure.'\n    : 'WTI oil is falling, easing inflation pressure.';\n}\n\nif (commodity === 'Iron Ore') {\n  explanation = dailyChange > 0\n    ? 'Iron ore is rising, suggesting stronger China or steel demand.'\n    : 'Iron ore is falling, suggesting weaker China or steel demand.';\n}\n\nreturn [{\n  json: {\n    run_date_sgt: runDate,\n    commodity,\n    symbol,\n    source: 'twelve_data',\n    price: round(latest),\n    daily_change_pct: round(dailyChange),\n    return_20d_pct: round(return20d),\n    price_vs_50dma_pct: round(vs50),\n    price_vs_200dma_pct: round(vs200),\n    momentum_score: Number(momentumScore.toFixed(1)),\n    stress_score: Number(stressScore.toFixed(1)),\n    signal_label: signalLabel,\n    explanation: `${commodity}: ${signalLabel}. Stress score ${stressScore.toFixed(1)}/100. ${explanation}`\n  }\n}];"
+      },
+      "id": "0b5dc158-a2dd-4915-937c-17b8ed685a53",
+      "name": "Normalize and Score Commodity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://townuneetjhcxdznzbht.supabase.co/rest/v1/commodity_observations?on_conflict=run_date_sgt,commodity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "Supabase_key"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer Supabase_key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "run_date_sgt",
+              "value": "={{$json.run_date_sgt}}"
+            },
+            {
+              "name": "commodity",
+              "value": "={{$json.commodity}}"
+            },
+            {
+              "name": "symbol",
+              "value": "={{$json.symbol}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$json.source}}"
+            },
+            {
+              "name": "price",
+              "value": "={{$json.price}}"
+            },
+            {
+              "name": "daily_change_pct",
+              "value": "={{$json.daily_change_pct}}"
+            },
+            {
+              "name": "return_20d_pct",
+              "value": "={{$json.return_20d_pct}}"
+            },
+            {
+              "name": "price_vs_50dma_pct",
+              "value": "={{$json.price_vs_50dma_pct}}"
+            },
+            {
+              "name": "price_vs_200dma_pct",
+              "value": "={{$json.price_vs_200dma_pct}}"
+            },
+            {
+              "name": "momentum_score",
+              "value": "={{$json.momentum_score}}"
+            },
+            {
+              "name": "stress_score",
+              "value": "={{$json.stress_score}}"
+            },
+            {
+              "name": "signal_label",
+              "value": "={{$json.signal_label}}"
+            },
+            {
+              "name": "explanation",
+              "value": "={{$json.explanation}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "661399d0-19cd-4c2f-bda8-511acd009b4d",
+      "name": "Upsert Commodity Observations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        144
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Commodity Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Commodity Config": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fetch Twelve Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twelve Data": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Normalize and Score Commodity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize and Score Commodity": {
+      "main": [
+        [
+          {
+            "node": "Upsert Commodity Observations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Commodity Observations": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Commodity Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "68309fc1-2858-4dc1-b3b5-23aeaedb6f9e",
+  "meta": {
+    "instanceId": "b3db7a67ee8a4e2f5b83ea08bf1803b85df9cbda7028e6140a96610d11f49e31"
+  },
+  "id": "sevIa3qn3GgtgfJf",
+  "tags": [
+    {
+      "updatedAt": "2026-04-29T04:59:48.452Z",
+      "createdAt": "2026-04-29T04:59:48.452Z",
+      "id": "CZprb3wT0Bm8KHq4",
+      "name": "Signal Project"
+    }
+  ]
+}
