@@ -70,6 +70,11 @@ jobs:
         run: |
           mkdir -p logs outputs
 
+      - name: Capture pipeline start timestamp
+        shell: bash
+        run: |
+          echo "PIPELINE_START_TS=$(date +%s)" >> "$GITHUB_ENV"
+
       # ------------------------------------------------------------------
       # Tier 3C — Shared execution context resolution
       # ------------------------------------------------------------------
@@ -164,6 +169,53 @@ jobs:
           echo "Validating Phase 5A outputs for RUN_DATE_SGT=${RUN_DATE_SGT}"
           python transmission_layers/phase5a_two_hop/phase5a_validate_two_hop.py
 
+      - name: Mark Phase 5A pipeline status success
+        shell: bash
+        run: |
+          echo "PIPELINE_STATUS=SUCCESS" >> "$GITHUB_ENV"
+
+      - name: Capture Phase 5A runtime seconds
+        shell: bash
+        run: |
+          PIPELINE_END_TS=$(date +%s)
+          RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+          echo "PHASE5A_RUNTIME_SECONDS=${RUNTIME_SECONDS}" >> "$GITHUB_ENV"
+          echo "Phase 5A runtime seconds: ${RUNTIME_SECONDS}"
+
+      # ------------------------------------------------------------------
+      # Tier 3D — Context-aware validation, telemetry, and artifacts
+      # ------------------------------------------------------------------
+      - name: Tier 3D generate validation summary
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --source phase5a_validation_hooks \
+            --validation-status passed \
+            --warnings-count 0 \
+            --errors-count 0 \
+            --hard-fail-count 0 \
+            --output-file logs/validation_summary.json
+
+      - name: Tier 3D generate telemetry context snapshot
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --pipeline-status "${PIPELINE_STATUS:-SUCCESS}" \
+            --runtime-seconds "${PHASE5A_RUNTIME_SECONDS:-0}" \
+            --output-file logs/telemetry_context_snapshot.json
+
+      - name: Tier 3D generate context artifact manifest
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --output-file logs/context_artifact_manifest.json
+
       - name: Upload Phase 5A execution logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -173,3 +225,6 @@ jobs:
             logs/execution_context.json
             logs/phase5a_two_hop_generation.json
             logs/phase5a_two_hop_generation_context.json
+            logs/validation_summary.json
+            logs/telemetry_context_snapshot.json
+            logs/context_artifact_manifest.json
