@@ -94,6 +94,7 @@ jobs:
       ROLLING_AGGREGATION_ACCELERATION_SHORT_WEIGHT: "2.0"
 
       ROLLING_AGGREGATION_MAX_PERSISTENCE_BONUS: "30"
+      EXECUTION_CONTEXT_FILE: logs/execution_context.json
 
     steps:
       # ============================================================
@@ -126,6 +127,37 @@ jobs:
             numpy \
             python-dateutil \
             pytz
+
+      - name: Create runtime folders
+        run: |
+          mkdir -p logs outputs
+
+      - name: Capture pipeline start timestamp
+        shell: bash
+        run: |
+          echo "PIPELINE_START_TS=$(date +%s)" >> "$GITHUB_ENV"
+
+      # ============================================================
+      # TIER 3C — SHARED EXECUTION CONTEXT
+      # ============================================================
+
+      - name: Tier 3C resolve shared execution context
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "${THEME_NAME:-ai}" \
+            --requested-run-date-sgt "" \
+            --output-file "${EXECUTION_CONTEXT_FILE}"
+
+      - name: Tier 3C export execution context to GitHub env
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --github-env-file "${GITHUB_ENV}"
 
       # ============================================================
       # VALIDATE FILES
@@ -164,6 +196,66 @@ jobs:
         run: |
           python transmission_layers/ai_transmission/phase2d2_historical_reconstruction_engine_schema_aligned_revised.py
 
+      - name: Mark reconstruction pipeline status success
+        shell: bash
+        run: |
+          echo "PIPELINE_STATUS=SUCCESS" >> "$GITHUB_ENV"
+
+      - name: Capture reconstruction runtime seconds
+        shell: bash
+        run: |
+          PIPELINE_END_TS=$(date +%s)
+          PIPELINE_RUNTIME_SECONDS=$((PIPELINE_END_TS - PIPELINE_START_TS))
+          echo "PIPELINE_RUNTIME_SECONDS=${PIPELINE_RUNTIME_SECONDS}" >> "$GITHUB_ENV"
+          echo "Phase 2D.2 runtime seconds: ${PIPELINE_RUNTIME_SECONDS}"
+
+      # ============================================================
+      # TIER 3D — CONTEXT-AWARE VALIDATION, TELEMETRY, ARTIFACT MANIFEST
+      # ============================================================
+
+      - name: Tier 3D generate validation summary
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --source phase2d2_historical_reconstruction \
+            --validation-status passed \
+            --warnings-count 0 \
+            --errors-count 0 \
+            --hard-fail-count 0 \
+            --output-file logs/validation_summary.json
+
+      - name: Tier 3D generate telemetry context snapshot
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --pipeline-status "${PIPELINE_STATUS:-SUCCESS}" \
+            --runtime-seconds "${PIPELINE_RUNTIME_SECONDS:-0}" \
+            --output-file logs/telemetry_context_snapshot.json
+
+      - name: Tier 3D generate context artifact manifest
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --output-file logs/context_artifact_manifest.json
+
+      - name: Tier 3E cross-workflow operational aggregation
+        shell: bash
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --artifact-manifest-file logs/context_artifact_manifest.json \
+            --output-dir logs
+
       # ============================================================
       # WORKFLOW SUMMARY
       # ============================================================
@@ -190,3 +282,19 @@ jobs:
           echo "Rolling Stability Window: ${ROLLING_AGGREGATION_STABILITY_WINDOW}"
 
           echo "=========================================="
+
+      - name: Upload Phase 2D.2 execution artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2d2-historical-reconstruction-artifacts
+          path: |
+            logs/execution_context.json
+            logs/validation_summary.json
+            logs/telemetry_context_snapshot.json
+            logs/context_artifact_manifest.json
+            logs/platform_pipeline_index.json
+            logs/platform_runtime_summary.json
+            logs/platform_validation_summary.json
+            logs/platform_operational_summary.json
+          if-no-files-found: ignore
