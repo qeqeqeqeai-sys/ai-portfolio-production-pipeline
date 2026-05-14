@@ -102,8 +102,8 @@ jobs:
         run: |
           python -m core.orchestration_guardrails.cli preflight \
             --workflow-name "${{ github.workflow }}" \
-            --run-id "${{ github.run_id }}" \
-            --run-mode "${{ github.event_name }}"
+            --theme-name "${THEME_NAME}" \
+            --run-date-sgt "${RUN_DATE_SGT}"
 
       - name: Run AI transmission scoring dual-write
         run: |
