@@ -37,6 +37,7 @@ jobs:
     timeout-minutes: 20
 
     env:
+      PYTHONPATH: ${{ github.workspace }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -47,6 +48,9 @@ jobs:
       MIN_EDGE_TRANSMISSION_POTENTIAL: ${{ github.event.inputs.min_edge_transmission_potential || '0.00' }}
       HOP_ATTENUATION_FACTOR: ${{ github.event.inputs.hop_attenuation_factor || '0.85' }}
       GITHUB_RUN_ID: ${{ github.run_id }}
+      EXECUTION_CONTEXT_FILE: logs/execution_context.json
+      PHASE5A_GENERATION_RAW_JSON: logs/phase5a_two_hop_generation.json
+      PHASE5A_GENERATION_CONTEXT_JSON: logs/phase5a_two_hop_generation_context.json
 
     steps:
       - name: Checkout repository
@@ -66,12 +70,26 @@ jobs:
         run: |
           mkdir -p logs outputs
 
-      - name: Resolve Singapore run date
+      # ------------------------------------------------------------------
+      # Tier 3C — Shared execution context resolution
+      # ------------------------------------------------------------------
+      - name: Tier 3C resolve shared execution context
         shell: bash
         run: |
-          if [ -z "$RUN_DATE_SGT" ]; then
-            echo "RUN_DATE_SGT=$(TZ=Asia/Singapore date +%F)" >> $GITHUB_ENV
-          fi
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "${THEME_NAME:-ai}" \
+            --requested-run-date-sgt "${RUN_DATE_SGT:-}" \
+            --output-file "${EXECUTION_CONTEXT_FILE}"
+
+      - name: Tier 3C export initial execution context to GitHub env
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --github-env-file "${GITHUB_ENV}"
 
       # ------------------------------------------------------------------
       # Tier 3B — Advisory-only orchestration preflight
@@ -92,18 +110,19 @@ jobs:
 
       - name: Phase 5A — Generate and score controlled two-hop paths
         run: |
-          python transmission_layers/phase5a_two_hop/phase5a_two_hop_propagation.py | tee logs/phase5a_two_hop_generation.json
+          python transmission_layers/phase5a_two_hop/phase5a_two_hop_propagation.py | tee "${PHASE5A_GENERATION_RAW_JSON}"
 
-      - name: Resolve Phase 5A output run date
+      - name: Tier 3C normalize Phase 5A generation JSON for context update
         shell: bash
         run: |
-          PHASE5A_OUTPUT_RUN_DATE_SGT=$(python - <<'PY'
+          python - <<'PY'
           import json
           from pathlib import Path
 
-          path = Path("logs/phase5a_two_hop_generation.json")
-          raw = path.read_text(encoding="utf-8").strip()
+          raw_path = Path("logs/phase5a_two_hop_generation.json")
+          context_path = Path("logs/phase5a_two_hop_generation_context.json")
 
+          raw = raw_path.read_text(encoding="utf-8").strip()
           start = raw.find("{")
           end = raw.rfind("}")
 
@@ -111,20 +130,48 @@ jobs:
               raise SystemExit("Could not parse Phase 5A generation JSON output.")
 
           data = json.loads(raw[start:end + 1])
-          run_date = data.get("run_date_sgt")
 
+          run_date = data.get("run_date_sgt")
           if not run_date:
               raise SystemExit("Phase 5A generation output did not include run_date_sgt.")
 
-          print(run_date)
-          PY
+          context_path.parent.mkdir(parents=True, exist_ok=True)
+          context_path.write_text(
+              json.dumps({"run_date_sgt": run_date}, indent=2, sort_keys=True),
+              encoding="utf-8",
           )
 
-          echo "PHASE5A_OUTPUT_RUN_DATE_SGT=${PHASE5A_OUTPUT_RUN_DATE_SGT}" >> $GITHUB_ENV
-          echo "RUN_DATE_SGT=${PHASE5A_OUTPUT_RUN_DATE_SGT}" >> $GITHUB_ENV
-          echo "Resolved Phase 5A output run date: ${PHASE5A_OUTPUT_RUN_DATE_SGT}"
+          print(f"Normalized Phase 5A generation run_date_sgt={run_date}")
+          print(f"Wrote context update JSON to {context_path}")
+          PY
+
+      - name: Tier 3C update execution context from generation output
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context update-from-json \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --source-json "${PHASE5A_GENERATION_CONTEXT_JSON}" \
+            --field run_date_sgt \
+            --target-field resolved_run_date_sgt
+
+      - name: Tier 3C export final execution context to GitHub env
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --github-env-file "${GITHUB_ENV}"
 
       - name: Phase 5A — Validation hooks
         run: |
           echo "Validating Phase 5A outputs for RUN_DATE_SGT=${RUN_DATE_SGT}"
           python transmission_layers/phase5a_two_hop/phase5a_validate_two_hop.py
+
+      - name: Upload Phase 5A execution logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5a-two-hop-execution-logs
+          path: |
+            logs/execution_context.json
+            logs/phase5a_two_hop_generation.json
+            logs/phase5a_two_hop_generation_context.json
