@@ -1,0 +1,15 @@
+# Tier 3B reusable snippet — lineage start step
+#
+# Use only after the CLI supports `start`.
+# Keep disabled/commented until implemented.
+
+- name: Tier 3B lineage start
+  if: ${{ false }}
+  env:
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  run: |
+    python -m core.orchestration_guardrails.cli start \
+      --workflow-name "${{ github.workflow }}" \
+      --run-id "${{ github.run_id }}" \
+      --run-mode "${{ github.event_name }}"

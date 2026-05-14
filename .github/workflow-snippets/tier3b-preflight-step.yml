@@ -1,0 +1,15 @@
+# Tier 3B reusable snippet — preflight guardrail step
+#
+# Insert this before the first mutating step in a workflow.
+# Start with advisory mode first.
+
+- name: Tier 3B preflight orchestration guardrails
+  env:
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    GUARDRAILS_STRICT_MODE: "false"
+  run: |
+    python -m core.orchestration_guardrails.cli preflight \
+      --workflow-name "${{ github.workflow }}" \
+      --run-id "${{ github.run_id }}" \
+      --run-mode "${{ github.event_name }}"

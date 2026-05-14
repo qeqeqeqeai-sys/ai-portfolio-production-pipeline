@@ -1,0 +1,13 @@
+# Example insertion for phase1_ai_transmission_dual_write.yml
+
+- name: Tier 3B preflight orchestration guardrails
+  env:
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    GUARDRAILS_STRICT_MODE: "false"
+    GUARDRAILS_EXPECTED_WORKFLOW_ROLE: "phase1_ai_transmission_dual_write"
+  run: |
+    python -m core.orchestration_guardrails.cli preflight \
+      --workflow-name "${{ github.workflow }}" \
+      --run-id "${{ github.run_id }}" \
+      --run-mode "${{ github.event_name }}"
