@@ -152,6 +152,17 @@ jobs:
             --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
             --output-file logs/context_artifact_manifest.json
 
+      - name: Tier 3E cross-workflow operational aggregation
+        if: always()
+        continue-on-error: true
+        run: |
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --context-file logs/execution_context.json \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --artifact-manifest-file logs/context_artifact_manifest.json \
+            --output-dir logs
+
       - name: Upload logs / outputs if available
         if: always()
         uses: actions/upload-artifact@v4
