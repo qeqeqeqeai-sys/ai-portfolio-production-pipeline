@@ -62,6 +62,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Create runtime folders
+        run: |
+          mkdir -p logs outputs
+
       - name: Resolve Singapore run date
         shell: bash
         run: |
@@ -88,8 +92,39 @@ jobs:
 
       - name: Phase 5A — Generate and score controlled two-hop paths
         run: |
-          python transmission_layers/phase5a_two_hop/phase5a_two_hop_propagation.py
+          python transmission_layers/phase5a_two_hop/phase5a_two_hop_propagation.py | tee logs/phase5a_two_hop_generation.json
+
+      - name: Resolve Phase 5A output run date
+        shell: bash
+        run: |
+          PHASE5A_OUTPUT_RUN_DATE_SGT=$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("logs/phase5a_two_hop_generation.json")
+          raw = path.read_text(encoding="utf-8").strip()
+
+          start = raw.find("{")
+          end = raw.rfind("}")
+
+          if start == -1 or end == -1 or end <= start:
+              raise SystemExit("Could not parse Phase 5A generation JSON output.")
+
+          data = json.loads(raw[start:end + 1])
+          run_date = data.get("run_date_sgt")
+
+          if not run_date:
+              raise SystemExit("Phase 5A generation output did not include run_date_sgt.")
+
+          print(run_date)
+          PY
+          )
+
+          echo "PHASE5A_OUTPUT_RUN_DATE_SGT=${PHASE5A_OUTPUT_RUN_DATE_SGT}" >> $GITHUB_ENV
+          echo "RUN_DATE_SGT=${PHASE5A_OUTPUT_RUN_DATE_SGT}" >> $GITHUB_ENV
+          echo "Resolved Phase 5A output run date: ${PHASE5A_OUTPUT_RUN_DATE_SGT}"
 
       - name: Phase 5A — Validation hooks
         run: |
+          echo "Validating Phase 5A outputs for RUN_DATE_SGT=${RUN_DATE_SGT}"
           python transmission_layers/phase5a_two_hop/phase5a_validate_two_hop.py
