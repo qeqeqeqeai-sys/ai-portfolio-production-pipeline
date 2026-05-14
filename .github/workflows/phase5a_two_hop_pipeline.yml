@@ -216,6 +216,18 @@ jobs:
             --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
             --output-file logs/context_artifact_manifest.json
 
+
+      - name: Tier 3D.1 advisory consistency checks
+        shell: bash
+        continue-on-error: true
+        run: |
+          python -m core.orchestration_guardrails.cli validation check-env-consistency \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --artifact-manifest-file logs/context_artifact_manifest.json \
+            --output-file logs/context_consistency_check.json
+
       - name: Upload Phase 5A execution logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -228,3 +240,4 @@ jobs:
             logs/validation_summary.json
             logs/telemetry_context_snapshot.json
             logs/context_artifact_manifest.json
+            logs/context_consistency_check.json
