@@ -32,6 +32,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      PYTHONPATH: ${{ github.workspace }}
       ANCHOR_THEME_NAME: ${{ github.event.inputs.anchor_theme_name }}
       THEME_NAME: ${{ github.event.inputs.theme_name }}
       LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
@@ -61,8 +62,8 @@ jobs:
         if: always()
         continue-on-error: true
         shell: bash
-        working-directory: transmission_layers/graph_foundation
         run: |
+          cd transmission_layers/graph_foundation
           mkdir -p logs
           python -m core.orchestration_guardrails.cli context resolve
 
@@ -70,40 +71,40 @@ jobs:
         if: always()
         continue-on-error: true
         shell: bash
-        working-directory: transmission_layers/graph_foundation
         run: |
+          cd transmission_layers/graph_foundation
           python -m core.orchestration_guardrails.cli validation summarize --context logs/execution_context.json
 
       - name: Tier 3D telemetry snapshot (advisory)
         if: always()
         continue-on-error: true
         shell: bash
-        working-directory: transmission_layers/graph_foundation
         run: |
+          cd transmission_layers/graph_foundation
           python -m core.orchestration_guardrails.cli telemetry snapshot --context logs/execution_context.json
 
       - name: Build artifact manifest (advisory)
         if: always()
         continue-on-error: true
         shell: bash
-        working-directory: transmission_layers/graph_foundation
         run: |
+          cd transmission_layers/graph_foundation
           python -m core.orchestration_guardrails.cli artifact manifest
 
       - name: Tier 3E operational aggregation (advisory)
         if: always()
         continue-on-error: true
         shell: bash
-        working-directory: transmission_layers/graph_foundation
         run: |
+          cd transmission_layers/graph_foundation
           python -m core.orchestration_guardrails.cli aggregate operational-summary
 
       - name: Tier 3F operational trend intelligence (advisory)
         if: always()
         continue-on-error: true
         shell: bash
-        working-directory: transmission_layers/graph_foundation
         run: |
+          cd transmission_layers/graph_foundation
           python -m core.orchestration_guardrails.cli trend analyze
 
       - name: Upload observability artifacts (advisory)
