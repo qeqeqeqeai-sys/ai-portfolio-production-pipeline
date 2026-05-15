@@ -54,3 +54,31 @@ jobs:
             --min-inbound "${INTERMEDIARY_MIN_INBOUND}" \
             --min-outbound "${INTERMEDIARY_MIN_OUTBOUND}" \
             --edge-tables "${INTERMEDIARY_EDGE_TABLES}"
+
+      - name: Tier 3E cross-workflow operational aggregation
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --output-dir logs
+
+      - name: Tier 3F operational trend intelligence
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli trend analyze
+
+      - name: Upload Phase 5A2 execution logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5a2-structural-intermediaries-execution-logs
+          path: |
+            logs/platform_execution_consistency.json
+            logs/platform_operational_trend_summary.json
+            logs/platform_recurring_warnings.json
+            logs/platform_runtime_drift_summary.json
+            logs/platform_workflow_health_score.json
