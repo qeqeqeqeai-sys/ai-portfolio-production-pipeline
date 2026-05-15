@@ -56,3 +56,72 @@ jobs:
         working-directory: transmission_layers/graph_foundation
         run: |
           python phase3b_relationship_persistence.py
+
+      - name: Resolve orchestration context (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli context resolve
+
+      - name: Tier 3C validation summary (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize --context logs/execution_context.json
+
+      - name: Tier 3D telemetry snapshot (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot --context logs/execution_context.json
+
+      - name: Build artifact manifest (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest
+
+      - name: Tier 3E operational aggregation (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python -m core.orchestration_guardrails.cli aggregate operational-summary
+
+      - name: Tier 3F operational trend intelligence (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: transmission_layers/graph_foundation
+        run: |
+          python -m core.orchestration_guardrails.cli trend analyze
+
+      - name: Upload observability artifacts (advisory)
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3b-relationship-persistence-observability
+          if-no-files-found: warn
+          path: |
+            transmission_layers/graph_foundation/logs/execution_context.json
+            transmission_layers/graph_foundation/logs/platform_validation_summary.json
+            transmission_layers/graph_foundation/logs/platform_runtime_summary.json
+            transmission_layers/graph_foundation/logs/platform_pipeline_index.json
+            transmission_layers/graph_foundation/logs/platform_operational_summary.json
+            transmission_layers/graph_foundation/logs/platform_execution_consistency.json
+            transmission_layers/graph_foundation/logs/platform_operational_trend_summary.json
+            transmission_layers/graph_foundation/logs/platform_recurring_warnings.json
+            transmission_layers/graph_foundation/logs/platform_runtime_drift_summary.json
+            transmission_layers/graph_foundation/logs/platform_workflow_health_score.json
+            transmission_layers/graph_foundation/logs/artifact_manifest.json
