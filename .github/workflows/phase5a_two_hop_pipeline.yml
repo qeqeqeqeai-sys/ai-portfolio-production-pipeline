@@ -238,6 +238,14 @@ jobs:
             --artifact-manifest-file logs/context_artifact_manifest.json \
             --output-dir logs
 
+
+      - name: Tier 3F advisory operational trend intelligence
+        if: always()
+        shell: bash
+        continue-on-error: true
+        run: |
+          python -m core.orchestration_guardrails.cli trend analyze
+
       - name: Upload Phase 5A execution logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -254,3 +262,8 @@ jobs:
             logs/platform_runtime_summary.json
             logs/platform_validation_summary.json
             logs/platform_operational_summary.json
+            logs/platform_execution_consistency.json
+            logs/platform_operational_trend_summary.json
+            logs/platform_recurring_warnings.json
+            logs/platform_runtime_drift_summary.json
+            logs/platform_workflow_health_score.json
