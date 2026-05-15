@@ -41,3 +41,72 @@ jobs:
         run: |
           cd transmission_layers/graph_foundation/intermediaries
           python directed_intermediary_seeding_engine.py
+
+      - name: Resolve execution context (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli context resolve
+
+      - name: Summarize validation context (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli validation summarize
+
+      - name: Snapshot telemetry context (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli telemetry snapshot
+
+      - name: Build context artifact manifest (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli artifact manifest
+
+      - name: Tier 3E cross-workflow operational aggregation (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli aggregate operational-summary
+
+      - name: Tier 3F operational trend intelligence (advisory)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli trend analyze
+
+      - name: Upload Phase 5A.3 observability artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5a3-directed-intermediary-seeding-observability
+          path: |
+            logs/execution_context.json
+            logs/validation_summary.json
+            logs/telemetry_context_snapshot.json
+            logs/context_artifact_manifest.json
+            logs/platform_pipeline_index.json
+            logs/platform_runtime_summary.json
+            logs/platform_validation_summary.json
+            logs/platform_operational_summary.json
+            logs/platform_execution_consistency.json
+            logs/platform_operational_trend_summary.json
+            logs/platform_recurring_warnings.json
+            logs/platform_runtime_drift_summary.json
+            logs/platform_workflow_health_score.json
