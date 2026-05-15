@@ -85,6 +85,27 @@ jobs:
         run: |
           python ai_transmission/ai_transmission_evidence_ingestion_v1.py
 
+
+      - name: Tier 3F operational trend intelligence
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli trend analyze
+
+      - name: Upload logs / outputs if available
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-transmission-evidence-artifacts
+          path: |
+            logs/platform_execution_consistency.json
+            logs/platform_operational_trend_summary.json
+            logs/platform_recurring_warnings.json
+            logs/platform_runtime_drift_summary.json
+            logs/platform_workflow_health_score.json
+          if-no-files-found: ignore
+
       - name: Confirm workflow completed
         if: success()
         run: |
