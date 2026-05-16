@@ -146,6 +146,24 @@ jobs:
             echo "Skipping Tier 3F trend analysis: logs/execution_context.json not found"
           fi
 
+      - name: Tier 3G - Persist historical operational intelligence
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_DATE_SGT: ${{ env.RUN_DATE_SGT }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          test -f transmission_layers/graph_foundation/logs/execution_context.json || echo "[tier3g] missing transmission_layers/graph_foundation/logs/execution_context.json"
+          test -f transmission_layers/graph_foundation/logs/platform_operational_summary.json || echo "[tier3g] missing transmission_layers/graph_foundation/logs/platform_operational_summary.json"
+          test -f transmission_layers/graph_foundation/logs/platform_operational_trend_summary.json || echo "[tier3g] missing transmission_layers/graph_foundation/logs/platform_operational_trend_summary.json"
+          python scripts/write_observability_history.py
+
       - name: Upload observability artifacts (advisory)
         if: always()
         continue-on-error: true
