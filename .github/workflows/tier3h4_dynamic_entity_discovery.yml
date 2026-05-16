@@ -1,4 +1,4 @@
-name: Tier 3H.4A Dynamic Entity Discovery
+name: Tier 3H.4B Dynamic Entity Discovery
 
 on:
   workflow_dispatch:
@@ -14,6 +14,8 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       PYTHONPATH: ${{ github.workspace }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      TIER3H4_TAVILY_ENABLED: ${{ vars.TIER3H4_TAVILY_ENABLED || 'true' }}
 
     steps:
       - name: Checkout repository
@@ -29,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Tier 3H.4A dynamic entity discovery scaffold
+      - name: Run Tier 3H.4B dynamic entity discovery
         run: |
           python transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py
 
@@ -58,7 +60,7 @@ jobs:
             --hard-fail-count 0 \
             --output-file logs/platform_validation_summary.json
 
-      - name: Upload Tier 3H.4A advisory artifacts
+      - name: Upload Tier 3H.4B advisory artifacts
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v4
@@ -68,5 +70,6 @@ jobs:
           path: |
             logs/tier3h4_dynamic_entity_discovery_summary.json
             logs/tier3h4_dynamic_entity_discovery_validation.json
+            logs/tier3h4_dynamic_entity_evidence_summary.json
             logs/execution_context.json
             logs/platform_validation_summary.json
