@@ -137,6 +137,26 @@ jobs:
         run: |
           python -m core.orchestration_guardrails.cli trend analyze
 
+
+      - name: Tier 3G advisory historical operational intelligence persistence
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ env.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_DATE_SGT: ${{ env.RUN_DATE_SGT }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          mkdir -p logs
+          if [ -d transmission_layers/graph_foundation/logs ]; then
+            cp -f transmission_layers/graph_foundation/logs/*.json logs/ 2>/dev/null || true
+          fi
+          python scripts/write_observability_history.py
+
       - name: Upload Phase 4A execution logs
         if: always()
         uses: actions/upload-artifact@v4
