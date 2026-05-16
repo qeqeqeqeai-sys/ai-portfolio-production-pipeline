@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 import requests
 
 ALLOWED_ACTIONS = {"watch", "review", "candidate_add", "reject"}
+ALLOWED_IDENTIFIER_TYPES = {"TICKER", "NODE", "THEME", "REGIME", "UNKNOWN"}
 TABLE_NAME = "tier3h_transmission_candidates"
 LOG_DIR = Path("logs")
 SUMMARY_PATH = LOG_DIR / "tier3h_candidate_discovery_summary.json"
@@ -53,6 +55,21 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _first_present(row: dict[str, Any], fields: list[str]) -> tuple[str | None, str | None]:
+    for field in fields:
+        value = row.get(field)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return field, text
+    return None, None
+
+
+def _normalize_token(value: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "_", value.upper()).strip("_")
+
+
 def load_json_rows(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -89,47 +106,93 @@ def _supabase_get_rows(table: str, order: str, limit: int) -> list[dict[str, Any
     return []
 
 
-def load_upstream_rows() -> tuple[list[dict[str, Any]], list[str], dict[str, int], bool]:
+def load_upstream_rows() -> tuple[list[dict[str, Any]], list[str], dict[str, int], dict[str, list[str]], bool]:
     rows: list[dict[str, Any]] = []
     sources_used: list[str] = []
     counts: dict[str, int] = {}
+    source_columns_seen: dict[str, list[str]] = {}
 
     for path in LOCAL_SOURCE_FILES:
         loaded = load_json_rows(path)
-        counts[str(path)] = len(loaded)
+        key = str(path)
+        counts[key] = len(loaded)
+        source_columns_seen[key] = sorted({col for row in loaded for col in row.keys()})
         if loaded:
             rows.extend(loaded)
-            sources_used.append(str(path))
+            sources_used.append(key)
 
     for src in SUPABASE_SOURCES:
         loaded = _supabase_get_rows(src["table"], src["order"], int(src["limit"]))
         label = f"supabase:{src['table']}"
         counts[label] = len(loaded)
+        source_columns_seen[label] = sorted({col for row in loaded for col in row.keys()})
         if loaded:
             for row in loaded:
                 row.setdefault("candidate_source", src["name"])
             rows.extend(loaded)
             sources_used.append(label)
 
-    return rows, sources_used, counts, not bool(rows)
+    return rows, sources_used, counts, source_columns_seen, not bool(rows)
+
+
+def resolve_candidate_identifier(row: dict[str, Any]) -> dict[str, Any]:
+    ticker_field, ticker_value = _first_present(row, ["ticker", "symbol", "asset_symbol", "candidate_symbol", "company_ticker", "equity_symbol"])
+    node_field, node_value = _first_present(row, ["source_node", "target_node", "node_id", "node_name", "source_entity", "target_entity", "entity_name", "theme_node"])
+    theme_field, theme_value = _first_present(row, ["theme_name", "source_theme", "target_theme", "discovery_theme", "structural_theme"])
+    regime_field, regime_value = _first_present(row, ["propagation_regime", "transmission_regime", "regime"])
+
+    descriptor_fields = ["company_name", "asset_name", "candidate_name", "node_name", "entity_name", "theme_name", "source_node", "target_node", "propagation_regime"]
+    _, descriptive_name = _first_present(row, descriptor_fields)
+
+    discovery_theme = theme_value or regime_value or "unknown_theme"
+    if ticker_value:
+        return {
+            "candidate_symbol": f"TICKER::{_normalize_token(ticker_value)}",
+            "candidate_name": descriptive_name or ticker_value,
+            "discovery_theme": discovery_theme,
+            "identifier_type": "TICKER",
+            "missing_symbol": False,
+            "resolution_reason": f"Resolved as TICKER from {ticker_field}.",
+        }
+    if node_value:
+        return {
+            "candidate_symbol": f"NODE::{_normalize_token(node_value)}",
+            "candidate_name": descriptive_name or node_value,
+            "discovery_theme": discovery_theme,
+            "identifier_type": "NODE",
+            "missing_symbol": True,
+            "resolution_reason": f"Resolved as NODE from {node_field} because ticker fields were unavailable.",
+        }
+    if theme_value:
+        return {
+            "candidate_symbol": f"THEME::{_normalize_token(theme_value)}",
+            "candidate_name": descriptive_name or theme_value,
+            "discovery_theme": theme_value,
+            "identifier_type": "THEME",
+            "missing_symbol": True,
+            "resolution_reason": f"Resolved as THEME from {theme_field} because ticker/node fields were unavailable.",
+        }
+    if regime_value:
+        return {
+            "candidate_symbol": f"REGIME::{_normalize_token(regime_value)}",
+            "candidate_name": descriptive_name or regime_value,
+            "discovery_theme": regime_value,
+            "identifier_type": "REGIME",
+            "missing_symbol": True,
+            "resolution_reason": f"Resolved as REGIME from {regime_field} as last fallback.",
+        }
+    return {
+        "candidate_symbol": "UNKNOWN::UNRESOLVED",
+        "candidate_name": descriptive_name or "UNKNOWN",
+        "discovery_theme": "unknown_theme",
+        "identifier_type": "UNKNOWN",
+        "missing_symbol": True,
+        "resolution_reason": "Unable to resolve ticker/node/theme/regime identifiers.",
+    }
 
 
 def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
-    symbol = str(
-        row.get("candidate_symbol")
-        or row.get("symbol")
-        or row.get("ticker")
-        or row.get("target_symbol")
-        or row.get("source_symbol")
-        or row.get("node_symbol")
-        or ""
-    ).strip().upper()
-    name = str(
-        row.get("candidate_name") or row.get("name") or row.get("target_name") or row.get("source_name") or row.get("target_theme") or symbol or "UNKNOWN"
-    ).strip()
-    theme = str(
-        row.get("discovery_theme") or row.get("theme") or row.get("target_theme") or row.get("source_theme") or row.get("propagation_regime") or "unknown_theme"
-    ).strip()
+    resolved = resolve_candidate_identifier(row)
     source = str(row.get("candidate_source") or row.get("source") or row.get("source_phase") or row.get("table_name") or "upstream_transmission").strip()
 
     transmission_score = _safe_float(row.get("transmission_score"))
@@ -142,14 +205,9 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     positive = max(0.0, _safe_float(row.get("positive_transmission_score"), transmission_score) + max(0.0, propagation_score) + max(0.0, multi_hop_strength))
     negative = max(0.0, _safe_float(row.get("negative_transmission_score"), -min(transmission_score, 0.0)))
 
-    if not symbol:
-        symbol = str(row.get("node_id") or row.get("edge_id") or row.get("relationship_key") or f"THEME::{theme}").strip().upper()
-
     return {
-        "candidate_symbol": symbol,
-        "candidate_name": name,
+        **resolved,
         "asset_class": str(row.get("asset_class") or "equity"),
-        "discovery_theme": theme,
         "candidate_source": source,
         "positive_transmission_score": positive,
         "negative_transmission_score": negative,
@@ -158,20 +216,19 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
         "cross_theme_strength": cross_theme_strength,
         "multi_hop_strength": multi_hop_strength,
         "snapshot_id": str(row.get("snapshot_id") or row.get("run_id") or "tier3h-upstream"),
-        "missing_symbol": symbol.startswith("THEME::"),
     }
 
 
 def discover_candidates(rows: list[dict[str, Any]], sgt_date: str) -> list[dict[str, Any]]:
-    grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
+    grouped: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for row in rows:
         n = _normalize_row(row)
-        key = (n["candidate_symbol"], n["discovery_theme"], n["candidate_source"])
+        key = (sgt_date, n["candidate_symbol"], n["discovery_theme"], n["candidate_source"])
         item = grouped.setdefault(
             key,
             {
                 "run_date_sgt": sgt_date,
-                **{k: n[k] for k in ["candidate_symbol", "candidate_name", "asset_class", "discovery_theme", "candidate_source", "snapshot_id"]},
+                **{k: n[k] for k in ["candidate_symbol", "candidate_name", "asset_class", "discovery_theme", "candidate_source", "snapshot_id", "identifier_type", "resolution_reason"]},
                 "positive_transmission_score": 0.0,
                 "negative_transmission_score": 0.0,
                 "evidence_count": 0,
@@ -189,14 +246,20 @@ def discover_candidates(rows: list[dict[str, Any]], sgt_date: str) -> list[dict[
         item["multi_hop_strength"] += max(0.0, n["multi_hop_strength"])
         item["missing_symbol"] = item["missing_symbol"] or n["missing_symbol"]
 
+    penalty = {"TICKER": 0.0, "NODE": 0.05, "THEME": 0.12, "REGIME": 0.25, "UNKNOWN": 0.3}
     out: list[dict[str, Any]] = []
     for item in grouped.values():
         net = item["positive_transmission_score"] - item["negative_transmission_score"]
         signal_strength = min((abs(net) + item["multi_hop_strength"] + item["cross_theme_strength"]) / 8.0, 1.0)
         persistence = min((item["memory_score"] + item["evidence_count"]) / 10.0, 1.0)
-        confidence = round((0.65 * signal_strength) + (0.35 * persistence), 4)
+        base_confidence = (0.65 * signal_strength) + (0.35 * persistence)
+        confidence = round(max(0.0, base_confidence - penalty.get(item["identifier_type"], 0.3)), 4)
 
-        if confidence >= 0.75 and item["evidence_count"] >= 3 and abs(net) >= 2.0:
+        if item["identifier_type"] == "REGIME":
+            action = "watch" if confidence >= 0.3 else "reject"
+        elif item["identifier_type"] == "TICKER" and confidence >= 0.75 and item["evidence_count"] >= 3 and abs(net) >= 2.0:
+            action = "candidate_add"
+        elif item["identifier_type"] == "NODE" and confidence >= 0.8 and item["evidence_count"] >= 4 and abs(net) >= 2.5:
             action = "candidate_add"
         elif confidence >= 0.55 and (abs(net) >= 1.0 or item["evidence_count"] >= 2):
             action = "review"
@@ -206,12 +269,11 @@ def discover_candidates(rows: list[dict[str, Any]], sgt_date: str) -> list[dict[
             action = "reject"
 
         reason = (
-            f"advisory transmission relevance: net={round(net,4)}, evidence_count={item['evidence_count']}, "
+            f"identifier_type={item['identifier_type']}; source={item['candidate_source']}; {item['resolution_reason']} "
+            f"fallback_derived={item['missing_symbol']}; score_components: net={round(net,4)}, evidence_count={item['evidence_count']}, "
             f"memory_score={round(item['memory_score'],4)}, cross_theme_strength={round(item['cross_theme_strength'],4)}, "
-            f"multi_hop_strength={round(item['multi_hop_strength'],4)}"
+            f"multi_hop_strength={round(item['multi_hop_strength'],4)}, identifier_penalty={penalty.get(item['identifier_type'], 0.3)}"
         )
-        if item["missing_symbol"]:
-            reason += "; symbol unavailable, node/theme identifier used"
 
         out.append(
             {
@@ -254,17 +316,30 @@ def upsert_supabase(rows: list[dict[str, Any]]) -> str:
 def main() -> int:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     sgt_date = run_date_sgt()
-    upstream_rows, used_sources, upstream_counts, soft_failure = load_upstream_rows()
+    upstream_rows, used_sources, upstream_counts, source_columns_seen, soft_failure = load_upstream_rows()
     candidates = discover_candidates(upstream_rows, sgt_date) if upstream_rows else []
     supabase_result = upsert_supabase(candidates)
 
     action_counts = {action: 0 for action in sorted(ALLOWED_ACTIONS)}
+    identifier_type_counts = {identifier_type: 0 for identifier_type in sorted(ALLOWED_IDENTIFIER_TYPES)}
     for candidate in candidates:
         action_counts[candidate["recommended_action"]] += 1
+        identifier_type_counts[candidate["identifier_type"]] += 1
+
+    payload_columns = sorted({k for c in candidates for k in c.keys()}) if candidates else []
+    expected_columns = sorted([
+        "run_date_sgt", "candidate_symbol", "candidate_name", "asset_class", "discovery_theme", "candidate_source",
+        "positive_transmission_score", "negative_transmission_score", "net_transmission_score", "evidence_count", "memory_score",
+        "cross_theme_strength", "multi_hop_strength", "confidence_score", "discovery_reason", "recommended_action", "status",
+        "snapshot_id", "missing_symbol", "identifier_type", "resolution_reason",
+    ])
 
     validation = {
         "allowed_actions": sorted(ALLOWED_ACTIONS),
         "all_actions_valid": all(c["recommended_action"] in ALLOWED_ACTIONS for c in candidates),
+        "all_identifier_types_valid": all(c["identifier_type"] in ALLOWED_IDENTIFIER_TYPES for c in candidates),
+        "regime_fallback_candidates": [c["candidate_symbol"] for c in candidates if c["identifier_type"] == "REGIME"],
+        "regime_fallback_no_candidate_add": all(not (c["identifier_type"] == "REGIME" and c["recommended_action"] == "candidate_add") for c in candidates),
         "advisory_only_status": all(c["status"] == "advisory_only" for c in candidates),
         "candidate_count": len(candidates),
         "upstream_loading_safe": True,
@@ -272,6 +347,9 @@ def main() -> int:
         "write_target_table": TABLE_NAME,
         "write_targets_valid": TABLE_NAME == "tier3h_transmission_candidates",
         "no_main_universe_writes_attempted": True,
+        "main_universe_write_targets_referenced": [],
+        "upsert_payload_columns": payload_columns,
+        "upsert_payload_columns_match_schema": set(payload_columns).issubset(set(expected_columns)),
         "notes": "Tier 3H is advisory-only and writes only to tier3h_transmission_candidates/logs.",
     }
     summary = {
@@ -281,8 +359,12 @@ def main() -> int:
         "upstream_sources_used": used_sources,
         "upstream_row_count": len(upstream_rows),
         "upstream_row_counts_by_source": upstream_counts,
+        "source_columns_seen": source_columns_seen,
         "candidate_count": len(candidates),
         "recommended_action_counts": action_counts,
+        "candidate_identifier_type_counts": identifier_type_counts,
+        "fallback_identifier_count": sum(1 for c in candidates if c["identifier_type"] in {"THEME", "REGIME", "UNKNOWN"}),
+        "unresolved_identifier_count": sum(1 for c in candidates if c["identifier_type"] == "UNKNOWN"),
         "top_candidates_preview": candidates[:10],
         "supabase_upsert": supabase_result,
         "advisory_only": True,

@@ -19,6 +19,8 @@ create table if not exists public.tier3h_transmission_candidates (
   recommended_action text not null,
   status text not null default 'advisory_only',
   snapshot_id text,
+  identifier_type text,
+  resolution_reason text,
   created_at timestamptz not null default now(),
   constraint tier3h_transmission_candidates_uq
     unique (run_date_sgt, candidate_symbol, discovery_theme, candidate_source),
@@ -38,3 +40,14 @@ create index if not exists idx_tier3h_candidates_confidence
   on public.tier3h_transmission_candidates (confidence_score);
 create index if not exists idx_tier3h_candidates_recommended_action
   on public.tier3h_transmission_candidates (recommended_action);
+
+alter table public.tier3h_transmission_candidates
+  add column if not exists identifier_type text,
+  add column if not exists resolution_reason text;
+
+alter table public.tier3h_transmission_candidates
+  drop constraint if exists tier3h_transmission_candidates_identifier_type_chk;
+
+alter table public.tier3h_transmission_candidates
+  add constraint tier3h_transmission_candidates_identifier_type_chk
+  check (identifier_type is null or identifier_type in ('TICKER', 'NODE', 'THEME', 'REGIME', 'UNKNOWN'));

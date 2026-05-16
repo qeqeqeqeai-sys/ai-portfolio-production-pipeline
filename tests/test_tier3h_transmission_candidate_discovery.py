@@ -13,30 +13,43 @@ def test_runs_without_upstream_data_and_writes_summary(tmp_path, monkeypatch):
     assert rc == 0
     summary = json.loads((tmp_path / "logs/tier3h_candidate_discovery_summary.json").read_text(encoding="utf-8"))
     assert summary["upstream_row_count"] == 0
-    assert "upstream_row_counts_by_source" in summary
+    assert "source_columns_seen" in summary
+    assert "candidate_identifier_type_counts" in summary
 
 
-def test_mocked_upstream_rows_generate_candidates():
+def test_resolver_precedence_ticker_node_theme_regime():
+    ticker = mod.resolve_candidate_identifier({"ticker": "msft", "theme_name": "ai"})
+    node = mod.resolve_candidate_identifier({"source_node": "Nvidia Supply Chain", "theme_name": "ai"})
+    theme = mod.resolve_candidate_identifier({"theme_name": "generative ai"})
+    regime = mod.resolve_candidate_identifier({"propagation_regime": "low_propagation"})
+
+    assert ticker["candidate_symbol"] == "TICKER::MSFT"
+    assert ticker["identifier_type"] == "TICKER"
+    assert node["candidate_symbol"].startswith("NODE::")
+    assert node["identifier_type"] == "NODE"
+    assert theme["candidate_symbol"] == "THEME::GENERATIVE_AI"
+    assert theme["identifier_type"] == "THEME"
+    assert regime["candidate_symbol"] == "REGIME::LOW_PROPAGATION"
+    assert regime["identifier_type"] == "REGIME"
+
+
+def test_mocked_upstream_rows_generate_candidates_and_group_by_identifier():
     rows = [
-        {"symbol": "AAA", "theme": "ai", "source": "phase4a", "transmission_score": 2.1, "propagation_score": 1.2, "evidence_count": 4},
-        {"symbol": "AAA", "theme": "ai", "source": "phase5a", "transmission_score": 2.6, "two_hop_transmission_potential": 1.0, "evidence_count": 3},
+        {"source_node": "Cloud GPU", "theme_name": "ai", "source": "phase4a", "transmission_score": 2.1, "propagation_score": 1.2, "evidence_count": 4},
+        {"source_node": "Cloud GPU", "theme_name": "ai", "source": "phase4a", "transmission_score": 1.0, "evidence_count": 2},
     ]
     out = mod.discover_candidates(rows, "2026-05-16")
     assert out
-    assert out[0]["candidate_symbol"] == "AAA"
+    assert out[0]["candidate_symbol"].startswith("NODE::")
     assert out[0]["candidate_source"]
+    assert out[0]["identifier_type"] == "NODE"
 
 
-def test_recommended_action_values_constrained():
-    rows = [
-        {"symbol": "AAA", "theme": "ai", "source": "t", "positive_score": 4, "negative_score": 0, "evidence_count": 5},
-        {"symbol": "BBB", "theme": "ai", "source": "t", "positive_score": 2, "negative_score": 0.1, "evidence_count": 3},
-        {"symbol": "CCC", "theme": "ai", "source": "t", "positive_score": 0.4, "negative_score": 0.2, "evidence_count": 1},
-        {"symbol": "DDD", "theme": "ai", "source": "t", "positive_score": 0.1, "negative_score": 2.0, "evidence_count": 1},
-    ]
+def test_regime_fallback_not_candidate_add():
+    rows = [{"propagation_regime": "moderate_propagation", "source": "t", "positive_transmission_score": 10, "evidence_count": 10}]
     out = mod.discover_candidates(rows, "2026-05-16")
-    assert out
-    assert all(r["recommended_action"] in mod.ALLOWED_ACTIONS for r in out)
+    assert out[0]["identifier_type"] == "REGIME"
+    assert out[0]["recommended_action"] in {"watch", "reject"}
 
 
 def test_no_main_universe_operations_present():
@@ -50,3 +63,4 @@ def test_sql_is_idempotent_safe_rerun():
     sql = Path("sql/tier3h_transmission_candidate_discovery.sql").read_text(encoding="utf-8").lower()
     assert "create table if not exists" in sql
     assert "create index if not exists" in sql
+    assert "add column if not exists identifier_type" in sql
