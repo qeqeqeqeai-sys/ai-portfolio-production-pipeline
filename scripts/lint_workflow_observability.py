@@ -17,14 +17,19 @@ The script does not rewrite files.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 
-TIER_3E_MARKER = "python -m core.orchestration_guardrails.cli aggregate operational-summary"
-TIER_3F_MARKER = "python -m core.orchestration_guardrails.cli trend analyze"
+TIER_3E_PATTERN = re.compile(
+    r"python\s+-m\s+core\.orchestration_guardrails\.cli\s+aggregate\s+operational-summary"
+)
+TIER_3F_PATTERN = re.compile(
+    r"python\s+-m\s+core\.orchestration_guardrails\.cli\s+trend\s+analyze"
+)
 UPLOAD_ARTIFACT_MARKER = "actions/upload-artifact"
 
 TIER_3F_EXPECTED_ARTIFACTS = (
@@ -58,12 +63,21 @@ def _iter_workflows(root: Path) -> Iterable[Path]:
     )
 
 
-def _lint_workflow(path: Path, root: Path) -> WorkflowLintResult:
-    text = path.read_text(encoding="utf-8")
+def _normalize_command_text(text: str) -> str:
+    text = text.replace("\\\r\n", " ")
+    text = text.replace("\\\n", " ")
+    text = text.replace("\\\r", " ")
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
-    tier_3e_present = TIER_3E_MARKER in text
-    tier_3f_present = TIER_3F_MARKER in text
-    artifact_upload_present = UPLOAD_ARTIFACT_MARKER in text
+
+def _lint_workflow(path: Path, root: Path) -> WorkflowLintResult:
+    raw_text = path.read_text(encoding="utf-8")
+    normalized_text = _normalize_command_text(raw_text)
+
+    tier_3e_present = bool(TIER_3E_PATTERN.search(normalized_text))
+    tier_3f_present = bool(TIER_3F_PATTERN.search(normalized_text))
+    artifact_upload_present = UPLOAD_ARTIFACT_MARKER in raw_text
 
     errors: list[str] = []
     warnings: list[str] = []
@@ -78,7 +92,7 @@ def _lint_workflow(path: Path, root: Path) -> WorkflowLintResult:
         errors.append("Tier 3E/Tier 3F workflow is missing actions/upload-artifact")
 
     missing_trend_artifacts = tuple(
-        artifact for artifact in TIER_3F_EXPECTED_ARTIFACTS if artifact not in text
+        artifact for artifact in TIER_3F_EXPECTED_ARTIFACTS if artifact not in raw_text
     )
 
     if tier_3f_present and missing_trend_artifacts:
