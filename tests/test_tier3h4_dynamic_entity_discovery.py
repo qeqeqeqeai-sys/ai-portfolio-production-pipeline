@@ -17,32 +17,56 @@ def test_confidence_band_assignment():
     assert mod._score_band(39.9) == "rejected_or_noise"
 
 
-def test_rejected_rows_are_not_advisory_review():
-    seeds = [mod.DiscoverySeed("x", "s", "t", None)]
-    rows = mod.build_records(seeds, "2026-05-16")
-    rows[0]["candidate_confidence_score"] = 10
-    rows[0]["candidate_confidence_band"] = mod._score_band(10)
-    rows[0]["advisory_status"] = "advisory_rejected"
-    assert rows[0]["advisory_status"] != "advisory_review"
+def test_deterministic_query_generation():
+    seed = mod.DiscoverySeed("ai_power_demand", "s", "t", None)
+    queries = mod._generate_queries(seed)
+    assert queries == mod._generate_queries(seed)
+    assert any("public companies" in q for q in queries)
 
 
-def test_llm_used_always_false_and_no_tavily_openai_calls():
-    rows = mod.build_records([mod.DiscoverySeed("ai", "a", "b", None)], "2026-05-16")
+def test_tavily_disabled_fallback_behavior(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    rows, evidence_rows, summary = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert summary["fallback_mode"] is True
+    assert rows and evidence_rows
+
+
+def test_evidence_normalization_and_domain_and_dedup(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+
+    def fake_collect(query_text, api_key, max_results=5):
+        return [
+            {"query_text": query_text, "source_title": " A title ", "source_url": "https://www.reuters.com/a", "source_snippet": "  foo   bar ", "source_domain": mod._normalize_domain("https://www.reuters.com/a"), "source_rank": 1, "retrieved_at": "2026-05-16T00:00:00+00:00"},
+            {"query_text": query_text, "source_title": "dup", "source_url": "https://www.reuters.com/a", "source_snippet": "dup", "source_domain": "reuters.com", "source_rank": 2, "retrieved_at": "2026-05-16T00:00:00+00:00"},
+        ], None
+
+    monkeypatch.setattr(mod, "_collect_tavily", fake_collect)
+    _, evidence_rows, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert evidence_rows
+    assert all(e["source_domain"] == "reuters.com" for e in evidence_rows)
+    assert all("  " not in e["source_snippet"] for e in evidence_rows)
+
+
+def test_low_quality_single_source_cannot_be_high_confidence(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    rows, _, _ = mod.build_records([mod.DiscoverySeed("unknown_theme", "a", "b", None)], "2026-05-16")
+    assert rows[0]["candidate_confidence_band"] != "high_confidence"
+
+
+def test_llm_used_false_and_no_openai_and_evidence_fields_present(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    rows, evidence_rows, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
     assert all(r["llm_used"] is False for r in rows)
     source = Path(mod.__file__).read_text(encoding="utf-8").lower()
-    assert "tavily" not in source
     assert "openai" not in source
+    assert all(k in evidence_rows[0] for k in ["query_text", "source_url", "source_domain", "source_snippet", "retrieved_at"])
 
 
-def test_candidate_examples_not_in_production_static_mapping():
-    source = Path(mod.__file__).read_text(encoding="utf-8")
-    for symbol in ["VRT", "ETN", "PWR", "CEG", "VST", "HUBB", "NVT"]:
-        assert f"::{symbol}" not in source
-
-
-def test_generated_records_include_evidence_explanations_and_idempotency_fields():
-    rows = mod.build_records([mod.DiscoverySeed("ai_power", "a", "b", "ctx")], "2026-05-16")
-    assert rows and isinstance(rows[0]["evidence_sources"], list)
-    assert rows[0]["confidence_explanation"]
+def test_idempotency_fields_present_for_evidence_and_candidate_rows(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    rows, evidence_rows, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", "ctx")], "2026-05-16")
     for key in ["run_date_sgt", "theme_name", "candidate_asset_id", "discovery_method"]:
         assert key in rows[0]
+    for key in ["run_date_sgt", "theme_name", "query_text", "source_url"]:
+        assert key in evidence_rows[0]

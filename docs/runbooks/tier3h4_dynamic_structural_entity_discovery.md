@@ -1,71 +1,67 @@
-# Tier 3H.4A — Dynamic Structural Entity Discovery (Advisory Scaffold)
+# Tier 3H.4B — Dynamic Structural Entity Discovery (Advisory Scaffold)
 
 ## Purpose
-Tier 3H.4A introduces a deterministic scaffold for dynamic structural entity discovery records. It is a staging layer for future evidence enrichment and review workflow, without any monitored-universe promotion.
+Tier 3H.4B extends Tier 3H.4A with deterministic Tavily evidence collection and evidence-aware scoring while preserving advisory-only isolation.
 
-## Advisory-only guarantee
-- Writes only to `public.tier3h_dynamic_entity_discovery`.
-- Never writes to monitored-universe tables.
-- No buy/sell recommendations.
-- No autonomous trading actions.
-- `llm_used` is hard-locked to `false` in this phase.
+## Guardrails
+- Tavily is **evidence collection only**.
+- No OpenAI/LLM classification in 3H.4B.
+- No monitored-universe writes.
+- No buy/sell recommendations or autonomous trading actions.
 
-## What is implemented now
-- Deterministic upstream context loader from Tier 3H and structural propagation sources (if available).
-- Safe deterministic fallback seeds when upstream tables are unavailable or empty.
-- Deterministic mock evidence generation (no external retrieval APIs).
-- Deterministic confidence scoring with auditable component scores.
-- Advisory-only persistence with idempotent daily upsert key.
-- Structured logs and summary/validation artifacts.
-- GitHub Actions workflow for manual and scheduled runs.
+## Tables
+- Candidate advisory table: `public.tier3h_dynamic_entity_discovery`.
+- New raw evidence table: `public.tier3h_dynamic_entity_evidence`.
+- Evidence idempotency key: `(run_date_sgt, theme_name, query_text, source_url)`.
 
-## What is intentionally not implemented yet
-- 3H.4B Tavily evidence collection.
-- 3H.4D OpenAI / LLM classification.
-- Monitored-universe auto-promotion.
-- Portfolio/trading actions.
+## 3H.4B logic
+1. Load deterministic upstream seed context from Tier 3H candidates + structural propagation.
+2. Deterministically generate query templates per theme.
+3. If `TAVILY_API_KEY` exists and `TIER3H4_TAVILY_ENABLED=true`, collect Tavily evidence.
+4. If unavailable, safely fallback to deterministic mock evidence.
+5. Normalize evidence (domain/snippet, dedupe by idempotency key).
+6. Score evidence quality deterministically.
+7. Persist raw evidence rows and advisory candidates.
+8. Apply deterministic suppression rules for weak/noisy candidates (without deleting evidence audit trail).
 
-## Table schema
-SQL migration: `sql/tier3h_dynamic_entity_discovery.sql`.
+## Query generation
+Deterministic templates:
+- `{theme_label} public companies`
+- `{theme_label} listed companies`
+- `{theme_label} infrastructure suppliers`
+- `{theme_label} earnings transcript companies`
+- `{theme_label} ETF holdings companies`
 
-Key fields:
-- idempotency: `(run_date_sgt, theme_name, candidate_asset_id, discovery_method)`
-- evidence payload: `evidence_sources`, `evidence_count`
-- scoring fields: `source_quality_score`, `thematic_relevance_score`, `entity_resolution_score`, `cross_source_score`, `candidate_confidence_score`
-- controls: `candidate_confidence_band`, `advisory_status`, `rejection_reason`, `llm_used`
+## Evidence quality scoring
+Deterministic components include:
+- source domain tier
+- thematic keyword overlap
+- source rank influence
+- snippet specificity
+- duplicate/weakness penalties via suppression rules
 
-## Scoring logic
-`candidate_confidence_score` (0..100) is deterministic weighted sum:
-- evidence_count_score: 30%
-- thematic_relevance_score: 25%
-- source_quality_score: 20%
-- entity_resolution_score: 15%
-- cross_source_score: 10%
+Low-quality single-source evidence cannot produce high confidence.
 
-## Confidence bands
-- `>= 80`: `high_confidence`
-- `>= 60 and < 80`: `medium_confidence`
-- `>= 40 and < 60`: `low_confidence`
-- `< 40`: `rejected_or_noise`
+## Suppression rules
+Candidates are marked `advisory_rejected` for cases like:
+- insufficient evidence count
+- weak thematic relevance
+- low cross-source support
+- generic mega-cap contamination patterns
 
-Advisory status mapping:
-- high/medium/low → `advisory_review`
-- rejected_or_noise → `advisory_rejected`
+Evidence rows remain persisted for auditability.
 
-## GitHub Actions usage
-Workflow: `.github/workflows/tier3h4_dynamic_entity_discovery.yml`
-- `workflow_dispatch` for manual run.
-- daily schedule for drift-free advisory refresh.
-- uploads summary/validation/context artifacts under `logs/`.
+## Fallback mode
+If Tavily is not available, pipeline still succeeds in deterministic fallback mode and remains non-blocking.
 
-## Rollout risks
-- Upstream context schema drift may reduce seed quality (mitigated by soft fallback path).
-- Confidence weights are deterministic but not calibrated to production outcomes yet.
-- Mock evidence is scaffold-only and should not be interpreted as external corroboration.
+## Artifacts/logs
+- `logs/tier3h4_dynamic_entity_discovery_summary.json`
+- `logs/tier3h4_dynamic_entity_evidence_summary.json`
+- `logs/tier3h4_dynamic_entity_discovery_validation.json`
 
-## Future phases
-- **3H.4B:** Tavily evidence collection.
-- **3H.4C:** Entity resolution hardening.
-- **3H.4D:** LLM classification with strict JSON + evidence lock.
-- **3H.4E:** Confidence calibration + suppression rules.
-- **3H.4F:** Human-review promotion workflow.
+Evidence summary contains: Tavily enabled flag, fallback mode, queries generated, evidence collected/persisted, top domains, failure count, and suppression totals.
+
+## Operational risk notes
+- Search-result quality drift can alter evidence quality distribution.
+- Domain-tier lists require periodic maintenance.
+- Upstream schema drift may degrade seed quality; fallback path mitigates hard failures.
