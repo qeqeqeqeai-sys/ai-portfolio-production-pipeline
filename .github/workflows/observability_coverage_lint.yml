@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/**'
       - 'scripts/lint_workflow_observability.py'
+      - 'scripts/validate_observability_artifacts.py'
 
 jobs:
   observability-lint:
@@ -24,3 +25,8 @@ jobs:
         shell: bash
         run: |
           python scripts/lint_workflow_observability.py
+
+      - name: Run advisory observability artifact schema validation
+        shell: bash
+        run: |
+          python scripts/validate_observability_artifacts.py
