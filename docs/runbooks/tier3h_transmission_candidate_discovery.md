@@ -17,6 +17,21 @@ Tier 3H attempts to read local upstream outputs when present:
 
 If inputs are missing or empty, Tier 3H soft-fails with a clear summary and still produces logs.
 
+
+## Tier 3H.2 entity resolution
+Tier 3H.2 resolves candidate identifiers in this deterministic order:
+1. `TICKER::<SYMBOL>` from ticker/symbol fields
+2. `NODE::<NORMALIZED_NODE>` from node/entity fields
+3. `THEME::<NORMALIZED_THEME>` from theme fields
+4. `REGIME::<NORMALIZED_REGIME>` from regime fields (fallback only)
+
+Additional observability in summary/validation logs includes:
+- `source_columns_seen`
+- `candidate_identifier_type_counts`
+- `fallback_identifier_count`
+- `unresolved_identifier_count`
+- regime fallback guardrails (`REGIME` cannot become `candidate_add`)
+
 ## Outputs
 - `logs/tier3h_candidate_discovery_summary.json`
 - `logs/tier3h_candidate_discovery_validation.json`
