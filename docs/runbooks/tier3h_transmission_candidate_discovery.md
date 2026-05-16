@@ -1,0 +1,50 @@
+# Tier 3H — Transmission Candidate Discovery (Advisory-Only)
+
+## Purpose
+Tier 3H identifies candidate assets/themes that may deserve future monitored-universe consideration. It is strictly advisory and designed to be low-risk, observable, and reversible.
+
+## Advisory-only guarantees
+- Tier 3H writes only to `tier3h_transmission_candidates`.
+- Tier 3H never writes/updates/deletes main monitored-universe tables.
+- Tier 3H emits no trading signals.
+- `recommended_action=candidate_add` remains advisory-only and requires manual review.
+
+## Inputs
+Tier 3H attempts to read local upstream outputs when present:
+- `logs/transmission_candidate_inputs.json`
+- `logs/phase5d_structural_propagation_regime_forecasting_summary.json`
+- `logs/phase3e_transmission_potential_surface_summary.json`
+
+If inputs are missing or empty, Tier 3H soft-fails with a clear summary and still produces logs.
+
+## Outputs
+- `logs/tier3h_candidate_discovery_summary.json`
+- `logs/tier3h_candidate_discovery_validation.json`
+- `logs/tier3h_candidate_discovery_manifest.json`
+
+## Supabase table
+Tier 3H advisory table:
+- `public.tier3h_transmission_candidates`
+- upsert conflict key:
+  - `(run_date_sgt, candidate_symbol, discovery_theme, candidate_source)`
+
+## Recommended action definitions
+- `watch`: weak positive signal; monitor only
+- `review`: moderate positive signal; manual analyst review suggested
+- `candidate_add`: strong positive signal and evidence; queue for manual expansion review only
+- `reject`: insufficient signal or adverse net transmission
+
+## Workflow usage
+Use `.github/workflows/tier3h_transmission_candidate_discovery.yml` via `workflow_dispatch`.
+
+## Manual review process
+1. Run Tier 3H workflow.
+2. Inspect summary/validation/manifest artifacts.
+3. Query `tier3h_transmission_candidates` and sort by `recommended_action`, `confidence_score`, and `net_transmission_score`.
+4. Move only human-approved names to the future expansion queue process.
+
+## Explicit non-automation note
+Tier 3H does **not** auto-add assets to the monitored universe.
+
+## Future Phase 2 path
+Tier 3H candidates → human review → approved expansion queue → monitored universe.

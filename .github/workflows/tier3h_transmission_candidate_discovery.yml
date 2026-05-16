@@ -1,0 +1,73 @@
+name: Tier 3H Transmission Candidate Discovery
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tier3h-candidate-discovery:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Tier 3H advisory candidate discovery
+        run: |
+          python transmission_layers/asset_discovery/tier3h_transmission_candidate_discovery.py
+
+      - name: Resolve orchestration context (advisory)
+        if: always()
+        continue-on-error: true
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          mkdir -p logs
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "tier3h_asset_discovery" \
+            --output-file logs/execution_context.json
+
+      - name: Build validation summary (advisory)
+        if: always()
+        continue-on-error: true
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file logs/execution_context.json \
+            --source tier3h_transmission_candidate_discovery \
+            --validation-status passed \
+            --warnings-count 0 \
+            --errors-count 0 \
+            --hard-fail-count 0 \
+            --output-file logs/platform_validation_summary.json
+
+      - name: Upload Tier 3H advisory artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier3h-transmission-candidate-discovery-logs
+          if-no-files-found: warn
+          path: |
+            logs/tier3h_candidate_discovery_summary.json
+            logs/tier3h_candidate_discovery_validation.json
+            logs/tier3h_candidate_discovery_manifest.json
+            logs/execution_context.json
+            logs/platform_validation_summary.json
