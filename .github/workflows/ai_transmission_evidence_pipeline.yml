@@ -28,6 +28,7 @@ jobs:
       MAX_EVIDENCE_RESULTS_PER_MAP: "3"
       TAVILY_SEARCH_DAYS: "30"
       SLEEP_BETWEEN_MAPS_SECONDS: "0.5"
+      EXECUTION_CONTEXT_FILE: logs/execution_context.json
 
     steps:
       - name: Checkout repository
@@ -86,13 +87,83 @@ jobs:
           python ai_transmission/ai_transmission_evidence_ingestion_v1.py
 
 
+      - name: Tier 3C ensure logs directory exists
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p logs
+
+      - name: Tier 3C resolve shared execution context
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context resolve \
+            --workflow-name "${{ github.workflow }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-mode "${{ github.event_name }}" \
+            --theme-name "ai_transmission_evidence" \
+            --requested-run-date-sgt "" \
+            --output-file "${EXECUTION_CONTEXT_FILE}"
+
+      - name: Tier 3C export execution context to GitHub env
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli context export-github-env \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --github-env-file "${GITHUB_ENV}"
+
+      - name: Tier 3D generate validation summary
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli validation summarize \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --source ai_transmission_evidence_ingestion_v1 \
+            --validation-status passed \
+            --warnings-count 0 \
+            --errors-count 0 \
+            --hard-fail-count 0 \
+            --output-file logs/validation_summary.json
+
+      - name: Tier 3D generate telemetry context snapshot
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli telemetry snapshot \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --pipeline-status "${{ job.status }}" \
+            --runtime-seconds "0" \
+            --output-file logs/telemetry_context_snapshot.json
+
+      - name: Tier 3D generate context artifact manifest
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m core.orchestration_guardrails.cli artifact manifest \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --output-file logs/context_artifact_manifest.json
+
       - name: Tier 3E operational summary aggregation
         if: always()
         continue-on-error: true
         shell: bash
         run: |
-          python -m core.orchestration_guardrails.cli \
-            aggregate operational-summary
+          python -m core.orchestration_guardrails.cli aggregate operational-summary \
+            --context-file "${EXECUTION_CONTEXT_FILE}" \
+            --validation-summary-file logs/validation_summary.json \
+            --telemetry-snapshot-file logs/telemetry_context_snapshot.json \
+            --artifact-manifest-file logs/context_artifact_manifest.json \
+            --output-dir logs
 
       - name: Tier 3F operational trend intelligence
         if: always()
@@ -122,6 +193,10 @@ jobs:
         with:
           name: ai-transmission-evidence-artifacts
           path: |
+            logs/execution_context.json
+            logs/validation_summary.json
+            logs/telemetry_context_snapshot.json
+            logs/context_artifact_manifest.json
             logs/platform_execution_consistency.json
             logs/platform_operational_trend_summary.json
             logs/platform_recurring_warnings.json
