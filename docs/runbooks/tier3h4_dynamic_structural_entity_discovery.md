@@ -65,3 +65,27 @@ Evidence summary contains: Tavily enabled flag, fallback mode, queries generated
 - Search-result quality drift can alter evidence quality distribution.
 - Domain-tier lists require periodic maintenance.
 - Upstream schema drift may degrade seed quality; fallback path mitigates hard failures.
+
+## Tier 3H.4B.1 — Tavily Operational Controls
+
+This tier adds deterministic and advisory-safe operational governance for paid Tavily usage:
+
+- **Config caps via env + defaults**: query/run caps, per-theme caps, retries, result limits, timeout, and cache lookback.
+- **Deterministic query deduplication**: whitespace/case-normalized dedup, no duplicate execution within a run.
+- **Lightweight evidence cache reuse**: checks recent evidence (`QUERY_CACHE_LOOKBACK_DAYS`) by `(theme_name, query_text)` and reuses rows with `cache_reused=true`.
+- **Graceful fallback**: quota/rate/auth/unavailable/timeout/invalid responses never hard-fail the workflow; deterministic fallback evidence path remains active.
+- **Retry governance**: bounded retries with deterministic backoff on transient errors only; no retry on auth/quota/permanent failures.
+- **Operational telemetry**: one row per run in `public.tier3h_operational_api_usage` with usage/fallback/retry/quota counters.
+- **Operational artifact**: `logs/tier3h4_operational_controls_summary.json` records generated/dedup/executed queries, cache behavior, fallback/quota flags, and execution timing.
+
+### Quota exhaustion handling
+When quota is exhausted, remaining queries automatically use deterministic fallback evidence for advisory continuity. The pipeline remains non-blocking and auditable.
+
+### Advisory continuity guarantees
+These controls do not alter advisory-only boundaries:
+- no monitored-universe writes
+- no autonomous actions
+- no OpenAI/LLM calls
+
+### Future direction (non-implemented)
+A future evidence-lake layer can extend cache retention and lineage across runs, but 3H.4B.1 intentionally keeps cache logic lightweight and reversible.
