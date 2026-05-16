@@ -71,5 +71,6 @@ jobs:
             logs/tier3h4_dynamic_entity_discovery_summary.json
             logs/tier3h4_dynamic_entity_discovery_validation.json
             logs/tier3h4_dynamic_entity_evidence_summary.json
+            logs/tier3h4_operational_controls_summary.json
             logs/execution_context.json
             logs/platform_validation_summary.json
