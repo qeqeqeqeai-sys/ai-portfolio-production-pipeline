@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -57,6 +57,37 @@ def read_json(filename: str) -> dict | None:
     return payload
 
 
+def _clean_str(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def resolve_run_date_sgt(execution_context: dict | None) -> str:
+    env_value = _clean_str(os.getenv("RUN_DATE_SGT"))
+    if env_value:
+        log("Resolved run_date_sgt from environment variable RUN_DATE_SGT.")
+        return env_value
+
+    context = execution_context if isinstance(execution_context, dict) else {}
+    file_value = _clean_str(
+        context.get("resolved_run_date_sgt") or context.get("run_date_sgt")
+    )
+    if file_value:
+        log("Resolved run_date_sgt from logs/execution_context.json.")
+        return file_value
+
+    try:
+        fallback = datetime.now(ZoneInfo("Asia/Singapore")).date().isoformat()
+        log("Resolved run_date_sgt from Asia/Singapore current date fallback.")
+        return fallback
+    except Exception:
+        fallback = datetime.now(timezone.utc).date().isoformat()
+        log("Resolved run_date_sgt from UTC current date fallback.")
+        return fallback
+
+
 def require_env() -> bool:
     missing = []
 
@@ -84,9 +115,10 @@ def build_payload() -> dict:
     validation_context = validation_summary or {}
     telemetry_context = telemetry_snapshot or {}
     trend_context = trend_summary or {}
+    run_date_sgt = resolve_run_date_sgt(execution_context)
 
     return {
-        "run_date_sgt": os.getenv("RUN_DATE_SGT"),
+        "run_date_sgt": run_date_sgt,
         "workflow_name": os.getenv("GITHUB_WORKFLOW"),
         "run_id": os.getenv("GITHUB_RUN_ID"),
         "repository": os.getenv("GITHUB_REPOSITORY"),
