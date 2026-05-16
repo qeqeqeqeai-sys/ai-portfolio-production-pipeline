@@ -50,4 +50,11 @@ alter table public.tier3h_transmission_candidates
 
 alter table public.tier3h_transmission_candidates
   add constraint tier3h_transmission_candidates_identifier_type_chk
-  check (identifier_type is null or identifier_type in ('TICKER', 'NODE', 'THEME', 'REGIME', 'UNKNOWN'));
+  check (identifier_type is null or identifier_type in ('TICKER', 'ETF', 'NODE', 'THEME', 'REGIME', 'UNKNOWN'));
+
+
+alter table public.tier3h_transmission_candidates
+  add column if not exists linked_from_theme text,
+  add column if not exists linked_from_node text,
+  add column if not exists entity_link_confidence numeric not null default 0,
+  add column if not exists entity_link_method text;

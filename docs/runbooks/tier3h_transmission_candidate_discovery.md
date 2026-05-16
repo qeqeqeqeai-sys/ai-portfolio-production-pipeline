@@ -63,3 +63,23 @@ Tier 3H does **not** auto-add assets to the monitored universe.
 
 ## Future Phase 2 path
 Tier 3H candidates → human review → approved expansion queue → monitored universe.
+
+## Tier 3H.3 structural entity linking
+Tier 3H.3 adds deterministic structural mapping from themes/nodes into advisory investable entities.
+
+- Link source fields: `theme_name`, `anchor_theme_name`, `source_node_key`, `target_node_key`, `source_node_type`, `target_node_type`, `propagation_metadata`.
+- Link method: curated static dictionary only (no external APIs).
+- Candidate source label for mapped entities: `tier3h_structural_entity_linking`.
+- Entity metadata columns: `linked_from_theme`, `linked_from_node`, `entity_link_confidence`, `entity_link_method`.
+
+Allowed `entity_link_method`:
+- `curated_static_map`
+- `direct_ticker`
+- `node_alias`
+- `unresolved`
+
+Validation includes:
+- advisory-only status enforcement,
+- allowed identifier/method values,
+- no monitored-universe writes,
+- no `candidate_add` for `REGIME`/`UNKNOWN`.
