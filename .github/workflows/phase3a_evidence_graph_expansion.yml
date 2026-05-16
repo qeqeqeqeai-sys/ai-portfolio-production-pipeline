@@ -159,9 +159,11 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          test -f transmission_layers/graph_foundation/logs/execution_context.json || echo "[tier3g] missing transmission_layers/graph_foundation/logs/execution_context.json"
-          test -f transmission_layers/graph_foundation/logs/platform_operational_summary.json || echo "[tier3g] missing transmission_layers/graph_foundation/logs/platform_operational_summary.json"
-          test -f transmission_layers/graph_foundation/logs/platform_operational_trend_summary.json || echo "[tier3g] missing transmission_layers/graph_foundation/logs/platform_operational_trend_summary.json"
+          mkdir -p logs
+          cp -f transmission_layers/graph_foundation/logs/*.json logs/ 2>/dev/null || true
+          test -f logs/execution_context.json || echo "[tier3g] missing logs/execution_context.json"
+          test -f logs/platform_operational_summary.json || echo "[tier3g] missing logs/platform_operational_summary.json"
+          test -f logs/platform_operational_trend_summary.json || echo "[tier3g] missing logs/platform_operational_trend_summary.json"
           python scripts/write_observability_history.py
 
       - name: Upload observability artifacts (advisory)
