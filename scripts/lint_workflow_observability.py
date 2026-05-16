@@ -3,6 +3,8 @@
 
 Enforces that workflows including Tier 3F trend intelligence also include
 Tier 3E operational aggregation.
+
+This linter intentionally uses lightweight text normalization for command detection.
 """
 
 from __future__ import annotations
