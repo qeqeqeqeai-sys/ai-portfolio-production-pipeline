@@ -28,8 +28,9 @@ TIER_3F_PATTERN = re.compile(
 def _normalize_for_command_detection(text: str) -> str:
     # Normalize multiline GitHub Actions shell formatting (YAML wrapping and
     # shell continuation backslashes) so split commands still match reliably.
-    normalized = text.replace("\\\n", " ")
-    return re.sub(r"\s+", " ", normalized)
+    normalized_text = text.replace("\\\n", " ")
+    normalized_text = re.sub(r"\s+", " ", normalized_text)
+    return normalized_text
 
 
 def lint_workflow(path: Path) -> list[str]:
