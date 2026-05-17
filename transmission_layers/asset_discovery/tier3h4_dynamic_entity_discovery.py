@@ -67,6 +67,44 @@ def _normalize_domain(url: str) -> str:
     host = urlparse(url).netloc.lower().replace("www.", "")
     return host
 
+def normalize_source_result_payload(result: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(result, dict):
+        return {}
+    normalized: dict[str, Any] = {}
+    explicit_fields = [
+        "title",
+        "url",
+        "content",
+        "snippet",
+        "raw_content",
+        "rawContent",
+        "summary",
+        "description",
+        "score",
+        "published_date",
+        "metadata",
+    ]
+    for field in explicit_fields:
+        if field in result and result.get(field) is not None:
+            normalized[field] = result.get(field)
+    return normalized
+
+def _compose_evidence_text(source_title: str, source_snippet: str, source_domain: str, source_score: Any, published_date: Any, evidence_rank: Any, candidate_name: str, theme_name: str, discovery_method: str) -> str:
+    parts = []
+    if source_title:
+        parts.append(f"Title: {source_title}")
+    if source_snippet:
+        parts.append(f"Snippet: {source_snippet}")
+    parts.append(
+        f"Metadata: source_domain={source_domain or 'unknown'}; tavily_score={_normalize_text(str(source_score)) or 'unknown'}; "
+        f"published_date={_normalize_text(str(published_date)) or 'unknown'}; evidence_rank={_normalize_text(str(evidence_rank)) or 'unknown'}"
+    )
+    parts.append(
+        f"Operational: candidate_name={_normalize_text(candidate_name) or 'unknown'}; theme_name={_normalize_text(theme_name) or 'unknown'}; "
+        f"discovery_method={_normalize_text(discovery_method) or 'unknown'}"
+    )
+    return "\n\n".join(parts)
+
 def _generate_queries(seed: DiscoverySeed) -> list[str]:
     labels = THEME_LABELS.get(seed.theme_name, [seed.theme_name.replace("_", " ")])
     queries: list[str] = []
@@ -259,7 +297,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     fallback_mode = True
                     ops["fallback_events"] += 1
                     items = generate_mock_evidence(seed, query)
-            for item in items:
+            for source_rank, item in enumerate(items, start=1):
                 key = (sgt_date, seed.theme_name, query, item.get("source_url", ""))
                 if key in seen_urls: continue
                 seen_urls.add(key)
@@ -270,7 +308,18 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 suppression_flags = []
                 if len(thematic_matches) < 1: suppression_flags.append("weak_thematic_overlap")
                 if any(tok in text for tok in GENERIC_SUPPRESSION_TOKENS) and len(matches) < 1: suppression_flags.append("generic_megacap_contamination")
-                row = {"run_date_sgt": sgt_date, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "query_text": query, "candidate_asset_id": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_name": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_ticker": None, "source_url": item["source_url"], "source_domain": _normalize_domain(item.get("source_url", "")), "source_title": _normalize_text(item.get("source_title")), "source_snippet": _normalize_text(item.get("source_snippet")), "source_rank": item.get("source_rank"), "retrieved_at": item.get("retrieved_at"), "discovery_method": "tavily_search" if tavily_enabled else "deterministic_fallback", "evidence_quality_score": evidence_quality, "thematic_keyword_matches": thematic_matches, "matched_entity_terms": matches, "suppression_flags": suppression_flags, "cache_reused": bool(item.get("cache_reused", False))}
+                candidate_asset_id = f"MOCK::{seed.theme_name.upper()}::{idx}"
+                candidate_name = f"MOCK::{seed.theme_name.upper()}::{idx}"
+                source_payload = normalize_source_result_payload(item)
+                source_url = _normalize_text(str(item.get("source_url") or item.get("url") or ""))
+                source_title = _normalize_text(item.get("source_title") or item.get("title"))
+                source_snippet = _normalize_text(item.get("source_snippet") or item.get("content") or item.get("snippet") or item.get("raw_content") or item.get("rawContent") or item.get("summary") or item.get("description"))
+                derived_source_domain = _normalize_domain(source_url) if source_url else ""
+                source_score = item.get("score")
+                published_date = item.get("published_date")
+                evidence_rank = item.get("source_rank") or source_rank
+                discovery_method = "tavily_search" if tavily_enabled else "deterministic_fallback"
+                row = {"run_date_sgt": sgt_date, "workflow_run_id": None, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "query_text": query, "candidate_id": None, "candidate_asset_id": candidate_asset_id, "candidate_name": candidate_name, "candidate_ticker": None, "source_url": source_url, "source_domain": derived_source_domain, "source_title": source_title, "source_snippet": source_snippet, "source_rank": evidence_rank, "evidence_rank": evidence_rank, "evidence_confidence": evidence_quality, "evidence_type": "source_result", "evidence_text": _compose_evidence_text(source_title, source_snippet, derived_source_domain, source_score, published_date, evidence_rank, candidate_name, seed.theme_name, discovery_method), "retrieved_at": item.get("retrieved_at"), "discovery_method": discovery_method, "evidence_quality_score": evidence_quality, "thematic_keyword_matches": thematic_matches, "matched_entity_terms": matches, "suppression_flags": suppression_flags, "cache_reused": bool(item.get("cache_reused", False)), "raw_evidence": {"source_result": source_payload, "candidate_context": {"candidate_name": candidate_name, "candidate_asset_id": candidate_asset_id, "candidate_id": None, "theme_name": seed.theme_name, "discovery_method": discovery_method, "source_node": seed.source_node, "target_node": seed.target_node}, "persistence_phase": "tier3h4c3_phase2b_source_level_evidence"}}
                 evidence_rows.append(row)
                 seed_evidence.append(row)
         evidence_count = len(seed_evidence)

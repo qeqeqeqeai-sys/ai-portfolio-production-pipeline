@@ -243,6 +243,7 @@ Healthy rerun expectation:
 
 ### Purpose
 Phase 2B ensures persisted evidence rows are true source-result rows (for example one Tavily result per evidence row), not candidate operational metadata rows.
+Persistence now happens immediately at source collection time in Tier 3H.4 dynamic discovery, before candidate-level metadata aggregation.
 
 ### Source-level row definition
 - One deterministic source result maps to one evidence row.
