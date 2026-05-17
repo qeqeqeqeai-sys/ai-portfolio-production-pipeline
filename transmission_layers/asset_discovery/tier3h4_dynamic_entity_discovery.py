@@ -1052,7 +1052,16 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
 
 
 def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_summary: dict, records: list[dict]) -> dict[str, Any]:
-    canonical_summary = _build_strict_identifier_canonical_summary(evidence_summary, records)
+    canonical_summary = {
+        "strict_identifier_matches_found": evidence_summary.get("strict_identifier_matches_found", 0),
+        "strict_identifier_sample_matches": list(evidence_summary.get("strict_identifier_sample_matches") or []),
+        "rows_with_ticker": evidence_summary.get("rows_with_ticker", 0),
+        "rows_without_ticker": evidence_summary.get("rows_without_ticker", len(records)),
+        "rows_with_exchange": evidence_summary.get("rows_with_exchange", 0),
+        "rows_without_exchange": evidence_summary.get("rows_without_exchange", len(records)),
+        "evidence_rows_with_ticker": evidence_summary.get("evidence_rows_with_ticker", 0),
+        "evidence_rows_with_exchange": evidence_summary.get("evidence_rows_with_exchange", 0),
+    }
 
     payload_object_id = id(final_summary_payload)
     reconciliation_object_id = id(final_summary_payload)
@@ -1121,7 +1130,7 @@ def _apply_canonical_strict_identifier_fields_to_final_payload(
     canonical_summary: dict[str, Any],
 ) -> None:
     final_summary_payload.update(canonical_summary)
-    final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("evidence_source_mode")
+    final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", evidence_summary.get("evidence_source_mode"))
     final_summary_payload["strict_identifier_rows_scanned"] = evidence_summary.get("strict_identifier_rows_scanned", 0)
     final_summary_payload["strict_identifier_matches_found"] = canonical_summary.get("strict_identifier_matches_found", 0)
     final_summary_payload["strict_identifier_sample_matches"] = canonical_summary.get("strict_identifier_sample_matches", [])
@@ -1132,6 +1141,9 @@ def _apply_canonical_strict_identifier_fields_to_final_payload(
     final_summary_payload["final_summary_strict_identifier_source"] = "canonical_runtime_reconciliation"
     final_summary_payload["final_summary_assignment_origin"] = "canonical_summary_plus_runtime_source_mode"
     final_summary_payload["final_summary_matches_found"] = final_summary_payload["strict_identifier_matches_found"]
+    final_summary_payload["final_export_summary_source"] = "canonical_runtime_extraction"
+    final_summary_payload["final_export_runtime_metrics_origin"] = "evidence_summary.strict_identifier_runtime_counters"
+    final_summary_payload["final_export_evidence_mode"] = evidence_summary.get("evidence_source_mode")
 
 
 def _finalize_and_verify_summary_payload(final_summary_payload: dict, canonical_summary: dict, summary_path: Path) -> None:
