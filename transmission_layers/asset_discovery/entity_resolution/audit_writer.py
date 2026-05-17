@@ -17,6 +17,21 @@ def fetch_table_rows(table: str, run_date_sgt: str, theme_name: str) -> tuple[li
         return [], f"read_exception:{table}:{type(exc).__name__}"
 
 
+def fetch_table_rows_with_fallback(tables: list[str], run_date_sgt: str, theme_name: str) -> tuple[list[dict], dict]:
+    attempted, selected = [], None
+    warning = None
+    for table in tables:
+        attempted.append(table)
+        rows, err = fetch_table_rows(table, run_date_sgt, theme_name)
+        if err and err.startswith("missing_supabase_env"):
+            return [], {"tables_attempted": attempted, "table_selected": None, "warning": err, "rows_read": 0}
+        if not err:
+            selected = table
+            return rows, {"tables_attempted": attempted, "table_selected": selected, "warning": warning, "rows_read": len(rows)}
+        warning = err
+    return [], {"tables_attempted": attempted, "table_selected": None, "warning": warning, "rows_read": 0}
+
+
 def write_audit_rows(rows: list[dict]) -> str:
     if not rows:
         return "skipped:no_rows"

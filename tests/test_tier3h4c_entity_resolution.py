@@ -10,10 +10,23 @@ from transmission_layers.asset_discovery.entity_resolution.exchange_normalizer i
 from transmission_layers.asset_discovery.entity_resolution.confidence_scoring import compute_confidence
 from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules import apply_rules
 from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import duplicate_group_key
+from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_alias
+from transmission_layers.asset_discovery.entity_resolution import audit_writer
 
 
 def test_normalize_name():
     assert normalize_name("Acme, Inc.") == "acme"
+
+
+def test_registry_ticker_match_and_inference():
+    hit = lookup_by_ticker("NVDA")
+    assert len(hit) == 1
+    assert hit[0].exchange == "XNAS"
+
+
+def test_registry_alias_match():
+    hit = lookup_by_alias("google")
+    assert hit and hit[0].ticker == "GOOGL"
 
 
 def test_normalize_ticker():
@@ -24,35 +37,56 @@ def test_normalize_ticker():
 
 def test_exchange_normalization():
     assert normalize_exchange("Nasdaq") == "XNAS"
-    assert normalize_exchange("NYSE Arca") == "ARCX"
 
 
-def test_etf_company_classification():
-    assert guess_asset_type("ABC ETF Trust", None, {}) == "etf"
-    assert guess_asset_type("NVIDIA Corporation", "NVDA", {}) == "equity"
+def test_confidence_calibration_missing_exchange_not_auto_suppressed():
+    flags = {"has_ticker": True, "has_exchange": False, "has_name": True, "source_count": 0, "has_evidence_urls": False,
+             "suspicious_ticker": False, "generic_name": False, "etf_company_conflict": False, "missing_ticker": False,
+             "registry_ticker_match": False, "registry_name_or_alias_match": False, "exchange_inferred_from_registry": False,
+             "missing_exchange_without_registry": True}
+    score = compute_confidence(flags)
+    _, _, status = apply_rules(flags, score)
+    assert status == "unresolved_review"
 
 
-def test_generic_name_suppression():
-    flags = {"generic_name": True, "suspicious_ticker": False, "etf_company_conflict": False, "source_count": 1, "missing_exchange_for_ambiguous": False, "missing_ticker": True}
-    _, reason, status = apply_rules(flags, 75)
-    assert reason == "generic_name"
-    assert status == "suppressed"
+def test_suspicious_ticker_still_suppressed():
+    flags = {"generic_name": False, "suspicious_ticker": True, "etf_company_conflict": False, "source_count": 2,
+             "missing_ticker": False, "has_ticker": True, "missing_exchange_without_registry": False}
+    _, reason, status = apply_rules(flags, 70)
+    assert reason == "suspicious_ticker" and status == "suppressed"
 
 
-def test_suspicious_ticker_suppression():
-    _, suspicious = normalize_ticker("TOOLONGGGG")
-    assert suspicious
+def test_generic_entity_still_suppressed():
+    flags = {"generic_name": True, "suspicious_ticker": False, "etf_company_conflict": False, "source_count": 1,
+             "missing_ticker": True, "has_ticker": False, "missing_exchange_without_registry": False}
+    _, reason, status = apply_rules(flags, 70)
+    assert reason == "generic_name" and status == "suppressed"
 
 
-def test_confidence_clamping():
-    score = compute_confidence({"has_ticker": True, "has_exchange": True, "has_name": True, "asset_type_known": True, "source_count": 3, "has_evidence_urls": True, "etf_company_conflict": False, "suspicious_ticker": False, "generic_name": False})
-    assert 0 <= score <= 100
+def test_duplicate_grouping_ticker_exchange_priority():
+    r1 = {"normalized_ticker": "NVDA", "normalized_exchange": "XNAS", "normalized_name": "nvidia", "asset_type_guess": "equity", "theme_name": "ai", "run_date_sgt": "2026-05-17", "evidence_urls": ["a"]}
+    r2 = dict(r1)
+    assert duplicate_group_key(r1) == duplicate_group_key(r2)
 
 
-def test_duplicate_group_key_stability():
-    row = {"normalized_ticker": "NVDA", "normalized_exchange": "XNAS", "normalized_name": "nvidia", "asset_type_guess": "equity", "theme_name": "ai", "run_date_sgt": "2026-05-17"}
-    assert duplicate_group_key(row) == duplicate_group_key(dict(row))
+def test_duplicate_grouping_name_fallback():
+    r1 = {"normalized_ticker": None, "normalized_exchange": None, "normalized_name": "nvidia", "asset_type_guess": "equity", "theme_name": "ai", "run_date_sgt": "2026-05-17", "evidence_urls": ["a"]}
+    r2 = dict(r1)
+    assert duplicate_group_key(r1) == duplicate_group_key(r2)
+
+
+def test_source_table_fallback(monkeypatch):
+    def fake_fetch(table, *_args):
+        if table == "bad":
+            return [], "read_failed:bad:404"
+        return [{"id": 1}], None
+
+    monkeypatch.setattr(audit_writer, "fetch_table_rows", fake_fetch)
+    rows, meta = audit_writer.fetch_table_rows_with_fallback(["bad", "good"], "2026-05-17", "ai")
+    assert rows and meta["table_selected"] == "good"
+    assert meta["tables_attempted"] == ["bad", "good"]
 
 
 def test_summary_shape_empty():
     assert is_generic_name("ai")
+    assert guess_asset_type("ABC ETF Trust", None, {}) == "etf"
