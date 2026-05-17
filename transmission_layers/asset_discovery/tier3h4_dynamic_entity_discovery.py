@@ -1095,8 +1095,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                 if cols:
                     unique_constraint_signatures.append(",".join(cols))
         diagnostics["failing_table_unique_constraints"] = sorted(set(unique_constraint_signatures)) if unique_constraint_signatures else constraint_names
+        diagnostics["failing_unique_constraints"] = diagnostics["failing_table_unique_constraints"]
     except Exception:
         diagnostics["table_unique_constraints"] = diagnostics.get("table_unique_constraints") or []
+        diagnostics["failing_unique_constraints"] = diagnostics.get("failing_table_unique_constraints") or diagnostics.get("table_unique_constraints") or []
     actual_upsert_payload = final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else final_upsert_rows
     if table_name == EVIDENCE_TABLE_NAME:
         actual_upsert_payload, confidence_diag = _coerce_numeric_confidence_fields(actual_upsert_payload)
@@ -1128,6 +1130,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     known_signatures = set(diagnostics.get("failing_table_unique_constraints") or diagnostics.get("table_unique_constraints") or [])
     diagnostics["failing_upsert_has_matching_unique_constraint"] = (normalized_conflict_signature in known_signatures) if normalized_conflict_signature else None
     diagnostics["conflict_target_matches_unique_constraint"] = diagnostics["failing_upsert_has_matching_unique_constraint"]
+    diagnostics["failing_unique_constraints"] = diagnostics.get("failing_table_unique_constraints") or diagnostics.get("table_unique_constraints") or []
     diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
     diagnostics["actual_upsert_first_row_keys"] = actual_upsert_first_row_keys
     diagnostics["actual_upsert_contains_query_text"] = "query_text" in actual_upsert_first_row_keys
@@ -1257,6 +1260,12 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                     diagnostics["rows_already_exist_count"] = rows_already_exist_count
                     diagnostics["conflict_is_benign"] = rows_already_exist_count > 0
                     diagnostics["http_409_classification"] = "idempotent_duplicate_rerun" if diagnostics["conflict_is_benign"] else "conflict_unverified"
+                    print(f"[tier3h4] failing_table_name={diagnostics.get('failing_table_name')}")
+                    print(f"[tier3h4] failing_unique_constraints={diagnostics.get('failing_unique_constraints')}")
+                    print(f"[tier3h4] conflict_target_matches_unique_constraint={diagnostics.get('conflict_target_matches_unique_constraint')}")
+                    print(f"[tier3h4] duplicate_conflict_detected={diagnostics.get('duplicate_conflict_detected')}")
+                    print(f"[tier3h4] rows_already_exist_count={diagnostics.get('rows_already_exist_count')}")
+                    print(f"[tier3h4] conflict_is_benign={diagnostics.get('conflict_is_benign')}")
                     if diagnostics["conflict_is_benign"]:
                         status = "upserted:benign_duplicate_409"
                         return (status, diagnostics) if include_diagnostics else status
@@ -1978,7 +1987,7 @@ def main() -> int:
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
     final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_write_method", "discovery_write_method", "failing_upsert_has_matching_unique_constraint", "evidence_insert_row_count", "evidence_insert_success", "evidence_insert_response_status", "evidence_insert_response_body", "evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "numeric_confidence_coercions_applied", "invalid_numeric_fields_before_write", "evidence_confidence_type", "extraction_confidence_type", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "final_payload_contains_raw_evidence", "raw_evidence_type", "raw_evidence_json_serializable", "raw_evidence_nested_invalid_types", "raw_evidence_sanitization_applied", "raw_evidence_post_sanitization_type", "final_payload_missing_required_columns", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "actual_on_conflict_value", "actual_upsert_conflict_columns", "conflict_columns_exist_in_schema", "schema_introspection_status", "schema_introspection_error", "failing_table_name", "failing_write_method", "failing_on_conflict_value", "failing_table_unique_constraints", "failing_response_body", "table_unique_constraints"]})
-    final_summary_payload.update({k: candidate_upsert_diag.get(k) for k in ["failing_table_name", "failing_table_unique_constraints", "conflict_target_matches_unique_constraint", "duplicate_conflict_detected", "rows_already_exist_count", "conflict_is_benign", "failing_table_primary_key", "failing_table_indexes", "actual_on_conflict_value", "actual_upsert_conflict_columns", "discovery_write_method"]})
+    final_summary_payload.update({k: candidate_upsert_diag.get(k) for k in ["failing_table_name", "failing_unique_constraints", "failing_table_unique_constraints", "conflict_target_matches_unique_constraint", "duplicate_conflict_detected", "rows_already_exist_count", "conflict_is_benign", "failing_table_primary_key", "failing_table_indexes", "actual_on_conflict_value", "actual_upsert_conflict_columns", "discovery_write_method"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
