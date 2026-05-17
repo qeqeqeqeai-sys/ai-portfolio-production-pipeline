@@ -110,18 +110,31 @@ def main() -> int:
         if suppression_reason: stats["hard_suppressed_count"] += 1
         if flags["missing_exchange_without_registry"] and status != "suppressed": stats["downgraded_missing_exchange_count"] += 1
 
+        identifier_rules_payload = {
+            "identifier_method": identifier.identifier_method,
+            "identifier_source": identifier.identifier_source,
+            "identifier_status": identifier.identifier_status,
+            "identifier_confidence": identifier.identifier_confidence,
+            "identifier_explanation": identifier.identifier_explanation,
+            "identifier_warnings": list(identifier.identifier_warnings or []),
+        }
+        rules_payload = list(rules or [])
+        rules_payload.append({"deterministic_identifier": identifier_rules_payload})
+
+        canonical_entity_id = None
+        if identifier.canonical_security_id:
+            canonical_entity_id = identifier.canonical_security_id
+        elif len(ticker_matches) == 1:
+            canonical_entity_id = ticker_matches[0].ticker
+
         audit_rows.append({
             "run_date_sgt": run_date, "workflow_run_id": workflow_run_id, "theme_name": theme,
             "raw_entity_name": raw_name, "normalized_name": nn,
-            "candidate_ticker": c.get("ticker") or c.get("candidate_ticker"), "normalized_ticker": nt,
+            "candidate_ticker": identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"), "normalized_ticker": nt,
             "candidate_exchange": identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"), "normalized_exchange": identifier.normalized_exchange or normalized_exchange,
-            "asset_type_guess": asset_type, "canonical_entity_id": identifier.canonical_security_id or (ticker_matches[0].ticker if len(ticker_matches) == 1 else None),
-            "extracted_ticker": identifier.extracted_ticker, "raw_exchange": identifier.raw_exchange, "security_type": identifier.security_type,
-            "canonical_security_id": identifier.canonical_security_id, "identifier_source": identifier.identifier_source, "identifier_method": identifier.identifier_method,
-            "identifier_confidence": identifier.identifier_confidence, "identifier_status": identifier.identifier_status, "identifier_explanation": identifier.identifier_explanation,
-            "identifier_warnings": identifier.identifier_warnings,
+            "asset_type_guess": asset_type, "canonical_entity_id": canonical_entity_id,
             "resolution_status": status, "resolution_confidence": score,
-            "rules_fired": list(rules or []), "suppression_reason": suppression_reason,
+            "rules_fired": rules_payload, "suppression_reason": suppression_reason,
             "evidence_urls": list(urls or []), "source_count": int(source_count or 0),
             "duplicate_group_size": 1,
         })
