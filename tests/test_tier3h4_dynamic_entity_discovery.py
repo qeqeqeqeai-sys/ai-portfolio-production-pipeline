@@ -406,7 +406,7 @@ def test_strict_extraction_propagation_and_summary_consistency(monkeypatch):
         "cache_reused": True,
     }]
     monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
-    _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    candidate_rows, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
     match_rows = [r for r in evidence_rows if r.get("normalized_ticker") == "NVDA" and r.get("normalized_exchange") == "NASDAQ"]
     assert match_rows
     assert match_rows[0]["extracted_ticker"] == "NVDA"
@@ -417,7 +417,14 @@ def test_strict_extraction_propagation_and_summary_consistency(monkeypatch):
     assert summary["strict_identifier_sample_matches"]
     assert summary["strict_identifier_results_propagated"] is True
     assert summary["strict_identifier_propagated_rows_count"] >= 1
-    assert summary["strict_identifier_propagation_target"] == "evidence_rows"
+    assert summary["strict_identifier_propagation_target"] == "candidate_audit_row"
+    assert summary["strict_identifier_matches_found"] == summary["strict_identifier_accepted_match_collection_size"]
+    assert summary["strict_identifier_accepted_matches"]
+    assert summary["strict_identifier_candidate_level_matches_found"] >= 1
+    assert summary["strict_identifier_evidence_level_matches_found"] >= 0
+    assert summary["strict_identifier_unmapped_matches_found"] == 0
+    assert candidate_rows[0]["ticker"] == "NVDA"
+    assert candidate_rows[0]["exchange"] == "NASDAQ"
 
 
 def test_strict_extraction_no_propagation_for_rejected_or_diagnostic_only(monkeypatch):
@@ -465,6 +472,9 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["strict_identifier_log_summary_match"] is True
     assert summary["evidence_rows_with_ticker"] >= 1
     assert summary["evidence_rows_with_exchange"] >= 1
+    assert summary["rows_with_ticker"] >= 1
+    assert summary["rows_with_exchange"] >= 1
+    assert summary["strict_identifier_accepted_match_collection_size"] >= 1
 
 
 def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
