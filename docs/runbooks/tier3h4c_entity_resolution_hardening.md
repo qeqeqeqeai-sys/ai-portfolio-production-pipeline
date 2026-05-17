@@ -228,3 +228,17 @@ Persist richer, deterministic evidence content so downstream deterministic extra
 - `enriched_evidence_rows_written > 0` in healthy runs.
 - `rows_with_ticker` / `rows_with_exchange` may remain near zero when explicit identifiers are absent.
 - Status should remain `ok` with empty `errors` under normal operation.
+
+### Tier 3H.4C.3 Phase 2A wiring/composition fix note
+This fix wires deterministic textual evidence composition into final evidence persistence. It does **not** change extraction policy, scoring, promotion, or suppression behavior.
+
+Healthy rerun expectation:
+- `evidence_rows_read > 0`
+- `evidence_rows_written > 0`
+- `evidence_rows_with_title > 0` when source titles are present
+- `evidence_rows_with_snippet > 0` when snippet/content fields are present
+- `enriched_evidence_rows_written > 0`
+- `rows_with_ticker` may still be `0`
+- `rows_with_exchange` may still be `0`
+- `status = ok`
+- `errors = []`

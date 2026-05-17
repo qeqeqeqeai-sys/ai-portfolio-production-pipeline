@@ -36,6 +36,40 @@ EMBEDDED_EVIDENCE_KEYS = ["evidence_url", "source_url", "source_domain", "eviden
 def _normalize_value(value: object) -> str:
     return " ".join(str(value or "").strip().split())
 
+def _get_nested(payload: dict[str, object], dotted_key: str) -> object:
+    current: object = payload
+    for part in dotted_key.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+def extract_deterministic_title(payload: dict[str, object] | None) -> tuple[str, str | None]:
+    if not isinstance(payload, dict):
+        return "", None
+    title_keys = [
+        "source_title", "title", "page_title", "pageTitle", "metadata.title",
+        "metadata.page_title", "raw.title", "raw.page_title",
+    ]
+    for key in title_keys:
+        value = _normalize_value(_get_nested(payload, key))
+        if value:
+            return value, key
+    return "", None
+
+def extract_deterministic_snippet(payload: dict[str, object] | None) -> tuple[str, str | None]:
+    if not isinstance(payload, dict):
+        return "", None
+    snippet_keys = [
+        "source_snippet", "snippet", "content", "summary", "text", "raw_content", "rawContent", "description",
+        "metadata.description", "metadata.snippet", "raw.snippet", "raw.content", "raw.raw_content",
+    ]
+    for key in snippet_keys:
+        value = _normalize_value(_get_nested(payload, key))
+        if value:
+            return value, key
+    return "", None
+
 
 def build_enriched_evidence_text(source_title: object, source_snippet: object, structured_metadata: dict[str, object] | None, operational_metadata: dict[str, object] | None) -> str:
     parts: list[str] = []
@@ -65,8 +99,12 @@ def build_enriched_evidence_text(source_title: object, source_snippet: object, s
 
 
 def compose_enriched_evidence_payload(candidate: dict, source: dict, base: dict, evidence_rank: int, evidence_type: str) -> dict:
-    source_title = source.get("source_title") or source.get("title") or candidate.get("source_title")
-    source_snippet = source.get("source_snippet") or source.get("content") or source.get("snippet") or candidate.get("evidence_snippet")
+    source_title, _ = extract_deterministic_title(source)
+    if not source_title:
+        source_title, _ = extract_deterministic_title(candidate)
+    source_snippet, _ = extract_deterministic_snippet(source)
+    if not source_snippet:
+        source_snippet, _ = extract_deterministic_snippet(candidate)
     structured_metadata = {
         "source_type": source.get("source_type") or source.get("type") or candidate.get("discovery_method"),
         "source_rank": source.get("source_rank") or source.get("rank"),
@@ -89,7 +127,7 @@ def compose_enriched_evidence_payload(candidate: dict, source: dict, base: dict,
         **base,
         "evidence_text": evidence_text or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
         "source_url": source.get("source_url") or candidate.get("source_url") or candidate.get("evidence_url"),
-        "source_title": source_title,
+        "source_title": source_title or None,
         "source_domain": source.get("source_domain") or candidate.get("source_domain"),
         "evidence_type": evidence_type,
         "evidence_rank": evidence_rank,
@@ -275,6 +313,10 @@ def main() -> int:
     elif write_status.startswith("skipped"): warnings.append(write_status)
 
     counts = Counter(r["resolution_status"] for r in audit_rows)
+    def _text_has_tag(e: dict, tag: str) -> bool:
+        return f"{tag}:" in str(e.get("evidence_text") or "")
+
+    sampled_evidence = evidence[:3]
     summary = {
         "run_date_sgt": run_date, "workflow_run_id": workflow_run_id, "theme_name": theme,
         "evidence_table_created_or_available": evidence_table_created_or_available,
@@ -300,13 +342,17 @@ def main() -> int:
         "rows_with_exchange": sum(1 for r in audit_rows if r.get("normalized_exchange")), "rows_without_exchange": sum(1 for r in audit_rows if not r.get("normalized_exchange")),
         "evidence_rows_with_ticker": sum(1 for e in evidence if e.get("normalized_ticker")),
         "evidence_rows_with_exchange": sum(1 for e in evidence if e.get("normalized_exchange")),
-        "evidence_rows_with_title": sum(1 for e in evidence if _normalize_value(e.get("source_title"))),
-        "evidence_rows_with_snippet": sum(1 for e in evidence if "Snippet:" in str(e.get("evidence_text") or "")),
+        "evidence_rows_with_title": sum(1 for e in evidence if _normalize_value(e.get("source_title")) or _text_has_tag(e, "Title")),
+        "evidence_rows_with_snippet": sum(1 for e in evidence if _text_has_tag(e, "Snippet")),
         "evidence_rows_with_long_text": sum(1 for e in evidence if len(_normalize_value(e.get("evidence_text"))) >= 120),
-        "enriched_evidence_rows_written": sum(1 for e in evidence if "Title:" in str(e.get("evidence_text") or "") or "Snippet:" in str(e.get("evidence_text") or "")),
+        "enriched_evidence_rows_written": sum(1 for e in evidence if _text_has_tag(e, "Title") or _text_has_tag(e, "Snippet")),
         "evidence_rows_missing_textual_content": sum(1 for e in evidence if not _normalize_value(e.get("evidence_text"))),
         "evidence_rows_with_structured_metadata": sum(1 for e in evidence if "Metadata:" in str(e.get("evidence_text") or "")),
         "evidence_rows_with_candidate_name_mentions": sum(1 for e in evidence if _normalize_value(e.get("candidate_name", "")).lower() in _normalize_value(e.get("evidence_text", "")).lower() and _normalize_value(e.get("candidate_name", ""))),
+        "sample_raw_evidence_keys": [sorted(list((e.get("raw_evidence") or {}).keys()))[:20] if isinstance(e.get("raw_evidence"), dict) else [] for e in sampled_evidence],
+        "sample_detected_title_fields": [extract_deterministic_title((e.get("raw_evidence") or {}).get("evidence_source") if isinstance(e.get("raw_evidence"), dict) else {})[1] for e in sampled_evidence],
+        "sample_detected_content_fields": [extract_deterministic_snippet((e.get("raw_evidence") or {}).get("evidence_source") if isinstance(e.get("raw_evidence"), dict) else {})[1] for e in sampled_evidence],
+        "sample_enriched_evidence_text": [_normalize_value(e.get("evidence_text"))[:240] for e in sampled_evidence],
         "resolved_high_confidence_count": counts.get("resolved_high_confidence", 0), "resolved_medium_confidence_count": counts.get("resolved_medium_confidence", 0),
         "unresolved_review_count": counts.get("unresolved_review", 0), "suppressed_count": counts.get("suppressed", 0),
         "duplicate_groups_count": len({r.get("duplicate_group_key") for r in audit_rows}), "missing_exchange_count": sum(1 for r in audit_rows if not r.get("normalized_exchange")),
