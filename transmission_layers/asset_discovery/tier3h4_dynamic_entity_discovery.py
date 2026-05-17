@@ -752,6 +752,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "final_schema_aligned_payload_keys": [],
         "removed_unsupported_columns": [],
         "final_payload_matches_schema": False,
+        "actual_on_conflict_value": None,
+        "actual_upsert_conflict_columns": [],
+        "conflict_columns_exist_in_schema": False,
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -880,9 +883,16 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["schema_introspection_status"] = f"exception:{type(schema_exc).__name__}"
         diagnostics["schema_introspection_error"] = repr(schema_exc)
     actual_upsert_payload = final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else final_upsert_rows
+    actual_on_conflict_value = (on_conflict or "").strip()
+    actual_upsert_conflict_columns = [c.strip() for c in actual_on_conflict_value.split(",") if c.strip()]
+    schema_columns = set(diagnostics.get("evidence_upsert_destination_table_columns") or diagnostics.get("evidence_table_actual_columns") or [])
+    conflict_columns_exist_in_schema = bool(actual_upsert_conflict_columns) and all(c in schema_columns for c in actual_upsert_conflict_columns)
     actual_upsert_variable_name = "final_upsert_rows_schema_aligned" if actual_upsert_payload is (final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else None) else "final_upsert_rows"
     actual_upsert_first_row_keys = sorted(list(actual_upsert_payload[0].keys())) if actual_upsert_payload and isinstance(actual_upsert_payload[0], dict) else []
     actual_upsert_extra_columns = sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_upsert_destination_table_columns") or [])) if diagnostics.get("evidence_upsert_destination_table_columns") else sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_table_actual_columns") or []))
+    diagnostics["actual_on_conflict_value"] = actual_on_conflict_value
+    diagnostics["actual_upsert_conflict_columns"] = actual_upsert_conflict_columns
+    diagnostics["conflict_columns_exist_in_schema"] = conflict_columns_exist_in_schema
     diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
     diagnostics["actual_upsert_first_row_keys"] = actual_upsert_first_row_keys
     diagnostics["actual_upsert_contains_query_text"] = "query_text" in actual_upsert_first_row_keys
@@ -892,6 +902,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     diagnostics["actual_upsert_contains_normalized_exchange"] = "normalized_exchange" in actual_upsert_first_row_keys
     diagnostics["actual_upsert_contains_normalized_ticker"] = "normalized_ticker" in actual_upsert_first_row_keys
     diagnostics["actual_upsert_contains_source_snippet"] = "source_snippet" in actual_upsert_first_row_keys
+    print(f"[tier3h4] actual_on_conflict_value={diagnostics.get('actual_on_conflict_value')}")
+    print(f"[tier3h4] actual_upsert_conflict_columns={diagnostics.get('actual_upsert_conflict_columns')}")
+    print(f"[tier3h4] conflict_columns_exist_in_schema={diagnostics.get('conflict_columns_exist_in_schema')}")
     print(f"[tier3h4] actual_upsert_variable_name={diagnostics.get('actual_upsert_variable_name')}")
     print(f"[tier3h4] actual_upsert_first_row_keys={diagnostics.get('actual_upsert_first_row_keys')}")
     print(f"[tier3h4] actual_upsert_extra_columns={diagnostics.get('actual_upsert_extra_columns')}")
@@ -1629,7 +1642,7 @@ def main() -> int:
     seeds, source_counts, soft_fallback = load_upstream_context()
     records, evidence_rows, evidence_summary, ops = build_records(seeds, sgt_date)
     upsert_status = upsert_supabase(records, TABLE_NAME, "run_date_sgt,theme_name,candidate_asset_id,discovery_method")
-    evidence_upsert_status, evidence_upsert_diag = upsert_supabase(evidence_rows, EVIDENCE_TABLE_NAME, "run_date_sgt,theme_name,query_text,source_url", include_diagnostics=True)
+    evidence_upsert_status, evidence_upsert_diag = upsert_supabase(evidence_rows, EVIDENCE_TABLE_NAME, "run_date_sgt,theme_name,candidate_id,source_url", include_diagnostics=True)
     elapsed = round(time.time() - start, 3)
     telemetry_row = {"run_date_sgt": sgt_date, "workflow_name": "tier3h4_dynamic_entity_discovery", "provider": "tavily", "api_calls_attempted": ops["executed_queries"], "api_calls_executed": ops["executed_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "fallback_events": ops["fallback_events"], "rate_limit_events": ops["rate_limit_events"], "quota_exhaustion_events": ops["quota_exhaustion_events"], "retry_events": ops["retry_events"], "success_count": ops["success_count"], "failure_count": ops["failure_count"], "estimated_cost": None, "execution_seconds": elapsed, "metadata": {"fallback_mode": evidence_summary["fallback_mode"], "tavily_enabled": evidence_summary["tavily_enabled"], "soft_fallback_used": soft_fallback}}
     telemetry_status = upsert_supabase([telemetry_row], OPERATIONAL_TABLE_NAME, "run_date_sgt,workflow_name,provider")
@@ -1640,7 +1653,7 @@ def main() -> int:
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
-    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "schema_introspection_status", "schema_introspection_error"]})
+    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "actual_on_conflict_value", "actual_upsert_conflict_columns", "conflict_columns_exist_in_schema", "schema_introspection_status", "schema_introspection_error"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
