@@ -207,3 +207,42 @@ def test_force_fresh_bypasses_reuse_and_executes_collection(monkeypatch):
     assert summary["tavily_collection_path_executed"] is True
     assert summary["source_result_persistence_helper_called_count"] > 0
     assert summary["fresh_source_rows_written"] > 0
+
+
+def test_runtime_provenance_payload_fields_and_sentinel(monkeypatch):
+    monkeypatch.delenv("TIER3H4_FORCE_FRESH_EVIDENCE", raising=False)
+    runtime = mod._runtime_provenance("main")
+    required = [
+        "runtime_git_commit", "runtime_git_branch", "runtime_github_sha", "runtime_github_ref",
+        "runtime_workflow", "runtime_workflow_run_id", "runtime_file_path", "runtime_file_exists",
+        "runtime_file_mtime_utc", "runtime_module_name", "runtime_entrypoint_name", "runtime_python_executable",
+        "runtime_python_version", "runtime_cwd", "runtime_sys_path_head", "runtime_phase2b_validation_code_loaded",
+        "runtime_force_fresh_env_detected", "runtime_force_fresh_env_value",
+    ]
+    assert all(k in runtime for k in required)
+    assert runtime["runtime_phase2b_validation_code_loaded"] is True
+    assert runtime["runtime_file_path"]
+    assert runtime["runtime_module_name"]
+    assert runtime["runtime_entrypoint_name"] == "main"
+    assert runtime["runtime_force_fresh_env_detected"] is False
+    assert runtime["runtime_force_fresh_env_value"] is None
+
+
+def test_runtime_force_fresh_env_detection(monkeypatch):
+    monkeypatch.setenv("TIER3H4_FORCE_FRESH_EVIDENCE", "1")
+    runtime = mod._runtime_provenance("main")
+    assert runtime["runtime_force_fresh_env_detected"] is True
+    assert runtime["runtime_force_fresh_env_value"] == "1"
+
+
+def test_runtime_branch_flags_for_persisted_reuse(monkeypatch):
+    monkeypatch.delenv("TIER3H4_FORCE_FRESH_EVIDENCE", raising=False)
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [{"source_url": "https://www.reuters.com/a", "source_title": "t", "source_snippet": "s", "source_rank": 1, "retrieved_at": "2026-05-16T00:00:00+00:00", "cache_reused": True}])
+    monkeypatch.setattr(mod, "_collect_tavily", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not call tavily")))
+    _, _, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert summary["runtime_evidence_generation_branch_taken"] == "persisted_reuse"
+    assert summary["runtime_persisted_reuse_branch_taken"] is True
+    assert isinstance(summary["runtime_fresh_generation_branch_reachable"], bool)
+    assert summary["runtime_source_loop_instrumentation_loaded"] is True
