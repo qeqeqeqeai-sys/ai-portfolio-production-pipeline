@@ -1100,6 +1100,9 @@ def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_su
     final_summary_payload["strict_identifier_payload_trace_complete"] = True
     final_summary_payload["strict_identifier_final_payload_matches_reconciliation"] = (not stale_payload_detected)
     final_summary_payload["strict_identifier_final_payload_matches_runtime"] = (not stale_payload_detected)
+    final_summary_payload["strict_identifier_final_payload_emitted"] = False
+    final_summary_payload["strict_identifier_intermediate_payload_suppressed"] = True
+    final_summary_payload["strict_identifier_duplicate_payloads_detected"] = False
     final_summary_payload["strict_identifier_counter_reconciliation_passed"] = (
         not stale_payload_detected
         and final_summary_payload["strict_identifier_serialization_order_valid"]
@@ -1113,6 +1116,11 @@ def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_su
 
 
 def _finalize_and_verify_summary_payload(final_summary_payload: dict, canonical_summary: dict, summary_path: Path) -> None:
+    prior_emitted = bool(final_summary_payload.get("strict_identifier_final_payload_emitted", False))
+    final_summary_payload["strict_identifier_duplicate_payloads_detected"] = prior_emitted
+    if prior_emitted:
+        print("[tier3h4][warn] duplicate_final_payload_emission_attempt_detected; suppressing stale/intermediate summary serialization")
+        return
     final_summary_payload["strict_identifier_serialization_stage"] = "serializing"
     final_summary_payload["strict_identifier_serialized_payload_object_id"] = id(final_summary_payload)
     final_summary_payload["strict_identifier_payload_identity_consistent"] = (
@@ -1145,6 +1153,8 @@ def _finalize_and_verify_summary_payload(final_summary_payload: dict, canonical_
         final_summary_payload["strict_identifier_counter_reconciliation_passed"] = False
         final_summary_payload["strict_identifier_summary_consistent"] = False
     final_summary_payload["strict_identifier_serialization_stage"] = "post_serialization_verified"
+    final_summary_payload["strict_identifier_final_payload_emitted"] = True
+    final_summary_payload["strict_identifier_intermediate_payload_suppressed"] = True
     summary_path.write_text(json.dumps(final_summary_payload, indent=2), encoding="utf-8")
 
 def _integrate_operational_summary_with_canonical_reconciliation(
@@ -1249,7 +1259,6 @@ def main() -> int:
         final_summary_payload["strict_identifier_counter_reconciliation_warnings"] = warnings
         final_summary_payload["strict_identifier_counter_reconciliation_passed"] = False
         final_summary_payload["strict_identifier_summary_consistent"] = False
-        SUMMARY_PATH.write_text(json.dumps(final_summary_payload, indent=2), encoding="utf-8")
     EVIDENCE_SUMMARY_PATH.write_text(json.dumps(evidence_summary_full, indent=2), encoding="utf-8")
     VALIDATION_PATH.write_text(json.dumps(validation, indent=2), encoding="utf-8")
     OPERATIONAL_SUMMARY_PATH.write_text(json.dumps(operational_summary, indent=2), encoding="utf-8")

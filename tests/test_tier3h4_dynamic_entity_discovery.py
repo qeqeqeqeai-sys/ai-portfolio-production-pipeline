@@ -688,6 +688,9 @@ def test_final_payload_canonicalization_detects_stale_payload():
     assert final_summary_payload["strict_identifier_sample_matches"]
     assert final_summary_payload["strict_identifier_stale_payload_detected"] is False
     assert final_summary_payload["strict_identifier_counter_reconciliation_passed"] is True
+    assert final_summary_payload["strict_identifier_final_payload_emitted"] is False
+    assert final_summary_payload["strict_identifier_intermediate_payload_suppressed"] is True
+    assert final_summary_payload["strict_identifier_duplicate_payloads_detected"] is False
 
 
 def test_final_payload_validation_fails_on_runtime_divergence():
@@ -734,6 +737,9 @@ def test_payload_identity_and_post_serialization_verification(tmp_path):
     assert payload["strict_identifier_post_serialization_verified"] is True
     assert payload["strict_identifier_post_serialization_match"] is True
     assert payload["strict_identifier_payload_overwritten_after_reconciliation"] is False
+    assert payload["strict_identifier_final_payload_emitted"] is True
+    assert payload["strict_identifier_intermediate_payload_suppressed"] is True
+    assert payload["strict_identifier_duplicate_payloads_detected"] is False
     assert payload["strict_identifier_runtime_vs_serialized_payload_delta"] == {
         "matches_found_delta": 0,
         "rows_with_ticker_delta": 0,
@@ -765,6 +771,31 @@ def test_post_serialization_mismatch_flips_reconciliation(tmp_path):
     assert payload["strict_identifier_counter_reconciliation_passed"] is False
     assert payload["strict_identifier_payload_overwritten_after_reconciliation"] is True
     assert "serialized_payload_mismatch_detected" in payload["strict_identifier_counter_reconciliation_warnings"]
+
+
+def test_duplicate_final_payload_emission_is_detected_and_suppressed(tmp_path, capsys):
+    payload = {
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+    }
+    evidence_summary = {
+        "strict_identifier_accepted_match_collection_size": 1,
+        "strict_identifier_accepted_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ", "extraction_notes": []}],
+        "strict_identifier_matches_found": 1,
+        "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ", "note": []}],
+        "rows_with_ticker": 1,
+        "rows_with_exchange": 1,
+    }
+    canonical = mod._canonicalize_final_summary_payload(payload, evidence_summary, [{"ticker": "NVDA", "exchange": "NASDAQ"}])
+    out = tmp_path / "summary.json"
+    mod._finalize_and_verify_summary_payload(payload, canonical, out)
+    first_text = out.read_text(encoding="utf-8")
+    mod._finalize_and_verify_summary_payload(payload, canonical, out)
+    second_text = out.read_text(encoding="utf-8")
+    captured = capsys.readouterr()
+    assert first_text == second_text
+    assert payload["strict_identifier_duplicate_payloads_detected"] is True
+    assert "duplicate_final_payload_emission_attempt_detected" in captured.out
 
 
 def test_operational_summary_integration_replaces_legacy_counters():
