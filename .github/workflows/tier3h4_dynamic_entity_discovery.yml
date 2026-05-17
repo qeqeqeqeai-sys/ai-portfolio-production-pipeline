@@ -37,6 +37,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Debug Tier 3H.4B force-fresh env
+        shell: bash
+        run: |
+          # TEMP DEBUG INSTRUMENTATION FOR FORCE-FRESH VALIDATION
+          echo "workflow_dispatch.force_fresh_evidence=${{ github.event.inputs.force_fresh_evidence }}"
+          echo "TIER3H4_FORCE_FRESH_EVIDENCE=$TIER3H4_FORCE_FRESH_EVIDENCE"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          echo "GITHUB_WORKFLOW=$GITHUB_WORKFLOW"
+          echo "RUNNER_OS=$RUNNER_OS"
+
       - name: Run Tier 3H.4B dynamic entity discovery
         run: |
           python transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py
