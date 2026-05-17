@@ -621,20 +621,31 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     diagnostics: dict[str, Any] = {
         "evidence_upsert_payload_columns": [],
         "evidence_upsert_payload_keys": [],
+        "evidence_upsert_first_row_keys": [],
         "evidence_upsert_payload_count": len(rows),
         "evidence_upsert_payload_size_bytes": 0,
+        "evidence_upsert_response_body": None,
         "evidence_upsert_response_text": None,
         "evidence_upsert_error_body": None,
         "evidence_upsert_response_json": None,
         "evidence_upsert_first_failed_row": None,
         "evidence_upsert_http_status": None,
+        "evidence_upsert_postgrest_error_payload": None,
+        "evidence_upsert_exception_type": None,
+        "evidence_upsert_exception_args": None,
+        "evidence_upsert_exception_repr": None,
         "evidence_upsert_schema_mismatch_columns": [],
         "evidence_upsert_suspect_type_fields": [],
+        "write_error_code": None,
+        "write_error_message": None,
+        "write_error_details": None,
+        "write_error_hint": None,
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
         diagnostics["evidence_upsert_payload_columns"] = row_keys
         diagnostics["evidence_upsert_payload_keys"] = row_keys
+        diagnostics["evidence_upsert_first_row_keys"] = sorted(list(rows[0].keys())) if isinstance(rows[0], dict) else []
         diagnostics["evidence_upsert_first_failed_row"] = rows[0] if isinstance(rows[0], dict) else None
         try:
             diagnostics["evidence_upsert_payload_size_bytes"] = len(json.dumps(rows, default=str))
@@ -651,6 +662,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     try:
         r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=rows, timeout=60)
         diagnostics["evidence_upsert_http_status"] = r.status_code
+        diagnostics["evidence_upsert_response_body"] = r.content[:16000].decode("utf-8", errors="replace") if isinstance(r.content, (bytes, bytearray)) else None
         diagnostics["evidence_upsert_response_text"] = (r.text or "")[:8000]
         try:
             diagnostics["evidence_upsert_response_json"] = r.json()
@@ -659,6 +671,16 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         if r.status_code >= 400:
             body = diagnostics["evidence_upsert_response_json"] if isinstance(diagnostics["evidence_upsert_response_json"], (dict, list)) else diagnostics["evidence_upsert_response_text"]
             diagnostics["evidence_upsert_error_body"] = body
+            if isinstance(diagnostics["evidence_upsert_response_json"], dict):
+                postgrest_payload = diagnostics["evidence_upsert_response_json"]
+            else:
+                postgrest_payload = {"raw_text": diagnostics["evidence_upsert_response_text"]}
+            diagnostics["evidence_upsert_postgrest_error_payload"] = postgrest_payload
+            if isinstance(postgrest_payload, dict):
+                diagnostics["write_error_code"] = postgrest_payload.get("code")
+                diagnostics["write_error_message"] = postgrest_payload.get("message")
+                diagnostics["write_error_details"] = postgrest_payload.get("details")
+                diagnostics["write_error_hint"] = postgrest_payload.get("hint")
             missing_columns = []
             invalid_columns = []
             if isinstance(diagnostics["evidence_upsert_response_json"], dict):
@@ -680,6 +702,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         return (status, diagnostics) if include_diagnostics else status
     except Exception as exc:
         diagnostics["evidence_upsert_error_body"] = f"exception:{type(exc).__name__}:{exc}"
+        diagnostics["evidence_upsert_exception_type"] = type(exc).__name__
+        diagnostics["evidence_upsert_exception_args"] = [str(a) for a in getattr(exc, "args", ())]
+        diagnostics["evidence_upsert_exception_repr"] = repr(exc)
         status = f"upsert_exception:{type(exc).__name__}"
         return (status, diagnostics) if include_diagnostics else status
 
@@ -1352,7 +1377,7 @@ def main() -> int:
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
-    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes"]})
+    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
