@@ -242,7 +242,8 @@ def test_phase2a_embedded_evidence_preserves_raw_and_enriches_without_inference(
     assert rows and rows[0]["source_title"] == "Grid supplier update"
     assert "Snippet: capital plans and procurement updates" in rows[0]["evidence_text"]
     assert "Operational:" in rows[0]["evidence_text"]
-    assert rows[0]["raw_evidence"]["evidence_source"]["source_url"] == "https://example.com/story"
+    assert rows[0]["raw_evidence"]["source_result"]["source_url"] == "https://example.com/story"
+    assert "candidate_context" in rows[0]["raw_evidence"]
     assert rows[0]["extracted_ticker"] is None
     assert rows[0]["extracted_exchange"] is None
 
@@ -281,7 +282,7 @@ def test_main_phase2a_diagnostics_count_from_persisted_payload(monkeypatch):
             "candidate_name": "Acme",
             "source_title": "Doc title",
             "evidence_text": "Title: Doc title\n\nSnippet: body",
-            "raw_evidence": {"evidence_source": {"pageTitle": "Doc title", "content": "body"}},
+            "raw_evidence": {"source_result": {"pageTitle": "Doc title", "content": "body"}},
         }], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
 
     monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
@@ -292,3 +293,33 @@ def test_main_phase2a_diagnostics_count_from_persisted_payload(monkeypatch):
     assert summary["evidence_rows_with_title"] == 1
     assert summary["evidence_rows_with_snippet"] == 1
     assert summary["enriched_evidence_rows_written"] == 1
+    assert summary["source_level_evidence_rows_written"] == 1
+    assert summary["evidence_rows_with_raw_source_payload"] == 1
+
+
+def test_phase2b_one_source_result_persists_one_evidence_row_and_domain_derivation():
+    candidate = {
+        "candidate_name": "X",
+        "theme_name": "ai",
+        "evidence_sources": [{
+            "title": "Site title",
+            "url": "https://news.example.com/article",
+            "content": "Deterministic snippet text",
+            "score": 0.9,
+        }],
+        "candidate_ticker": None,
+        "candidate_exchange": None,
+    }
+    rows = _normalize_embedded_evidence_rows(candidate, "2026-05-17", "wf-2", "ai")
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["source_title"] == "Site title"
+    assert row["source_url"] == "https://news.example.com/article"
+    assert row["source_domain"] == "news.example.com"
+    assert row["evidence_rank"] == 1
+    assert "Title: Site title" in row["evidence_text"]
+    assert "Snippet: Deterministic snippet text" in row["evidence_text"]
+    assert row["raw_evidence"]["source_result"]["url"] == "https://news.example.com/article"
+    assert "candidate_context" in row["raw_evidence"]
+    assert row["extracted_ticker"] is None
+    assert row["extracted_exchange"] is None

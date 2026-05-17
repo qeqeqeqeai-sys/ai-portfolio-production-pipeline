@@ -105,9 +105,13 @@ def compose_enriched_evidence_payload(candidate: dict, source: dict, base: dict,
     source_snippet, _ = extract_deterministic_snippet(source)
     if not source_snippet:
         source_snippet, _ = extract_deterministic_snippet(candidate)
+    source_url = source.get("source_url") or source.get("url") or candidate.get("source_url") or candidate.get("evidence_url")
+    source_domain = source.get("source_domain") or candidate.get("source_domain")
+    if not source_domain and source_url:
+        source_domain = str(source_url).split("://", 1)[-1].split("/", 1)[0].lower()
     structured_metadata = {
         "source_type": source.get("source_type") or source.get("type") or candidate.get("discovery_method"),
-        "source_rank": source.get("source_rank") or source.get("rank"),
+        "evidence_rank": source.get("source_rank") or source.get("rank") or evidence_rank,
         "tavily_score": source.get("tavily_score") or source.get("score"),
         "published_date": source.get("published_date") or source.get("published"),
         "retrieved_at": source.get("retrieved_at"),
@@ -116,6 +120,9 @@ def compose_enriched_evidence_payload(candidate: dict, source: dict, base: dict,
         "candidate_exchange": source.get("candidate_exchange"),
     }
     operational_metadata = {
+        "candidate_name": candidate.get("candidate_name"),
+        "theme_name": base.get("theme_name"),
+        "discovery_method": candidate.get("discovery_method"),
         "weighted_score": candidate.get("candidate_confidence_score"),
         "suppression": candidate.get("rejection_reason") or "none",
         "confidence_band": candidate.get("candidate_confidence_band"),
@@ -126,17 +133,21 @@ def compose_enriched_evidence_payload(candidate: dict, source: dict, base: dict,
     return {
         **base,
         "evidence_text": evidence_text or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
-        "source_url": source.get("source_url") or candidate.get("source_url") or candidate.get("evidence_url"),
+        "source_url": source_url,
         "source_title": source_title or None,
-        "source_domain": source.get("source_domain") or candidate.get("source_domain"),
+        "source_domain": source_domain,
         "evidence_type": evidence_type,
         "evidence_rank": evidence_rank,
         "evidence_confidence": source.get("quality") or candidate.get("source_quality_score"),
         "raw_evidence": {
-            "evidence_source": source,
-            "source_node": candidate.get("source_node"),
-            "target_node": candidate.get("target_node"),
-            "llm_classification_json": candidate.get("llm_classification_json"),
+            "source_result": source,
+            "candidate_context": {
+                "source_node": candidate.get("source_node"),
+                "target_node": candidate.get("target_node"),
+                "llm_classification_json": candidate.get("llm_classification_json"),
+                "confidence_explanation": candidate.get("confidence_explanation"),
+                "rejection_reason": candidate.get("rejection_reason"),
+            },
         },
     }
 
@@ -350,8 +361,19 @@ def main() -> int:
         "evidence_rows_with_structured_metadata": sum(1 for e in evidence if "Metadata:" in str(e.get("evidence_text") or "")),
         "evidence_rows_with_candidate_name_mentions": sum(1 for e in evidence if _normalize_value(e.get("candidate_name", "")).lower() in _normalize_value(e.get("evidence_text", "")).lower() and _normalize_value(e.get("candidate_name", ""))),
         "sample_raw_evidence_keys": [sorted(list((e.get("raw_evidence") or {}).keys()))[:20] if isinstance(e.get("raw_evidence"), dict) else [] for e in sampled_evidence],
-        "sample_detected_title_fields": [extract_deterministic_title((e.get("raw_evidence") or {}).get("evidence_source") if isinstance(e.get("raw_evidence"), dict) else {})[1] for e in sampled_evidence],
-        "sample_detected_content_fields": [extract_deterministic_snippet((e.get("raw_evidence") or {}).get("evidence_source") if isinstance(e.get("raw_evidence"), dict) else {})[1] for e in sampled_evidence],
+        "source_level_evidence_rows_written": sum(1 for e in evidence if isinstance(e.get("raw_evidence"), dict) and isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)),
+        "candidate_metadata_only_evidence_rows": sum(1 for e in evidence if isinstance(e.get("raw_evidence"), dict) and not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)),
+        "evidence_rows_with_source_url": sum(1 for e in evidence if _normalize_value(e.get("source_url"))),
+        "evidence_rows_with_source_title": sum(1 for e in evidence if _normalize_value(e.get("source_title"))),
+        "evidence_rows_with_source_content": sum(1 for e in evidence if _text_has_tag(e, "Snippet")),
+        "evidence_rows_with_raw_source_payload": sum(1 for e in evidence if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))),
+        "evidence_rows_without_source_payload": sum(1 for e in evidence if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)),
+        "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled_evidence],
+        "sample_detected_title_fields": [extract_deterministic_title((e.get("raw_evidence") or {}).get("source_result") if isinstance(e.get("raw_evidence"), dict) else {})[1] for e in sampled_evidence],
+        "sample_detected_content_fields": [extract_deterministic_snippet((e.get("raw_evidence") or {}).get("source_result") if isinstance(e.get("raw_evidence"), dict) else {})[1] for e in sampled_evidence],
+        "sample_source_titles": [_normalize_value(e.get("source_title")) for e in sampled_evidence],
+        "sample_source_urls": [_normalize_value(e.get("source_url")) for e in sampled_evidence],
+        "sample_source_content_preview": [extract_deterministic_snippet((e.get("raw_evidence") or {}).get("source_result") if isinstance(e.get("raw_evidence"), dict) else {})[0][:120] for e in sampled_evidence],
         "sample_enriched_evidence_text": [_normalize_value(e.get("evidence_text"))[:240] for e in sampled_evidence],
         "resolved_high_confidence_count": counts.get("resolved_high_confidence", 0), "resolved_medium_confidence_count": counts.get("resolved_medium_confidence", 0),
         "unresolved_review_count": counts.get("unresolved_review", 0), "suppressed_count": counts.get("suppressed", 0),
