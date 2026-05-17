@@ -1115,6 +1115,25 @@ def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_su
     return canonical_summary
 
 
+def _apply_canonical_strict_identifier_fields_to_final_payload(
+    final_summary_payload: dict[str, Any],
+    evidence_summary: dict[str, Any],
+    canonical_summary: dict[str, Any],
+) -> None:
+    final_summary_payload.update(canonical_summary)
+    final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("evidence_source_mode")
+    final_summary_payload["strict_identifier_rows_scanned"] = evidence_summary.get("strict_identifier_rows_scanned", 0)
+    final_summary_payload["strict_identifier_matches_found"] = canonical_summary.get("strict_identifier_matches_found", 0)
+    final_summary_payload["strict_identifier_sample_matches"] = canonical_summary.get("strict_identifier_sample_matches", [])
+    final_summary_payload["rows_with_ticker"] = canonical_summary.get("rows_with_ticker", 0)
+    final_summary_payload["rows_with_exchange"] = canonical_summary.get("rows_with_exchange", 0)
+    final_summary_payload["evidence_rows_with_ticker"] = canonical_summary.get("evidence_rows_with_ticker", 0)
+    final_summary_payload["evidence_rows_with_exchange"] = canonical_summary.get("evidence_rows_with_exchange", 0)
+    final_summary_payload["final_summary_strict_identifier_source"] = "canonical_runtime_reconciliation"
+    final_summary_payload["final_summary_assignment_origin"] = "canonical_summary_plus_runtime_source_mode"
+    final_summary_payload["final_summary_matches_found"] = final_summary_payload["strict_identifier_matches_found"]
+
+
 def _finalize_and_verify_summary_payload(final_summary_payload: dict, canonical_summary: dict, summary_path: Path) -> None:
     prior_emitted = bool(final_summary_payload.get("strict_identifier_final_payload_emitted", False))
     final_summary_payload["strict_identifier_duplicate_payloads_detected"] = prior_emitted
@@ -1260,6 +1279,7 @@ def main() -> int:
     validation = {"all_rows_llm_used_false": all(r["llm_used"] is False for r in records), "all_rows_advisory_only": all(r["advisory_status"] in {"advisory_review", "advisory_rejected"} for r in records), "no_monitored_universe_writes_attempted": True, "idempotency_fields_present": all(all(k in r for k in ["run_date_sgt", "theme_name", "candidate_asset_id", "discovery_method"]) for r in records)}
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
+    _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
     _finalize_and_verify_summary_payload(final_summary_payload, canonical_summary, SUMMARY_PATH)
     serialized_summary_payload = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
     operational_summary = _integrate_operational_summary_with_canonical_reconciliation(

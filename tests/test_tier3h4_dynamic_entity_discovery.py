@@ -888,3 +888,37 @@ def test_operational_summary_preserves_audit_counters_separately():
     assert integrated["evidence_rows_read"] == 0
     assert integrated["strict_identifier_pre_integration_audit_counters"]["strict_identifier_matches_found"] == 0
     assert integrated["strict_identifier_matches_found"] == 5
+
+
+def test_final_payload_applies_runtime_strict_identifier_telemetry_over_stale_audit():
+    final_payload = {
+        "strict_identifier_runtime_source": "embedded_in_memory_evidence",
+        "strict_identifier_rows_scanned": 124,
+        "strict_identifier_matches_found": 0,
+        "strict_identifier_sample_matches": [],
+        "rows_with_ticker": 0,
+        "rows_with_exchange": 0,
+        "evidence_rows_with_ticker": 0,
+        "evidence_rows_with_exchange": 0,
+    }
+    evidence_summary = {
+        "evidence_source_mode": "fresh_source_generation",
+        "strict_identifier_rows_scanned": 75,
+    }
+    canonical_summary = {
+        "strict_identifier_matches_found": 5,
+        "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ", "note": ["ok"]}],
+        "rows_with_ticker": 2,
+        "rows_with_exchange": 2,
+        "evidence_rows_with_ticker": 5,
+        "evidence_rows_with_exchange": 5,
+    }
+    mod._apply_canonical_strict_identifier_fields_to_final_payload(final_payload, evidence_summary, canonical_summary)
+    assert final_payload["strict_identifier_runtime_source"] == "fresh_source_generation"
+    assert final_payload["strict_identifier_rows_scanned"] == 75
+    assert final_payload["strict_identifier_matches_found"] == 5
+    assert final_payload["strict_identifier_sample_matches"]
+    assert final_payload["rows_with_ticker"] == 2
+    assert final_payload["rows_with_exchange"] == 2
+    assert final_payload["evidence_rows_with_ticker"] == 5
+    assert final_payload["evidence_rows_with_exchange"] == 5
