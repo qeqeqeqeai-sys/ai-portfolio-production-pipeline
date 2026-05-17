@@ -617,6 +617,43 @@ def generate_mock_evidence(seed: DiscoverySeed, query_text: str) -> list[dict[st
 def compute_candidate_score(evidence_count_score: float, source_quality_score: float, thematic_relevance_score: float, entity_resolution_score: float, cross_source_score: float) -> float:
     return round(WEIGHTS["evidence_count_score"] * evidence_count_score + WEIGHTS["thematic_relevance_score"] * thematic_relevance_score + WEIGHTS["source_quality_score"] * source_quality_score + WEIGHTS["entity_resolution_score"] * entity_resolution_score + WEIGHTS["cross_source_score"] * cross_source_score, 4)
 
+def _sanitize_persistence_rows(rows: list[dict[str, Any]], table_name: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    runtime_nested_fields = {"matched_entity_terms", "raw_evidence", "suppression_flags", "thematic_keyword_matches"}
+    diagnostics = {"sanitized_payload_keys": [], "removed_nested_fields": [], "json_serialized_fields": [], "final_payload_column_count": 0}
+    if table_name != EVIDENCE_TABLE_NAME or not rows:
+        row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
+        diagnostics["sanitized_payload_keys"] = row_keys
+        diagnostics["final_payload_column_count"] = len(row_keys)
+        return rows, diagnostics
+    sanitized_rows: list[dict[str, Any]] = []
+    removed_fields: set[str] = set()
+    json_fields: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        cleaned = dict(row)
+        for field in runtime_nested_fields:
+            if field not in cleaned:
+                continue
+            value = cleaned.get(field)
+            if value is None:
+                cleaned.pop(field, None)
+                removed_fields.add(field)
+                continue
+            if isinstance(value, (dict, list, tuple, set)):
+                cleaned[field] = json.dumps(value, ensure_ascii=False, default=str)
+                json_fields.add(field)
+                continue
+            cleaned.pop(field, None)
+            removed_fields.add(field)
+        sanitized_rows.append(cleaned)
+    sanitized_keys = sorted({k for row in sanitized_rows if isinstance(row, dict) for k in row.keys()})
+    diagnostics["sanitized_payload_keys"] = sanitized_keys
+    diagnostics["removed_nested_fields"] = sorted(removed_fields)
+    diagnostics["json_serialized_fields"] = sorted(json_fields)
+    diagnostics["final_payload_column_count"] = len(sanitized_keys)
+    return sanitized_rows, diagnostics
+
 def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: str, include_diagnostics: bool = False) -> str | tuple[str, dict[str, Any]]:
     resolution_fields = {"canonical_entity_id", "normalized_ticker", "normalized_exchange", "duplicate_group_key", "duplicate_group_size", "resolution_confidence", "resolution_status", "rules_fired", "suppression_reason"}
     diagnostics: dict[str, Any] = {
@@ -648,6 +685,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "write_error_message": None,
         "write_error_details": None,
         "write_error_hint": None,
+        "sanitized_payload_keys": [],
+        "removed_nested_fields": [],
+        "json_serialized_fields": [],
+        "final_payload_column_count": 0,
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -681,6 +722,14 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     if not rows:
         status = "skipped:no_rows"
         return (status, diagnostics) if include_diagnostics else status
+    rows, sanitize_diag = _sanitize_persistence_rows(rows, table_name)
+    diagnostics.update(sanitize_diag)
+    diagnostics["evidence_upsert_payload_count"] = len(rows)
+    diagnostics["evidence_upsert_payload_columns"] = diagnostics["sanitized_payload_keys"]
+    diagnostics["evidence_upsert_payload_keys"] = diagnostics["sanitized_payload_keys"]
+    if rows:
+        diagnostics["evidence_upsert_first_row_keys"] = sorted(list(rows[0].keys())) if isinstance(rows[0], dict) else []
+        diagnostics["evidence_upsert_first_failed_row"] = rows[0] if isinstance(rows[0], dict) else None
     url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:
