@@ -425,7 +425,7 @@ def test_strict_extraction_propagation_and_summary_consistency(monkeypatch):
     assert summary["strict_identifier_unmapped_matches_found"] == 0
     assert summary["strict_identifier_counter_reconciliation_passed"] is True
     assert summary["strict_identifier_counter_reconciliation_warnings"] == []
-    assert summary["strict_identifier_runtime_vs_summary_delta"] == 0
+    assert summary["strict_identifier_runtime_vs_summary_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
     assert summary["strict_identifier_summary_serialization_complete"] is True
     assert summary["strict_identifier_canonical_counter_source"] == "strict_identifier_accepted_matches"
     assert summary["strict_identifier_final_summary_source"] == "strict_identifier_accepted_matches"
@@ -480,7 +480,7 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["strict_identifier_log_summary_match"] is True
     assert summary["strict_identifier_counter_reconciliation_passed"] is True
     assert summary["strict_identifier_counter_reconciliation_warnings"] == []
-    assert summary["strict_identifier_runtime_vs_summary_delta"] == 0
+    assert summary["strict_identifier_runtime_vs_summary_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
     assert summary["strict_identifier_summary_serialization_complete"] is True
     assert summary["strict_identifier_canonical_counter_source"] == "strict_identifier_accepted_matches"
     assert summary["strict_identifier_final_summary_source"] == "strict_identifier_accepted_matches"
@@ -488,10 +488,42 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["evidence_rows_with_exchange"] == summary["strict_identifier_evidence_level_matches_found"]
     assert summary["rows_with_ticker"] >= 1
     assert summary["rows_with_exchange"] >= 1
+    assert summary["rows_without_ticker"] >= 0
+    assert summary["rows_without_exchange"] >= 0
     assert summary["strict_identifier_candidate_level_matches_found"] >= summary["rows_with_ticker"]
     assert summary["strict_identifier_candidate_level_matches_found"] >= summary["rows_with_exchange"]
     assert summary["strict_identifier_accepted_match_collection_size"] >= 1
     assert summary["strict_identifier_matches_found"] == summary["strict_identifier_accepted_match_collection_size"]
+
+
+def test_strict_identifier_runtime_summary_delta_flags_divergence():
+    strict_diag = {
+        "strict_identifier_accepted_match_collection_size": 1,
+        "strict_identifier_candidate_level_matches_found": 1,
+        "strict_identifier_evidence_level_matches_found": 0,
+        "strict_identifier_unmapped_matches_found": 0,
+        "strict_identifier_matches_with_candidate_owner": 1,
+        "strict_identifier_matches_without_candidate_owner": 0,
+        "strict_identifier_propagation_target_counts": {"candidate_audit_row": 1},
+        "strict_identifier_unique_tickers_found": ["NVDA"],
+        "strict_identifier_unique_exchanges_found": ["NASDAQ"],
+        "strict_identifier_accepted_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ", "extraction_notes": []}],
+    }
+    canonical = mod._build_strict_identifier_canonical_summary(strict_diag, [{"ticker": "NVDA", "exchange": "NASDAQ"}])
+    runtime_like = dict(canonical)
+    runtime_like["rows_with_ticker"] = 0
+    delta = {
+        "matches_found_delta": runtime_like["strict_identifier_matches_found"] - canonical["strict_identifier_matches_found"],
+        "rows_with_ticker_delta": runtime_like["rows_with_ticker"] - canonical["rows_with_ticker"],
+        "rows_with_exchange_delta": runtime_like["rows_with_exchange"] - canonical["rows_with_exchange"],
+        "evidence_rows_with_ticker_delta": runtime_like["evidence_rows_with_ticker"] - canonical["evidence_rows_with_ticker"],
+        "evidence_rows_with_exchange_delta": runtime_like["evidence_rows_with_exchange"] - canonical["evidence_rows_with_exchange"],
+    }
+    assert delta["rows_with_ticker_delta"] != 0
+    warnings = []
+    if any(v != 0 for v in delta.values()):
+        warnings.append("runtime_summary_mismatch_detected")
+    assert "runtime_summary_mismatch_detected" in warnings
 
 
 def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
