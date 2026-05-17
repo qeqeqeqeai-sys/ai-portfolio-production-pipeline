@@ -476,6 +476,24 @@ def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
     monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
     _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
     assert summary["strict_identifier_ambiguity_diagnostics_enabled"] is True
+    required_diag_fields = [
+        "strict_identifier_rejection_reason_counts",
+        "strict_identifier_ambiguous_match_count",
+        "strict_identifier_ambiguous_match_examples",
+        "strict_identifier_context_window_examples",
+        "strict_identifier_multiple_ticker_count",
+        "strict_identifier_multiple_exchange_count",
+        "strict_identifier_exchange_conflict_count",
+        "strict_identifier_ticker_conflict_count",
+        "strict_identifier_duplicate_context_count",
+        "strict_identifier_malformed_context_count",
+        "strict_identifier_noise_rejection_examples",
+        "strict_identifier_unsupported_exchange_examples",
+        "strict_identifier_no_context_phrase_examples",
+        "strict_identifier_explainability_sample_size",
+    ]
+    for field in required_diag_fields:
+        assert field in summary
     assert isinstance(summary["strict_identifier_rejection_reason_counts"], dict)
     assert summary["strict_identifier_ambiguous_match_count"] >= 1
     assert summary["strict_identifier_multiple_ticker_count"] >= 1
@@ -486,6 +504,8 @@ def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
     assert len(summary["strict_identifier_ambiguous_match_examples"]) <= summary["strict_identifier_explainability_sample_size"]
     assert len(summary["strict_identifier_context_window_examples"]) <= summary["strict_identifier_explainability_sample_size"]
     for w in summary["strict_identifier_context_window_examples"]:
-        assert len(w) <= mod.STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN
+        assert len(w["context_window"]) <= mod.STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN
+        assert "raw_evidence" not in w
+        assert "raw_source_payload" not in w
     for ex in summary["strict_identifier_ambiguous_match_examples"]:
         assert len(ex["context_window"]) <= mod.STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN

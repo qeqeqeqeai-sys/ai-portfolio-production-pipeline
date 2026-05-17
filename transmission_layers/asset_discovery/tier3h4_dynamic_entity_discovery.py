@@ -355,6 +355,27 @@ def _extract_strict_exchange_qualified_identifier(text: str) -> dict[str, Any]:
         return {"warnings": [f"unsupported_exchange_rejected:{unsupported_rejections[0]}"]}
     return {}
 
+STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
+    "multiple_tickers_in_context",
+    "multiple_exchanges_in_context",
+    "ticker_exchange_conflict",
+    "unsupported_exchange_label",
+    "noisy_token",
+    "missing_explicit_ticker",
+    "missing_explicit_exchange",
+    "malformed_context",
+    "ambiguous_context_window",
+    "candidate_name_not_mentioned",
+    "duplicate_context",
+    "no_context_phrase",
+    "unknown_rejection_reason",
+]
+
+
+def _default_rejection_reason_counts() -> dict[str, int]:
+    return {k: 0 for k in STRICT_IDENTIFIER_REJECTION_CATEGORIES}
+
+
 def _bounded_context_window(text: str, max_len: int = STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN) -> str:
     clean = _normalize_text(text)
     if len(clean) <= max_len:
@@ -537,7 +558,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "strict_identifier_propagation_target": "evidence_rows",
         "strict_identifier_propagation_warnings": [],
         "strict_identifier_ambiguity_diagnostics_enabled": True,
-        "strict_identifier_rejection_reason_counts": {},
+        "strict_identifier_rejection_reason_counts": _default_rejection_reason_counts(),
         "strict_identifier_ambiguous_match_count": 0,
         "strict_identifier_ambiguous_match_examples": [],
         "strict_identifier_context_window_examples": [],
@@ -665,6 +686,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     strict_diag["strict_identifier_rows_with_candidate_name_mentions"] += 1
                 else:
                     strict_diag["strict_identifier_rows_without_candidate_name_mentions"] += 1
+                    strict_diag["strict_identifier_rejection_reason_counts"]["candidate_name_not_mentioned"] += 1
                 for text in scan_texts:
                     if not text:
                         continue
@@ -674,18 +696,24 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     detected_ticker_tokens = sorted({_normalize_text(m.group("ticker")).upper() for m in matches})
                     if context_window in seen_context_windows:
                         strict_diag["strict_identifier_duplicate_context_count"] += 1
+                        strict_diag["strict_identifier_rejection_reason_counts"]["duplicate_context"] += 1
                     else:
                         seen_context_windows.add(context_window)
                     if len(detected_ticker_tokens) > 1:
                         strict_diag["strict_identifier_multiple_ticker_count"] += 1
+                        strict_diag["strict_identifier_rejection_reason_counts"]["multiple_tickers_in_context"] += 1
                     if len(detected_exchange_labels) > 1:
                         strict_diag["strict_identifier_multiple_exchange_count"] += 1
+                        strict_diag["strict_identifier_rejection_reason_counts"]["multiple_exchanges_in_context"] += 1
                     if len(detected_exchange_labels) > 1 and len(detected_ticker_tokens) == 1:
                         strict_diag["strict_identifier_exchange_conflict_count"] += 1
+                        strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
                     if len(detected_ticker_tokens) > 1 and len(detected_exchange_labels) == 1:
                         strict_diag["strict_identifier_ticker_conflict_count"] += 1
+                        strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
                     if "{" in text or "}" in text:
                         strict_diag["strict_identifier_malformed_context_count"] += 1
+                        strict_diag["strict_identifier_rejection_reason_counts"]["malformed_context"] += 1
                     explainability = {"candidate_name": _normalize_text(row.get("candidate_name")), "source_url": _normalize_text(str(row.get("source_url") or "")), "source_domain": _normalize_text(row.get("source_domain")), "source_title": _normalize_text(row.get("source_title")), "detected_exchange_labels": detected_exchange_labels, "detected_ticker_tokens": detected_ticker_tokens, "matched_pattern_family": "no_match", "context_window": context_window, "rejection_reason": None, "ambiguity_reason": None, "accepted": False}
                     extracted = _extract_strict_exchange_qualified_identifier(text)
                     if extracted:
@@ -721,7 +749,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                             if len(strict_diag["strict_identifier_sample_rejections"]) < 5:
                                 strict_diag["strict_identifier_sample_rejections"].append({"reason": warning, "text_preview": text[:140]})
                             if len(strict_diag["strict_identifier_context_window_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                strict_diag["strict_identifier_context_window_examples"].append(context_window)
+                                strict_diag["strict_identifier_context_window_examples"].append(explainability)
                             if len(strict_diag["strict_identifier_candidate_explainability"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
                                 strict_diag["strict_identifier_candidate_explainability"].append(explainability)
                             continue
@@ -743,7 +771,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 if not row.get("normalized_ticker"):
                     strict_diag["strict_identifier_rows_rejected_no_exchange_label"] += 1
                     strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
-                    strict_diag["strict_identifier_rejection_reason_counts"]["missing_explicit_ticker"] = strict_diag["strict_identifier_rejection_reason_counts"].get("missing_explicit_ticker", 0) + 1
+                    strict_diag["strict_identifier_rejection_reason_counts"]["missing_explicit_ticker"] += 1
+                    strict_diag["strict_identifier_rejection_reason_counts"]["missing_explicit_exchange"] += 1
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_persisted_before_aggregation"] += 1
                     ops["fresh_source_rows_written"] += 1
