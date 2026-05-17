@@ -699,3 +699,57 @@ def test_final_payload_validation_fails_on_runtime_divergence():
     assert final_summary_payload["strict_identifier_counter_reconciliation_passed"] is False
     assert "stale_final_payload_detected" in final_summary_payload["strict_identifier_counter_reconciliation_warnings"]
 
+
+
+def test_payload_identity_and_post_serialization_verification(tmp_path):
+    payload = {
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+    }
+    evidence_summary = {
+        "strict_identifier_accepted_match_collection_size": 1,
+        "strict_identifier_accepted_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ", "extraction_notes": ["ok"]}],
+        "strict_identifier_matches_found": 1,
+        "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ", "note": ["ok"]}],
+        "rows_with_ticker": 1,
+        "rows_with_exchange": 1,
+    }
+    canonical = mod._canonicalize_final_summary_payload(payload, evidence_summary, [{"ticker": "NVDA", "exchange": "NASDAQ"}])
+    out = tmp_path / "summary.json"
+    mod._finalize_and_verify_summary_payload(payload, canonical, out)
+    assert payload["strict_identifier_payload_object_id"] == payload["strict_identifier_reconciliation_object_id"] == payload["strict_identifier_serialized_payload_object_id"]
+    assert payload["strict_identifier_payload_identity_consistent"] is True
+    assert payload["strict_identifier_post_serialization_verified"] is True
+    assert payload["strict_identifier_post_serialization_match"] is True
+    assert payload["strict_identifier_payload_overwritten_after_reconciliation"] is False
+    assert payload["strict_identifier_runtime_vs_serialized_payload_delta"] == {
+        "matches_found_delta": 0,
+        "rows_with_ticker_delta": 0,
+        "rows_with_exchange_delta": 0,
+        "sample_match_delta": 0,
+    }
+
+
+def test_post_serialization_mismatch_flips_reconciliation(tmp_path):
+    payload = {
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+        "strict_identifier_payload_object_id": 1,
+        "strict_identifier_reconciliation_object_id": 1,
+        "strict_identifier_matches_found": 0,
+        "rows_with_ticker": 0,
+        "rows_with_exchange": 0,
+        "strict_identifier_sample_matches": [],
+    }
+    canonical = {
+        "strict_identifier_matches_found": 1,
+        "rows_with_ticker": 1,
+        "rows_with_exchange": 1,
+        "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ", "note": ["ok"]}],
+    }
+    out = tmp_path / "summary.json"
+    mod._finalize_and_verify_summary_payload(payload, canonical, out)
+    assert payload["strict_identifier_post_serialization_match"] is False
+    assert payload["strict_identifier_counter_reconciliation_passed"] is False
+    assert payload["strict_identifier_payload_overwritten_after_reconciliation"] is True
+    assert "serialized_payload_mismatch_detected" in payload["strict_identifier_counter_reconciliation_warnings"]

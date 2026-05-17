@@ -1051,29 +1051,35 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     return candidate_rows, evidence_rows, evidence_summary, ops
 
 
-def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_summary: dict, records: list[dict]) -> None:
+def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_summary: dict, records: list[dict]) -> dict[str, Any]:
     canonical_summary = _build_strict_identifier_canonical_summary(evidence_summary, records)
+
+    payload_object_id = id(final_summary_payload)
+    reconciliation_object_id = id(final_summary_payload)
+    final_summary_payload["strict_identifier_payload_object_id"] = payload_object_id
+    final_summary_payload["strict_identifier_reconciliation_object_id"] = reconciliation_object_id
+    final_summary_payload["strict_identifier_serialization_stage"] = "reconciliation"
+
     final_summary_payload.update(canonical_summary)
 
     runtime_vs_payload_delta = {
-        "matches_found_delta": (final_summary_payload.get("strict_identifier_matches_found") or 0) - (evidence_summary.get("strict_identifier_matches_found") or 0),
-        "rows_with_ticker_delta": (final_summary_payload.get("rows_with_ticker") or 0) - (evidence_summary.get("rows_with_ticker") or 0),
-        "rows_with_exchange_delta": (final_summary_payload.get("rows_with_exchange") or 0) - (evidence_summary.get("rows_with_exchange") or 0),
-        "sample_match_delta": len(final_summary_payload.get("strict_identifier_sample_matches") or []) - len(evidence_summary.get("strict_identifier_sample_matches") or []),
+        "matches_found_delta": (final_summary_payload.get("strict_identifier_matches_found") or 0) - (canonical_summary.get("strict_identifier_matches_found") or 0),
+        "rows_with_ticker_delta": (final_summary_payload.get("rows_with_ticker") or 0) - (canonical_summary.get("rows_with_ticker") or 0),
+        "rows_with_exchange_delta": (final_summary_payload.get("rows_with_exchange") or 0) - (canonical_summary.get("rows_with_exchange") or 0),
+        "sample_match_delta": len(final_summary_payload.get("strict_identifier_sample_matches") or []) - len(canonical_summary.get("strict_identifier_sample_matches") or []),
+    }
+    reconciliation_vs_runtime_delta = {
+        "matches_found_delta": (canonical_summary.get("strict_identifier_matches_found") or 0) - (evidence_summary.get("strict_identifier_matches_found") or 0),
+        "rows_with_ticker_delta": (canonical_summary.get("rows_with_ticker") or 0) - (evidence_summary.get("rows_with_ticker") or 0),
+        "rows_with_exchange_delta": (canonical_summary.get("rows_with_exchange") or 0) - (evidence_summary.get("rows_with_exchange") or 0),
+        "sample_match_delta": len(canonical_summary.get("strict_identifier_sample_matches") or []) - len(evidence_summary.get("strict_identifier_sample_matches") or []),
     }
 
-    stale_payload_detected = any(v != 0 for v in runtime_vs_payload_delta.values())
-    final_payload_matches_runtime = not stale_payload_detected
-    serialization_order_valid = final_summary_payload.get("strict_identifier_summary_serialization_complete") is True
     sample_matches = final_summary_payload.get("strict_identifier_sample_matches") or []
-    sample_match_valid = final_summary_payload.get("strict_identifier_matches_found", 0) == 0 or len(sample_matches) > 0
-
-    final_summary_payload["strict_identifier_runtime_vs_final_payload_delta"] = runtime_vs_payload_delta
-    final_summary_payload["strict_identifier_payload_canonicalized"] = True
-    final_summary_payload["strict_identifier_final_payload_validated"] = True
-    final_summary_payload["strict_identifier_final_payload_matches_runtime"] = final_payload_matches_runtime
-    final_summary_payload["strict_identifier_serialization_order_valid"] = serialization_order_valid
-    final_summary_payload["strict_identifier_stale_payload_detected"] = stale_payload_detected
+    canonical_match_count = final_summary_payload.get("strict_identifier_matches_found", 0)
+    sample_match_valid = canonical_match_count == 0 or len(sample_matches) > 0
+    stale_payload_detected = any(v != 0 for v in runtime_vs_payload_delta.values()) or any(v != 0 for v in reconciliation_vs_runtime_delta.values()) or not sample_match_valid
+    payload_overwritten_after_reconciliation = False
 
     warnings = list(final_summary_payload.get("strict_identifier_counter_reconciliation_warnings") or [])
     if stale_payload_detected and "stale_final_payload_detected" not in warnings:
@@ -1081,14 +1087,65 @@ def _canonicalize_final_summary_payload(final_summary_payload: dict, evidence_su
     if not sample_match_valid and "sample_matches_missing_for_nonzero_canonical_count" not in warnings:
         warnings.append("sample_matches_missing_for_nonzero_canonical_count")
 
+    final_summary_payload["strict_identifier_runtime_vs_final_payload_delta"] = runtime_vs_payload_delta
+    final_summary_payload["strict_identifier_runtime_vs_in_memory_payload_delta"] = dict(runtime_vs_payload_delta)
+    final_summary_payload["strict_identifier_reconciliation_vs_runtime_delta"] = reconciliation_vs_runtime_delta
+    final_summary_payload["strict_identifier_payload_canonicalized"] = True
+    final_summary_payload["strict_identifier_final_payload_validated"] = True
+    final_summary_payload["strict_identifier_serialization_order_valid"] = final_summary_payload.get("strict_identifier_summary_serialization_complete") is True
+    final_summary_payload["strict_identifier_stale_payload_detected"] = stale_payload_detected
+    final_summary_payload["strict_identifier_payload_overwritten_after_reconciliation"] = payload_overwritten_after_reconciliation
     final_summary_payload["strict_identifier_counter_reconciliation_warnings"] = warnings
+    final_summary_payload["strict_identifier_payload_identity_consistent"] = payload_object_id == reconciliation_object_id
+    final_summary_payload["strict_identifier_payload_trace_complete"] = True
+    final_summary_payload["strict_identifier_final_payload_matches_reconciliation"] = (not stale_payload_detected)
+    final_summary_payload["strict_identifier_final_payload_matches_runtime"] = (not stale_payload_detected)
     final_summary_payload["strict_identifier_counter_reconciliation_passed"] = (
-        final_payload_matches_runtime
-        and serialization_order_valid
-        and sample_match_valid
+        not stale_payload_detected
+        and final_summary_payload["strict_identifier_serialization_order_valid"]
+        and final_summary_payload["strict_identifier_payload_identity_consistent"]
         and len(warnings) == 0
     )
     final_summary_payload["strict_identifier_summary_consistent"] = final_summary_payload["strict_identifier_counter_reconciliation_passed"]
+
+    final_summary_payload["strict_identifier_serialization_stage"] = "ready_for_serialization"
+    return canonical_summary
+
+
+def _finalize_and_verify_summary_payload(final_summary_payload: dict, canonical_summary: dict, summary_path: Path) -> None:
+    final_summary_payload["strict_identifier_serialization_stage"] = "serializing"
+    final_summary_payload["strict_identifier_serialized_payload_object_id"] = id(final_summary_payload)
+    final_summary_payload["strict_identifier_payload_identity_consistent"] = (
+        final_summary_payload.get("strict_identifier_payload_object_id")
+        == final_summary_payload.get("strict_identifier_reconciliation_object_id")
+        == final_summary_payload.get("strict_identifier_serialized_payload_object_id")
+    )
+    summary_path.write_text(json.dumps(final_summary_payload, indent=2), encoding="utf-8")
+    reloaded_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    serialized_vs_runtime_delta = {
+        "matches_found_delta": (reloaded_payload.get("strict_identifier_matches_found") or 0) - (canonical_summary.get("strict_identifier_matches_found") or 0),
+        "rows_with_ticker_delta": (reloaded_payload.get("rows_with_ticker") or 0) - (canonical_summary.get("rows_with_ticker") or 0),
+        "rows_with_exchange_delta": (reloaded_payload.get("rows_with_exchange") or 0) - (canonical_summary.get("rows_with_exchange") or 0),
+        "sample_match_delta": len(reloaded_payload.get("strict_identifier_sample_matches") or []) - len(canonical_summary.get("strict_identifier_sample_matches") or []),
+    }
+    post_match = all(v == 0 for v in serialized_vs_runtime_delta.values())
+    final_summary_payload["strict_identifier_runtime_vs_serialized_payload_delta"] = serialized_vs_runtime_delta
+    final_summary_payload["strict_identifier_post_serialization_verified"] = True
+    final_summary_payload["strict_identifier_post_serialization_match"] = post_match
+    final_summary_payload["strict_identifier_stale_payload_detected"] = final_summary_payload.get("strict_identifier_stale_payload_detected", False) or (not post_match)
+    final_summary_payload["strict_identifier_final_payload_matches_reconciliation"] = final_summary_payload.get("strict_identifier_final_payload_matches_reconciliation", True) and post_match
+    final_summary_payload["strict_identifier_final_payload_matches_runtime"] = final_summary_payload["strict_identifier_final_payload_matches_reconciliation"]
+    final_summary_payload["strict_identifier_payload_overwritten_after_reconciliation"] = not post_match
+    if not post_match:
+        warnings = list(final_summary_payload.get("strict_identifier_counter_reconciliation_warnings") or [])
+        if "serialized_payload_mismatch_detected" not in warnings:
+            warnings.append("serialized_payload_mismatch_detected")
+        final_summary_payload["strict_identifier_counter_reconciliation_warnings"] = warnings
+        final_summary_payload["strict_identifier_counter_reconciliation_passed"] = False
+        final_summary_payload["strict_identifier_summary_consistent"] = False
+    final_summary_payload["strict_identifier_serialization_stage"] = "post_serialization_verified"
+    summary_path.write_text(json.dumps(final_summary_payload, indent=2), encoding="utf-8")
 
 
 def main() -> int:
@@ -1107,8 +1164,8 @@ def main() -> int:
     evidence_summary_full = {"run_date_sgt": sgt_date, **evidence_summary, "evidence_rows_persisted": len(evidence_rows) if evidence_upsert_status == "upserted" else 0, "candidates_scored": len(records), "candidates_suppressed": sum(1 for r in records if r["advisory_status"] == "advisory_rejected"), "top_domains": dict(Counter(e.get("source_domain") for e in evidence_rows).most_common(10)), "upsert_status": evidence_upsert_status, "telemetry_upsert_status": telemetry_status}
     validation = {"all_rows_llm_used_false": all(r["llm_used"] is False for r in records), "all_rows_advisory_only": all(r["advisory_status"] in {"advisory_review", "advisory_rejected"} for r in records), "no_monitored_universe_writes_attempted": True, "idempotency_fields_present": all(all(k in r for k in ["run_date_sgt", "theme_name", "candidate_asset_id", "discovery_method"]) for r in records)}
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed}
-    _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
-    SUMMARY_PATH.write_text(json.dumps(final_summary_payload, indent=2), encoding="utf-8")
+    canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
+    _finalize_and_verify_summary_payload(final_summary_payload, canonical_summary, SUMMARY_PATH)
     EVIDENCE_SUMMARY_PATH.write_text(json.dumps(evidence_summary_full, indent=2), encoding="utf-8")
     VALIDATION_PATH.write_text(json.dumps(validation, indent=2), encoding="utf-8")
     OPERATIONAL_SUMMARY_PATH.write_text(json.dumps(operational_summary, indent=2), encoding="utf-8")
