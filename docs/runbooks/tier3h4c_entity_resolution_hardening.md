@@ -154,3 +154,42 @@ Create a canonical, advisory-only persisted evidence table that stores normalize
 - `evidence_rows_read > 0` after evidence persistence (same run or subsequent run).
 - `evidence_table_selected = tier3h_dynamic_entity_evidence`.
 - `evidence_source_mode = persisted_evidence_table` when rows are available.
+
+## Tier 3H.4C.3 Phase 2 — Deterministic Evidence-Level Identifier Extraction
+
+### Extraction scope and guardrails
+- Evidence-level extraction only from explicit evidence (`evidence_text`, `source_title`, `source_url`, `raw_evidence`) and explicit candidate ticker/exchange fields when present.
+- No name-only inference, no fuzzy/semantic matching, no LLM mapping.
+- If no explicit identifier is present, ticker/exchange remain null and suppression/unresolved fallback remains intact.
+
+### Explicit deterministic patterns
+- Exchange+ticker regex forms such as `NASDAQ: NVDA`, `NYSE: IBM`, `NYSE Arca: QQQ`, with optional wrappers like `(NASDAQ: NVDA)` or `[NASDAQ: NVDA]`.
+- Symbol field regex forms such as `Ticker: MSFT` and `Symbol: AMD`.
+- Isolated uppercase words (e.g., `AI`, `ON`, `OR`, `IT`) are ignored unless part of explicit patterns.
+
+### Exchange normalization
+- NASDAQ family (`NASDAQ`, `Nasdaq`, `NasdaqGS`, `Nasdaq Global Select Market`) -> `NASDAQ`
+- NYSE family (`NYSE`, `New York Stock Exchange`) -> `NYSE`
+- NYSE Arca family (`NYSEARCA`, `NYSE Arca`, `Arca`) -> `NYSEARCA`
+- `LSE`, `HKEX`, `SGX`, `TSE` families normalize to those canonical values.
+- Raw extracted exchange is preserved separately from normalized exchange.
+
+### Conflict handling
+- Evidence identifiers are aggregated per candidate deterministically.
+- If all explicit identifiers agree, audit ticker/exchange fields are populated.
+- If explicit identifiers conflict, no arbitrary selection is made; candidate is suppressed/unresolved with ambiguity rule metadata.
+
+### Diagnostics added for Phase 2
+- `evidence_rows_with_ticker`
+- `evidence_rows_with_exchange`
+- `explicit_exchange_ticker_regex_count`
+- `explicit_symbol_field_regex_count`
+- `structured_field_extraction_count`
+- `conflicting_evidence_identifier_count`
+- `invalid_ticker_pattern_count`
+- `evidence_identifier_aggregation_count`
+- `evidence_identifier_aggregation_conflict_count`
+
+### Phase 2 success metric
+- `rows_with_ticker > 0` and `rows_with_exchange > 0` only when explicit evidence supports those fields.
+- `evidence_rows_with_ticker > 0` and `evidence_rows_with_exchange > 0` when explicit identifiers are present in persisted evidence rows.

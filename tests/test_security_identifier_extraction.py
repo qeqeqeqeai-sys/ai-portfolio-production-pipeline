@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from transmission_layers.asset_discovery.security_identifier_extraction import extract_security_identifier
+from transmission_layers.asset_discovery.security_identifier_extraction import extract_security_identifier, extract_security_identifiers_from_evidence
 
 
 def test_nasdaq_nvda_pattern():
@@ -55,3 +55,20 @@ def test_no_registry_match_unresolved_never_invented():
     r = extract_security_identifier({"ticker": "ZZZZ", "exchange": "NASDAQ"})
     assert r.canonical_security_id is None
     assert r.identifier_status == "unresolved"
+
+
+def test_phase2_explicit_exchange_ticker_patterns():
+    assert extract_security_identifiers_from_evidence("NASDAQ: NVDA", None, None, None)["normalized_exchange"] == "NASDAQ"
+    assert extract_security_identifiers_from_evidence("Nasdaq: AMD", None, None, None)["normalized_ticker"] == "AMD"
+    assert extract_security_identifiers_from_evidence("NYSE: IBM", None, None, None)["normalized_exchange"] == "NYSE"
+    r = extract_security_identifiers_from_evidence("NYSE Arca: QQQ", None, None, None)
+    assert r["normalized_exchange"] == "NYSEARCA" and r["normalized_ticker"] == "QQQ"
+
+
+def test_phase2_symbol_only_and_invalid_words():
+    r = extract_security_identifiers_from_evidence("Ticker: MSFT", None, None, None)
+    assert r["normalized_ticker"] == "MSFT" and r["normalized_exchange"] is None
+    r = extract_security_identifiers_from_evidence("Symbol: AMD", None, None, None)
+    assert r["normalized_ticker"] == "AMD" and r["normalized_exchange"] is None
+    r = extract_security_identifiers_from_evidence("AI ON OR IT", None, None, None)
+    assert r["normalized_ticker"] is None
