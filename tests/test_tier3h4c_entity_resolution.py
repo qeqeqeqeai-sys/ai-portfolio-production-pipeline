@@ -12,7 +12,7 @@ from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules 
 from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import duplicate_group_key
 from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_alias
 from transmission_layers.asset_discovery.entity_resolution import audit_writer
-from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows, _aggregate_evidence_identifiers, build_enriched_evidence_text
+from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows, _aggregate_evidence_identifiers, build_enriched_evidence_text, extract_deterministic_title, extract_deterministic_snippet, LOG_PATH
 
 
 def test_normalize_name():
@@ -245,3 +245,50 @@ def test_phase2a_embedded_evidence_preserves_raw_and_enriches_without_inference(
     assert rows[0]["raw_evidence"]["evidence_source"]["source_url"] == "https://example.com/story"
     assert rows[0]["extracted_ticker"] is None
     assert rows[0]["extracted_exchange"] is None
+
+
+def test_extract_deterministic_title_across_payload_shapes():
+    assert extract_deterministic_title({"title": "A"}) == ("A", "title")
+    assert extract_deterministic_title({"metadata": {"page_title": "B"}}) == ("B", "metadata.page_title")
+    assert extract_deterministic_title({"raw": {"title": "C"}}) == ("C", "raw.title")
+
+
+def test_extract_deterministic_snippet_across_payload_shapes():
+    assert extract_deterministic_snippet({"content": "Alpha"}) == ("Alpha", "content")
+    assert extract_deterministic_snippet({"metadata": {"snippet": "Beta"}}) == ("Beta", "metadata.snippet")
+    assert extract_deterministic_snippet({"raw": {"raw_content": "Gamma"}}) == ("Gamma", "raw.raw_content")
+
+
+def test_phase2a_payload_uses_fallback_fields_and_keeps_operational_metadata():
+    candidate = {"candidate_name": "X", "source_url": "https://a", "candidate_confidence_score": 9.0, "rejection_reason": "weak"}
+    source = {"pageTitle": "Fallback title", "raw": {"content": "Fallback snippet"}, "source_domain": "a", "quality": 1}
+    rows = _normalize_embedded_evidence_rows({**candidate, "evidence_sources": [source]}, "2026-05-17", "wf-2", "ai")
+    assert rows[0]["source_title"] == "Fallback title"
+    assert "Snippet: Fallback snippet" in rows[0]["evidence_text"]
+    assert "Operational:" in rows[0]["evidence_text"]
+
+
+def test_main_phase2a_diagnostics_count_from_persisted_payload(monkeypatch):
+    from transmission_layers.asset_discovery.entity_resolution import resolve_discovered_entities as mod
+    if LOG_PATH.exists():
+        LOG_PATH.unlink()
+
+    def fake_fetch(tables, *_args):
+        if "dynamic_entity_discovery" in tables[0]:
+            return [{"candidate_asset_id": "1", "candidate_name": "Acme"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+        return [{
+            "candidate_asset_id": "1",
+            "candidate_name": "Acme",
+            "source_title": "Doc title",
+            "evidence_text": "Title: Doc title\n\nSnippet: body",
+            "raw_evidence": {"evidence_source": {"pageTitle": "Doc title", "content": "body"}},
+        }], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+
+    monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
+    monkeypatch.setattr(mod, "write_evidence_rows", lambda rows: {"status": "written", "rows_written": len(rows)})
+    monkeypatch.setattr(mod, "write_audit_rows", lambda rows: {"status": "written"})
+    assert mod.main() == 0
+    summary = __import__("json").loads(LOG_PATH.read_text())
+    assert summary["evidence_rows_with_title"] == 1
+    assert summary["evidence_rows_with_snippet"] == 1
+    assert summary["enriched_evidence_rows_written"] == 1
