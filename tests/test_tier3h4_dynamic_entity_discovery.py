@@ -82,3 +82,57 @@ def test_advisory_only_no_openai_no_monitored_universe_writes(monkeypatch):
     source = Path(mod.__file__).read_text(encoding="utf-8").lower()
     assert "openai" not in source
     assert all(r["advisory_status"] in {"advisory_review", "advisory_rejected"} for r in rows)
+
+
+def test_normalize_source_result_payload_extracts_explicit_fields_only():
+    payload = mod.normalize_source_result_payload({
+        "title": "Doc",
+        "url": "https://example.com",
+        "content": "Body",
+        "score": 0.7,
+        "metadata": {"lang": "en"},
+        "extra_noise": "ignore",
+    })
+    assert payload == {
+        "title": "Doc",
+        "url": "https://example.com",
+        "content": "Body",
+        "score": 0.7,
+        "metadata": {"lang": "en"},
+    }
+
+
+def test_phase2b_source_result_persistence_contains_raw_source_payload(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        mod,
+        "_collect_tavily",
+        lambda *args, **kwargs: ([{
+            "url": "https://news.example.com/article",
+            "title": "Grid Demand Rises",
+            "content": "AI data center power demand trend",
+            "score": 0.92,
+            "published_date": "2026-05-16",
+            "source_url": "https://news.example.com/article",
+            "source_title": "Grid Demand Rises",
+            "source_snippet": "AI data center power demand trend",
+        }], None),
+    )
+
+    _, evidence_rows, _, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert len(evidence_rows) >= 1
+    row = evidence_rows[0]
+    assert row["source_url"] == "https://news.example.com/article"
+    assert row["source_title"] == "Grid Demand Rises"
+    assert row["source_domain"] == "news.example.com"
+    assert "Title: Grid Demand Rises" in row["evidence_text"]
+    assert "Snippet: AI data center power demand trend" in row["evidence_text"]
+    assert isinstance(row["raw_evidence"], dict)
+    assert "source_result" in row["raw_evidence"]
+    assert row["raw_evidence"]["source_result"]["url"] == "https://news.example.com/article"
+    assert row["raw_evidence"]["source_result"]["title"] == "Grid Demand Rises"
+    assert row["raw_evidence"]["source_result"]["content"] == "AI data center power demand trend"
+    assert "candidate_context" in row["raw_evidence"]
+    assert row.get("candidate_ticker") is None
