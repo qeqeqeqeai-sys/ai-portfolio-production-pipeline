@@ -303,6 +303,15 @@ def _is_retryable(reason: str) -> bool:
     return reason in {"rate_limited", "provider_unavailable", "timeout"}
 
 def _collect_tavily(query_text: str, api_key: str, max_results: int = 5) -> tuple[list[dict[str, Any]], str | None]:
+    actual_upsert_payload = final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else final_upsert_rows
+    actual_upsert_variable_name = "final_upsert_rows_schema_aligned" if actual_upsert_payload is (final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else None) else "final_upsert_rows"
+    actual_upsert_first_row_keys = sorted(list(actual_upsert_payload[0].keys())) if actual_upsert_payload and isinstance(actual_upsert_payload[0], dict) else []
+    actual_upsert_extra_columns = sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_upsert_destination_table_columns") or [])) if diagnostics.get("evidence_upsert_destination_table_columns") else sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_table_actual_columns") or []))
+    diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
+    diagnostics["actual_upsert_first_row_keys"] = actual_upsert_first_row_keys
+    diagnostics["actual_upsert_contains_query_text"] = "query_text" in actual_upsert_first_row_keys
+    diagnostics["actual_upsert_payload_matches_schema"] = len(actual_upsert_extra_columns) == 0
+    diagnostics["actual_upsert_extra_columns"] = actual_upsert_extra_columns
     try:
         r = requests.post("https://api.tavily.com/search", json={"api_key": api_key, "query": query_text, "max_results": max_results, "search_depth": "basic"}, timeout=TAVILY_TIMEOUT_SECONDS)
         if r.status_code >= 400:
@@ -849,18 +858,19 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                     aligned_row = {k: v for k, v in row.items() if k in allowed_columns}
                     removed_columns.update(set(row.keys()) - set(aligned_row.keys()))
                     aligned_rows.append(aligned_row)
-                final_upsert_rows = aligned_rows
-                aligned_keys = sorted({k for row in final_upsert_rows for k in row.keys()}) if final_upsert_rows else []
+                final_upsert_rows_schema_aligned = aligned_rows
+                final_upsert_rows = final_upsert_rows_schema_aligned
+                aligned_keys = sorted({k for row in final_upsert_rows_schema_aligned for k in row.keys()}) if final_upsert_rows_schema_aligned else []
                 diagnostics["final_schema_aligned_payload_keys"] = aligned_keys
                 diagnostics["removed_unsupported_columns"] = sorted(removed_columns)
                 diagnostics["final_payload_matches_schema"] = len(removed_columns) == 0
                 diagnostics["final_upsert_variable_name"] = "final_upsert_rows_schema_aligned"
-                diagnostics["evidence_upsert_payload_count"] = len(final_upsert_rows)
+                diagnostics["evidence_upsert_payload_count"] = len(final_upsert_rows_schema_aligned)
                 diagnostics["evidence_upsert_payload_columns"] = aligned_keys
                 diagnostics["evidence_upsert_payload_keys"] = aligned_keys
-                diagnostics["final_upsert_first_row_keys"] = sorted(list(final_upsert_rows[0].keys())) if final_upsert_rows else []
+                diagnostics["final_upsert_first_row_keys"] = sorted(list(final_upsert_rows_schema_aligned[0].keys())) if final_upsert_rows_schema_aligned else []
                 diagnostics["evidence_upsert_first_row_keys"] = diagnostics["final_upsert_first_row_keys"]
-                diagnostics["evidence_upsert_first_failed_row"] = final_upsert_rows[0] if final_upsert_rows else None
+                diagnostics["evidence_upsert_first_failed_row"] = final_upsert_rows_schema_aligned[0] if final_upsert_rows_schema_aligned else None
                 payload_keys_set = set(aligned_keys)
                 diagnostics["payload_fields_missing_from_table"] = sorted(payload_keys_set - allowed_columns)
                 diagnostics["payload_vs_schema_extra_columns"] = diagnostics["payload_fields_missing_from_table"]
@@ -876,8 +886,17 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     except Exception as schema_exc:
         diagnostics["schema_introspection_status"] = f"exception:{type(schema_exc).__name__}"
         diagnostics["schema_introspection_error"] = repr(schema_exc)
+    actual_upsert_payload = final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else final_upsert_rows
+    actual_upsert_variable_name = "final_upsert_rows_schema_aligned" if actual_upsert_payload is (final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else None) else "final_upsert_rows"
+    actual_upsert_first_row_keys = sorted(list(actual_upsert_payload[0].keys())) if actual_upsert_payload and isinstance(actual_upsert_payload[0], dict) else []
+    actual_upsert_extra_columns = sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_upsert_destination_table_columns") or [])) if diagnostics.get("evidence_upsert_destination_table_columns") else sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_table_actual_columns") or []))
+    diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
+    diagnostics["actual_upsert_first_row_keys"] = actual_upsert_first_row_keys
+    diagnostics["actual_upsert_contains_query_text"] = "query_text" in actual_upsert_first_row_keys
+    diagnostics["actual_upsert_payload_matches_schema"] = len(actual_upsert_extra_columns) == 0
+    diagnostics["actual_upsert_extra_columns"] = actual_upsert_extra_columns
     try:
-        r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=final_upsert_rows, timeout=60)
+        r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=actual_upsert_payload, timeout=60)
         destination_columns_header = (r.headers.get("x-rel-columns") or r.headers.get("content-profile") or "") if hasattr(r, "headers") else ""
         if isinstance(destination_columns_header, str) and destination_columns_header:
             diagnostics["evidence_upsert_destination_table_columns"] = sorted([c.strip() for c in destination_columns_header.split(",") if c.strip()])
