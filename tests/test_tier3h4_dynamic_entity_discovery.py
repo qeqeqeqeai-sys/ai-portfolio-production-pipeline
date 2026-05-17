@@ -778,6 +778,11 @@ def test_operational_summary_integration_replaces_legacy_counters():
     canonical = {
         **runtime,
         "strict_identifier_sample_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ"}],
+        "strict_identifier_candidate_level_matches_found": 3,
+        "strict_identifier_evidence_level_matches_found": 3,
+        "strict_identifier_unmapped_matches_found": 0,
+        "strict_identifier_unique_tickers_found": ["NVDA"],
+        "strict_identifier_unique_exchanges_found": ["NASDAQ"],
     }
     operational = {
         "strict_identifier_matches_found": 0,
@@ -792,9 +797,17 @@ def test_operational_summary_integration_replaces_legacy_counters():
     assert integrated["rows_with_ticker"] == 2
     assert integrated["rows_with_exchange"] == 2
     assert integrated["strict_identifier_sample_matches"]
+    assert integrated["evidence_rows_with_ticker"] == 3
+    assert integrated["evidence_rows_with_exchange"] == 3
+    assert integrated["strict_identifier_candidate_level_matches_found"] == 3
+    assert integrated["strict_identifier_evidence_level_matches_found"] == 3
+    assert integrated["strict_identifier_unmapped_matches_found"] == 0
+    assert integrated["strict_identifier_unique_tickers_found"] == ["NVDA"]
+    assert integrated["strict_identifier_unique_exchanges_found"] == ["NASDAQ"]
     assert integrated["strict_identifier_runtime_vs_operational_export_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
     assert integrated["strict_identifier_operational_export_matches_runtime"] is True
     assert integrated["strict_identifier_legacy_operational_counters_detected"] is True
+    assert integrated["strict_identifier_operational_summary_integrated"] is True
 
 
 def test_operational_summary_integration_flags_export_drift_warning():

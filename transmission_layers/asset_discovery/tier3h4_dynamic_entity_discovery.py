@@ -1161,6 +1161,22 @@ def _integrate_operational_summary_with_canonical_reconciliation(
         "evidence_rows_with_exchange": operational_summary_payload.get("evidence_rows_with_exchange", 0),
     }
     legacy_detected = any(v != (canonical_summary.get(k) or 0) for k, v in pre_integration.items())
+    canonical_export_fields = [
+        "strict_identifier_matches_found",
+        "strict_identifier_sample_matches",
+        "rows_with_ticker",
+        "rows_with_exchange",
+        "evidence_rows_with_ticker",
+        "evidence_rows_with_exchange",
+        "strict_identifier_candidate_level_matches_found",
+        "strict_identifier_evidence_level_matches_found",
+        "strict_identifier_unmapped_matches_found",
+        "strict_identifier_unique_tickers_found",
+        "strict_identifier_unique_exchanges_found",
+    ]
+    for field in canonical_export_fields:
+        if field in canonical_summary:
+            operational_summary_payload[field] = canonical_summary[field]
     operational_summary_payload.update(canonical_summary)
     runtime_vs_operational_export_delta = {
         "matches_found_delta": (runtime_summary_payload.get("strict_identifier_matches_found") or 0) - (operational_summary_payload.get("strict_identifier_matches_found") or 0),
@@ -1182,13 +1198,23 @@ def _integrate_operational_summary_with_canonical_reconciliation(
         operational_warnings.append("operational_export_mismatch_detected")
     if export_matches_runtime and "operational_export_mismatch_detected" in operational_warnings:
         operational_warnings = [w for w in operational_warnings if w != "operational_export_mismatch_detected"]
+    canonical_match_count = canonical_summary.get("strict_identifier_matches_found", 0)
+    if operational_summary_payload.get("strict_identifier_matches_found") != canonical_match_count:
+        if "operational_export_runtime_count_mismatch_detected" not in operational_warnings:
+            operational_warnings.append("operational_export_runtime_count_mismatch_detected")
+        operational_summary_payload["strict_identifier_operational_export_matches_runtime"] = False
+    elif "operational_export_runtime_count_mismatch_detected" in operational_warnings:
+        operational_warnings = [w for w in operational_warnings if w != "operational_export_runtime_count_mismatch_detected"]
     operational_summary_payload["strict_identifier_runtime_vs_operational_export_delta"] = runtime_vs_operational_export_delta
     operational_summary_payload["strict_identifier_serialized_vs_operational_export_delta"] = serialized_vs_operational_export_delta
     operational_summary_payload["strict_identifier_operational_export_warnings"] = operational_warnings
     operational_summary_payload["strict_identifier_operational_summary_integrated"] = True
     operational_summary_payload["strict_identifier_operational_summary_source"] = "strict_identifier_accepted_matches"
     operational_summary_payload["strict_identifier_operational_export_connected"] = True
-    operational_summary_payload["strict_identifier_operational_export_matches_runtime"] = export_matches_runtime
+    operational_summary_payload["strict_identifier_operational_export_matches_runtime"] = bool(
+        operational_summary_payload.get("strict_identifier_operational_export_matches_runtime", export_matches_runtime)
+        and export_matches_runtime
+    )
     operational_summary_payload["strict_identifier_legacy_operational_counters_detected"] = legacy_detected
     operational_summary_payload["strict_identifier_operational_payload_replaced"] = True
     return operational_summary_payload
