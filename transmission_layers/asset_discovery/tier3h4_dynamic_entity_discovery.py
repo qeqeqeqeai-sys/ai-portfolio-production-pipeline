@@ -101,6 +101,8 @@ EXCHANGE_LABEL_TO_CANONICAL = {
 NOISE_TICKER_DENYLIST = {"AI", "ETF", "CEO", "IPO", "SEC", "USD", "ADR", "LLC", "INC", "LTD", "PLC", "CORP", "THE", "AND"}
 STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE = 8
 STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN = 240
+STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX = 10
+STRICT_IDENTIFIER_NORMALIZATION_SAMPLE_MAX = 5
 STRICT_EXCHANGE_LABEL_PATTERN = "|".join(sorted((re.escape(k) for k in EXCHANGE_LABEL_TO_CANONICAL), key=len, reverse=True))
 STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN = re.compile(
     rf"(?i)(?:^|[\s\(\[\{{,;])(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*:\s*(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
@@ -286,7 +288,7 @@ def _collect_tavily(query_text: str, api_key: str, max_results: int = 5) -> tupl
         reason = "timeout" if "timeout" in str(exc).lower() else "provider_unavailable"
         return [], reason
 
-def _extract_strict_exchange_qualified_identifier(text: str) -> dict[str, Any]:
+def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max: int = STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX) -> dict[str, Any]:
     raw_text = _normalize_text(text)
     if not raw_text:
         return {}
@@ -323,6 +325,8 @@ def _extract_strict_exchange_qualified_identifier(text: str) -> dict[str, Any]:
             noise_rejections.append(ticker)
             continue
         if not re.match(r"^[A-Z0-9]{1,6}$", ticker):
+            continue
+        if not _token_distance_within_guardrail(raw_text, ticker, candidate["label"], token_distance_max):
             continue
         normalized_matches.append(
             {
@@ -382,6 +386,56 @@ def _bounded_context_window(text: str, max_len: int = STRICT_IDENTIFIER_CONTEXT_
         return clean
     half = max(1, (max_len - 3) // 2)
     return f"{clean[:half]}...{clean[-half:]}"
+
+
+
+def _normalize_identifier_context_window(text: str) -> str:
+    value = (text or "")
+    value = value.replace("–", "-").replace("—", "-")
+    value = value.replace("‘", "'").replace("’", "'")
+    value = value.replace("“", '"').replace("”", '"')
+    value = value.replace("−", "-").replace(" ", " ")
+    value = re.sub(r"[|;,:\-]{2,}", lambda m: m.group(0)[0], value)
+    value = re.sub(r"\s+", " ", value).strip()
+    value = re.sub(r"^[|;,:\-\s]+", "", value)
+    value = re.sub(r"[|;,:\-\s]+$", "", value)
+    return value
+
+
+def _segment_identifier_context_windows(text: str, max_chars: int = STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN) -> list[str]:
+    raw = _normalize_text(text)
+    if not raw:
+        return []
+    split = re.sub(r"(?i)\btitle\s*:\s*", "\n", raw)
+    split = re.sub(r"(?i)\bsnippet\s*:\s*", "\n", split)
+    split = re.sub(r"[•\u2022]", "\n", split)
+    split = split.replace("|", "\n").replace(";", "\n").replace(".", ".\n")
+    split = split.replace("(", " ( ").replace(")", " ) ")
+    chunks = [c.strip() for c in re.split(r"\n+", split) if c.strip()]
+    windows: list[str] = []
+    for chunk in chunks:
+        norm = _normalize_identifier_context_window(chunk)
+        if not norm:
+            continue
+        for i in range(0, len(norm), max_chars):
+            windows.append(norm[i:i+max_chars].strip())
+    return windows
+
+
+def _token_distance_within_guardrail(text: str, ticker: str, exchange_label: str, max_distance: int = STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX) -> bool:
+    token_pattern = re.compile(r"[A-Za-z0-9]+")
+    tokens = [(m.group(0), m.start()) for m in token_pattern.finditer(text)]
+    ticker_pos = [i for i,(tok,_) in enumerate(tokens) if tok.upper() == ticker.upper()]
+    exchange_parts = exchange_label.split()
+    exchange_pos=[]
+    for i in range(len(tokens)):
+        seq=[tokens[i+j][0] for j in range(len(exchange_parts)) if i+j < len(tokens)]
+        if len(seq)==len(exchange_parts) and " ".join(seq).lower()==exchange_label.lower():
+            exchange_pos.append(i)
+    if not ticker_pos or not exchange_pos:
+        return True
+    min_dist = min(abs(t-e) for t in ticker_pos for e in exchange_pos)
+    return min_dist <= max_distance
 
 def _fresh_evidence_quality_diagnostics(evidence_rows: list[dict[str, Any]]) -> dict[str, Any]:
     domains: list[str] = []
@@ -573,6 +627,18 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "strict_identifier_no_context_phrase_examples": [],
         "strict_identifier_explainability_sample_size": STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE,
         "strict_identifier_candidate_explainability": [],
+        "strict_identifier_context_normalization_enabled": True,
+        "strict_identifier_context_windows_generated": 0,
+        "strict_identifier_context_windows_normalized": 0,
+        "strict_identifier_unique_context_windows_scanned": 0,
+        "strict_identifier_duplicate_contexts_collapsed": 0,
+        "strict_identifier_malformed_context_count_before_normalization": 0,
+        "strict_identifier_malformed_context_count_after_normalization": 0,
+        "strict_identifier_malformed_context_delta": 0,
+        "strict_identifier_normalization_sample_before_after": [],
+        "strict_identifier_token_distance_guardrail_enabled": True,
+        "strict_identifier_token_distance_max": STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX,
+        "strict_identifier_context_window_max_chars": STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN,
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
@@ -690,72 +756,87 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 for text in scan_texts:
                     if not text:
                         continue
-                    context_window = _bounded_context_window(text)
-                    matches = [m for p in matcher_patterns for m in p.finditer(text)]
-                    detected_exchange_labels = sorted({_normalize_text(m.group("label")) for m in matches})
-                    detected_ticker_tokens = sorted({_normalize_text(m.group("ticker")).upper() for m in matches})
-                    if context_window in seen_context_windows:
-                        strict_diag["strict_identifier_duplicate_context_count"] += 1
-                        strict_diag["strict_identifier_rejection_reason_counts"]["duplicate_context"] += 1
-                    else:
-                        seen_context_windows.add(context_window)
-                    if len(detected_ticker_tokens) > 1:
-                        strict_diag["strict_identifier_multiple_ticker_count"] += 1
-                        strict_diag["strict_identifier_rejection_reason_counts"]["multiple_tickers_in_context"] += 1
-                    if len(detected_exchange_labels) > 1:
-                        strict_diag["strict_identifier_multiple_exchange_count"] += 1
-                        strict_diag["strict_identifier_rejection_reason_counts"]["multiple_exchanges_in_context"] += 1
-                    if len(detected_exchange_labels) > 1 and len(detected_ticker_tokens) == 1:
-                        strict_diag["strict_identifier_exchange_conflict_count"] += 1
-                        strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
-                    if len(detected_ticker_tokens) > 1 and len(detected_exchange_labels) == 1:
-                        strict_diag["strict_identifier_ticker_conflict_count"] += 1
-                        strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
-                    if "{" in text or "}" in text:
-                        strict_diag["strict_identifier_malformed_context_count"] += 1
-                        strict_diag["strict_identifier_rejection_reason_counts"]["malformed_context"] += 1
-                    explainability = {"candidate_name": _normalize_text(row.get("candidate_name")), "source_url": _normalize_text(str(row.get("source_url") or "")), "source_domain": _normalize_text(row.get("source_domain")), "source_title": _normalize_text(row.get("source_title")), "detected_exchange_labels": detected_exchange_labels, "detected_ticker_tokens": detected_ticker_tokens, "matched_pattern_family": "no_match", "context_window": context_window, "rejection_reason": None, "ambiguity_reason": None, "accepted": False}
-                    extracted = _extract_strict_exchange_qualified_identifier(text)
-                    if extracted:
-                        if extracted.get("multiple_matches_detected"):
-                            strict_diag["strict_identifier_rows_with_multiple_matches"] += 1
-                        if extracted.get("warnings"):
-                            warning = extracted["warnings"][0]
-                            rejection_reason = "unknown_rejection_reason"
-                            if warning.startswith("ambiguous_multiple_matches_rejected"):
-                                strict_diag["strict_identifier_rows_rejected_ambiguous"] += 1
-                                strict_diag["strict_identifier_ambiguous_match_count"] += 1
-                                rejection_reason = "ambiguous_context_window"
-                                explainability["ambiguity_reason"] = "multiple_tickers_in_context" if len(detected_ticker_tokens) > 1 else "ambiguous_context_window"
-                                if len(strict_diag["strict_identifier_ambiguous_match_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                    strict_diag["strict_identifier_ambiguous_match_examples"].append(explainability)
-                            elif warning.startswith("noise_token_rejected:"):
-                                strict_diag["strict_identifier_rows_rejected_noise_token"] += 1
-                                rejection_reason = "noisy_token"
-                                if len(strict_diag["strict_identifier_noise_rejection_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                    strict_diag["strict_identifier_noise_rejection_examples"].append(explainability)
-                            elif warning.startswith("unsupported_exchange_rejected:"):
-                                strict_diag["strict_identifier_rows_rejected_unsupported_exchange"] += 1
-                                rejection_reason = "unsupported_exchange_label"
-                                if len(strict_diag["strict_identifier_unsupported_exchange_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                    strict_diag["strict_identifier_unsupported_exchange_examples"].append(explainability)
-                            else:
-                                strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
-                                rejection_reason = "no_context_phrase"
-                                if len(strict_diag["strict_identifier_no_context_phrase_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                    strict_diag["strict_identifier_no_context_phrase_examples"].append(explainability)
-                            explainability["rejection_reason"] = rejection_reason
-                            strict_diag["strict_identifier_rejection_reason_counts"][rejection_reason] = strict_diag["strict_identifier_rejection_reason_counts"].get(rejection_reason, 0) + 1
-                            if len(strict_diag["strict_identifier_sample_rejections"]) < 5:
-                                strict_diag["strict_identifier_sample_rejections"].append({"reason": warning, "text_preview": text[:140]})
-                            if len(strict_diag["strict_identifier_context_window_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                strict_diag["strict_identifier_context_window_examples"].append(explainability)
-                            if len(strict_diag["strict_identifier_candidate_explainability"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
-                                strict_diag["strict_identifier_candidate_explainability"].append(explainability)
+                    strict_diag["strict_identifier_malformed_context_count_before_normalization"] += int("{" in text or "}" in text)
+                    windows = _segment_identifier_context_windows(text, STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN)
+                    strict_diag["strict_identifier_context_windows_generated"] += len(windows)
+                    for window in windows:
+                        normalized_window = _normalize_identifier_context_window(window)
+                        strict_diag["strict_identifier_context_windows_normalized"] += 1
+                        if len(strict_diag["strict_identifier_normalization_sample_before_after"]) < STRICT_IDENTIFIER_NORMALIZATION_SAMPLE_MAX and window != normalized_window:
+                            strict_diag["strict_identifier_normalization_sample_before_after"].append({"before": _bounded_context_window(window), "after": _bounded_context_window(normalized_window)})
+                        context_window = _bounded_context_window(normalized_window)
+                        dedupe_key = "|".join([context_window.lower(), _normalize_text(row.get("candidate_name")).lower(), _normalize_text(str(row.get("source_url") or row.get("source_domain") or "")).lower()])
+                        if dedupe_key in seen_context_windows:
+                            strict_diag["strict_identifier_duplicate_context_count"] += 1
+                            strict_diag["strict_identifier_duplicate_contexts_collapsed"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["duplicate_context"] += 1
                             continue
-                        for k in ("extracted_ticker", "extracted_exchange", "normalized_ticker", "normalized_exchange", "extraction_method", "extraction_confidence", "extraction_notes"):
-                            row[k] = extracted[k]
-                        strict_propagated_row_keys.add(f"{row.get('theme_name','')}|{row.get('query_text','')}|{row.get('source_url','')}")
+                        seen_context_windows.add(dedupe_key)
+                        strict_diag["strict_identifier_unique_context_windows_scanned"] += 1
+                        matches = [m for p in matcher_patterns for m in p.finditer(normalized_window)]
+                        detected_exchange_labels = sorted({_normalize_text(m.group("label")) for m in matches})
+                        detected_ticker_tokens = sorted({_normalize_text(m.group("ticker")).upper() for m in matches})
+                        if len(detected_ticker_tokens) > 1:
+                            strict_diag["strict_identifier_multiple_ticker_count"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["multiple_tickers_in_context"] += 1
+                        if len(detected_exchange_labels) > 1:
+                            strict_diag["strict_identifier_multiple_exchange_count"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["multiple_exchanges_in_context"] += 1
+                        if len(detected_exchange_labels) > 1 and len(detected_ticker_tokens) == 1:
+                            strict_diag["strict_identifier_exchange_conflict_count"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
+                        if len(detected_ticker_tokens) > 1 and len(detected_exchange_labels) == 1:
+                            strict_diag["strict_identifier_ticker_conflict_count"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
+                        if "{" in normalized_window or "}" in normalized_window:
+                            strict_diag["strict_identifier_malformed_context_count_after_normalization"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["malformed_context"] += 1
+                        explainability = {"candidate_name": _normalize_text(row.get("candidate_name")), "source_url": _normalize_text(str(row.get("source_url") or "")), "source_domain": _normalize_text(row.get("source_domain")), "source_title": _normalize_text(row.get("source_title")), "detected_exchange_labels": detected_exchange_labels, "detected_ticker_tokens": detected_ticker_tokens, "matched_pattern_family": "no_match", "context_window": context_window, "rejection_reason": None, "ambiguity_reason": None, "accepted": False}
+                        extracted = _extract_strict_exchange_qualified_identifier(normalized_window, STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX)
+                        if extracted:
+                            if extracted.get("multiple_matches_detected"):
+                                strict_diag["strict_identifier_rows_with_multiple_matches"] += 1
+                            if extracted.get("warnings"):
+                                warning = extracted["warnings"][0]
+                                rejection_reason = "unknown_rejection_reason"
+                                if warning.startswith("ambiguous_multiple_matches_rejected"):
+                                    strict_diag["strict_identifier_rows_rejected_ambiguous"] += 1
+                                    strict_diag["strict_identifier_ambiguous_match_count"] += 1
+                                    rejection_reason = "ambiguous_context_window"
+                                    explainability["ambiguity_reason"] = "multiple_tickers_in_context" if len(detected_ticker_tokens) > 1 else "ambiguous_context_window"
+                                    if len(strict_diag["strict_identifier_ambiguous_match_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                        strict_diag["strict_identifier_ambiguous_match_examples"].append(explainability)
+                                elif warning.startswith("noise_token_rejected:"):
+                                    strict_diag["strict_identifier_rows_rejected_noise_token"] += 1
+                                    rejection_reason = "noisy_token"
+                                    if len(strict_diag["strict_identifier_noise_rejection_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                        strict_diag["strict_identifier_noise_rejection_examples"].append(explainability)
+                                elif warning.startswith("unsupported_exchange_rejected:"):
+                                    strict_diag["strict_identifier_rows_rejected_unsupported_exchange"] += 1
+                                    rejection_reason = "unsupported_exchange_label"
+                                    if len(strict_diag["strict_identifier_unsupported_exchange_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                        strict_diag["strict_identifier_unsupported_exchange_examples"].append(explainability)
+                                else:
+                                    strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
+                                    rejection_reason = "no_context_phrase"
+                                    if len(strict_diag["strict_identifier_no_context_phrase_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                        strict_diag["strict_identifier_no_context_phrase_examples"].append(explainability)
+                                explainability["rejection_reason"] = rejection_reason
+                                strict_diag["strict_identifier_rejection_reason_counts"][rejection_reason] = strict_diag["strict_identifier_rejection_reason_counts"].get(rejection_reason, 0) + 1
+                                if len(strict_diag["strict_identifier_sample_rejections"]) < 5:
+                                    strict_diag["strict_identifier_sample_rejections"].append({"reason": warning, "text_preview": normalized_window[:140]})
+                                if len(strict_diag["strict_identifier_context_window_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                    strict_diag["strict_identifier_context_window_examples"].append(explainability)
+                                if len(strict_diag["strict_identifier_candidate_explainability"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                    strict_diag["strict_identifier_candidate_explainability"].append(explainability)
+                                continue
+                            if "extracted_ticker" not in extracted:
+                                continue
+                            for k in ("extracted_ticker", "extracted_exchange", "normalized_ticker", "normalized_exchange", "extraction_method", "extraction_confidence", "extraction_notes"):
+                                row[k] = extracted[k]
+                            if "extraction_method" not in extracted:
+                                continue
+                            strict_propagated_row_keys.add(f"{row.get('theme_name','')}|{row.get('query_text','')}|{row.get('source_url','')}")
                         method = extracted["extraction_method"]
                         strict_diag["strict_identifier_match_pattern_counts"][method] = strict_diag["strict_identifier_match_pattern_counts"].get(method, 0) + 1
                         strict_diag["strict_identifier_matches_found"] += 1
@@ -794,6 +875,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         candidate_rows.append({"run_date_sgt": sgt_date, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "propagation_context_id": seed.propagation_context_id, "candidate_asset_id": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_name": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_type": "equity_candidate", "ticker": None, "exchange": None, "discovery_method": "tier3h4b_evidence_aware" if tavily_enabled else "tier3h4a_deterministic_scaffold", "evidence_sources": [{"query_text": e["query_text"], "source_url": e["source_url"], "source_domain": e["source_domain"], "quality": e["evidence_quality_score"], "cache_reused": e.get("cache_reused", False)} for e in seed_evidence], "evidence_count": evidence_count, "source_quality_score": avg_quality, "thematic_relevance_score": thematic_relevance_score, "entity_resolution_score": entity_resolution_score, "cross_source_score": cross_source_score, "candidate_confidence_score": confidence, "candidate_confidence_band": band, "confidence_explanation": f"weighted_score={confidence}; evidence_count={evidence_count}; domains={domain_count}; suppression={','.join(suppression) if suppression else 'none'}", "advisory_status": advisory_status, "rejection_reason": ",".join(suppression) if advisory_status == "advisory_rejected" else None, "llm_used": False, "llm_model": None, "llm_classification_json": None})
     sampled = evidence_rows[:3]
     fresh_quality = _fresh_evidence_quality_diagnostics(evidence_rows)
+    strict_diag["strict_identifier_malformed_context_count"] = strict_diag["strict_identifier_malformed_context_count_after_normalization"]
+    strict_diag["strict_identifier_malformed_context_delta"] = strict_diag["strict_identifier_malformed_context_count_before_normalization"] - strict_diag["strict_identifier_malformed_context_count_after_normalization"]
     strict_diag["strict_identifier_unique_tickers_found"] = sorted(strict_unique_tickers)
     strict_diag["strict_identifier_unique_exchanges_found"] = sorted(strict_unique_exchanges)
     strict_diag["strict_identifier_propagated_rows_count"] = len(strict_propagated_row_keys)
@@ -848,6 +931,13 @@ def main() -> int:
     print(f"[tier3h4] multiple_ticker_contexts={evidence_summary['strict_identifier_multiple_ticker_count']}")
     print(f"[tier3h4] multiple_exchange_contexts={evidence_summary['strict_identifier_multiple_exchange_count']}")
     print(f"[tier3h4] exchange_conflicts={evidence_summary['strict_identifier_exchange_conflict_count']}")
+    print("[tier3h4] strict identifier context normalization:")
+    print(f"[tier3h4] windows_generated={evidence_summary.get('strict_identifier_context_windows_generated',0)}")
+    print(f"[tier3h4] unique_windows_scanned={evidence_summary.get('strict_identifier_unique_context_windows_scanned',0)}")
+    print(f"[tier3h4] duplicates_collapsed={evidence_summary.get('strict_identifier_duplicate_contexts_collapsed',0)}")
+    print(f"[tier3h4] malformed_before={evidence_summary.get('strict_identifier_malformed_context_count_before_normalization',0)}")
+    print(f"[tier3h4] malformed_after={evidence_summary.get('strict_identifier_malformed_context_count_after_normalization',0)}")
+    print(f"[tier3h4] token_distance_max={evidence_summary.get('strict_identifier_token_distance_max',STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX)}")
     print(f"[tier3h4] malformed_contexts={evidence_summary['strict_identifier_malformed_context_count']}")
     top_rejection_reasons = sorted((evidence_summary.get("strict_identifier_rejection_reason_counts") or {}).items(), key=lambda kv: (-kv[1], kv[0]))[:3]
     print(f"[tier3h4] top_rejection_reasons={top_rejection_reasons}")

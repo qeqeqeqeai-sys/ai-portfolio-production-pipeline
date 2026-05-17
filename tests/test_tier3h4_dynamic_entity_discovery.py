@@ -509,3 +509,44 @@ def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
         assert "raw_source_payload" not in w
     for ex in summary["strict_identifier_ambiguous_match_examples"]:
         assert len(ex["context_window"]) <= mod.STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN
+
+def test_context_normalization_rules_preserve_identifier_tokens():
+    text = "  NASDAQ—MSFT  | |  ‘quoted’  \n  "
+    out = mod._normalize_identifier_context_window(text)
+    assert "NASDAQ" in out and "MSFT" in out
+    assert "—" not in out and "‘" not in out
+    assert "  " not in out
+
+
+def test_context_segmentation_generates_bounded_windows():
+    text = "Title: NASDAQ:MSFT; Snippet: " + ("x" * 800)
+    windows = mod._segment_identifier_context_windows(text, max_chars=240)
+    assert windows
+    assert all(len(w) <= 240 for w in windows)
+    assert any("NASDAQ:MSFT" in w for w in windows)
+
+
+def test_token_distance_guardrail_blocks_far_pairs():
+    near = mod._extract_strict_exchange_qualified_identifier("ticker MSFT on NASDAQ", token_distance_max=10)
+    far = mod._extract_strict_exchange_qualified_identifier("ticker MSFT " + " filler" * 20 + " on NASDAQ", token_distance_max=4)
+    assert near.get("normalized_ticker") == "MSFT"
+    assert far == {}
+
+
+def test_duplicate_context_collapse_and_diagnostics(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    rows, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert rows and evidence_rows
+    for key in [
+        "strict_identifier_context_normalization_enabled",
+        "strict_identifier_context_windows_generated",
+        "strict_identifier_unique_context_windows_scanned",
+        "strict_identifier_duplicate_contexts_collapsed",
+        "strict_identifier_malformed_context_count_before_normalization",
+        "strict_identifier_malformed_context_count_after_normalization",
+        "strict_identifier_malformed_context_delta",
+    ]:
+        assert key in summary
+    samples = summary.get("strict_identifier_normalization_sample_before_after", [])
+    assert len(samples) <= 5
+    assert all(len(s.get("before", "")) <= 240 and len(s.get("after", "")) <= 240 for s in samples)
