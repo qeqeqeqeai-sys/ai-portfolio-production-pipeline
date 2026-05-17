@@ -89,3 +89,43 @@ These controls do not alter advisory-only boundaries:
 
 ### Future direction (non-implemented)
 A future evidence-lake layer can extend cache retention and lineage across runs, but 3H.4B.1 intentionally keeps cache logic lightweight and reversible.
+
+
+## Tier 3H.4C.3 Phase 2B — Fresh source generation validation
+
+Default behavior is unchanged: if recent persisted evidence rows are available for `(theme_name, query_text)`, the run reuses those rows and skips fresh Tavily collection.
+
+Set `TIER3H4_FORCE_FRESH_EVIDENCE=1` to bypass persisted evidence reuse and validate live source collection + source-level evidence persistence before aggregation.
+
+### Validation diagnostics
+The evidence summary now includes:
+- `fresh_source_generation_validation_enabled`
+- `persisted_evidence_reuse_bypassed`
+- `tavily_collection_path_executed`
+- `tavily_result_loop_file`
+- `tavily_result_loop_function`
+- `tavily_result_rows_seen_before_aggregation`
+- `source_result_persistence_helper_called_count`
+- `tavily_result_rows_persisted_before_aggregation`
+- `fresh_source_rows_written`
+- `fresh_source_rows_write_errors`
+- `fresh_source_generation_skip_reason`
+- `evidence_generation_mode` (`persisted_reuse`, `fresh_generation`, `fresh_generation_forced`, `fallback`)
+
+### Healthy default mode
+- `evidence_generation_mode = persisted_reuse`
+- `fresh_source_generation_skip_reason = persisted_evidence_table_available`
+- `tavily_collection_path_executed = false`
+- `status = ok`
+
+### Healthy forced-fresh mode
+- `evidence_generation_mode = fresh_generation_forced`
+- `persisted_evidence_reuse_bypassed = true`
+- `tavily_collection_path_executed = true`
+- `tavily_result_rows_seen_before_aggregation > 0` when Tavily returns rows
+- `source_result_persistence_helper_called_count > 0` when rows are iterated
+- `fresh_source_rows_written > 0` when source rows are built and persisted
+- `source_level_evidence_rows_written > 0`
+- `evidence_rows_with_raw_source_payload > 0`
+- `rows_with_ticker` and `rows_with_exchange` may remain `0` (no inference added)
+- `status = ok`

@@ -38,6 +38,10 @@ MAX_QUERIES_PER_THEME = int(os.getenv("TIER3H4_MAX_QUERIES_PER_THEME", "5"))
 TAVILY_TIMEOUT_SECONDS = int(os.getenv("TIER3H4_TAVILY_TIMEOUT_SECONDS", "30"))
 
 
+def _force_fresh_evidence_enabled() -> bool:
+    return os.getenv("TIER3H4_FORCE_FRESH_EVIDENCE", "").strip().lower() in {"1", "true", "yes"}
+
+
 def utc_now() -> datetime: return datetime.now(timezone.utc)
 def run_date_sgt(today_utc: datetime | None = None) -> str: return ((today_utc or utc_now()) + timedelta(hours=8)).date().isoformat()
 def _safe_float(v: Any, d: float = 0.0) -> float:
@@ -256,7 +260,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
 def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     candidate_rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
-    ops = {"generated_queries": 0, "deduplicated_queries": 0, "executed_queries": 0, "skipped_duplicate_queries": 0, "cache_hits": 0, "cache_misses": 0, "retry_events": 0, "rate_limit_events": 0, "quota_exhaustion_events": 0, "failure_count": 0, "success_count": 0, "fallback_events": 0, "evidence_rows_reused": 0, "tavily_result_rows_seen_before_aggregation": 0, "tavily_result_rows_persisted_before_aggregation": 0}
+    ops = {"generated_queries": 0, "deduplicated_queries": 0, "executed_queries": 0, "skipped_duplicate_queries": 0, "cache_hits": 0, "cache_misses": 0, "retry_events": 0, "rate_limit_events": 0, "quota_exhaustion_events": 0, "failure_count": 0, "success_count": 0, "fallback_events": 0, "evidence_rows_reused": 0, "tavily_result_rows_seen_before_aggregation": 0, "tavily_result_rows_persisted_before_aggregation": 0, "source_result_persistence_helper_called_count": 0, "fresh_source_rows_written": 0, "fresh_source_rows_write_errors": 0}
     api_key = os.getenv("TAVILY_API_KEY", "")
     tavily_enabled = bool(api_key) and _tavily_enabled()
     fallback_mode = not tavily_enabled
@@ -264,6 +268,11 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     seen_urls: set[tuple[str, str, str, str]] = set()
     executed_query_keys: set[str] = set()
     lookback_start = (date.fromisoformat(sgt_date) - timedelta(days=QUERY_CACHE_LOOKBACK_DAYS)).isoformat()
+    force_fresh = _force_fresh_evidence_enabled()
+    evidence_generation_mode = "fallback" if fallback_mode else ("fresh_generation_forced" if force_fresh else "fresh_generation")
+    fresh_skip_reason = None
+    tavily_collection_path_executed = False
+    persisted_evidence_reuse_bypassed = False
     for idx, seed in enumerate(seeds, start=1):
         queries = _generate_queries(seed)
         ops["generated_queries"] += len(queries)
@@ -279,14 +288,20 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 continue
             executed_query_keys.add(qkey)
             cached = _fetch_cached_evidence(seed.theme_name, query, lookback_start, sgt_date)
-            if cached:
+            should_reuse_cached = bool(cached) and not force_fresh
+            if should_reuse_cached:
                 ops["cache_hits"] += 1
                 ops["evidence_rows_reused"] += len(cached)
                 items = cached
                 err = None
+                evidence_generation_mode = "persisted_reuse"
+                fresh_skip_reason = "persisted_evidence_table_available"
             else:
+                if cached and force_fresh:
+                    persisted_evidence_reuse_bypassed = True
                 ops["cache_misses"] += 1
                 items, err = [], None
+                tavily_collection_path_executed = True
                 if tavily_enabled and ops["executed_queries"] < MAX_TAVILY_QUERIES_PER_RUN and not quota_exhausted:
                     attempts = 0
                     while attempts <= MAX_TAVILY_RETRIES:
@@ -321,13 +336,17 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 discovery_method = "tavily_search" if tavily_enabled else "deterministic_fallback"
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_seen_before_aggregation"] += 1
+                ops["source_result_persistence_helper_called_count"] += 1
                 row = build_source_level_evidence_row_from_tavily_result(item=item, result_index=source_rank, seed=seed, sgt_date=sgt_date, query_text=query, candidate_asset_id=candidate_asset_id, candidate_name=candidate_name, discovery_method=discovery_method)
                 if row is None:
+                    if discovery_method == "tavily_search":
+                        ops["fresh_source_rows_write_errors"] += 1
                     continue
                 evidence_rows.append(row)
                 seed_evidence.append(row)
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_persisted_before_aggregation"] += 1
+                    ops["fresh_source_rows_written"] += 1
         evidence_count = len(seed_evidence)
         avg_quality = round(sum(_safe_float(e.get("evidence_quality_score")) for e in seed_evidence) / max(1, evidence_count), 4)
         domain_count = len({e.get("source_domain") for e in seed_evidence if e.get("source_domain")})
@@ -345,7 +364,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         advisory_status = "advisory_review" if band != "rejected_or_noise" else "advisory_rejected"
         candidate_rows.append({"run_date_sgt": sgt_date, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "propagation_context_id": seed.propagation_context_id, "candidate_asset_id": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_name": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_type": "equity_candidate", "ticker": None, "exchange": None, "discovery_method": "tier3h4b_evidence_aware" if tavily_enabled else "tier3h4a_deterministic_scaffold", "evidence_sources": [{"query_text": e["query_text"], "source_url": e["source_url"], "source_domain": e["source_domain"], "quality": e["evidence_quality_score"], "cache_reused": e.get("cache_reused", False)} for e in seed_evidence], "evidence_count": evidence_count, "source_quality_score": avg_quality, "thematic_relevance_score": thematic_relevance_score, "entity_resolution_score": entity_resolution_score, "cross_source_score": cross_source_score, "candidate_confidence_score": confidence, "candidate_confidence_band": band, "confidence_explanation": f"weighted_score={confidence}; evidence_count={evidence_count}; domains={domain_count}; suppression={','.join(suppression) if suppression else 'none'}", "advisory_status": advisory_status, "rejection_reason": ",".join(suppression) if advisory_status == "advisory_rejected" else None, "llm_used": False, "llm_model": None, "llm_classification_json": None})
     sampled = evidence_rows[:3]
-    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records"}
+    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "fresh_source_generation_validation_enabled": True, "persisted_evidence_reuse_bypassed": persisted_evidence_reuse_bypassed, "tavily_collection_path_executed": tavily_collection_path_executed, "fresh_source_generation_skip_reason": fresh_skip_reason, "evidence_generation_mode": evidence_generation_mode, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_result_persistence_helper_called_count": ops["source_result_persistence_helper_called_count"], "fresh_source_rows_written": ops["fresh_source_rows_written"], "fresh_source_rows_write_errors": ops["fresh_source_rows_write_errors"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records"}
     return candidate_rows, evidence_rows, evidence_summary, ops
 
 def main() -> int:

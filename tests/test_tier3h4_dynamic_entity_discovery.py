@@ -178,3 +178,32 @@ def test_candidate_aggregation_output_unchanged_shape(monkeypatch):
     assert isinstance(candidate["evidence_sources"], list)
     assert candidate["ticker"] is None
     assert candidate["exchange"] is None
+
+
+def test_default_mode_reuses_persisted_evidence_with_skip_reason(monkeypatch):
+    monkeypatch.delenv("TIER3H4_FORCE_FRESH_EVIDENCE", raising=False)
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [{"source_url": "https://www.reuters.com/a", "source_title": "t", "source_snippet": "s", "source_rank": 1, "retrieved_at": "2026-05-16T00:00:00+00:00", "cache_reused": True}])
+    monkeypatch.setattr(mod, "_collect_tavily", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not call tavily")))
+
+    _, _, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert summary["evidence_generation_mode"] == "persisted_reuse"
+    assert summary["fresh_source_generation_skip_reason"] == "persisted_evidence_table_available"
+    assert summary["tavily_collection_path_executed"] is False
+
+
+def test_force_fresh_bypasses_reuse_and_executes_collection(monkeypatch):
+    monkeypatch.setenv("TIER3H4_FORCE_FRESH_EVIDENCE", "1")
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [{"source_url": "https://cached.example.com/a", "source_title": "cached", "source_snippet": "cached", "source_rank": 1}])
+    monkeypatch.setattr(mod, "_collect_tavily", lambda *args, **kwargs: ([{"url": "https://fresh.example.com/a", "title": "Fresh", "content": "AI data center power"}], None))
+
+    rows, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert rows and evidence_rows
+    assert summary["evidence_generation_mode"] == "fresh_generation_forced"
+    assert summary["persisted_evidence_reuse_bypassed"] is True
+    assert summary["tavily_collection_path_executed"] is True
+    assert summary["source_result_persistence_helper_called_count"] > 0
+    assert summary["fresh_source_rows_written"] > 0
