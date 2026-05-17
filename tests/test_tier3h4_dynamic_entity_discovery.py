@@ -423,6 +423,14 @@ def test_strict_extraction_propagation_and_summary_consistency(monkeypatch):
     assert summary["strict_identifier_candidate_level_matches_found"] >= 1
     assert summary["strict_identifier_evidence_level_matches_found"] >= 0
     assert summary["strict_identifier_unmapped_matches_found"] == 0
+    assert summary["strict_identifier_counter_reconciliation_passed"] is True
+    assert summary["strict_identifier_counter_reconciliation_warnings"] == []
+    assert summary["strict_identifier_runtime_vs_summary_delta"] == 0
+    assert summary["strict_identifier_summary_serialization_complete"] is True
+    assert summary["strict_identifier_canonical_counter_source"] == "strict_identifier_accepted_matches"
+    assert summary["strict_identifier_final_summary_source"] == "strict_identifier_accepted_matches"
+    assert summary["strict_identifier_rows_with_ticker"] >= 1
+    assert summary["strict_identifier_rows_with_exchange"] >= 1
     assert candidate_rows[0]["ticker"] == "NVDA"
     assert candidate_rows[0]["exchange"] == "NASDAQ"
 
@@ -470,11 +478,20 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["strict_identifier_matches_found"] >= 1
     assert summary["strict_identifier_sample_matches"]
     assert summary["strict_identifier_log_summary_match"] is True
-    assert summary["evidence_rows_with_ticker"] >= 1
-    assert summary["evidence_rows_with_exchange"] >= 1
+    assert summary["strict_identifier_counter_reconciliation_passed"] is True
+    assert summary["strict_identifier_counter_reconciliation_warnings"] == []
+    assert summary["strict_identifier_runtime_vs_summary_delta"] == 0
+    assert summary["strict_identifier_summary_serialization_complete"] is True
+    assert summary["strict_identifier_canonical_counter_source"] == "strict_identifier_accepted_matches"
+    assert summary["strict_identifier_final_summary_source"] == "strict_identifier_accepted_matches"
+    assert summary["evidence_rows_with_ticker"] == summary["strict_identifier_evidence_level_matches_found"]
+    assert summary["evidence_rows_with_exchange"] == summary["strict_identifier_evidence_level_matches_found"]
     assert summary["rows_with_ticker"] >= 1
     assert summary["rows_with_exchange"] >= 1
+    assert summary["strict_identifier_candidate_level_matches_found"] >= summary["rows_with_ticker"]
+    assert summary["strict_identifier_candidate_level_matches_found"] >= summary["rows_with_exchange"]
     assert summary["strict_identifier_accepted_match_collection_size"] >= 1
+    assert summary["strict_identifier_matches_found"] == summary["strict_identifier_accepted_match_collection_size"]
 
 
 def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
