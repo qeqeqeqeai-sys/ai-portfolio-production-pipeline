@@ -84,6 +84,25 @@ def _force_fresh_evidence_enabled() -> bool:
 
 TICKER_LIKE_PATTERN = re.compile(r"\b(?:[A-Z]{1,5}(?::[A-Z]{1,5})?|(?:NYSE|NASDAQ)\s*:\s*[A-Z]{1,5}|ticker\s*[:=]\s*[A-Z]{1,5}|symbol\s*[:=]\s*[A-Z]{1,5})\b")
 EXCHANGE_LIKE_PATTERN = re.compile(r"\b(?:NYSE|NASDAQ|Nasdaq|New York Stock Exchange|London Stock Exchange|LSE|SGX|Singapore Exchange|HKEX|Tokyo Stock Exchange|TSE)\b")
+EXCHANGE_LABEL_TO_CANONICAL = {
+    "NASDAQ": "NASDAQ",
+    "Nasdaq": "NASDAQ",
+    "NYSE": "NYSE",
+    "New York Stock Exchange": "NYSE",
+    "SGX": "SGX",
+    "Singapore Exchange": "SGX",
+    "HKEX": "HKEX",
+    "Hong Kong Stock Exchange": "HKEX",
+    "LSE": "LSE",
+    "London Stock Exchange": "LSE",
+    "TSE": "TSE",
+    "Tokyo Stock Exchange": "TSE",
+}
+NOISE_TICKER_DENYLIST = {"AI", "ETF", "CEO", "IPO", "SEC", "USD"}
+STRICT_EXCHANGE_LABEL_PATTERN = "|".join(sorted((re.escape(k) for k in EXCHANGE_LABEL_TO_CANONICAL), key=len, reverse=True))
+STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN = re.compile(
+    rf"(?i)(?:^|[\s\(\[\{{,;])(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*(?:[:\-–—]\s*|\s+)(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
+)
 MEANINGFUL_TEXT_MIN_LENGTH = 40
 METADATA_ONLY_PATTERN = re.compile(r"^\s*(?:weighted_score|evidence_count|suppression|metadata|operational|source_domain|tavily_score|published_date|evidence_rank)[\s:=;\w,._-]*$", re.IGNORECASE)
 
@@ -250,6 +269,30 @@ def _collect_tavily(query_text: str, api_key: str, max_results: int = 5) -> tupl
         reason = "timeout" if "timeout" in str(exc).lower() else "provider_unavailable"
         return [], reason
 
+def _extract_strict_exchange_qualified_identifier(text: str) -> dict[str, Any]:
+    raw_text = _normalize_text(text)
+    if not raw_text:
+        return {}
+    for match in STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN.finditer(raw_text):
+        exchange_label = match.group("label")
+        ticker = _normalize_text(match.group("ticker")).upper()
+        canonical_exchange = EXCHANGE_LABEL_TO_CANONICAL.get(exchange_label)
+        if not canonical_exchange:
+            continue
+        if ticker in NOISE_TICKER_DENYLIST:
+            return {"warnings": [f"noise_token_rejected:{ticker}"]}
+        return {
+            "extracted_ticker": ticker,
+            "extracted_exchange": canonical_exchange,
+            "normalized_ticker": ticker,
+            "normalized_exchange": canonical_exchange,
+            "extraction_method": "strict_exchange_qualified_regex",
+            "extraction_confidence": "high",
+            "extraction_notes": f"matched_explicit_exchange_label={exchange_label}",
+            "warnings": [],
+        }
+    return {}
+
 def _fresh_evidence_quality_diagnostics(evidence_rows: list[dict[str, Any]]) -> dict[str, Any]:
     domains: list[str] = []
     missing_payload_reasons: list[str] = []
@@ -398,6 +441,23 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     runtime_persisted_reuse_branch_taken = False
     runtime_fresh_generation_branch_reachable = callable(globals().get("_collect_tavily"))
     runtime_source_loop_instrumentation_loaded = callable(globals().get("build_source_level_evidence_row_from_tavily_result"))
+    strict_diag = {
+        "strict_identifier_extraction_enabled": True,
+        "strict_identifier_candidate_name_mention_required": False,
+        "strict_identifier_rows_scanned": 0,
+        "strict_identifier_matches_found": 0,
+        "strict_identifier_rows_with_multiple_matches": 0,
+        "strict_identifier_rows_rejected_no_exchange_label": 0,
+        "strict_identifier_rows_rejected_no_candidate_name_mention": 0,
+        "strict_identifier_rows_rejected_noise_token": 0,
+        "strict_identifier_rows_with_candidate_name_mentions": 0,
+        "strict_identifier_rows_without_candidate_name_mentions": 0,
+        "strict_identifier_sample_matches": [],
+        "strict_identifier_sample_rejections": [],
+        "strict_identifier_extraction_warnings": [],
+    }
+    strict_unique_tickers: set[str] = set()
+    strict_unique_exchanges: set[str] = set()
     for idx, seed in enumerate(seeds, start=1):
         queries = _generate_queries(seed)
         ops["generated_queries"] += len(queries)
@@ -487,6 +547,48 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     continue
                 evidence_rows.append(row)
                 seed_evidence.append(row)
+                scan_texts: list[str] = [
+                    _normalize_text(row.get("evidence_text")),
+                    _normalize_text(row.get("source_title")),
+                    _normalize_text(row.get("source_content") or row.get("source_snippet")),
+                    _normalize_text(str(row.get("raw_evidence"))),
+                    _normalize_text(str((row.get("raw_evidence") or {}).get("source_result"))) if isinstance(row.get("raw_evidence"), dict) else "",
+                    _normalize_text(str(row.get("raw_source_payload"))),
+                ]
+                evidence_sources = row.get("evidence_sources")
+                if isinstance(evidence_sources, list):
+                    scan_texts.append(_normalize_text(str(evidence_sources)))
+                candidate_name_lower = _normalize_text(row.get("candidate_name")).lower()
+                full_scan_text = _normalize_text(" ".join(t for t in scan_texts if t))
+                strict_diag["strict_identifier_rows_scanned"] += 1
+                if candidate_name_lower and candidate_name_lower in full_scan_text.lower():
+                    strict_diag["strict_identifier_rows_with_candidate_name_mentions"] += 1
+                else:
+                    strict_diag["strict_identifier_rows_without_candidate_name_mentions"] += 1
+                row_matches = []
+                for text in scan_texts:
+                    if not text:
+                        continue
+                    row_matches.extend(STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN.findall(text))
+                    extracted = _extract_strict_exchange_qualified_identifier(text)
+                    if extracted:
+                        if extracted.get("warnings"):
+                            strict_diag["strict_identifier_rows_rejected_noise_token"] += 1
+                            if len(strict_diag["strict_identifier_sample_rejections"]) < 5:
+                                strict_diag["strict_identifier_sample_rejections"].append({"reason": extracted["warnings"][0], "text_preview": text[:140]})
+                            continue
+                        for k in ("extracted_ticker", "extracted_exchange", "normalized_ticker", "normalized_exchange", "extraction_method", "extraction_confidence", "extraction_notes"):
+                            row[k] = extracted[k]
+                        strict_diag["strict_identifier_matches_found"] += 1
+                        strict_unique_tickers.add(extracted["normalized_ticker"])
+                        strict_unique_exchanges.add(extracted["normalized_exchange"])
+                        if len(strict_diag["strict_identifier_sample_matches"]) < 5:
+                            strict_diag["strict_identifier_sample_matches"].append({"ticker": extracted["normalized_ticker"], "exchange": extracted["normalized_exchange"], "note": extracted["extraction_notes"]})
+                        break
+                if len(row_matches) > 1:
+                    strict_diag["strict_identifier_rows_with_multiple_matches"] += 1
+                if not row.get("normalized_ticker"):
+                    strict_diag["strict_identifier_rows_rejected_no_exchange_label"] += 1
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_persisted_before_aggregation"] += 1
                     ops["fresh_source_rows_written"] += 1
@@ -508,7 +610,9 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         candidate_rows.append({"run_date_sgt": sgt_date, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "propagation_context_id": seed.propagation_context_id, "candidate_asset_id": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_name": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_type": "equity_candidate", "ticker": None, "exchange": None, "discovery_method": "tier3h4b_evidence_aware" if tavily_enabled else "tier3h4a_deterministic_scaffold", "evidence_sources": [{"query_text": e["query_text"], "source_url": e["source_url"], "source_domain": e["source_domain"], "quality": e["evidence_quality_score"], "cache_reused": e.get("cache_reused", False)} for e in seed_evidence], "evidence_count": evidence_count, "source_quality_score": avg_quality, "thematic_relevance_score": thematic_relevance_score, "entity_resolution_score": entity_resolution_score, "cross_source_score": cross_source_score, "candidate_confidence_score": confidence, "candidate_confidence_band": band, "confidence_explanation": f"weighted_score={confidence}; evidence_count={evidence_count}; domains={domain_count}; suppression={','.join(suppression) if suppression else 'none'}", "advisory_status": advisory_status, "rejection_reason": ",".join(suppression) if advisory_status == "advisory_rejected" else None, "llm_used": False, "llm_model": None, "llm_classification_json": None})
     sampled = evidence_rows[:3]
     fresh_quality = _fresh_evidence_quality_diagnostics(evidence_rows)
-    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "fresh_source_generation_validation_enabled": True, "persisted_evidence_reuse_bypassed": persisted_evidence_reuse_bypassed, "persisted_evidence_selection_skipped_due_to_force_refresh": persisted_evidence_selection_skipped_due_to_force_refresh, "fresh_source_generation_active": fresh_source_generation_active, "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason, "tavily_collection_path_executed": tavily_collection_path_executed, "fresh_source_generation_skip_reason": fresh_skip_reason, "evidence_generation_mode": evidence_generation_mode, "runtime_evidence_generation_branch_taken": runtime_evidence_generation_branch_taken, "runtime_persisted_reuse_branch_taken": runtime_persisted_reuse_branch_taken, "runtime_fresh_generation_branch_reachable": runtime_fresh_generation_branch_reachable, "runtime_source_loop_instrumentation_loaded": runtime_source_loop_instrumentation_loaded, "runtime_force_fresh_branch_taken": runtime_force_fresh_branch_taken, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_result_persistence_helper_called_count": ops["source_result_persistence_helper_called_count"], "fresh_source_rows_written": ops["fresh_source_rows_written"], "fresh_source_rows_write_errors": ops["fresh_source_rows_write_errors"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records", **fresh_quality}
+    strict_diag["strict_identifier_unique_tickers_found"] = sorted(strict_unique_tickers)
+    strict_diag["strict_identifier_unique_exchanges_found"] = sorted(strict_unique_exchanges)
+    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "fresh_source_generation_validation_enabled": True, "persisted_evidence_reuse_bypassed": persisted_evidence_reuse_bypassed, "persisted_evidence_selection_skipped_due_to_force_refresh": persisted_evidence_selection_skipped_due_to_force_refresh, "fresh_source_generation_active": fresh_source_generation_active, "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason, "tavily_collection_path_executed": tavily_collection_path_executed, "fresh_source_generation_skip_reason": fresh_skip_reason, "evidence_generation_mode": evidence_generation_mode, "runtime_evidence_generation_branch_taken": runtime_evidence_generation_branch_taken, "runtime_persisted_reuse_branch_taken": runtime_persisted_reuse_branch_taken, "runtime_fresh_generation_branch_reachable": runtime_fresh_generation_branch_reachable, "runtime_source_loop_instrumentation_loaded": runtime_source_loop_instrumentation_loaded, "runtime_force_fresh_branch_taken": runtime_force_fresh_branch_taken, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_result_persistence_helper_called_count": ops["source_result_persistence_helper_called_count"], "fresh_source_rows_written": ops["fresh_source_rows_written"], "fresh_source_rows_write_errors": ops["fresh_source_rows_write_errors"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records", **fresh_quality, **strict_diag}
     return candidate_rows, evidence_rows, evidence_summary, ops
 
 def main() -> int:
