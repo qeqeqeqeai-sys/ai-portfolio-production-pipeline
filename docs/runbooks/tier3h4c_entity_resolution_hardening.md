@@ -247,8 +247,9 @@ Persistence now happens immediately at source collection time in Tier 3H.4 dynam
 
 ### Source-level row definition
 - One deterministic source result maps to one evidence row.
-- `raw_evidence.source_result` contains the explicit source payload (`title`, `url`, `content`/`snippet`/`raw_content`, score/metadata fields when present).
+- `raw_evidence.source_result` contains the raw Tavily/source result object as collected in-memory before aggregation (preserved as-is).
 - `raw_evidence.candidate_context` may contain candidate operational metadata, but this is secondary context only.
+- `raw_evidence.persistence_phase` is `tier3h4c3_phase2b_immediate_source_result_persistence`.
 
 ### Deterministic governance policy
 - Additive-only and advisory-only behavior is preserved.
@@ -263,6 +264,8 @@ Persistence now happens immediately at source collection time in Tier 3H.4 dynam
 - Legacy metadata-only rows are tolerated and counted; they are not repaired or hallucinated.
 
 ### Phase 2B diagnostics
+- `tavily_result_rows_seen_before_aggregation`
+- `tavily_result_rows_persisted_before_aggregation`
 - `source_level_evidence_rows_written`
 - `candidate_metadata_only_evidence_rows`
 - `evidence_rows_with_source_url`
