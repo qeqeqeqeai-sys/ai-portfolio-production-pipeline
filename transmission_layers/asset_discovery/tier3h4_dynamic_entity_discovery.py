@@ -1171,6 +1171,10 @@ def _integrate_operational_summary_with_canonical_reconciliation(
         "evidence_rows_with_exchange": operational_summary_payload.get("evidence_rows_with_exchange", 0),
     }
     legacy_detected = any(v != (canonical_summary.get(k) or 0) for k, v in pre_integration.items())
+    operational_summary_payload["strict_identifier_pre_integration_audit_counters"] = dict(pre_integration)
+    operational_summary_payload["strict_identifier_pre_integration_audit_delta"] = {
+        f"{k}_delta": pre_integration.get(k, 0) - (canonical_summary.get(k) or 0) for k in pre_integration
+    }
     canonical_export_fields = [
         "strict_identifier_matches_found",
         "strict_identifier_sample_matches",
@@ -1227,6 +1231,15 @@ def _integrate_operational_summary_with_canonical_reconciliation(
     )
     operational_summary_payload["strict_identifier_legacy_operational_counters_detected"] = legacy_detected
     operational_summary_payload["strict_identifier_operational_payload_replaced"] = True
+    operational_summary_payload["strict_identifier_runtime_results_integrated"] = True
+    operational_summary_payload["strict_identifier_export_pipeline_source"] = "canonical_runtime_reconciliation"
+    operational_summary_payload["strict_identifier_audit_pipeline_disconnected_counters_detected"] = legacy_detected
+    operational_summary_payload["strict_identifier_audit_pipeline_disconnected"] = False
+    operational_summary_payload["strict_identifier_unique_tickers_count"] = len(operational_summary_payload.get("strict_identifier_unique_tickers_found") or [])
+    operational_summary_payload["strict_identifier_unique_exchanges_count"] = len(operational_summary_payload.get("strict_identifier_unique_exchanges_found") or [])
+    if legacy_detected and "audit_pipeline_disconnected_counters_detected" not in operational_warnings:
+        operational_warnings.append("audit_pipeline_disconnected_counters_detected")
+    operational_summary_payload["strict_identifier_operational_export_warnings"] = operational_warnings
     return operational_summary_payload
 
 

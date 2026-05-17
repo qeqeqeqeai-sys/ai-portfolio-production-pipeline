@@ -839,6 +839,13 @@ def test_operational_summary_integration_replaces_legacy_counters():
     assert integrated["strict_identifier_operational_export_matches_runtime"] is True
     assert integrated["strict_identifier_legacy_operational_counters_detected"] is True
     assert integrated["strict_identifier_operational_summary_integrated"] is True
+    assert integrated["strict_identifier_runtime_results_integrated"] is True
+    assert integrated["strict_identifier_export_pipeline_source"] == "canonical_runtime_reconciliation"
+    assert integrated["strict_identifier_audit_pipeline_disconnected"] is False
+    assert integrated["strict_identifier_audit_pipeline_disconnected_counters_detected"] is True
+    assert integrated["strict_identifier_unique_tickers_count"] == 1
+    assert integrated["strict_identifier_unique_exchanges_count"] == 1
+    assert "audit_pipeline_disconnected_counters_detected" in integrated["strict_identifier_operational_export_warnings"]
 
 
 def test_operational_summary_integration_flags_export_drift_warning():
@@ -869,3 +876,15 @@ def test_operational_summary_integration_flags_export_drift_warning():
     assert integrated["strict_identifier_runtime_vs_operational_export_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
     assert integrated["strict_identifier_serialized_vs_operational_export_delta"]["rows_with_ticker_delta"] == -1
     assert "operational_export_mismatch_detected" in integrated["strict_identifier_operational_export_warnings"]
+
+
+def test_operational_summary_preserves_audit_counters_separately():
+    runtime = {"strict_identifier_matches_found": 5, "rows_with_ticker": 2, "rows_with_exchange": 2, "evidence_rows_with_ticker": 5, "evidence_rows_with_exchange": 5}
+    canonical = {**runtime, "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ"}], "strict_identifier_unique_tickers_found": ["NVDA", "AAPL"], "strict_identifier_unique_exchanges_found": ["NASDAQ", "NYSE"]}
+    operational = {"strict_identifier_matches_found": 0, "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0, "evidence_join_rows_used": 124, "candidate_rows_read": 100, "evidence_rows_read": 0}
+    integrated = mod._integrate_operational_summary_with_canonical_reconciliation(operational, runtime, dict(runtime), canonical)
+    assert integrated["evidence_join_rows_used"] == 124
+    assert integrated["candidate_rows_read"] == 100
+    assert integrated["evidence_rows_read"] == 0
+    assert integrated["strict_identifier_pre_integration_audit_counters"]["strict_identifier_matches_found"] == 0
+    assert integrated["strict_identifier_matches_found"] == 5
