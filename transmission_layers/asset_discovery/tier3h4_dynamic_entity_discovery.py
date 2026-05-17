@@ -1106,30 +1106,80 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             diagnostics["unique_index_names_detected"] = sorted(unique_index_names)
             diagnostics["unique_index_column_sets_detected"] = sorted(unique_index_signatures)
 
-        constraints_response = requests.get(
-            f"{url}/rest/v1/information_schema.table_constraints",
-            headers=constraint_headers,
-            params={
-                "table_schema": "eq.public",
-                "table_name": f"eq.{table_name}",
-                "constraint_type": "eq.UNIQUE",
-                "select": "constraint_name",
-            },
-            timeout=60,
-        )
-        constraint_names: list[str] = []
-        if constraints_response.status_code < 400:
-            constraints_payload = constraints_response.json()
-            if isinstance(constraints_payload, list):
-                constraint_names = sorted(
-                    [row.get("constraint_name") for row in constraints_payload if isinstance(row, dict) and row.get("constraint_name")]
+        unique_constraint_rows: list[dict[str, Any]] = []
+        constraint_catalog_sql = """
+SELECT
+    con.conname AS constraint_name,
+    rel.relname AS table_name,
+    nsp.nspname AS schema_name,
+    array_agg(att.attname ORDER BY attnum_idx.ordinality) AS column_names
+FROM pg_constraint con
+JOIN pg_class rel
+    ON rel.oid = con.conrelid
+JOIN pg_namespace nsp
+    ON nsp.oid = rel.relnamespace
+JOIN unnest(con.conkey)
+    WITH ORDINALITY AS attnum_idx(attnum, ordinality)
+    ON TRUE
+JOIN pg_attribute att
+    ON att.attrelid = rel.oid
+   AND att.attnum = attnum_idx.attnum
+WHERE con.contype = 'u'
+  AND nsp.nspname = 'public'
+  AND rel.relname = %s
+GROUP BY
+    con.conname,
+    rel.relname,
+    nsp.nspname;
+""".strip()
+        rpc_variants = [
+            ("execute_sql", {"query": constraint_catalog_sql % f"'{table_name}'"}),
+            ("run_sql", {"query": constraint_catalog_sql % f"'{table_name}'"}),
+            ("sql", {"query": constraint_catalog_sql % f"'{table_name}'"}),
+        ]
+        for rpc_name, payload in rpc_variants:
+            try:
+                rpc_response = requests.post(
+                    f"{url}/rest/v1/rpc/{rpc_name}",
+                    headers={**constraint_headers, "Content-Type": "application/json"},
+                    json=payload,
+                    timeout=60,
                 )
-        diagnostics["table_unique_constraints"] = constraint_names
-        diagnostics["unique_constraint_names_detected"] = constraint_names
-        unique_constraint_signatures: list[str] = []
-        formatted_constraint_descriptors: list[str] = []
-        if constraint_names:
-            for cname in constraint_names:
+                if rpc_response.status_code >= 400:
+                    continue
+                rpc_payload = rpc_response.json()
+                if isinstance(rpc_payload, list):
+                    unique_constraint_rows = [row for row in rpc_payload if isinstance(row, dict)]
+                    if unique_constraint_rows:
+                        break
+                elif isinstance(rpc_payload, dict):
+                    nested_rows = rpc_payload.get("rows") or rpc_payload.get("result") or rpc_payload.get("data")
+                    if isinstance(nested_rows, list):
+                        unique_constraint_rows = [row for row in nested_rows if isinstance(row, dict)]
+                        if unique_constraint_rows:
+                            break
+            except Exception:
+                continue
+        if not unique_constraint_rows:
+            constraints_response = requests.get(
+                f"{url}/rest/v1/information_schema.table_constraints",
+                headers=constraint_headers,
+                params={
+                    "table_schema": "eq.public",
+                    "table_name": f"eq.{table_name}",
+                    "constraint_type": "eq.UNIQUE",
+                    "select": "constraint_name",
+                },
+                timeout=60,
+            )
+            constraint_names_fallback: list[str] = []
+            if constraints_response.status_code < 400:
+                constraints_payload = constraints_response.json()
+                if isinstance(constraints_payload, list):
+                    constraint_names_fallback = sorted(
+                        [row.get("constraint_name") for row in constraints_payload if isinstance(row, dict) and row.get("constraint_name")]
+                    )
+            for cname in constraint_names_fallback:
                 cols_response = requests.get(
                     f"{url}/rest/v1/information_schema.key_column_usage",
                     headers=constraint_headers,
@@ -1148,11 +1198,21 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                 if not isinstance(cols_payload, list):
                     continue
                 cols = [r.get("column_name") for r in cols_payload if isinstance(r, dict) and r.get("column_name")]
-                normalized_cols = _normalize_column_list(cols)
-                if normalized_cols:
-                    signature = ",".join(normalized_cols)
-                    unique_constraint_signatures.append(signature)
-                    formatted_constraint_descriptors.append(f"{cname}({signature})")
+                unique_constraint_rows.append({"constraint_name": cname, "column_names": cols})
+        constraint_names = sorted({str(row.get("constraint_name")).strip() for row in unique_constraint_rows if row.get("constraint_name")})
+        diagnostics["table_unique_constraints"] = constraint_names
+        diagnostics["unique_constraint_names_detected"] = constraint_names
+        unique_constraint_signatures: list[str] = []
+        formatted_constraint_descriptors: list[str] = []
+        for row in unique_constraint_rows:
+            cname = str(row.get("constraint_name") or "").strip()
+            if not cname:
+                continue
+            normalized_cols = _normalize_column_list(row.get("column_names"))
+            if normalized_cols:
+                signature = ",".join(normalized_cols)
+                unique_constraint_signatures.append(signature)
+                formatted_constraint_descriptors.append(f"{cname}({signature})")
         diagnostics["unique_constraint_column_sets_detected"] = sorted(set(unique_constraint_signatures))
         diagnostics["failing_table_unique_constraints"] = sorted(set(formatted_constraint_descriptors)) if formatted_constraint_descriptors else constraint_names
         diagnostics["failing_unique_constraints"] = diagnostics["failing_table_unique_constraints"]
