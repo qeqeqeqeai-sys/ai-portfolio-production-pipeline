@@ -45,3 +45,32 @@ The summary includes row counts, confidence status distribution, suppression/amb
 
 ## Future guardrail
 If LLM classification is added later, LLM output can only be advisory; deterministic validation must confirm before any promotion logic (outside 4C.1 scope).
+
+## Tier 3H.4C.2 Resolution Quality Calibration
+
+### Why 3H.4C.1 suppressed all rows
+3H.4C.1 used a single fixed evidence table read path. If that read failed (e.g., 404 on an alternate table name), the resolver had no evidence/exchange context and over-suppressed candidates.
+
+### Source-table fallback behavior
+The resolver now performs deterministic fallback discovery for both candidate and evidence tables and records attempted/selected table names plus warnings in `logs/tier3h4c_entity_resolution_summary.json`.
+
+### Canonical registry bootstrap
+A static deterministic registry bootstrap is introduced for known AI/semiconductor/cloud entities. It is advisory-only and used solely for calibration. It does not write to, mutate, or promote into the monitored universe.
+
+### Safe exchange inference
+Exchange is inferred only when ticker match is exact and unique in the static registry, and only when candidate exchange is missing.
+
+### Revised confidence/status calibration
+Scoring now includes registry match/inference and evidence presence; hard suppression remains for unsafe cases (generic names, suspicious tickers, ETF/company conflict).
+
+### Status interpretation
+- `resolved_high_confidence`: deterministic strong match with sufficient evidence/registry support.
+- `resolved_medium_confidence`: deterministic likely match requiring less caution than unresolved.
+- `unresolved_review`: potentially valid but missing critical context (commonly exchange/evidence).
+- `suppressed`: unsafe or low-quality mapping blocked by hard safeguards.
+
+### Why LLM is still not used
+Tier 3H.4C.2 remains deterministic and auditable with no LLM/OpenAI classification.
+
+### Why registry is not universe promotion
+Registry entries are bootstrap hints for advisory resolution only. They do not constitute monitored-universe persistence or candidate promotion.
