@@ -84,7 +84,7 @@ def test_advisory_only_no_openai_no_monitored_universe_writes(monkeypatch):
     assert all(r["advisory_status"] in {"advisory_review", "advisory_rejected"} for r in rows)
 
 
-def test_normalize_source_result_payload_extracts_explicit_fields_only():
+def test_normalize_source_result_payload_preserves_raw_result_object():
     payload = mod.normalize_source_result_payload({
         "title": "Doc",
         "url": "https://example.com",
@@ -93,13 +93,12 @@ def test_normalize_source_result_payload_extracts_explicit_fields_only():
         "metadata": {"lang": "en"},
         "extra_noise": "ignore",
     })
-    assert payload == {
-        "title": "Doc",
-        "url": "https://example.com",
-        "content": "Body",
-        "score": 0.7,
-        "metadata": {"lang": "en"},
-    }
+    assert payload["title"] == "Doc"
+    assert payload["url"] == "https://example.com"
+    assert payload["content"] == "Body"
+    assert payload["score"] == 0.7
+    assert payload["metadata"] == {"lang": "en"}
+    assert payload["extra_noise"] == "ignore"
 
 
 def test_phase2b_source_result_persistence_contains_raw_source_payload(monkeypatch):
@@ -135,4 +134,21 @@ def test_phase2b_source_result_persistence_contains_raw_source_payload(monkeypat
     assert row["raw_evidence"]["source_result"]["title"] == "Grid Demand Rises"
     assert row["raw_evidence"]["source_result"]["content"] == "AI data center power demand trend"
     assert "candidate_context" in row["raw_evidence"]
+    assert row["raw_evidence"]["persistence_phase"] == "tier3h4c3_phase2b_immediate_source_result_persistence"
     assert row.get("candidate_ticker") is None
+
+
+def test_tavily_pre_aggregation_diagnostics_increment(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        mod,
+        "_collect_tavily",
+        lambda *args, **kwargs: ([{"url": "https://x.example.com/a", "title": "A", "content": "C"}], None),
+    )
+    _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert evidence_rows
+    assert summary["tavily_result_rows_seen_before_aggregation"] > 0
+    assert summary["tavily_result_rows_persisted_before_aggregation"] > 0
+    assert summary["source_level_evidence_rows_written"] > 0
