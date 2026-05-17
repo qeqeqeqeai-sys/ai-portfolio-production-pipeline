@@ -854,6 +854,11 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "failing_response_body": None,
         "table_unique_constraints": [],
         "failing_upsert_has_matching_unique_constraint": None,
+        "db_managed_columns": [],
+        "excluded_required_columns": [],
+        "effective_required_columns": [],
+        "final_payload_matches_effective_schema": False,
+        "http_409_classification": None,
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -936,8 +941,14 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             diagnostics["evidence_table_actual_column_types"] = actual_types
             diagnostics["evidence_table_nullable_fields"] = sorted(nullable_fields)
             diagnostics["evidence_upsert_destination_table_columns"] = actual_columns
+            db_managed_columns = sorted([c for c in ["id", "created_at", "updated_at"] if c in set(actual_columns)])
+            effective_required_fields = sorted(required_fields - set(db_managed_columns))
             payload_missing_from_table = sorted(payload_keys_set - set(actual_columns))
-            required_missing_from_payload = sorted(required_fields - payload_keys_set)
+            required_missing_from_payload = sorted(set(effective_required_fields) - payload_keys_set)
+            excluded_required_columns = sorted(required_fields - set(effective_required_fields))
+            diagnostics["db_managed_columns"] = db_managed_columns
+            diagnostics["excluded_required_columns"] = excluded_required_columns
+            diagnostics["effective_required_columns"] = effective_required_fields
             diagnostics["payload_fields_missing_from_table"] = payload_missing_from_table
             diagnostics["required_table_fields_missing_from_payload"] = required_missing_from_payload
             diagnostics["payload_vs_schema_missing_columns"] = required_missing_from_payload
@@ -969,12 +980,18 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                 payload_keys_set = set(aligned_keys)
                 diagnostics["payload_fields_missing_from_table"] = sorted(payload_keys_set - allowed_columns)
                 diagnostics["payload_vs_schema_extra_columns"] = diagnostics["payload_fields_missing_from_table"]
-                diagnostics["required_table_fields_missing_from_payload"] = sorted(required_fields - payload_keys_set)
+                diagnostics["required_table_fields_missing_from_payload"] = sorted(set(effective_required_fields) - payload_keys_set)
                 diagnostics["payload_vs_schema_missing_columns"] = diagnostics["required_table_fields_missing_from_payload"]
+                diagnostics["final_payload_matches_effective_schema"] = (
+                    len(diagnostics["removed_unsupported_columns"]) == 0
+                    and len(diagnostics["required_table_fields_missing_from_payload"]) == 0
+                )
+                diagnostics["final_payload_matches_schema"] = diagnostics["final_payload_matches_effective_schema"]
             else:
                 diagnostics["final_schema_aligned_payload_keys"] = sorted(payload_keys_set)
                 diagnostics["removed_unsupported_columns"] = []
                 diagnostics["final_payload_matches_schema"] = True
+                diagnostics["final_payload_matches_effective_schema"] = True
         else:
             diagnostics["schema_introspection_status"] = f"table_schema_not_found:{schema_response.status_code}"
             diagnostics["schema_introspection_error"] = (schema_response.text or "")[:4000]
@@ -1177,6 +1194,21 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                         inferred_type_conflicts.append(key_name)
             diagnostics["type_conflict_fields"] = sorted(set(inferred_type_conflicts))
             diagnostics["payload_vs_schema_type_conflicts"] = diagnostics["type_conflict_fields"]
+            if r.status_code == 409:
+                code = str(diagnostics.get("write_error_code") or "")
+                message = str(diagnostics.get("write_error_message") or "").lower()
+                details = str(diagnostics.get("write_error_details") or "").lower()
+                conflict_text = f"{message} {details}"
+                if (
+                    write_method == "upsert"
+                    and diagnostics.get("failing_upsert_has_matching_unique_constraint") is True
+                    and code in {"23505", "21000", "PGRST116", "PGRST123"}
+                ):
+                    diagnostics["http_409_classification"] = "expected_duplicate_conflict_behavior"
+                elif "duplicate" in conflict_text or "already exists" in conflict_text or "conflict" in conflict_text:
+                    diagnostics["http_409_classification"] = "benign_idempotent_conflict"
+                else:
+                    diagnostics["http_409_classification"] = "true_persistence_failure"
         status = "upserted" if r.status_code < 400 else f"upsert_failed:{r.status_code}"
         return (status, diagnostics) if include_diagnostics else status
     except Exception as exc:
