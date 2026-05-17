@@ -240,9 +240,25 @@ def main() -> int:
     if cand_meta.get("warning"): warnings.append(cand_meta["warning"])
     warnings.extend([w for w in ev_meta.get("warnings", []) if w])
 
+    strict_identifier_runtime_source = "persisted_evidence_rows" if evidence else ("embedded_in_memory_evidence" if persisted_rows_to_write else "none")
+    strict_identifier_rows_scanned = 0
+    strict_identifier_matches_found = 0
+    strict_identifier_sample_matches: list[dict] = []
+    strict_evidence_runtime_rows = evidence if evidence else persisted_rows_to_write
+
     by_asset = {}
-    for e in evidence:
+    for e in strict_evidence_runtime_rows:
+        strict_identifier_rows_scanned += 1
         extracted = extract_security_identifiers_from_evidence(e.get("evidence_text"), e.get("source_title"), e.get("source_url"), e.get("raw_evidence"), e.get("candidate_ticker"), e.get("candidate_exchange"))
+        if extracted.get("normalized_ticker") and extracted.get("normalized_exchange"):
+            strict_identifier_matches_found += 1
+            if len(strict_identifier_sample_matches) < 5:
+                strict_identifier_sample_matches.append({
+                    "ticker": extracted.get("normalized_ticker"),
+                    "exchange": extracted.get("normalized_exchange"),
+                    "source_url": e.get("source_url"),
+                    "extraction_method": extracted.get("extraction_method"),
+                })
         e.update(extracted)
         by_asset.setdefault(str(e.get("candidate_asset_id") or e.get("candidate_name") or ""), []).append(e)
 
@@ -365,6 +381,11 @@ def main() -> int:
         "evidence_table_columns_detected": sorted(list({k for e in evidence for k in e.keys()}))[:120],
         "candidate_rows_read": cand_meta.get("rows_read", 0), "evidence_rows_read": ev_meta.get("rows_read", 0),
         "evidence_join_rows_used": sum(len(v) for v in by_asset.values()),
+        "strict_identifier_extraction_enabled": True,
+        "strict_identifier_runtime_source": strict_identifier_runtime_source,
+        "strict_identifier_rows_scanned": strict_identifier_rows_scanned,
+        "strict_identifier_matches_found": strict_identifier_matches_found,
+        "strict_identifier_sample_matches": strict_identifier_sample_matches,
         "input_rows": len(candidates), "audit_rows_written": len(audit_rows) if write_status == "written" else 0,
         "rows_with_evidence": sum(1 for r in audit_rows if r.get("source_count", 0) > 0), "rows_without_evidence": sum(1 for r in audit_rows if r.get("source_count", 0) == 0),
         "rows_with_ticker": sum(1 for r in audit_rows if r.get("normalized_ticker")), "rows_without_ticker": sum(1 for r in audit_rows if not r.get("normalized_ticker")),
