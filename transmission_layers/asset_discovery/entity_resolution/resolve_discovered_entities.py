@@ -15,6 +15,7 @@ try:
     from .disambiguation_rules import apply_rules
     from .duplicate_consolidator import apply_duplicate_sizes
     from .canonical_registry import lookup_by_ticker, lookup_by_name, lookup_by_alias
+    from ..security_identifier_extraction import extract_security_identifier
 except ImportError:
     from transmission_layers.asset_discovery.entity_resolution.audit_writer import fetch_table_rows_with_fallback, write_audit_rows
     from transmission_layers.asset_discovery.entity_resolution.canonical_normalizer import normalize_name, guess_asset_type, is_generic_name
@@ -24,6 +25,7 @@ except ImportError:
     from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules import apply_rules
     from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import apply_duplicate_sizes
     from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_name, lookup_by_alias
+    from transmission_layers.asset_discovery.security_identifier_extraction import extract_security_identifier
 
 LOG_PATH = Path("logs/tier3h4c_entity_resolution_summary.json")
 CANDIDATE_TABLES = ["tier3h_dynamic_entity_discovery", "tier3h4_dynamic_entity_discovery", "tier3h_entity_discovery"]
@@ -71,8 +73,9 @@ def main() -> int:
     audit_rows = []
     for c in candidates:
         raw_name = c.get("candidate_name")
-        nt, suspicious = normalize_ticker(c.get("ticker") or c.get("candidate_ticker"))
-        ne_raw = normalize_exchange(c.get("exchange") or c.get("candidate_exchange"))
+        identifier = extract_security_identifier(c)
+        nt, suspicious = normalize_ticker(identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"))
+        ne_raw = normalize_exchange(identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"))
         nn = normalize_name(raw_name)
 
         ticker_matches = lookup_by_ticker(nt)
@@ -90,7 +93,7 @@ def main() -> int:
         source_count = len({u for u in urls})
         if not urls:
             urls, source_count = _extract_embedded_evidence(c)
-        asset_type = guess_asset_type(raw_name, nt, c)
+        asset_type = identifier.security_type if identifier.security_type != "unknown" else guess_asset_type(raw_name, nt, c)
         flags = {
             "has_ticker": bool(nt), "has_exchange": bool(normalized_exchange), "has_name": bool(nn),
             "asset_type_known": asset_type != "unknown", "source_count": source_count,
@@ -111,8 +114,12 @@ def main() -> int:
             "run_date_sgt": run_date, "workflow_run_id": workflow_run_id, "theme_name": theme,
             "raw_entity_name": raw_name, "normalized_name": nn,
             "candidate_ticker": c.get("ticker") or c.get("candidate_ticker"), "normalized_ticker": nt,
-            "candidate_exchange": c.get("exchange") or c.get("candidate_exchange"), "normalized_exchange": normalized_exchange,
-            "asset_type_guess": asset_type, "canonical_entity_id": ticker_matches[0].ticker if len(ticker_matches) == 1 else None,
+            "candidate_exchange": identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"), "normalized_exchange": identifier.normalized_exchange or normalized_exchange,
+            "asset_type_guess": asset_type, "canonical_entity_id": identifier.canonical_security_id or (ticker_matches[0].ticker if len(ticker_matches) == 1 else None),
+            "extracted_ticker": identifier.extracted_ticker, "raw_exchange": identifier.raw_exchange, "security_type": identifier.security_type,
+            "canonical_security_id": identifier.canonical_security_id, "identifier_source": identifier.identifier_source, "identifier_method": identifier.identifier_method,
+            "identifier_confidence": identifier.identifier_confidence, "identifier_status": identifier.identifier_status, "identifier_explanation": identifier.identifier_explanation,
+            "identifier_warnings": identifier.identifier_warnings,
             "resolution_status": status, "resolution_confidence": score,
             "rules_fired": list(rules or []), "suppression_reason": suppression_reason,
             "evidence_urls": list(urls or []), "source_count": int(source_count or 0),
