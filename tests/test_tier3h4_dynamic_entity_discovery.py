@@ -265,3 +265,56 @@ def test_force_fresh_env_parsing_and_branch_flag(monkeypatch):
     assert mod._force_fresh_evidence_enabled() is True
     _, _, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
     assert summary["runtime_force_fresh_branch_taken"] is True
+
+
+def test_fresh_evidence_quality_diagnostics_presence_and_determinism():
+    rows = [{
+        "source_url": "https://www.nasdaq.com/a",
+        "source_title": "NASDAQ: ABC rises",
+        "source_snippet": "Candidate MOCK::AI_POWER_DEMAND::1 on New York Stock Exchange has symbol ABC and substantial narrative text over forty chars.",
+        "evidence_text": "Ticker: ABC and NYSE:ABC are visible in this evidence body with enough text length to be meaningful.",
+        "candidate_name": "MOCK::AI_POWER_DEMAND::1",
+        "raw_evidence": {"source_result": {"url": "https://www.nasdaq.com/a"}},
+    }]
+    d1 = mod._fresh_evidence_quality_diagnostics(rows)
+    d2 = mod._fresh_evidence_quality_diagnostics(rows)
+    assert d1 == d2
+    required = [
+        "fresh_evidence_quality_diagnostics_enabled", "fresh_evidence_rows_observed", "fresh_evidence_rows_with_source_url",
+        "fresh_evidence_rows_with_source_title", "fresh_evidence_rows_with_source_content", "fresh_evidence_rows_with_raw_source_payload",
+        "fresh_evidence_rows_without_source_payload", "fresh_evidence_rows_with_candidate_name_mentions",
+        "fresh_evidence_rows_with_ticker_like_patterns", "fresh_evidence_rows_with_exchange_like_patterns",
+        "fresh_evidence_rows_with_meaningful_text", "fresh_evidence_rows_metadata_only", "fresh_evidence_avg_text_length",
+        "fresh_evidence_max_text_length", "fresh_evidence_empty_text_count", "fresh_evidence_sample_source_domains",
+        "fresh_evidence_sample_missing_payload_reasons", "fresh_evidence_quality_warning_count", "fresh_evidence_quality_warnings",
+    ]
+    assert all(k in d1 for k in required)
+
+
+def test_diagnostic_patterns_increment_counters_only_and_no_identifier_population():
+    rows = [{"source_url": "https://example.com", "source_title": "NYSE: XYZ", "source_snippet": "symbol: XYZ listed on NASDAQ", "evidence_text": "ticker: XYZ", "candidate_name": "C", "raw_evidence": {"source_result": {"x": 1}}}]
+    d = mod._fresh_evidence_quality_diagnostics(rows)
+    assert d["fresh_evidence_rows_with_ticker_like_patterns"] == 1
+    assert d["fresh_evidence_rows_with_exchange_like_patterns"] == 1
+    candidate_rows, _, _, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert all(r["ticker"] is None and r["exchange"] is None for r in candidate_rows)
+
+
+def test_metadata_only_meaningful_text_and_candidate_name_detection():
+    rows = [
+        {"source_url": "", "source_title": "", "source_snippet": "", "evidence_text": "weighted_score=10 suppression=none", "candidate_name": "Cand", "raw_evidence": {}},
+        {"source_url": "https://example.com/b", "source_title": "Long text", "source_snippet": "This evidence contains more than forty characters and mentions Cand exactly.", "evidence_text": "", "candidate_name": "Cand", "raw_evidence": {"source_result": {"a": 1}}},
+    ]
+    d = mod._fresh_evidence_quality_diagnostics(rows)
+    assert d["fresh_evidence_rows_metadata_only"] == 1
+    assert d["fresh_evidence_rows_with_meaningful_text"] == 1
+    assert d["fresh_evidence_rows_with_candidate_name_mentions"] == 1
+
+
+def test_fresh_evidence_quality_warnings_are_advisory_only():
+    d = mod._fresh_evidence_quality_diagnostics([])
+    assert d["fresh_evidence_quality_warning_count"] > 0
+    monkeypatch_seed = [mod.DiscoverySeed("ai_power_demand", "a", "b", None)]
+    rows, evidence_rows, summary, _ = mod.build_records(monkeypatch_seed, "2026-05-16")
+    assert rows is not None and evidence_rows is not None
+    assert "fresh_evidence_quality_warnings" in summary

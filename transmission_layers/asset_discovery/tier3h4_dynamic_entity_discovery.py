@@ -82,6 +82,11 @@ def _runtime_provenance(entrypoint_name: str) -> dict[str, Any]:
 def _force_fresh_evidence_enabled() -> bool:
     return os.getenv("TIER3H4_FORCE_FRESH_EVIDENCE", "").strip().lower() in {"1", "true", "yes"}
 
+TICKER_LIKE_PATTERN = re.compile(r"\b(?:[A-Z]{1,5}(?::[A-Z]{1,5})?|(?:NYSE|NASDAQ)\s*:\s*[A-Z]{1,5}|ticker\s*[:=]\s*[A-Z]{1,5}|symbol\s*[:=]\s*[A-Z]{1,5})\b")
+EXCHANGE_LIKE_PATTERN = re.compile(r"\b(?:NYSE|NASDAQ|Nasdaq|New York Stock Exchange|London Stock Exchange|LSE|SGX|Singapore Exchange|HKEX|Tokyo Stock Exchange|TSE)\b")
+MEANINGFUL_TEXT_MIN_LENGTH = 40
+METADATA_ONLY_PATTERN = re.compile(r"^\s*(?:weighted_score|evidence_count|suppression|metadata|operational|source_domain|tavily_score|published_date|evidence_rank)[\s:=;\w,._-]*$", re.IGNORECASE)
+
 
 def utc_now() -> datetime: return datetime.now(timezone.utc)
 def run_date_sgt(today_utc: datetime | None = None) -> str: return ((today_utc or utc_now()) + timedelta(hours=8)).date().isoformat()
@@ -244,6 +249,75 @@ def _collect_tavily(query_text: str, api_key: str, max_results: int = 5) -> tupl
     except Exception as exc:
         reason = "timeout" if "timeout" in str(exc).lower() else "provider_unavailable"
         return [], reason
+
+def _fresh_evidence_quality_diagnostics(evidence_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    domains: list[str] = []
+    missing_payload_reasons: list[str] = []
+    rows_with_candidate_name_mentions = 0
+    rows_with_ticker_like_patterns = 0
+    rows_with_exchange_like_patterns = 0
+    rows_with_meaningful_text = 0
+    rows_metadata_only = 0
+    empty_text_count = 0
+    text_lengths: list[int] = []
+    for row in evidence_rows:
+        source_url = _normalize_text(str(row.get("source_url") or ""))
+        source_title = _normalize_text(row.get("source_title"))
+        source_content = _normalize_text(row.get("source_snippet"))
+        raw_payload = (row.get("raw_evidence") or {}).get("source_result") if isinstance(row.get("raw_evidence"), dict) else None
+        candidate_name = _normalize_text(row.get("candidate_name"))
+        evidence_text = _normalize_text(row.get("evidence_text"))
+        combined_text = _normalize_text(" ".join([source_title, source_content, evidence_text]))
+        text_lengths.append(len(combined_text))
+        if source_url:
+            domains.append(_normalize_domain(source_url))
+        if not combined_text:
+            empty_text_count += 1
+        if candidate_name and candidate_name.lower() in combined_text.lower():
+            rows_with_candidate_name_mentions += 1
+        if TICKER_LIKE_PATTERN.search(combined_text):
+            rows_with_ticker_like_patterns += 1
+        if EXCHANGE_LIKE_PATTERN.search(combined_text):
+            rows_with_exchange_like_patterns += 1
+        metadata_only = bool(combined_text) and METADATA_ONLY_PATTERN.search(combined_text) is not None
+        if metadata_only:
+            rows_metadata_only += 1
+        elif len(combined_text) >= MEANINGFUL_TEXT_MIN_LENGTH:
+            rows_with_meaningful_text += 1
+        if not isinstance(raw_payload, dict) or not raw_payload:
+            reason = "missing_raw_source_payload" if not isinstance(raw_payload, dict) else "empty_raw_source_payload"
+            if reason not in missing_payload_reasons:
+                missing_payload_reasons.append(reason)
+    rows_observed = len(evidence_rows)
+    warnings: list[str] = []
+    if rows_observed == 0: warnings.append("no_fresh_evidence_rows_observed")
+    if rows_observed > 0 and rows_metadata_only > (rows_observed / 2): warnings.append("most_rows_metadata_only")
+    if sum(1 for r in evidence_rows if bool(r.get("source_url"))) == 0: warnings.append("no_rows_with_source_urls")
+    if sum(1 for r in evidence_rows if bool(r.get("source_title"))) == 0: warnings.append("no_rows_with_source_titles")
+    if rows_with_meaningful_text == 0: warnings.append("no_rows_with_meaningful_text")
+    if rows_with_ticker_like_patterns == 0: warnings.append("no_ticker_like_patterns_detected")
+    if rows_with_exchange_like_patterns == 0: warnings.append("no_exchange_like_patterns_detected")
+    return {
+        "fresh_evidence_quality_diagnostics_enabled": True,
+        "fresh_evidence_rows_observed": rows_observed,
+        "fresh_evidence_rows_with_source_url": sum(1 for r in evidence_rows if bool(r.get("source_url"))),
+        "fresh_evidence_rows_with_source_title": sum(1 for r in evidence_rows if bool(r.get("source_title"))),
+        "fresh_evidence_rows_with_source_content": sum(1 for r in evidence_rows if bool(r.get("source_snippet"))),
+        "fresh_evidence_rows_with_raw_source_payload": sum(1 for r in evidence_rows if isinstance(((r.get("raw_evidence") or {}).get("source_result") if isinstance(r.get("raw_evidence"), dict) else None), dict) and bool((r.get("raw_evidence") or {}).get("source_result"))),
+        "fresh_evidence_rows_without_source_payload": sum(1 for r in evidence_rows if not isinstance(((r.get("raw_evidence") or {}).get("source_result") if isinstance(r.get("raw_evidence"), dict) else None), dict)),
+        "fresh_evidence_rows_with_candidate_name_mentions": rows_with_candidate_name_mentions,
+        "fresh_evidence_rows_with_ticker_like_patterns": rows_with_ticker_like_patterns,
+        "fresh_evidence_rows_with_exchange_like_patterns": rows_with_exchange_like_patterns,
+        "fresh_evidence_rows_with_meaningful_text": rows_with_meaningful_text,
+        "fresh_evidence_rows_metadata_only": rows_metadata_only,
+        "fresh_evidence_avg_text_length": round(sum(text_lengths) / max(1, len(text_lengths)), 2),
+        "fresh_evidence_max_text_length": max(text_lengths) if text_lengths else 0,
+        "fresh_evidence_empty_text_count": empty_text_count,
+        "fresh_evidence_sample_source_domains": sorted(set(d for d in domains if d))[:10],
+        "fresh_evidence_sample_missing_payload_reasons": missing_payload_reasons[:10],
+        "fresh_evidence_quality_warning_count": len(warnings),
+        "fresh_evidence_quality_warnings": warnings,
+    }
 
 def _supabase_get_rows(table: str, order: str, limit: int, filters: dict[str, str] | None = None) -> list[dict[str, Any]]:
     url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
@@ -433,7 +507,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         advisory_status = "advisory_review" if band != "rejected_or_noise" else "advisory_rejected"
         candidate_rows.append({"run_date_sgt": sgt_date, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "propagation_context_id": seed.propagation_context_id, "candidate_asset_id": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_name": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_type": "equity_candidate", "ticker": None, "exchange": None, "discovery_method": "tier3h4b_evidence_aware" if tavily_enabled else "tier3h4a_deterministic_scaffold", "evidence_sources": [{"query_text": e["query_text"], "source_url": e["source_url"], "source_domain": e["source_domain"], "quality": e["evidence_quality_score"], "cache_reused": e.get("cache_reused", False)} for e in seed_evidence], "evidence_count": evidence_count, "source_quality_score": avg_quality, "thematic_relevance_score": thematic_relevance_score, "entity_resolution_score": entity_resolution_score, "cross_source_score": cross_source_score, "candidate_confidence_score": confidence, "candidate_confidence_band": band, "confidence_explanation": f"weighted_score={confidence}; evidence_count={evidence_count}; domains={domain_count}; suppression={','.join(suppression) if suppression else 'none'}", "advisory_status": advisory_status, "rejection_reason": ",".join(suppression) if advisory_status == "advisory_rejected" else None, "llm_used": False, "llm_model": None, "llm_classification_json": None})
     sampled = evidence_rows[:3]
-    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "fresh_source_generation_validation_enabled": True, "persisted_evidence_reuse_bypassed": persisted_evidence_reuse_bypassed, "persisted_evidence_selection_skipped_due_to_force_refresh": persisted_evidence_selection_skipped_due_to_force_refresh, "fresh_source_generation_active": fresh_source_generation_active, "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason, "tavily_collection_path_executed": tavily_collection_path_executed, "fresh_source_generation_skip_reason": fresh_skip_reason, "evidence_generation_mode": evidence_generation_mode, "runtime_evidence_generation_branch_taken": runtime_evidence_generation_branch_taken, "runtime_persisted_reuse_branch_taken": runtime_persisted_reuse_branch_taken, "runtime_fresh_generation_branch_reachable": runtime_fresh_generation_branch_reachable, "runtime_source_loop_instrumentation_loaded": runtime_source_loop_instrumentation_loaded, "runtime_force_fresh_branch_taken": runtime_force_fresh_branch_taken, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_result_persistence_helper_called_count": ops["source_result_persistence_helper_called_count"], "fresh_source_rows_written": ops["fresh_source_rows_written"], "fresh_source_rows_write_errors": ops["fresh_source_rows_write_errors"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records"}
+    fresh_quality = _fresh_evidence_quality_diagnostics(evidence_rows)
+    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "fresh_source_generation_validation_enabled": True, "persisted_evidence_reuse_bypassed": persisted_evidence_reuse_bypassed, "persisted_evidence_selection_skipped_due_to_force_refresh": persisted_evidence_selection_skipped_due_to_force_refresh, "fresh_source_generation_active": fresh_source_generation_active, "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason, "tavily_collection_path_executed": tavily_collection_path_executed, "fresh_source_generation_skip_reason": fresh_skip_reason, "evidence_generation_mode": evidence_generation_mode, "runtime_evidence_generation_branch_taken": runtime_evidence_generation_branch_taken, "runtime_persisted_reuse_branch_taken": runtime_persisted_reuse_branch_taken, "runtime_fresh_generation_branch_reachable": runtime_fresh_generation_branch_reachable, "runtime_source_loop_instrumentation_loaded": runtime_source_loop_instrumentation_loaded, "runtime_force_fresh_branch_taken": runtime_force_fresh_branch_taken, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_result_persistence_helper_called_count": ops["source_result_persistence_helper_called_count"], "fresh_source_rows_written": ops["fresh_source_rows_written"], "fresh_source_rows_write_errors": ops["fresh_source_rows_write_errors"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records", **fresh_quality}
     return candidate_rows, evidence_rows, evidence_summary, ops
 
 def main() -> int:
@@ -457,6 +532,14 @@ def main() -> int:
     VALIDATION_PATH.write_text(json.dumps(validation, indent=2), encoding="utf-8")
     OPERATIONAL_SUMMARY_PATH.write_text(json.dumps(operational_summary, indent=2), encoding="utf-8")
     print(f"[tier3h4] run_date_sgt={sgt_date} records={len(records)} evidence_rows={len(evidence_rows)} cache_hits={ops['cache_hits']} fallback={evidence_summary['fallback_mode']} upsert={upsert_status}")
+    print("[tier3h4] fresh evidence quality diagnostics:")
+    print(f"[tier3h4] rows_observed={evidence_summary['fresh_evidence_rows_observed']}")
+    print(f"[tier3h4] meaningful_text={evidence_summary['fresh_evidence_rows_with_meaningful_text']}")
+    print(f"[tier3h4] source_urls={evidence_summary['fresh_evidence_rows_with_source_url']}")
+    print(f"[tier3h4] source_titles={evidence_summary['fresh_evidence_rows_with_source_title']}")
+    print(f"[tier3h4] ticker_like_patterns={evidence_summary['fresh_evidence_rows_with_ticker_like_patterns']}")
+    print(f"[tier3h4] exchange_like_patterns={evidence_summary['fresh_evidence_rows_with_exchange_like_patterns']}")
+    print(f"[tier3h4] warnings={evidence_summary['fresh_evidence_quality_warning_count']}")
     return 0
 
 if __name__ == "__main__":
