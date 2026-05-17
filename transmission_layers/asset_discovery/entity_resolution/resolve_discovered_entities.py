@@ -33,6 +33,11 @@ EVIDENCE_TABLES = ["tier3h_dynamic_entity_evidence", "tier3h4_dynamic_entity_evi
 EMBEDDED_EVIDENCE_KEYS = ["evidence_url", "source_url", "source_domain", "evidence_snippet", "source_title", "tavily_response", "evidence_sources", "source_count"]
 
 
+def _force_fresh_evidence_enabled() -> bool:
+    raw = str(os.getenv("TIER3H4_FORCE_FRESH_EVIDENCE", "")).strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
 def _normalize_value(value: object) -> str:
     return " ".join(str(value or "").strip().split())
 
@@ -220,7 +225,18 @@ def main() -> int:
     write_evidence_result = write_evidence_rows(persisted_rows_to_write)
     evidence_table_created_or_available = write_evidence_result.get("status") in {"written", "skipped:no_rows", "skipped:missing_supabase_env"}
 
-    evidence, ev_meta = fetch_table_rows_with_fallback(EVIDENCE_TABLES, run_date, theme)
+    force_fresh_evidence = _force_fresh_evidence_enabled()
+    if force_fresh_evidence:
+        evidence, ev_meta = [], {
+            "rows_read": 0,
+            "table_selected": None,
+            "tables_attempted": [],
+            "warnings": [],
+            "warning": None,
+            "read_skipped_due_to_force_fresh": True,
+        }
+    else:
+        evidence, ev_meta = fetch_table_rows_with_fallback(EVIDENCE_TABLES, run_date, theme)
     if cand_meta.get("warning"): warnings.append(cand_meta["warning"])
     warnings.extend([w for w in ev_meta.get("warnings", []) if w])
 
@@ -333,6 +349,8 @@ def main() -> int:
         "evidence_table_created_or_available": evidence_table_created_or_available,
         "candidate_table_selected": cand_meta.get("table_selected"), "evidence_table_selected": ev_meta.get("table_selected"),
         "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason,
+        "force_fresh_evidence": force_fresh_evidence,
+        "evidence_table_read_skipped_due_to_force_fresh": bool(ev_meta.get("read_skipped_due_to_force_fresh")),
         "evidence_rows_written": write_evidence_result.get("rows_written", 0),
         "evidence_fallback_used": not bool(evidence),
         "evidence_candidate_join_key_used": "candidate_asset_id_or_candidate_name",
