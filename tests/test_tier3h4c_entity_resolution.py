@@ -323,3 +323,60 @@ def test_phase2b_one_source_result_persists_one_evidence_row_and_domain_derivati
     assert "candidate_context" in row["raw_evidence"]
     assert row["extracted_ticker"] is None
     assert row["extracted_exchange"] is None
+
+
+def test_main_force_fresh_skips_persisted_evidence_read_and_preserves_non_persisted_mode(monkeypatch):
+    from transmission_layers.asset_discovery.entity_resolution import resolve_discovered_entities as mod
+    if LOG_PATH.exists():
+        LOG_PATH.unlink()
+
+    monkeypatch.setenv("TIER3H4_FORCE_FRESH_EVIDENCE", "1")
+
+    calls = {"evidence_fetch_called": 0}
+
+    def fake_fetch(tables, *_args):
+        if "dynamic_entity_discovery" in tables[0]:
+            return [{"candidate_asset_id": "1", "candidate_name": "Acme", "evidence_sources": [{"source_url": "https://fresh.example.com", "source_title": "Fresh", "source_snippet": "New evidence"}]}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+        calls["evidence_fetch_called"] += 1
+        return [{"candidate_asset_id": "1", "source_url": "https://old.example.com"}] * 500, {"rows_read": 500, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+
+    monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
+    monkeypatch.setattr(mod, "write_evidence_rows", lambda rows: {"status": "written", "rows_written": len(rows)})
+    monkeypatch.setattr(mod, "write_audit_rows", lambda rows: {"status": "written"})
+
+    assert mod.main() == 0
+    assert calls["evidence_fetch_called"] == 0
+
+    summary = __import__("json").loads(LOG_PATH.read_text())
+    assert summary["force_fresh_evidence"] is True
+    assert summary["evidence_table_read_skipped_due_to_force_fresh"] is True
+    assert summary["evidence_rows_read"] == 0
+    assert summary["evidence_join_rows_used"] == 0
+    assert summary["evidence_source_mode"] != "persisted_evidence_table"
+    assert summary["evidence_selected_reason"] != "separate evidence table rows found"
+
+
+def test_main_default_mode_still_reads_persisted_evidence(monkeypatch):
+    from transmission_layers.asset_discovery.entity_resolution import resolve_discovered_entities as mod
+    if LOG_PATH.exists():
+        LOG_PATH.unlink()
+
+    monkeypatch.delenv("TIER3H4_FORCE_FRESH_EVIDENCE", raising=False)
+
+    def fake_fetch(tables, *_args):
+        if "dynamic_entity_discovery" in tables[0]:
+            return [{"candidate_asset_id": "1", "candidate_name": "Acme"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+        return [{"candidate_asset_id": "1", "source_url": "https://persisted.example.com", "source_title": "Persisted", "evidence_text": "Title: Persisted\n\nSnippet: body"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+
+    monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
+    monkeypatch.setattr(mod, "write_evidence_rows", lambda rows: {"status": "written", "rows_written": len(rows)})
+    monkeypatch.setattr(mod, "write_audit_rows", lambda rows: {"status": "written"})
+
+    assert mod.main() == 0
+    summary = __import__("json").loads(LOG_PATH.read_text())
+    assert summary["force_fresh_evidence"] is False
+    assert summary["evidence_table_read_skipped_due_to_force_fresh"] is False
+    assert summary["evidence_source_mode"] == "persisted_evidence_table"
+    assert summary["evidence_selected_reason"] == "separate evidence table rows found"
+    assert summary["evidence_rows_read"] == 1
+    assert summary["evidence_join_rows_used"] == 1
