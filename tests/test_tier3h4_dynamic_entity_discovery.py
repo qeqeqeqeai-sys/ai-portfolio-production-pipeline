@@ -391,3 +391,74 @@ def test_strict_extraction_populates_only_when_explicit_pattern_exists():
     assert "NASDAQ" in summary["strict_identifier_unique_exchanges_found"]
     assert summary["strict_identifier_phase"] == "3B_exchange_contextual"
     assert summary["strict_identifier_contextual_patterns_enabled"] is True
+
+
+def test_strict_extraction_propagation_and_summary_consistency(monkeypatch):
+    rows = [{
+        "source_url": "https://example.com/a",
+        "source_title": "Company update",
+        "source_snippet": "NASDAQ: NVDA",
+        "source_rank": 1,
+        "retrieved_at": "2026-05-16T00:00:00+00:00",
+        "cache_reused": True,
+    }]
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
+    _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert evidence_rows[0]["extracted_ticker"] == "NVDA"
+    assert evidence_rows[0]["extracted_exchange"] == "NASDAQ"
+    assert evidence_rows[0]["normalized_ticker"] == "NVDA"
+    assert evidence_rows[0]["normalized_exchange"] == "NASDAQ"
+    assert evidence_rows[0]["extraction_method"]
+    assert evidence_rows[0]["extraction_confidence"] == "high"
+    assert summary["strict_identifier_matches_found"] >= 1
+    assert summary["strict_identifier_sample_matches"]
+    assert summary["strict_identifier_results_propagated"] is True
+    assert summary["strict_identifier_propagated_rows_count"] >= 1
+    assert summary["strict_identifier_propagation_target"] == "evidence_rows"
+
+
+def test_strict_extraction_no_propagation_for_rejected_or_diagnostic_only(monkeypatch):
+    rows = [{
+        "source_url": "https://example.com/a",
+        "source_title": "diag",
+        "source_snippet": "ticker NVDA and AI growth",
+        "source_rank": 1,
+        "retrieved_at": "2026-05-16T00:00:00+00:00",
+        "cache_reused": True,
+    }]
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
+    _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert evidence_rows
+    assert evidence_rows[0].get("normalized_ticker") is None
+    assert evidence_rows[0].get("normalized_exchange") is None
+    assert summary["strict_identifier_matches_found"] == 0
+    assert summary["strict_identifier_results_propagated"] is False
+    assert summary["strict_identifier_propagated_rows_count"] == 0
+
+
+def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
+    monkeypatch.setattr(mod, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(mod, "SUMMARY_PATH", tmp_path / "summary.json")
+    monkeypatch.setattr(mod, "EVIDENCE_SUMMARY_PATH", tmp_path / "evidence_summary.json")
+    monkeypatch.setattr(mod, "VALIDATION_PATH", tmp_path / "validation.json")
+    monkeypatch.setattr(mod, "OPERATIONAL_SUMMARY_PATH", tmp_path / "operational_summary.json")
+    monkeypatch.setattr(mod, "load_upstream_context", lambda: ([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], {}, False))
+    monkeypatch.setattr(mod, "upsert_supabase", lambda *args, **kwargs: "upserted")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [{
+        "source_url": "https://example.com/a",
+        "source_title": "Company update",
+        "source_snippet": "NASDAQ: NVDA",
+        "source_rank": 1,
+        "retrieved_at": "2026-05-16T00:00:00+00:00",
+        "cache_reused": True,
+    }])
+
+    rc = mod.main()
+    assert rc == 0
+    import json
+    summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert summary["strict_identifier_matches_found"] >= 1
+    assert summary["strict_identifier_sample_matches"]
+    assert summary["strict_identifier_log_summary_match"] is True
+    assert summary["evidence_rows_with_ticker"] >= 1
+    assert summary["evidence_rows_with_exchange"] >= 1
