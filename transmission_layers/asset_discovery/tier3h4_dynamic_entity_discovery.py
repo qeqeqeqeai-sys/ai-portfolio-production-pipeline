@@ -618,6 +618,7 @@ def compute_candidate_score(evidence_count_score: float, source_quality_score: f
     return round(WEIGHTS["evidence_count_score"] * evidence_count_score + WEIGHTS["thematic_relevance_score"] * thematic_relevance_score + WEIGHTS["source_quality_score"] * source_quality_score + WEIGHTS["entity_resolution_score"] * entity_resolution_score + WEIGHTS["cross_source_score"] * cross_source_score, 4)
 
 def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: str, include_diagnostics: bool = False) -> str | tuple[str, dict[str, Any]]:
+    resolution_fields = {"canonical_entity_id", "normalized_ticker", "normalized_exchange", "duplicate_group_key", "duplicate_group_size", "resolution_confidence", "resolution_status", "rules_fired", "suppression_reason"}
     diagnostics: dict[str, Any] = {
         "evidence_upsert_payload_columns": [],
         "evidence_upsert_payload_keys": [],
@@ -636,6 +637,13 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "evidence_upsert_exception_repr": None,
         "evidence_upsert_schema_mismatch_columns": [],
         "evidence_upsert_suspect_type_fields": [],
+        "evidence_upsert_payload_type": "unknown",
+        "evidence_upsert_destination_table": table_name,
+        "evidence_upsert_destination_table_columns": [],
+        "evidence_upsert_contains_resolution_fields": False,
+        "evidence_upsert_contains_nested_objects": False,
+        "evidence_upsert_nested_object_fields": [],
+        "evidence_upsert_resolution_fields_present": [],
         "write_error_code": None,
         "write_error_message": None,
         "write_error_details": None,
@@ -647,6 +655,25 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["evidence_upsert_payload_keys"] = row_keys
         diagnostics["evidence_upsert_first_row_keys"] = sorted(list(rows[0].keys())) if isinstance(rows[0], dict) else []
         diagnostics["evidence_upsert_first_failed_row"] = rows[0] if isinstance(rows[0], dict) else None
+        diagnostics["evidence_upsert_resolution_fields_present"] = sorted([k for k in row_keys if k in resolution_fields])
+        diagnostics["evidence_upsert_contains_resolution_fields"] = bool(diagnostics["evidence_upsert_resolution_fields_present"])
+        nested_fields: set[str] = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for k, v in row.items():
+                if isinstance(v, (dict, list, tuple)):
+                    nested_fields.add(k)
+        diagnostics["evidence_upsert_nested_object_fields"] = sorted(nested_fields)
+        diagnostics["evidence_upsert_contains_nested_objects"] = bool(nested_fields)
+        if diagnostics["evidence_upsert_contains_resolution_fields"]:
+            diagnostics["evidence_upsert_payload_type"] = "post_resolution_audit_like"
+        elif any(k in row_keys for k in ["source_url", "source_title", "source_snippet", "raw_evidence"]):
+            diagnostics["evidence_upsert_payload_type"] = "raw_enriched_source_evidence_like"
+        elif any(k in row_keys for k in ["candidate_confidence_score", "advisory_status", "evidence_sources"]):
+            diagnostics["evidence_upsert_payload_type"] = "canonical_reconciliation_like"
+        else:
+            diagnostics["evidence_upsert_payload_type"] = "unknown"
         try:
             diagnostics["evidence_upsert_payload_size_bytes"] = len(json.dumps(rows, default=str))
         except Exception:
@@ -661,6 +688,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         return (status, diagnostics) if include_diagnostics else status
     try:
         r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=rows, timeout=60)
+        destination_columns_header = (r.headers.get("x-rel-columns") or r.headers.get("content-profile") or "") if hasattr(r, "headers") else ""
+        if isinstance(destination_columns_header, str) and destination_columns_header:
+            diagnostics["evidence_upsert_destination_table_columns"] = sorted([c.strip() for c in destination_columns_header.split(",") if c.strip()])
         diagnostics["evidence_upsert_http_status"] = r.status_code
         diagnostics["evidence_upsert_response_body"] = r.content[:16000].decode("utf-8", errors="replace") if isinstance(r.content, (bytes, bytearray)) else None
         diagnostics["evidence_upsert_response_text"] = (r.text or "")[:8000]
@@ -695,7 +725,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             suspect_fields=[]
             if isinstance(first_row, dict):
                 for k,v in first_row.items():
-                    if isinstance(v, (set, bytes, bytearray, complex)):
+                    if isinstance(v, (set, bytes, bytearray, complex, dict, list, tuple)):
                         suspect_fields.append(k)
             diagnostics["evidence_upsert_suspect_type_fields"] = suspect_fields
         status = "upserted" if r.status_code < 400 else f"upsert_failed:{r.status_code}"
@@ -1446,6 +1476,17 @@ def main() -> int:
     top_rejection_reasons = sorted((evidence_summary.get("strict_identifier_rejection_reason_counts") or {}).items(), key=lambda kv: (-kv[1], kv[0]))[:3]
     print(f"[tier3h4] top_rejection_reasons={top_rejection_reasons}")
     print(f"[tier3h4] warnings={evidence_summary['fresh_evidence_quality_warning_count']}")
+    print("[tier3h4] evidence upsert payload diagnostics:")
+    print(f"[tier3h4] evidence_upsert_payload_type={evidence_upsert_diag.get('evidence_upsert_payload_type')}")
+    print(f"[tier3h4] evidence_upsert_destination_table={evidence_upsert_diag.get('evidence_upsert_destination_table')}")
+    print(f"[tier3h4] evidence_upsert_destination_table_columns={evidence_upsert_diag.get('evidence_upsert_destination_table_columns')}")
+    print(f"[tier3h4] evidence_upsert_payload_count={evidence_upsert_diag.get('evidence_upsert_payload_count')}")
+    print(f"[tier3h4] evidence_upsert_first_row_keys={evidence_upsert_diag.get('evidence_upsert_first_row_keys')}")
+    print(f"[tier3h4] evidence_upsert_contains_resolution_fields={evidence_upsert_diag.get('evidence_upsert_contains_resolution_fields')}")
+    print(f"[tier3h4] evidence_upsert_contains_nested_objects={evidence_upsert_diag.get('evidence_upsert_contains_nested_objects')}")
+    print(f"[tier3h4] evidence_upsert_nested_object_fields={evidence_upsert_diag.get('evidence_upsert_nested_object_fields')}")
+    print(f"[tier3h4] evidence_upsert_resolution_fields_present={evidence_upsert_diag.get('evidence_upsert_resolution_fields_present')}")
+    print(f"[tier3h4] evidence_upsert_first_row={evidence_upsert_diag.get('evidence_upsert_first_failed_row')}")
     return 0
 
 if __name__ == "__main__":
