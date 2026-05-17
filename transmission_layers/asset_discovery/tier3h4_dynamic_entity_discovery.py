@@ -98,10 +98,25 @@ EXCHANGE_LABEL_TO_CANONICAL = {
     "TSE": "TSE",
     "Tokyo Stock Exchange": "TSE",
 }
-NOISE_TICKER_DENYLIST = {"AI", "ETF", "CEO", "IPO", "SEC", "USD"}
+NOISE_TICKER_DENYLIST = {"AI", "ETF", "CEO", "IPO", "SEC", "USD", "ADR", "LLC", "INC", "LTD", "PLC", "CORP", "THE", "AND"}
 STRICT_EXCHANGE_LABEL_PATTERN = "|".join(sorted((re.escape(k) for k in EXCHANGE_LABEL_TO_CANONICAL), key=len, reverse=True))
 STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN = re.compile(
-    rf"(?i)(?:^|[\s\(\[\{{,;])(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*(?:[:\-–—]\s*|\s+)(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
+    rf"(?i)(?:^|[\s\(\[\{{,;])(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*:\s*(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
+)
+STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN = re.compile(
+    rf"(?i)\b(?P<ticker>[A-Za-z0-9]{{1,6}})\s*\(\s*(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*\)"
+)
+STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN = re.compile(
+    rf"(?i)\b(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*\(\s*(?P<ticker>[A-Za-z0-9]{{1,6}})\s*\)"
+)
+STRICT_LISTED_CONTEXT_PATTERN = re.compile(
+    rf"(?i)\b(?:listed|trades|traded)\s+on\s+(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s+(?:under\s+(?:ticker|symbol)\s+|as\s+)(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
+)
+STRICT_HYPHENATED_LISTED_PATTERN = re.compile(
+    rf"(?i)\b(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*-\s*listed\s+(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
+)
+STRICT_TICKER_ON_EXCHANGE_PATTERN = re.compile(
+    rf"(?i)\b(?:stock\s+symbol|ticker|symbol)\s+(?P<ticker>[A-Za-z0-9]{{1,6}})\s+on\s+(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b"
 )
 MEANINGFUL_TEXT_MIN_LENGTH = 40
 METADATA_ONLY_PATTERN = re.compile(r"^\s*(?:weighted_score|evidence_count|suppression|metadata|operational|source_domain|tavily_score|published_date|evidence_rank)[\s:=;\w,._-]*$", re.IGNORECASE)
@@ -273,24 +288,69 @@ def _extract_strict_exchange_qualified_identifier(text: str) -> dict[str, Any]:
     raw_text = _normalize_text(text)
     if not raw_text:
         return {}
-    for match in STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN.finditer(raw_text):
-        exchange_label = match.group("label")
-        ticker = _normalize_text(match.group("ticker")).upper()
-        canonical_exchange = EXCHANGE_LABEL_TO_CANONICAL.get(exchange_label)
+    candidate_matches: list[dict[str, str]] = []
+    matcher_specs = [
+        (STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, "strict_exchange_colon_regex"),
+        (STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN, "strict_exchange_parenthetical_regex"),
+        (STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN, "strict_exchange_parenthetical_regex"),
+        (STRICT_LISTED_CONTEXT_PATTERN, "strict_exchange_listed_context_regex"),
+        (STRICT_HYPHENATED_LISTED_PATTERN, "strict_exchange_listed_context_regex"),
+        (STRICT_TICKER_ON_EXCHANGE_PATTERN, "strict_exchange_ticker_on_exchange_regex"),
+    ]
+    for pattern, extraction_method in matcher_specs:
+        for match in pattern.finditer(raw_text):
+            candidate_matches.append(
+                {
+                    "label": _normalize_text(match.group("label")),
+                    "ticker": _normalize_text(match.group("ticker")).upper(),
+                    "method": extraction_method,
+                }
+            )
+    if not candidate_matches:
+        return {}
+    normalized_matches: list[dict[str, str]] = []
+    noise_rejections: list[str] = []
+    unsupported_rejections: list[str] = []
+    for candidate in candidate_matches:
+        canonical_exchange = EXCHANGE_LABEL_TO_CANONICAL.get(candidate["label"])
         if not canonical_exchange:
+            unsupported_rejections.append(candidate["label"])
             continue
+        ticker = candidate["ticker"]
         if ticker in NOISE_TICKER_DENYLIST:
-            return {"warnings": [f"noise_token_rejected:{ticker}"]}
+            noise_rejections.append(ticker)
+            continue
+        if not re.match(r"^[A-Z0-9]{1,6}$", ticker):
+            continue
+        normalized_matches.append(
+            {
+                "normalized_exchange": canonical_exchange,
+                "normalized_ticker": ticker,
+                "extraction_method": candidate["method"],
+                "extraction_notes": f"matched_explicit_exchange_label={candidate['label']}",
+            }
+        )
+    if len(normalized_matches) > 1:
+        unique_pairs = {(m["normalized_exchange"], m["normalized_ticker"]) for m in normalized_matches}
+        if len(unique_pairs) > 1:
+            return {"warnings": ["ambiguous_multiple_matches_rejected"], "multiple_matches_detected": True}
+    if normalized_matches:
+        selected = normalized_matches[0]
         return {
-            "extracted_ticker": ticker,
-            "extracted_exchange": canonical_exchange,
-            "normalized_ticker": ticker,
-            "normalized_exchange": canonical_exchange,
-            "extraction_method": "strict_exchange_qualified_regex",
+            "extracted_ticker": selected["normalized_ticker"],
+            "extracted_exchange": selected["normalized_exchange"],
+            "normalized_ticker": selected["normalized_ticker"],
+            "normalized_exchange": selected["normalized_exchange"],
+            "extraction_method": selected["extraction_method"],
             "extraction_confidence": "high",
-            "extraction_notes": f"matched_explicit_exchange_label={exchange_label}",
+            "extraction_notes": selected["extraction_notes"],
             "warnings": [],
+            "multiple_matches_detected": len(normalized_matches) > 1,
         }
+    if noise_rejections:
+        return {"warnings": [f"noise_token_rejected:{noise_rejections[0]}"]}
+    if unsupported_rejections:
+        return {"warnings": [f"unsupported_exchange_rejected:{unsupported_rejections[0]}"]}
     return {}
 
 def _fresh_evidence_quality_diagnostics(evidence_rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -443,15 +503,21 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     runtime_source_loop_instrumentation_loaded = callable(globals().get("build_source_level_evidence_row_from_tavily_result"))
     strict_diag = {
         "strict_identifier_extraction_enabled": True,
+        "strict_identifier_phase": "3B_exchange_contextual",
+        "strict_identifier_contextual_patterns_enabled": True,
         "strict_identifier_candidate_name_mention_required": False,
         "strict_identifier_rows_scanned": 0,
         "strict_identifier_matches_found": 0,
         "strict_identifier_rows_with_multiple_matches": 0,
+        "strict_identifier_rows_rejected_ambiguous": 0,
         "strict_identifier_rows_rejected_no_exchange_label": 0,
+        "strict_identifier_rows_rejected_unsupported_exchange": 0,
+        "strict_identifier_rows_rejected_no_context_phrase": 0,
         "strict_identifier_rows_rejected_no_candidate_name_mention": 0,
         "strict_identifier_rows_rejected_noise_token": 0,
         "strict_identifier_rows_with_candidate_name_mentions": 0,
         "strict_identifier_rows_without_candidate_name_mentions": 0,
+        "strict_identifier_match_pattern_counts": {},
         "strict_identifier_sample_matches": [],
         "strict_identifier_sample_rejections": [],
         "strict_identifier_extraction_warnings": [],
@@ -565,30 +631,39 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     strict_diag["strict_identifier_rows_with_candidate_name_mentions"] += 1
                 else:
                     strict_diag["strict_identifier_rows_without_candidate_name_mentions"] += 1
-                row_matches = []
                 for text in scan_texts:
                     if not text:
                         continue
-                    row_matches.extend(STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN.findall(text))
                     extracted = _extract_strict_exchange_qualified_identifier(text)
                     if extracted:
+                        if extracted.get("multiple_matches_detected"):
+                            strict_diag["strict_identifier_rows_with_multiple_matches"] += 1
                         if extracted.get("warnings"):
-                            strict_diag["strict_identifier_rows_rejected_noise_token"] += 1
+                            warning = extracted["warnings"][0]
+                            if warning.startswith("ambiguous_multiple_matches_rejected"):
+                                strict_diag["strict_identifier_rows_rejected_ambiguous"] += 1
+                            elif warning.startswith("noise_token_rejected:"):
+                                strict_diag["strict_identifier_rows_rejected_noise_token"] += 1
+                            elif warning.startswith("unsupported_exchange_rejected:"):
+                                strict_diag["strict_identifier_rows_rejected_unsupported_exchange"] += 1
+                            else:
+                                strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
                             if len(strict_diag["strict_identifier_sample_rejections"]) < 5:
-                                strict_diag["strict_identifier_sample_rejections"].append({"reason": extracted["warnings"][0], "text_preview": text[:140]})
+                                strict_diag["strict_identifier_sample_rejections"].append({"reason": warning, "text_preview": text[:140]})
                             continue
                         for k in ("extracted_ticker", "extracted_exchange", "normalized_ticker", "normalized_exchange", "extraction_method", "extraction_confidence", "extraction_notes"):
                             row[k] = extracted[k]
+                        method = extracted["extraction_method"]
+                        strict_diag["strict_identifier_match_pattern_counts"][method] = strict_diag["strict_identifier_match_pattern_counts"].get(method, 0) + 1
                         strict_diag["strict_identifier_matches_found"] += 1
                         strict_unique_tickers.add(extracted["normalized_ticker"])
                         strict_unique_exchanges.add(extracted["normalized_exchange"])
                         if len(strict_diag["strict_identifier_sample_matches"]) < 5:
                             strict_diag["strict_identifier_sample_matches"].append({"ticker": extracted["normalized_ticker"], "exchange": extracted["normalized_exchange"], "note": extracted["extraction_notes"]})
                         break
-                if len(row_matches) > 1:
-                    strict_diag["strict_identifier_rows_with_multiple_matches"] += 1
                 if not row.get("normalized_ticker"):
                     strict_diag["strict_identifier_rows_rejected_no_exchange_label"] += 1
+                    strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_persisted_before_aggregation"] += 1
                     ops["fresh_source_rows_written"] += 1
@@ -643,6 +718,15 @@ def main() -> int:
     print(f"[tier3h4] source_titles={evidence_summary['fresh_evidence_rows_with_source_title']}")
     print(f"[tier3h4] ticker_like_patterns={evidence_summary['fresh_evidence_rows_with_ticker_like_patterns']}")
     print(f"[tier3h4] exchange_like_patterns={evidence_summary['fresh_evidence_rows_with_exchange_like_patterns']}")
+    print("[tier3h4] strict identifier extraction:")
+    print(f"[tier3h4] phase={evidence_summary['strict_identifier_phase']}")
+    print(f"[tier3h4] runtime_source={evidence_summary['evidence_source_mode']}")
+    print(f"[tier3h4] rows_scanned={evidence_summary['strict_identifier_rows_scanned']}")
+    print(f"[tier3h4] matches_found={evidence_summary['strict_identifier_matches_found']}")
+    print(f"[tier3h4] unique_tickers={len(evidence_summary['strict_identifier_unique_tickers_found'])}")
+    print(f"[tier3h4] unique_exchanges={len(evidence_summary['strict_identifier_unique_exchanges_found'])}")
+    print(f"[tier3h4] rejected_ambiguous={evidence_summary['strict_identifier_rows_rejected_ambiguous']}")
+    print(f"[tier3h4] rejected_noise_token={evidence_summary['strict_identifier_rows_rejected_noise_token']}")
     print(f"[tier3h4] warnings={evidence_summary['fresh_evidence_quality_warning_count']}")
     return 0
 
