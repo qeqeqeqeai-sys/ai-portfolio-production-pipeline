@@ -617,16 +617,71 @@ def generate_mock_evidence(seed: DiscoverySeed, query_text: str) -> list[dict[st
 def compute_candidate_score(evidence_count_score: float, source_quality_score: float, thematic_relevance_score: float, entity_resolution_score: float, cross_source_score: float) -> float:
     return round(WEIGHTS["evidence_count_score"] * evidence_count_score + WEIGHTS["thematic_relevance_score"] * thematic_relevance_score + WEIGHTS["source_quality_score"] * source_quality_score + WEIGHTS["entity_resolution_score"] * entity_resolution_score + WEIGHTS["cross_source_score"] * cross_source_score, 4)
 
-def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: str) -> str:
-    if not rows: return "skipped:no_rows"
+def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: str, include_diagnostics: bool = False) -> str | tuple[str, dict[str, Any]]:
+    diagnostics: dict[str, Any] = {
+        "evidence_upsert_payload_columns": [],
+        "evidence_upsert_payload_keys": [],
+        "evidence_upsert_payload_count": len(rows),
+        "evidence_upsert_payload_size_bytes": 0,
+        "evidence_upsert_response_text": None,
+        "evidence_upsert_error_body": None,
+        "evidence_upsert_response_json": None,
+        "evidence_upsert_first_failed_row": None,
+        "evidence_upsert_http_status": None,
+        "evidence_upsert_schema_mismatch_columns": [],
+        "evidence_upsert_suspect_type_fields": [],
+    }
+    if rows:
+        row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
+        diagnostics["evidence_upsert_payload_columns"] = row_keys
+        diagnostics["evidence_upsert_payload_keys"] = row_keys
+        diagnostics["evidence_upsert_first_failed_row"] = rows[0] if isinstance(rows[0], dict) else None
+        try:
+            diagnostics["evidence_upsert_payload_size_bytes"] = len(json.dumps(rows, default=str))
+        except Exception:
+            diagnostics["evidence_upsert_payload_size_bytes"] = -1
+    if not rows:
+        status = "skipped:no_rows"
+        return (status, diagnostics) if include_diagnostics else status
     url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
-    if not url or not key: return "skipped:missing_supabase_env"
+    if not url or not key:
+        status = "skipped:missing_supabase_env"
+        return (status, diagnostics) if include_diagnostics else status
     try:
         r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=rows, timeout=60)
-        return "upserted" if r.status_code < 400 else f"upsert_failed:{r.status_code}"
+        diagnostics["evidence_upsert_http_status"] = r.status_code
+        diagnostics["evidence_upsert_response_text"] = (r.text or "")[:8000]
+        try:
+            diagnostics["evidence_upsert_response_json"] = r.json()
+        except Exception:
+            diagnostics["evidence_upsert_response_json"] = None
+        if r.status_code >= 400:
+            body = diagnostics["evidence_upsert_response_json"] if isinstance(diagnostics["evidence_upsert_response_json"], (dict, list)) else diagnostics["evidence_upsert_response_text"]
+            diagnostics["evidence_upsert_error_body"] = body
+            missing_columns = []
+            invalid_columns = []
+            if isinstance(diagnostics["evidence_upsert_response_json"], dict):
+                detail_text = " ".join(str(diagnostics["evidence_upsert_response_json"].get(k) or "") for k in ["message", "details", "hint", "code"])
+                for col in diagnostics["evidence_upsert_payload_columns"]:
+                    if col in detail_text:
+                        invalid_columns.append(col)
+                if "column" in detail_text.lower() and not invalid_columns:
+                    missing_columns = diagnostics["evidence_upsert_payload_columns"]
+            diagnostics["evidence_upsert_schema_mismatch_columns"] = sorted(set(missing_columns + invalid_columns))
+            first_row = diagnostics.get("evidence_upsert_first_failed_row") or {}
+            suspect_fields=[]
+            if isinstance(first_row, dict):
+                for k,v in first_row.items():
+                    if isinstance(v, (set, bytes, bytearray, complex)):
+                        suspect_fields.append(k)
+            diagnostics["evidence_upsert_suspect_type_fields"] = suspect_fields
+        status = "upserted" if r.status_code < 400 else f"upsert_failed:{r.status_code}"
+        return (status, diagnostics) if include_diagnostics else status
     except Exception as exc:
-        return f"upsert_exception:{type(exc).__name__}"
+        diagnostics["evidence_upsert_error_body"] = f"exception:{type(exc).__name__}:{exc}"
+        status = f"upsert_exception:{type(exc).__name__}"
+        return (status, diagnostics) if include_diagnostics else status
 
 def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     candidate_rows: list[dict[str, Any]] = []
@@ -1286,17 +1341,24 @@ def main() -> int:
     seeds, source_counts, soft_fallback = load_upstream_context()
     records, evidence_rows, evidence_summary, ops = build_records(seeds, sgt_date)
     upsert_status = upsert_supabase(records, TABLE_NAME, "run_date_sgt,theme_name,candidate_asset_id,discovery_method")
-    evidence_upsert_status = upsert_supabase(evidence_rows, EVIDENCE_TABLE_NAME, "run_date_sgt,theme_name,query_text,source_url")
+    evidence_upsert_status, evidence_upsert_diag = upsert_supabase(evidence_rows, EVIDENCE_TABLE_NAME, "run_date_sgt,theme_name,query_text,source_url", include_diagnostics=True)
     elapsed = round(time.time() - start, 3)
     telemetry_row = {"run_date_sgt": sgt_date, "workflow_name": "tier3h4_dynamic_entity_discovery", "provider": "tavily", "api_calls_attempted": ops["executed_queries"], "api_calls_executed": ops["executed_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "fallback_events": ops["fallback_events"], "rate_limit_events": ops["rate_limit_events"], "quota_exhaustion_events": ops["quota_exhaustion_events"], "retry_events": ops["retry_events"], "success_count": ops["success_count"], "failure_count": ops["failure_count"], "estimated_cost": None, "execution_seconds": elapsed, "metadata": {"fallback_mode": evidence_summary["fallback_mode"], "tavily_enabled": evidence_summary["tavily_enabled"], "soft_fallback_used": soft_fallback}}
     telemetry_status = upsert_supabase([telemetry_row], OPERATIONAL_TABLE_NAME, "run_date_sgt,workflow_name,provider")
     runtime = _runtime_provenance("main")
     final_summary_payload = {"module": "tier3h4_dynamic_entity_discovery", "run_timestamp_utc": utc_now().isoformat(), "run_date_sgt": sgt_date, "seed_count": len(seeds), "record_count": len(records), "source_counts": source_counts, "soft_fallback_used": soft_fallback, "upsert_status": upsert_status, "confidence_band_counts": dict(Counter(r["candidate_confidence_band"] for r in records)), "advisory_status_counts": dict(Counter(r["advisory_status"] for r in records)), "advisory_only": True, "llm_used": False, **runtime, "runtime_evidence_generation_branch_taken": evidence_summary["runtime_evidence_generation_branch_taken"], "runtime_persisted_reuse_branch_taken": evidence_summary["runtime_persisted_reuse_branch_taken"], "runtime_fresh_generation_branch_reachable": evidence_summary["runtime_fresh_generation_branch_reachable"], "runtime_source_loop_instrumentation_loaded": evidence_summary["runtime_source_loop_instrumentation_loaded"], "runtime_force_fresh_branch_taken": evidence_summary["runtime_force_fresh_branch_taken"], "rows_with_ticker": evidence_summary.get("rows_with_ticker", 0), "rows_without_ticker": evidence_summary.get("rows_without_ticker", len(records)), "rows_with_exchange": evidence_summary.get("rows_with_exchange", 0), "rows_without_exchange": evidence_summary.get("rows_without_exchange", len(records)), "evidence_rows_with_ticker": evidence_summary.get("evidence_rows_with_ticker", 0), "evidence_rows_with_exchange": evidence_summary.get("evidence_rows_with_exchange", 0), "strict_identifier_runtime_source": evidence_summary.get("strict_identifier_runtime_source", "unknown_runtime_source"), "strict_identifier_extraction_enabled": evidence_summary.get("strict_identifier_extraction_enabled"), "strict_identifier_phase": evidence_summary.get("strict_identifier_phase"), "strict_identifier_rows_scanned": evidence_summary.get("strict_identifier_rows_scanned"), "strict_identifier_matches_found": evidence_summary.get("strict_identifier_matches_found"), "strict_identifier_unique_tickers_found": evidence_summary.get("strict_identifier_unique_tickers_found"), "strict_identifier_unique_exchanges_found": evidence_summary.get("strict_identifier_unique_exchanges_found"), "strict_identifier_sample_matches": evidence_summary.get("strict_identifier_sample_matches"), "strict_identifier_results_propagated": evidence_summary.get("strict_identifier_results_propagated"), "strict_identifier_propagated_rows_count": evidence_summary.get("strict_identifier_propagated_rows_count"), "strict_identifier_summary_consistent": evidence_summary.get("strict_identifier_summary_consistent"), "strict_identifier_log_summary_match": evidence_summary.get("strict_identifier_log_summary_match"), "strict_identifier_counter_reconciliation_passed": evidence_summary.get("strict_identifier_counter_reconciliation_passed"), "strict_identifier_counter_reconciliation_warnings": evidence_summary.get("strict_identifier_counter_reconciliation_warnings"), "strict_identifier_runtime_vs_summary_delta": evidence_summary.get("strict_identifier_runtime_vs_summary_delta"), "strict_identifier_summary_serialization_complete": evidence_summary.get("strict_identifier_summary_serialization_complete"), "strict_identifier_canonical_counter_source": evidence_summary.get("strict_identifier_canonical_counter_source"), "strict_identifier_final_summary_source": evidence_summary.get("strict_identifier_final_summary_source"), "strict_identifier_propagation_target": evidence_summary.get("strict_identifier_propagation_target"), "strict_identifier_propagation_warnings": evidence_summary.get("strict_identifier_propagation_warnings"), "strict_identifier_accepted_match_collection_size": evidence_summary.get("strict_identifier_accepted_match_collection_size"), "strict_identifier_candidate_level_matches_found": evidence_summary.get("strict_identifier_candidate_level_matches_found"), "strict_identifier_evidence_level_matches_found": evidence_summary.get("strict_identifier_evidence_level_matches_found"), "strict_identifier_unmapped_matches_found": evidence_summary.get("strict_identifier_unmapped_matches_found"), "strict_identifier_matches_with_candidate_owner": evidence_summary.get("strict_identifier_matches_with_candidate_owner"), "strict_identifier_matches_without_candidate_owner": evidence_summary.get("strict_identifier_matches_without_candidate_owner"), "strict_identifier_propagation_target_counts": evidence_summary.get("strict_identifier_propagation_target_counts"), "strict_identifier_sample_unmapped_matches": evidence_summary.get("strict_identifier_sample_unmapped_matches"), "strict_identifier_ambiguity_diagnostics_enabled": evidence_summary.get("strict_identifier_ambiguity_diagnostics_enabled"), "strict_identifier_rejection_reason_counts": evidence_summary.get("strict_identifier_rejection_reason_counts"), "strict_identifier_ambiguous_match_count": evidence_summary.get("strict_identifier_ambiguous_match_count"), "strict_identifier_ambiguous_match_examples": evidence_summary.get("strict_identifier_ambiguous_match_examples"), "strict_identifier_context_window_examples": evidence_summary.get("strict_identifier_context_window_examples"), "strict_identifier_multiple_ticker_count": evidence_summary.get("strict_identifier_multiple_ticker_count"), "strict_identifier_multiple_exchange_count": evidence_summary.get("strict_identifier_multiple_exchange_count"), "strict_identifier_exchange_conflict_count": evidence_summary.get("strict_identifier_exchange_conflict_count"), "strict_identifier_ticker_conflict_count": evidence_summary.get("strict_identifier_ticker_conflict_count"), "strict_identifier_duplicate_context_count": evidence_summary.get("strict_identifier_duplicate_context_count"), "strict_identifier_malformed_context_count": evidence_summary.get("strict_identifier_malformed_context_count"), "strict_identifier_noise_rejection_examples": evidence_summary.get("strict_identifier_noise_rejection_examples"), "strict_identifier_unsupported_exchange_examples": evidence_summary.get("strict_identifier_unsupported_exchange_examples"), "strict_identifier_no_context_phrase_examples": evidence_summary.get("strict_identifier_no_context_phrase_examples"), "strict_identifier_explainability_sample_size": evidence_summary.get("strict_identifier_explainability_sample_size"), "preview": records[:10]}
-    evidence_summary_full = {"run_date_sgt": sgt_date, **evidence_summary, "evidence_rows_persisted": len(evidence_rows) if evidence_upsert_status == "upserted" else 0, "candidates_scored": len(records), "candidates_suppressed": sum(1 for r in records if r["advisory_status"] == "advisory_rejected"), "top_domains": dict(Counter(e.get("source_domain") for e in evidence_rows).most_common(10)), "upsert_status": evidence_upsert_status, "telemetry_upsert_status": telemetry_status}
+    evidence_summary_full = {"run_date_sgt": sgt_date, **evidence_summary, **evidence_upsert_diag, "evidence_rows_persisted": len(evidence_rows) if evidence_upsert_status == "upserted" else 0, "candidates_scored": len(records), "candidates_suppressed": sum(1 for r in records if r["advisory_status"] == "advisory_rejected"), "top_domains": dict(Counter(e.get("source_domain") for e in evidence_rows).most_common(10)), "upsert_status": evidence_upsert_status, "telemetry_upsert_status": telemetry_status}
     validation = {"all_rows_llm_used_false": all(r["llm_used"] is False for r in records), "all_rows_advisory_only": all(r["advisory_status"] in {"advisory_review", "advisory_rejected"} for r in records), "no_monitored_universe_writes_attempted": True, "idempotency_fields_present": all(all(k in r for k in ["run_date_sgt", "theme_name", "candidate_asset_id", "discovery_method"]) for r in records)}
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
+    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes"]})
+    if evidence_upsert_status != "upserted":
+        final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
+        final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
+        final_summary_payload["evidence_persistence_failed"] = True
+        final_summary_payload["evidence_persistence_failure_status"] = evidence_upsert_status
+
     _finalize_and_verify_summary_payload(final_summary_payload, canonical_summary, SUMMARY_PATH)
     serialized_summary_payload = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
     operational_summary = _integrate_operational_summary_with_canonical_reconciliation(
