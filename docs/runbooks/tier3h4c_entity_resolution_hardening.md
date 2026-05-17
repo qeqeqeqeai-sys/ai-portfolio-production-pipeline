@@ -238,6 +238,50 @@ Healthy rerun expectation:
 - `evidence_rows_with_title > 0` when source titles are present
 - `evidence_rows_with_snippet > 0` when snippet/content fields are present
 - `enriched_evidence_rows_written > 0`
+
+## Tier 3H.4C.3 Phase 2B — Source-Level Evidence Persistence
+
+### Purpose
+Phase 2B ensures persisted evidence rows are true source-result rows (for example one Tavily result per evidence row), not candidate operational metadata rows.
+
+### Source-level row definition
+- One deterministic source result maps to one evidence row.
+- `raw_evidence.source_result` contains the explicit source payload (`title`, `url`, `content`/`snippet`/`raw_content`, score/metadata fields when present).
+- `raw_evidence.candidate_context` may contain candidate operational metadata, but this is secondary context only.
+
+### Deterministic governance policy
+- Additive-only and advisory-only behavior is preserved.
+- No LLM/OpenAI extraction added.
+- No semantic inference/fuzzy matching for ticker/company/exchange mapping.
+- No monitored universe writes.
+- Suppression and scoring policy remains unchanged.
+- Workflow remains non-blocking when source evidence is absent/sparse.
+
+### Extraction contract
+- Deterministic extraction/enrichment must operate only on explicit source text/fields (source title/snippet/content/url and source payload).
+- Legacy metadata-only rows are tolerated and counted; they are not repaired or hallucinated.
+
+### Phase 2B diagnostics
+- `source_level_evidence_rows_written`
+- `candidate_metadata_only_evidence_rows`
+- `evidence_rows_with_source_url`
+- `evidence_rows_with_source_title`
+- `evidence_rows_with_source_content`
+- `evidence_rows_with_raw_source_payload`
+- `evidence_rows_without_source_payload`
+- `sample_source_result_keys`
+- `sample_source_titles`
+- `sample_source_urls`
+- `sample_source_content_preview`
+
+### Healthy rollout expectations
+- `source_level_evidence_rows_written > 0`
+- `evidence_rows_with_source_url > 0`
+- `evidence_rows_with_source_title > 0` when titles exist
+- `evidence_rows_with_source_content > 0` when snippet/content exists
+- `evidence_rows_with_raw_source_payload > 0`
+- `enriched_evidence_rows_written > 0`
+- `rows_with_ticker` and `rows_with_exchange` may remain zero when explicit identifiers are absent
 - `rows_with_ticker` may still be `0`
 - `rows_with_exchange` may still be `0`
 - `status = ok`
