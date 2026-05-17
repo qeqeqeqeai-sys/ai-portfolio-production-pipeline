@@ -192,6 +192,27 @@ def _normalize_text(text: str | None) -> str:
 def _normalize_query(text: str) -> str:
     return _normalize_text(text).lower()
 
+def _normalize_identifier_token(token: Any) -> str:
+    value = str(token or "").strip().strip('"').strip().strip("()").strip().strip('"').lower()
+    return value
+
+def _normalize_column_list(columns: Any) -> list[str]:
+    if columns is None:
+        return []
+    if isinstance(columns, str):
+        raw_items = columns.split(",")
+    elif isinstance(columns, (list, tuple)):
+        raw_items = []
+        for item in columns:
+            if isinstance(item, str) and "," in item:
+                raw_items.extend(item.split(","))
+            else:
+                raw_items.append(item)
+    else:
+        raw_items = [columns]
+    normalized = [_normalize_identifier_token(item) for item in raw_items]
+    return [item for item in normalized if item]
+
 def _normalize_domain(url: str) -> str:
     host = urlparse(url).netloc.lower().replace("www.", "")
     return host
@@ -1127,7 +1148,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                 if not isinstance(cols_payload, list):
                     continue
                 cols = [r.get("column_name") for r in cols_payload if isinstance(r, dict) and r.get("column_name")]
-                normalized_cols = [c.strip().strip('"').lower() for c in cols if c and c.strip()]
+                normalized_cols = _normalize_column_list(cols)
                 if normalized_cols:
                     signature = ",".join(normalized_cols)
                     unique_constraint_signatures.append(signature)
@@ -1188,10 +1209,45 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     diagnostics["actual_on_conflict_value"] = actual_on_conflict_value
     diagnostics["actual_upsert_conflict_columns"] = actual_upsert_conflict_columns
     diagnostics["conflict_columns_exist_in_schema"] = conflict_columns_exist_in_schema
-    normalized_conflict_signature = ",".join([c.strip().strip("\"").lower() for c in actual_upsert_conflict_columns if c and c.strip()])
-    known_signatures = set(diagnostics.get("unique_constraint_column_sets_detected") or [])
-    known_signatures.update(diagnostics.get("unique_index_column_sets_detected") or diagnostics.get("failing_table_unique_indexes") or [])
-    diagnostics["failing_upsert_has_matching_unique_constraint"] = (normalized_conflict_signature in known_signatures) if normalized_conflict_signature else None
+    normalized_conflict_target_columns = _normalize_column_list(actual_on_conflict_value)
+    normalized_conflict_signature = ",".join(normalized_conflict_target_columns)
+    detected_unique_contracts = diagnostics.get("failing_table_unique_constraints") or diagnostics.get("table_unique_constraints") or []
+    normalized_detected_unique_column_sets: list[list[str]] = []
+    matched_unique_contract_name = None
+    for contract in detected_unique_contracts:
+        contract_name = None
+        contract_columns_raw: Any = contract
+        if isinstance(contract, str):
+            contract_text = contract.strip()
+            if "(" in contract_text and contract_text.endswith(")"):
+                contract_name = contract_text.split("(", 1)[0].strip() or None
+                contract_columns_raw = contract_text.split("(", 1)[1][:-1]
+        elif isinstance(contract, dict):
+            contract_name = str(contract.get("constraint_name") or contract.get("index_name") or "").strip() or None
+            contract_columns_raw = contract.get("columns")
+        normalized_columns = _normalize_column_list(contract_columns_raw)
+        if normalized_columns:
+            normalized_detected_unique_column_sets.append(normalized_columns)
+            if normalized_columns == normalized_conflict_target_columns and not matched_unique_contract_name:
+                matched_unique_contract_name = contract_name
+    if not normalized_detected_unique_column_sets:
+        fallback_sets = (
+            (diagnostics.get("unique_constraint_column_sets_detected") or [])
+            + (diagnostics.get("unique_index_column_sets_detected") or [])
+            + (diagnostics.get("failing_table_unique_indexes") or [])
+        )
+        for fallback in fallback_sets:
+            normalized_columns = _normalize_column_list(fallback)
+            if normalized_columns:
+                normalized_detected_unique_column_sets.append(normalized_columns)
+    diagnostics["normalized_conflict_target_columns"] = normalized_conflict_target_columns
+    diagnostics["detected_unique_contracts"] = detected_unique_contracts
+    diagnostics["normalized_detected_unique_column_sets"] = normalized_detected_unique_column_sets
+    diagnostics["matched_unique_contract_name"] = matched_unique_contract_name
+    diagnostics["failing_upsert_has_matching_unique_constraint"] = (
+        any(cols == normalized_conflict_target_columns for cols in normalized_detected_unique_column_sets)
+        if normalized_conflict_signature else None
+    )
     diagnostics["conflict_target_matches_unique_constraint"] = diagnostics["failing_upsert_has_matching_unique_constraint"]
     diagnostics["failing_unique_constraints"] = diagnostics.get("failing_table_unique_constraints") or diagnostics.get("table_unique_constraints") or []
     diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
@@ -1215,6 +1271,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     diagnostics["final_payload_missing_required_columns"] = diagnostics.get("required_table_fields_missing_from_payload") or []
     print(f"[tier3h4] actual_on_conflict_value={diagnostics.get('actual_on_conflict_value')}")
     print(f"[tier3h4] actual_upsert_conflict_columns={diagnostics.get('actual_upsert_conflict_columns')}")
+    print(f"[tier3h4] normalized_conflict_target_columns={diagnostics.get('normalized_conflict_target_columns')}")
+    print(f"[tier3h4] detected_unique_contracts={diagnostics.get('detected_unique_contracts')}")
+    print(f"[tier3h4] normalized_detected_unique_column_sets={diagnostics.get('normalized_detected_unique_column_sets')}")
+    print(f"[tier3h4] matched_unique_contract_name={diagnostics.get('matched_unique_contract_name')}")
     print(f"[tier3h4] conflict_columns_exist_in_schema={diagnostics.get('conflict_columns_exist_in_schema')}")
     print(f"[tier3h4] actual_upsert_variable_name={diagnostics.get('actual_upsert_variable_name')}")
     print(f"[tier3h4] actual_upsert_first_row_keys={diagnostics.get('actual_upsert_first_row_keys')}")
@@ -2050,7 +2110,7 @@ def main() -> int:
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
     final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_write_method", "discovery_write_method", "failing_upsert_has_matching_unique_constraint", "evidence_insert_row_count", "evidence_insert_success", "evidence_insert_response_status", "evidence_insert_response_body", "evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "numeric_confidence_coercions_applied", "invalid_numeric_fields_before_write", "evidence_confidence_type", "extraction_confidence_type", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "final_payload_contains_raw_evidence", "raw_evidence_type", "raw_evidence_json_serializable", "raw_evidence_nested_invalid_types", "raw_evidence_sanitization_applied", "raw_evidence_post_sanitization_type", "final_payload_missing_required_columns", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "actual_on_conflict_value", "actual_upsert_conflict_columns", "conflict_columns_exist_in_schema", "schema_introspection_status", "schema_introspection_error", "failing_table_name", "failing_write_method", "failing_on_conflict_value", "failing_table_unique_constraints", "failing_response_body", "table_unique_constraints"]})
-    final_summary_payload.update({k: candidate_upsert_diag.get(k) for k in ["failing_table_name", "failing_unique_constraints", "failing_table_unique_constraints", "unique_constraint_names_detected", "unique_index_names_detected", "unique_constraint_column_sets_detected", "unique_index_column_sets_detected", "conflict_target_matches_unique_constraint", "duplicate_conflict_detected", "rows_already_exist_count", "conflict_is_benign", "failing_table_primary_key", "failing_table_indexes", "failing_table_unique_indexes", "actual_on_conflict_value", "actual_upsert_conflict_columns", "discovery_write_method"]})
+    final_summary_payload.update({k: candidate_upsert_diag.get(k) for k in ["failing_table_name", "failing_unique_constraints", "failing_table_unique_constraints", "unique_constraint_names_detected", "unique_index_names_detected", "unique_constraint_column_sets_detected", "unique_index_column_sets_detected", "normalized_conflict_target_columns", "detected_unique_contracts", "normalized_detected_unique_column_sets", "matched_unique_contract_name", "conflict_target_matches_unique_constraint", "duplicate_conflict_detected", "rows_already_exist_count", "conflict_is_benign", "failing_table_primary_key", "failing_table_indexes", "failing_table_unique_indexes", "actual_on_conflict_value", "actual_upsert_conflict_columns", "discovery_write_method"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
