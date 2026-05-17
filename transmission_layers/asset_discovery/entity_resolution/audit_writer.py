@@ -20,27 +20,42 @@ def fetch_table_rows(table: str, run_date_sgt: str, theme_name: str) -> tuple[li
 def fetch_table_rows_with_fallback(tables: list[str], run_date_sgt: str, theme_name: str) -> tuple[list[dict], dict]:
     attempted, selected = [], None
     warning = None
+    warnings: list[str] = []
     for table in tables:
         attempted.append(table)
         rows, err = fetch_table_rows(table, run_date_sgt, theme_name)
         if err and err.startswith("missing_supabase_env"):
-            return [], {"tables_attempted": attempted, "table_selected": None, "warning": err, "rows_read": 0}
+            return [], {"tables_attempted": attempted, "table_selected": None, "warning": err, "warnings": [err], "rows_read": 0}
         if not err:
             selected = table
-            return rows, {"tables_attempted": attempted, "table_selected": selected, "warning": warning, "rows_read": len(rows)}
+            return rows, {"tables_attempted": attempted, "table_selected": selected, "warning": warning, "warnings": warnings, "rows_read": len(rows)}
         warning = err
-    return [], {"tables_attempted": attempted, "table_selected": None, "warning": warning, "rows_read": 0}
+        warnings.append(err)
+    return [], {"tables_attempted": attempted, "table_selected": None, "warning": warning, "warnings": warnings, "rows_read": 0}
 
 
-def write_audit_rows(rows: list[dict]) -> str:
+def write_audit_rows(rows: list[dict]) -> dict:
     if not rows:
-        return "skipped:no_rows"
+        return {"status": "skipped:no_rows"}
     url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:
-        return "skipped:missing_supabase_env"
+        return {"status": "skipped:missing_supabase_env"}
     try:
         resp = requests.post(f"{url}/rest/v1/tier3h_entity_resolution_audit", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "return=minimal"}, json=rows, timeout=30)
-        return "written" if resp.status_code < 400 else f"write_failed:{resp.status_code}"
+        if resp.status_code < 400:
+            return {"status": "written"}
+        body = {}
+        try:
+            body = resp.json()
+        except Exception:
+            body = {"message": (resp.text or "")[:400]}
+        return {
+            "status": f"write_failed:{resp.status_code}",
+            "write_error_code": body.get("code"),
+            "write_error_message": body.get("message"),
+            "write_error_details": body.get("details"),
+            "write_error_hint": body.get("hint"),
+        }
     except Exception as exc:
-        return f"write_exception:{type(exc).__name__}"
+        return {"status": f"write_exception:{type(exc).__name__}"}

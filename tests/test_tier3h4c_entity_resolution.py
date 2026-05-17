@@ -12,6 +12,7 @@ from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules 
 from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import duplicate_group_key
 from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_alias
 from transmission_layers.asset_discovery.entity_resolution import audit_writer
+from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence
 
 
 def test_normalize_name():
@@ -85,6 +86,27 @@ def test_source_table_fallback(monkeypatch):
     rows, meta = audit_writer.fetch_table_rows_with_fallback(["bad", "good"], "2026-05-17", "ai")
     assert rows and meta["table_selected"] == "good"
     assert meta["tables_attempted"] == ["bad", "good"]
+    assert meta["warnings"] == ["read_failed:bad:404"]
+
+
+def test_embedded_evidence_extraction():
+    row = {"source_url": "https://a", "evidence_sources": [{"source_url": "https://b"}], "source_count": 3}
+    urls, source_count = _extract_embedded_evidence(row)
+    assert urls == ["https://a", "https://b"]
+    assert source_count == 3
+
+
+def test_write_payload_validation(monkeypatch):
+    class R:
+        status_code = 400
+        def json(self):
+            return {"code": "PGRST204", "message": "bad", "details": "missing column", "hint": "check payload"}
+    monkeypatch.setattr(audit_writer.requests, "post", lambda *args, **kwargs: R())
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "k")
+    result = audit_writer.write_audit_rows([{"run_date_sgt": "2026-05-17"}])
+    assert result["status"] == "write_failed:400"
+    assert result["write_error_code"] == "PGRST204"
 
 
 def test_summary_shape_empty():
