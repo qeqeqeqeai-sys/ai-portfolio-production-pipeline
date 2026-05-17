@@ -70,6 +70,36 @@ def _normalize_domain(url: str) -> str:
 def normalize_source_result_payload(result: dict[str, Any]) -> dict[str, Any]:
     return dict(result) if isinstance(result, dict) else {}
 
+def build_source_level_evidence_row_from_tavily_result(
+    *,
+    item: dict[str, Any],
+    result_index: int,
+    seed: DiscoverySeed,
+    sgt_date: str,
+    query_text: str,
+    candidate_asset_id: str,
+    candidate_name: str,
+    discovery_method: str,
+) -> dict[str, Any] | None:
+    source_payload = normalize_source_result_payload(item.get("source_result") if isinstance(item.get("source_result"), dict) else item)
+    source_url = _normalize_text(str(item.get("source_url") or item.get("url") or item.get("link") or ""))
+    source_title = _normalize_text(item.get("source_title") or item.get("title") or item.get("page_title") or item.get("pageTitle") or ((item.get("metadata") or {}).get("title") if isinstance(item.get("metadata"), dict) else ""))
+    source_snippet = _normalize_text(item.get("source_snippet") or item.get("content") or item.get("snippet") or item.get("raw_content") or item.get("rawContent") or item.get("summary") or item.get("description") or ((item.get("metadata") or {}).get("description") if isinstance(item.get("metadata"), dict) else ""))
+    if not (source_url or source_title or source_snippet):
+        return None
+    source_domain = _normalize_domain(source_url) if source_url else ""
+    source_score = item.get("score") if item.get("score") is not None else item.get("confidence") if item.get("confidence") is not None else item.get("relevance_score")
+    published_date = item.get("published_date") or item.get("publishedDate") or item.get("date")
+    evidence_rank = item.get("source_rank") or result_index
+    text = f"{source_title} {source_snippet}".lower()
+    matches = _entity_match_terms(seed, text)
+    thematic_matches = [k for k in THEME_KEYWORDS.get(seed.theme_name, []) if k in text]
+    evidence_quality = _evidence_quality_score({"source_title": source_title, "source_snippet": source_snippet, "source_domain": source_domain, "source_rank": evidence_rank}, seed.theme_name)
+    suppression_flags = []
+    if len(thematic_matches) < 1: suppression_flags.append("weak_thematic_overlap")
+    if any(tok in text for tok in GENERIC_SUPPRESSION_TOKENS) and len(matches) < 1: suppression_flags.append("generic_megacap_contamination")
+    return {"run_date_sgt": sgt_date, "workflow_run_id": None, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "query_text": query_text, "candidate_id": None, "candidate_asset_id": candidate_asset_id, "candidate_name": candidate_name, "candidate_ticker": None, "source_url": source_url, "source_domain": source_domain, "source_title": source_title, "source_snippet": source_snippet, "source_rank": evidence_rank, "evidence_rank": evidence_rank, "evidence_confidence": evidence_quality, "evidence_type": "source_result", "evidence_text": _compose_evidence_text(source_title, source_snippet, source_domain, source_score, published_date, evidence_rank, candidate_name, seed.theme_name, discovery_method), "retrieved_at": item.get("retrieved_at"), "discovery_method": discovery_method, "evidence_quality_score": evidence_quality, "thematic_keyword_matches": thematic_matches, "matched_entity_terms": matches, "suppression_flags": suppression_flags, "cache_reused": bool(item.get("cache_reused", False)), "raw_evidence": {"source_result": source_payload, "candidate_context": {"candidate_name": candidate_name, "candidate_asset_id": candidate_asset_id, "candidate_id": None, "theme_name": seed.theme_name, "discovery_method": discovery_method, "source_node": seed.source_node, "target_node": seed.target_node}, "persistence_phase": "tier3h4c3_surgical_source_result_persistence"}}
+
 def _compose_evidence_text(source_title: str, source_snippet: str, source_domain: str, source_score: Any, published_date: Any, evidence_rank: Any, candidate_name: str, theme_name: str, discovery_method: str) -> str:
     parts = []
     if source_title:
@@ -286,27 +316,14 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 key = (sgt_date, seed.theme_name, query, item.get("source_url", ""))
                 if key in seen_urls: continue
                 seen_urls.add(key)
-                text = f"{item.get('source_title', '')} {item.get('source_snippet', '')}".lower()
-                matches = _entity_match_terms(seed, text)
-                thematic_matches = [k for k in THEME_KEYWORDS.get(seed.theme_name, []) if k in text]
-                evidence_quality = _evidence_quality_score(item, seed.theme_name)
-                suppression_flags = []
-                if len(thematic_matches) < 1: suppression_flags.append("weak_thematic_overlap")
-                if any(tok in text for tok in GENERIC_SUPPRESSION_TOKENS) and len(matches) < 1: suppression_flags.append("generic_megacap_contamination")
                 candidate_asset_id = f"MOCK::{seed.theme_name.upper()}::{idx}"
                 candidate_name = f"MOCK::{seed.theme_name.upper()}::{idx}"
-                source_payload = normalize_source_result_payload(item.get("source_result") if isinstance(item, dict) and isinstance(item.get("source_result"), dict) else item)
-                source_url = _normalize_text(str(item.get("source_url") or item.get("url") or ""))
-                source_title = _normalize_text(item.get("source_title") or item.get("title"))
-                source_snippet = _normalize_text(item.get("source_snippet") or item.get("content") or item.get("snippet") or item.get("raw_content") or item.get("rawContent") or item.get("summary") or item.get("description"))
-                derived_source_domain = _normalize_domain(source_url) if source_url else ""
-                source_score = item.get("score")
-                published_date = item.get("published_date")
-                evidence_rank = item.get("source_rank") or source_rank
                 discovery_method = "tavily_search" if tavily_enabled else "deterministic_fallback"
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_seen_before_aggregation"] += 1
-                row = {"run_date_sgt": sgt_date, "workflow_run_id": None, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "query_text": query, "candidate_id": None, "candidate_asset_id": candidate_asset_id, "candidate_name": candidate_name, "candidate_ticker": None, "source_url": source_url, "source_domain": derived_source_domain, "source_title": source_title, "source_snippet": source_snippet, "source_rank": evidence_rank, "evidence_rank": evidence_rank, "evidence_confidence": evidence_quality, "evidence_type": "source_result", "evidence_text": _compose_evidence_text(source_title, source_snippet, derived_source_domain, source_score, published_date, evidence_rank, candidate_name, seed.theme_name, discovery_method), "retrieved_at": item.get("retrieved_at"), "discovery_method": discovery_method, "evidence_quality_score": evidence_quality, "thematic_keyword_matches": thematic_matches, "matched_entity_terms": matches, "suppression_flags": suppression_flags, "cache_reused": bool(item.get("cache_reused", False)), "raw_evidence": {"source_result": source_payload, "candidate_context": {"candidate_name": candidate_name, "candidate_asset_id": candidate_asset_id, "candidate_id": None, "theme_name": seed.theme_name, "discovery_method": discovery_method, "source_node": seed.source_node, "target_node": seed.target_node}, "persistence_phase": "tier3h4c3_phase2b_immediate_source_result_persistence"}}
+                row = build_source_level_evidence_row_from_tavily_result(item=item, result_index=source_rank, seed=seed, sgt_date=sgt_date, query_text=query, candidate_asset_id=candidate_asset_id, candidate_name=candidate_name, discovery_method=discovery_method)
+                if row is None:
+                    continue
                 evidence_rows.append(row)
                 seed_evidence.append(row)
                 if discovery_method == "tavily_search":
@@ -328,7 +345,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         advisory_status = "advisory_review" if band != "rejected_or_noise" else "advisory_rejected"
         candidate_rows.append({"run_date_sgt": sgt_date, "theme_name": seed.theme_name, "source_node": seed.source_node, "target_node": seed.target_node, "propagation_context_id": seed.propagation_context_id, "candidate_asset_id": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_name": f"MOCK::{seed.theme_name.upper()}::{idx}", "candidate_type": "equity_candidate", "ticker": None, "exchange": None, "discovery_method": "tier3h4b_evidence_aware" if tavily_enabled else "tier3h4a_deterministic_scaffold", "evidence_sources": [{"query_text": e["query_text"], "source_url": e["source_url"], "source_domain": e["source_domain"], "quality": e["evidence_quality_score"], "cache_reused": e.get("cache_reused", False)} for e in seed_evidence], "evidence_count": evidence_count, "source_quality_score": avg_quality, "thematic_relevance_score": thematic_relevance_score, "entity_resolution_score": entity_resolution_score, "cross_source_score": cross_source_score, "candidate_confidence_score": confidence, "candidate_confidence_band": band, "confidence_explanation": f"weighted_score={confidence}; evidence_count={evidence_count}; domains={domain_count}; suppression={','.join(suppression) if suppression else 'none'}", "advisory_status": advisory_status, "rejection_reason": ",".join(suppression) if advisory_status == "advisory_rejected" else None, "llm_used": False, "llm_model": None, "llm_classification_json": None})
     sampled = evidence_rows[:3]
-    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled]}
+    evidence_summary = {"tavily_enabled": tavily_enabled, "fallback_mode": fallback_mode, "queries_generated": ops["generated_queries"], "queries_deduplicated": ops["deduplicated_queries"], "queries_executed": ops["executed_queries"], "evidence_rows_collected": len(evidence_rows), "failure_count": ops["failure_count"], "quota_exhausted": quota_exhausted, "tavily_result_rows_seen_before_aggregation": ops["tavily_result_rows_seen_before_aggregation"], "tavily_result_rows_persisted_before_aggregation": ops["tavily_result_rows_persisted_before_aggregation"], "source_level_evidence_rows_written": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_raw_source_payload": sum(1 for e in evidence_rows if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) and bool((e.get("raw_evidence") or {}).get("source_result"))), "evidence_rows_without_source_payload": sum(1 for e in evidence_rows if not isinstance((e.get("raw_evidence") or {}).get("source_result"), dict)), "evidence_rows_with_source_url": sum(1 for e in evidence_rows if bool(e.get("source_url"))), "evidence_rows_with_source_title": sum(1 for e in evidence_rows if bool(e.get("source_title"))), "evidence_rows_with_source_content": sum(1 for e in evidence_rows if bool(e.get("source_snippet"))), "sample_source_result_keys": [sorted(list(((e.get("raw_evidence") or {}).get("source_result") or {}).keys()))[:20] if isinstance((e.get("raw_evidence") or {}).get("source_result"), dict) else [] for e in sampled], "sample_source_titles": [e.get("source_title") for e in sampled], "sample_source_urls": [e.get("source_url") for e in sampled], "sample_source_content_preview": [(e.get("source_snippet") or "")[:120] for e in sampled], "tavily_result_loop_file": "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py", "tavily_result_loop_function": "build_records"}
     return candidate_rows, evidence_rows, evidence_summary, ops
 
 def main() -> int:
