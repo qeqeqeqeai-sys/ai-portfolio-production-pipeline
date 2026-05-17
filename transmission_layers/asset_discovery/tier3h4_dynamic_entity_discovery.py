@@ -859,6 +859,12 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "effective_required_columns": [],
         "final_payload_matches_effective_schema": False,
         "http_409_classification": None,
+        "conflict_target_matches_unique_constraint": None,
+        "duplicate_conflict_detected": False,
+        "rows_already_exist_count": 0,
+        "conflict_is_benign": False,
+        "failing_table_primary_key": [],
+        "failing_table_indexes": [],
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -1000,6 +1006,52 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["schema_introspection_error"] = repr(schema_exc)
     try:
         constraint_headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+        pk_response = requests.get(
+            f"{url}/rest/v1/information_schema.table_constraints",
+            headers=constraint_headers,
+            params={
+                "table_schema": "eq.public",
+                "table_name": f"eq.{table_name}",
+                "constraint_type": "eq.PRIMARY KEY",
+                "select": "constraint_name",
+            },
+            timeout=60,
+        )
+        pk_names: list[str] = []
+        if pk_response.status_code < 400:
+            pk_payload = pk_response.json()
+            if isinstance(pk_payload, list):
+                pk_names = [row.get("constraint_name") for row in pk_payload if isinstance(row, dict) and row.get("constraint_name")]
+        pk_columns: list[str] = []
+        for pk_name in pk_names:
+            pk_cols_response = requests.get(
+                f"{url}/rest/v1/information_schema.key_column_usage",
+                headers=constraint_headers,
+                params={
+                    "table_schema": "eq.public",
+                    "table_name": f"eq.{table_name}",
+                    "constraint_name": f"eq.{pk_name}",
+                    "select": "column_name,ordinal_position",
+                    "order": "ordinal_position.asc",
+                },
+                timeout=60,
+            )
+            if pk_cols_response.status_code >= 400:
+                continue
+            pk_cols_payload = pk_cols_response.json()
+            if isinstance(pk_cols_payload, list):
+                pk_columns.extend([r.get("column_name") for r in pk_cols_payload if isinstance(r, dict) and r.get("column_name")])
+        diagnostics["failing_table_primary_key"] = pk_columns
+
+        idx_response = requests.get(
+            f"{url}/rest/v1/pg_indexes",
+            headers=constraint_headers,
+            params={"schemaname": "eq.public", "tablename": f"eq.{table_name}", "select": "indexname,indexdef"},
+            timeout=60,
+        )
+        if idx_response.status_code < 400 and isinstance(idx_response.json(), list):
+            diagnostics["failing_table_indexes"] = [r.get("indexdef") or r.get("indexname") for r in idx_response.json() if isinstance(r, dict)]
+
         constraints_response = requests.get(
             f"{url}/rest/v1/information_schema.table_constraints",
             headers=constraint_headers,
@@ -1075,6 +1127,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     normalized_conflict_signature = ",".join(actual_upsert_conflict_columns)
     known_signatures = set(diagnostics.get("failing_table_unique_constraints") or diagnostics.get("table_unique_constraints") or [])
     diagnostics["failing_upsert_has_matching_unique_constraint"] = (normalized_conflict_signature in known_signatures) if normalized_conflict_signature else None
+    diagnostics["conflict_target_matches_unique_constraint"] = diagnostics["failing_upsert_has_matching_unique_constraint"]
     diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
     diagnostics["actual_upsert_first_row_keys"] = actual_upsert_first_row_keys
     diagnostics["actual_upsert_contains_query_text"] = "query_text" in actual_upsert_first_row_keys
@@ -1176,6 +1229,39 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                     if isinstance(v, (set, bytes, bytearray, complex, dict, list, tuple)):
                         suspect_fields.append(k)
             diagnostics["evidence_upsert_suspect_type_fields"] = suspect_fields
+            if r.status_code == 409:
+                code = diagnostics.get("write_error_code")
+                details = str(diagnostics.get("write_error_details") or "").lower()
+                msg = str(diagnostics.get("write_error_message") or "").lower()
+                duplicate_conflict = (code == "23505") or ("duplicate" in details) or ("already exists" in details) or ("duplicate" in msg)
+                diagnostics["duplicate_conflict_detected"] = bool(duplicate_conflict)
+                if table_name == TABLE_NAME and duplicate_conflict:
+                    conflict_cols = diagnostics.get("actual_upsert_conflict_columns") or []
+                    rows_already_exist_count = 0
+                    for row in actual_upsert_payload:
+                        if not isinstance(row, dict) or not conflict_cols or any(row.get(c) is None for c in conflict_cols):
+                            continue
+                        params = {"select": "candidate_asset_id", "limit": "1"}
+                        for c in conflict_cols:
+                            params[c] = f"eq.{row.get(c)}"
+                        existing_resp = requests.get(
+                            f"{url}/rest/v1/{table_name}",
+                            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+                            params=params,
+                            timeout=30,
+                        )
+                        if existing_resp.status_code < 400:
+                            payload = existing_resp.json()
+                            if isinstance(payload, list) and payload:
+                                rows_already_exist_count += 1
+                    diagnostics["rows_already_exist_count"] = rows_already_exist_count
+                    diagnostics["conflict_is_benign"] = rows_already_exist_count > 0
+                    diagnostics["http_409_classification"] = "idempotent_duplicate_rerun" if diagnostics["conflict_is_benign"] else "conflict_unverified"
+                    if diagnostics["conflict_is_benign"]:
+                        status = "upserted:benign_duplicate_409"
+                        return (status, diagnostics) if include_diagnostics else status
+                else:
+                    diagnostics["http_409_classification"] = "non_duplicate_or_non_candidate_conflict"
             schema_types = diagnostics.get("evidence_table_actual_column_types") if isinstance(diagnostics.get("evidence_table_actual_column_types"), dict) else {}
             inferred_type_conflicts: list[str] = []
             if isinstance(first_row, dict):
@@ -1879,7 +1965,7 @@ def main() -> int:
     sgt_date = run_date_sgt()
     seeds, source_counts, soft_fallback = load_upstream_context()
     records, evidence_rows, evidence_summary, ops = build_records(seeds, sgt_date)
-    upsert_status = upsert_supabase(records, TABLE_NAME, "run_date_sgt,theme_name,candidate_asset_id,discovery_method")
+    upsert_status, candidate_upsert_diag = upsert_supabase(records, TABLE_NAME, "run_date_sgt,theme_name,candidate_asset_id,discovery_method", include_diagnostics=True)
     evidence_upsert_status, evidence_upsert_diag = upsert_supabase(evidence_rows, EVIDENCE_TABLE_NAME, "", include_diagnostics=True)
     elapsed = round(time.time() - start, 3)
     telemetry_row = {"run_date_sgt": sgt_date, "workflow_name": "tier3h4_dynamic_entity_discovery", "provider": "tavily", "api_calls_attempted": ops["executed_queries"], "api_calls_executed": ops["executed_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "fallback_events": ops["fallback_events"], "rate_limit_events": ops["rate_limit_events"], "quota_exhaustion_events": ops["quota_exhaustion_events"], "retry_events": ops["retry_events"], "success_count": ops["success_count"], "failure_count": ops["failure_count"], "estimated_cost": None, "execution_seconds": elapsed, "metadata": {"fallback_mode": evidence_summary["fallback_mode"], "tavily_enabled": evidence_summary["tavily_enabled"], "soft_fallback_used": soft_fallback}}
@@ -1892,6 +1978,7 @@ def main() -> int:
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
     final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_write_method", "discovery_write_method", "failing_upsert_has_matching_unique_constraint", "evidence_insert_row_count", "evidence_insert_success", "evidence_insert_response_status", "evidence_insert_response_body", "evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "numeric_confidence_coercions_applied", "invalid_numeric_fields_before_write", "evidence_confidence_type", "extraction_confidence_type", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "final_payload_contains_raw_evidence", "raw_evidence_type", "raw_evidence_json_serializable", "raw_evidence_nested_invalid_types", "raw_evidence_sanitization_applied", "raw_evidence_post_sanitization_type", "final_payload_missing_required_columns", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "actual_on_conflict_value", "actual_upsert_conflict_columns", "conflict_columns_exist_in_schema", "schema_introspection_status", "schema_introspection_error", "failing_table_name", "failing_write_method", "failing_on_conflict_value", "failing_table_unique_constraints", "failing_response_body", "table_unique_constraints"]})
+    final_summary_payload.update({k: candidate_upsert_diag.get(k) for k in ["failing_table_name", "failing_table_unique_constraints", "conflict_target_matches_unique_constraint", "duplicate_conflict_detected", "rows_already_exist_count", "conflict_is_benign", "failing_table_primary_key", "failing_table_indexes", "actual_on_conflict_value", "actual_upsert_conflict_columns", "discovery_write_method"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
