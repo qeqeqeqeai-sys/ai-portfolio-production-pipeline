@@ -12,7 +12,7 @@ from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules 
 from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import duplicate_group_key
 from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_alias
 from transmission_layers.asset_discovery.entity_resolution import audit_writer
-from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows
+from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows, _aggregate_evidence_identifiers
 
 
 def test_normalize_name():
@@ -140,3 +140,12 @@ def test_phase1_no_invented_ticker_exchange():
     rows = _normalize_embedded_evidence_rows({"candidate_name": "X", "source_url": "https://a"}, "2026-05-17", None, "ai")
     assert rows[0].get("extracted_ticker") is None
     assert rows[0].get("extracted_exchange") is None
+
+
+def test_conflicting_evidence_identifiers_aggregator():
+    agg, conflict = _aggregate_evidence_identifiers([
+        {"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ", "extracted_ticker": "NVDA", "extracted_exchange": "NASDAQ"},
+        {"normalized_ticker": "AMD", "normalized_exchange": "NASDAQ", "extracted_ticker": "AMD", "extracted_exchange": "NASDAQ"},
+    ])
+    assert conflict is True
+    assert agg["normalized_ticker"] is None

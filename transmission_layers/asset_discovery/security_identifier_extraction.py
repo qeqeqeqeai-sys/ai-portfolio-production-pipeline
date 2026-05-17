@@ -34,6 +34,17 @@ _CANONICAL_ID_MAP = {
 _TICKER_EXCHANGE_MAP = {(entity.ticker, entity.exchange): entity for entity in REGISTRY}
 
 _EXPLICIT_EXCHANGE_TICKER = re.compile(r"\b([A-Z][A-Z\s]{1,12}[A-Z]):\s*([A-Z][A-Z0-9.-]{0,7})\b")
+_EXPLICIT_EXCHANGE_TICKER_EVIDENCE = re.compile(r"(?i)(?:\(|\[)?\s*(NASDAQ|Nasdaq|NasdaqGS|Nasdaq Global Select Market|NYSE|New York Stock Exchange|NYSEARCA|NYSE Arca|Arca|LSE|London Stock Exchange|HKEX|Hong Kong Stock Exchange|SGX|Singapore Exchange|TSE|Tokyo Stock Exchange)\s*:\s*([A-Z0-9]{1,6})\s*(?:\)|\])?")
+_EXPLICIT_SYMBOL_FIELD = re.compile(r"(?i)\b(?:Ticker|Symbol)\s*:\s*([A-Z0-9]{1,6})\b")
+_EXCHANGE_NORMALIZATION = {
+    "nasdaq": "NASDAQ", "nasdaqgs": "NASDAQ", "nasdaq global select market": "NASDAQ",
+    "nyse": "NYSE", "new york stock exchange": "NYSE",
+    "nysearca": "NYSEARCA", "nyse arca": "NYSEARCA", "arca": "NYSEARCA",
+    "lse": "LSE", "london stock exchange": "LSE",
+    "hkex": "HKEX", "hong kong stock exchange": "HKEX",
+    "sgx": "SGX", "singapore exchange": "SGX",
+    "tse": "TSE", "tokyo stock exchange": "TSE",
+}
 
 
 def _security_type_from_entity(entity) -> str:
@@ -136,3 +147,69 @@ def extract_security_identifier(candidate: dict) -> SecurityIdentifierResult:
         identifier_explanation=explanation,
         identifier_warnings=warnings,
     )
+
+
+def extract_security_identifiers_from_evidence(
+    evidence_text: str | None,
+    source_title: str | None,
+    source_url: str | None,
+    raw_evidence: dict | None,
+    candidate_ticker: str | None = None,
+    candidate_exchange: str | None = None,
+) -> dict:
+    warnings: list[str] = []
+    extraction_notes: dict[str, str | None] = {"source_url": source_url}
+    extraction_method = "none"
+    extracted_ticker = None
+    extracted_exchange = None
+    normalized_ticker = None
+    normalized_exchange = None
+    text_parts = [evidence_text, source_title, source_url]
+    if isinstance(raw_evidence, dict):
+        text_parts.extend([str(raw_evidence.get("evidence_text") or ""), str(raw_evidence.get("source_title") or ""), str(raw_evidence.get("source_url") or "")])
+    haystack = " ".join([p for p in text_parts if p]).strip()
+
+    m = _EXPLICIT_EXCHANGE_TICKER_EVIDENCE.search(haystack)
+    if m:
+        extracted_exchange = m.group(1)
+        extracted_ticker = m.group(2).upper()
+        extraction_method = "explicit_exchange_ticker_regex"
+    else:
+        m2 = _EXPLICIT_SYMBOL_FIELD.search(haystack)
+        if m2:
+            extracted_ticker = m2.group(1).upper()
+            extraction_method = "explicit_symbol_field_regex"
+
+    if not extracted_ticker and candidate_ticker:
+        t, suspicious = normalize_ticker(candidate_ticker)
+        if not suspicious and t not in INVALID_UPPERCASE_WORDS:
+            extracted_ticker = t
+            extraction_method = "structured_candidate_ticker_field"
+        elif suspicious:
+            warnings.append("invalid_ticker_pattern")
+
+    if not extracted_exchange and candidate_exchange:
+        extracted_exchange = candidate_exchange
+        extraction_method = "structured_candidate_fields" if extraction_method == "none" else extraction_method
+
+    if extracted_ticker:
+        normalized_ticker, suspicious = normalize_ticker(extracted_ticker)
+        if suspicious or normalized_ticker in INVALID_UPPERCASE_WORDS:
+            warnings.append("invalid_ticker_pattern")
+            extracted_ticker = None
+            normalized_ticker = None
+    if extracted_exchange:
+        normalized_exchange = _EXCHANGE_NORMALIZATION.get(str(extracted_exchange).strip().lower())
+        if not normalized_exchange:
+            warnings.append("unknown_exchange_variant")
+    confidence = 1.0 if extracted_ticker else 0.0
+    return {
+        "extracted_ticker": extracted_ticker,
+        "extracted_exchange": extracted_exchange,
+        "normalized_ticker": normalized_ticker,
+        "normalized_exchange": normalized_exchange,
+        "extraction_method": extraction_method,
+        "extraction_confidence": confidence,
+        "extraction_notes": extraction_notes,
+        "warnings": warnings,
+    }

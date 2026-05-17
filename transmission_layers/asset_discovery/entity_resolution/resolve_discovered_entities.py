@@ -15,7 +15,7 @@ try:
     from .disambiguation_rules import apply_rules
     from .duplicate_consolidator import apply_duplicate_sizes
     from .canonical_registry import lookup_by_ticker, lookup_by_name, lookup_by_alias
-    from ..security_identifier_extraction import extract_security_identifier
+    from ..security_identifier_extraction import extract_security_identifier, extract_security_identifiers_from_evidence
 except ImportError:
     from transmission_layers.asset_discovery.entity_resolution.audit_writer import fetch_table_rows_with_fallback, write_audit_rows, write_evidence_rows
     from transmission_layers.asset_discovery.entity_resolution.canonical_normalizer import normalize_name, guess_asset_type, is_generic_name
@@ -25,7 +25,7 @@ except ImportError:
     from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules import apply_rules
     from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import apply_duplicate_sizes
     from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_name, lookup_by_alias
-    from transmission_layers.asset_discovery.security_identifier_extraction import extract_security_identifier
+    from transmission_layers.asset_discovery.security_identifier_extraction import extract_security_identifier, extract_security_identifiers_from_evidence
 
 LOG_PATH = Path("logs/tier3h4c_entity_resolution_summary.json")
 CANDIDATE_TABLES = ["tier3h_dynamic_entity_discovery", "tier3h4_dynamic_entity_discovery", "tier3h_entity_discovery"]
@@ -93,6 +93,19 @@ def _extract_embedded_evidence(row: dict) -> tuple[list[str], int]:
     source_count = int(explicit_count) if isinstance(explicit_count, int) else len(unique_urls)
     return unique_urls, max(source_count, len(unique_urls))
 
+
+
+def _aggregate_evidence_identifiers(evidence_rows: list[dict]) -> tuple[dict, bool]:
+    seen = {(r.get("normalized_ticker"), r.get("normalized_exchange")) for r in evidence_rows if r.get("normalized_ticker")}
+    seen = {x for x in seen if x[0]}
+    if not seen:
+        return {"candidate_ticker": None, "normalized_ticker": None, "candidate_exchange": None, "normalized_exchange": None}, False
+    if len(seen) > 1:
+        return {"candidate_ticker": None, "normalized_ticker": None, "candidate_exchange": None, "normalized_exchange": None}, True
+    nt, ne = next(iter(seen))
+    sample = next((r for r in evidence_rows if r.get("normalized_ticker") == nt and r.get("normalized_exchange") == ne), {})
+    return {"candidate_ticker": sample.get("extracted_ticker"), "normalized_ticker": nt, "candidate_exchange": sample.get("extracted_exchange"), "normalized_exchange": ne}, False
+
 def _run_date_sgt() -> str:
     return os.getenv("RUN_DATE_SGT") or (datetime.now(timezone.utc) + timedelta(hours=8)).date().isoformat()
 
@@ -114,6 +127,8 @@ def main() -> int:
 
     by_asset = {}
     for e in evidence:
+        extracted = extract_security_identifiers_from_evidence(e.get("evidence_text"), e.get("source_title"), e.get("source_url"), e.get("raw_evidence"), e.get("candidate_ticker"), e.get("candidate_exchange"))
+        e.update(extracted)
         by_asset.setdefault(str(e.get("candidate_asset_id") or e.get("candidate_name") or ""), []).append(e)
 
     has_embedded_fields = any(any(k in c for k in EMBEDDED_EVIDENCE_KEYS) for c in candidates)
@@ -125,8 +140,9 @@ def main() -> int:
     for c in candidates:
         raw_name = c.get("candidate_name")
         identifier = extract_security_identifier(c)
-        nt, suspicious = normalize_ticker(identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"))
-        ne_raw = normalize_exchange(identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"))
+        agg, conflict = _aggregate_evidence_identifiers(ev)
+        nt, suspicious = normalize_ticker(agg.get("candidate_ticker") or identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"))
+        ne_raw = normalize_exchange(agg.get("candidate_exchange") or identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"))
         nn = normalize_name(raw_name)
 
         ticker_matches = lookup_by_ticker(nt)
@@ -171,6 +187,10 @@ def main() -> int:
         }
         rules_payload = list(rules or [])
         rules_payload.append({"deterministic_identifier": identifier_rules_payload})
+        if conflict:
+            rules_payload.append({"evidence_identifier_ambiguity": True})
+            suppression_reason = suppression_reason or "ambiguous_evidence_identifiers"
+            status = "suppressed"
 
         canonical_entity_id = None
         if identifier.canonical_security_id:
@@ -181,8 +201,8 @@ def main() -> int:
         audit_rows.append({
             "run_date_sgt": run_date, "workflow_run_id": workflow_run_id, "theme_name": theme,
             "raw_entity_name": raw_name, "normalized_name": nn,
-            "candidate_ticker": identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"), "normalized_ticker": nt,
-            "candidate_exchange": identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"), "normalized_exchange": identifier.normalized_exchange or normalized_exchange,
+            "candidate_ticker": agg.get("candidate_ticker") or identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"), "normalized_ticker": agg.get("normalized_ticker") or nt,
+            "candidate_exchange": agg.get("candidate_exchange") or identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"), "normalized_exchange": agg.get("normalized_exchange") or identifier.normalized_exchange or normalized_exchange,
             "asset_type_guess": asset_type, "canonical_entity_id": canonical_entity_id,
             "resolution_status": status, "resolution_confidence": score,
             "rules_fired": rules_payload, "suppression_reason": suppression_reason,
@@ -227,6 +247,8 @@ def main() -> int:
         "rows_with_evidence": sum(1 for r in audit_rows if r.get("source_count", 0) > 0), "rows_without_evidence": sum(1 for r in audit_rows if r.get("source_count", 0) == 0),
         "rows_with_ticker": sum(1 for r in audit_rows if r.get("normalized_ticker")), "rows_without_ticker": sum(1 for r in audit_rows if not r.get("normalized_ticker")),
         "rows_with_exchange": sum(1 for r in audit_rows if r.get("normalized_exchange")), "rows_without_exchange": sum(1 for r in audit_rows if not r.get("normalized_exchange")),
+        "evidence_rows_with_ticker": sum(1 for e in evidence if e.get("normalized_ticker")),
+        "evidence_rows_with_exchange": sum(1 for e in evidence if e.get("normalized_exchange")),
         "resolved_high_confidence_count": counts.get("resolved_high_confidence", 0), "resolved_medium_confidence_count": counts.get("resolved_medium_confidence", 0),
         "unresolved_review_count": counts.get("unresolved_review", 0), "suppressed_count": counts.get("suppressed", 0),
         "duplicate_groups_count": len({r.get("duplicate_group_key") for r in audit_rows}), "missing_exchange_count": sum(1 for r in audit_rows if not r.get("normalized_exchange")),
