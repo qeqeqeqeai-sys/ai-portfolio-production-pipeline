@@ -134,7 +134,7 @@ def test_phase2b_source_result_persistence_contains_raw_source_payload(monkeypat
     assert row["raw_evidence"]["source_result"]["title"] == "Grid Demand Rises"
     assert row["raw_evidence"]["source_result"]["content"] == "AI data center power demand trend"
     assert "candidate_context" in row["raw_evidence"]
-    assert row["raw_evidence"]["persistence_phase"] == "tier3h4c3_phase2b_immediate_source_result_persistence"
+    assert row["raw_evidence"]["persistence_phase"] == "tier3h4c3_surgical_source_result_persistence"
     assert row.get("candidate_ticker") is None
 
 
@@ -152,3 +152,29 @@ def test_tavily_pre_aggregation_diagnostics_increment(monkeypatch):
     assert summary["tavily_result_rows_seen_before_aggregation"] > 0
     assert summary["tavily_result_rows_persisted_before_aggregation"] > 0
     assert summary["source_level_evidence_rows_written"] > 0
+    assert summary["tavily_result_loop_file"] == "transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py"
+    assert summary["tavily_result_loop_function"] == "build_records"
+
+
+def test_source_result_row_builder_deterministic_fields_and_no_inference():
+    seed = mod.DiscoverySeed("ai_power_demand", "source_n", "target_n", None)
+    item = {"pageTitle": "Doc", "link": "https://example.org/path", "raw_content": "Snippet body", "relevance_score": 0.33}
+    row = mod.build_source_level_evidence_row_from_tavily_result(item=item, result_index=3, seed=seed, sgt_date="2026-05-16", query_text="q", candidate_asset_id="A", candidate_name="C", discovery_method="tavily_search")
+    assert row is not None
+    assert row["source_title"] == "Doc"
+    assert row["source_url"] == "https://example.org/path"
+    assert row["source_domain"] == "example.org"
+    assert row["candidate_ticker"] is None
+    assert "exchange" not in row
+    assert row["raw_evidence"]["source_result"]["pageTitle"] == "Doc"
+
+
+def test_candidate_aggregation_output_unchanged_shape(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    rows, evidence_rows, _, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert rows and evidence_rows
+    candidate = rows[0]
+    assert candidate["candidate_type"] == "equity_candidate"
+    assert isinstance(candidate["evidence_sources"], list)
+    assert candidate["ticker"] is None
+    assert candidate["exchange"] is None
