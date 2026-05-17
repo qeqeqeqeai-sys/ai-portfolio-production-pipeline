@@ -865,6 +865,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "conflict_is_benign": False,
         "failing_table_primary_key": [],
         "failing_table_indexes": [],
+        "extraction_notes_null_count_before_normalization": 0,
+        "extraction_notes_null_count_after_normalization": 0,
+        "extraction_notes_default_applied_count": 0,
+        "extraction_notes_json_serializable": True,
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -1116,6 +1120,29 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             row["raw_evidence"] = sanitized_raw_evidence
         diagnostics["raw_evidence_nested_invalid_types"] = sorted(raw_evidence_invalid_types)
         diagnostics["raw_evidence_sanitization_applied"] = raw_evidence_sanitization_applied
+    if table_name == EVIDENCE_TABLE_NAME:
+        extraction_notes_null_count_before = 0
+        extraction_notes_default_applied_count = 0
+        extraction_notes_json_serializable = True
+        for row in actual_upsert_payload:
+            if not isinstance(row, dict):
+                continue
+            extraction_notes_value = row.get("extraction_notes")
+            if extraction_notes_value is None:
+                extraction_notes_null_count_before += 1
+                row["extraction_notes"] = {}
+                extraction_notes_default_applied_count += 1
+            try:
+                json.dumps(row.get("extraction_notes"))
+            except (TypeError, ValueError):
+                extraction_notes_json_serializable = False
+        extraction_notes_null_count_after = sum(
+            1 for row in actual_upsert_payload if isinstance(row, dict) and row.get("extraction_notes") is None
+        )
+        diagnostics["extraction_notes_null_count_before_normalization"] = extraction_notes_null_count_before
+        diagnostics["extraction_notes_null_count_after_normalization"] = extraction_notes_null_count_after
+        diagnostics["extraction_notes_default_applied_count"] = extraction_notes_default_applied_count
+        diagnostics["extraction_notes_json_serializable"] = extraction_notes_json_serializable
     actual_on_conflict_value = "" if table_name == EVIDENCE_TABLE_NAME else (on_conflict or "").strip()
     actual_upsert_conflict_columns = [c.strip() for c in actual_on_conflict_value.split(",") if c.strip()]
     schema_columns = set(diagnostics.get("evidence_upsert_destination_table_columns") or diagnostics.get("evidence_table_actual_columns") or [])
