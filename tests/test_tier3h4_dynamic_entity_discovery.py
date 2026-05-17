@@ -361,7 +361,10 @@ def test_strict_exchange_qualified_identifier_positive_cases():
 def test_strict_exchange_qualified_identifier_negative_cases():
     for text in ["NVDA", "AMD", "Nvidia Corporation", "AI", "IPO", "CEO", "ETF", "SEC", "USD", "HELLO WORLD", "TSX: SHOP", "Ticker NVDA", "listed on NASDAQ", "ticker NVDA", "ADR", "LLC", "INC", "LTD", "PLC", "CORP", "THE", "AND"]:
         out = mod._extract_strict_exchange_qualified_identifier(text)
-        assert out == {}
+        assert set(mod.CANONICAL_EXTRACTION_FIELDS).issubset(out.keys())
+        assert out["accepted"] is False
+        assert out["normalized_ticker"] is None
+        assert out["normalized_exchange"] is None
 
 
 def test_strict_exchange_qualified_identifier_rejects_ambiguous():
@@ -384,8 +387,8 @@ def test_strict_extraction_populates_only_when_explicit_pattern_exists():
     with patch.object(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows):
         _, evidence_rows, summary, _ = mod.build_records(seed, "2026-05-16")
     assert evidence_rows
-    assert evidence_rows[0]["normalized_ticker"] == "NVDA"
-    assert evidence_rows[0]["normalized_exchange"] == "NASDAQ"
+    assert any(r.get("normalized_ticker") == "NVDA" for r in evidence_rows)
+    assert any(r.get("normalized_exchange") == "NASDAQ" for r in evidence_rows)
     assert summary["strict_identifier_extraction_enabled"] is True
     assert summary["strict_identifier_matches_found"] > 0
     assert "NASDAQ" in summary["strict_identifier_unique_exchanges_found"]
@@ -404,12 +407,12 @@ def test_strict_extraction_propagation_and_summary_consistency(monkeypatch):
     }]
     monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
     _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
-    assert evidence_rows[0]["extracted_ticker"] == "NVDA"
-    assert evidence_rows[0]["extracted_exchange"] == "NASDAQ"
-    assert evidence_rows[0]["normalized_ticker"] == "NVDA"
-    assert evidence_rows[0]["normalized_exchange"] == "NASDAQ"
-    assert evidence_rows[0]["extraction_method"]
-    assert evidence_rows[0]["extraction_confidence"] == "high"
+    match_rows = [r for r in evidence_rows if r.get("normalized_ticker") == "NVDA" and r.get("normalized_exchange") == "NASDAQ"]
+    assert match_rows
+    assert match_rows[0]["extracted_ticker"] == "NVDA"
+    assert match_rows[0]["extracted_exchange"] == "NASDAQ"
+    assert match_rows[0]["extraction_method"]
+    assert match_rows[0]["extraction_confidence"] == "high"
     assert summary["strict_identifier_matches_found"] >= 1
     assert summary["strict_identifier_sample_matches"]
     assert summary["strict_identifier_results_propagated"] is True
@@ -530,7 +533,8 @@ def test_token_distance_guardrail_blocks_far_pairs():
     near = mod._extract_strict_exchange_qualified_identifier("ticker MSFT on NASDAQ", token_distance_max=10)
     far = mod._extract_strict_exchange_qualified_identifier("ticker MSFT " + " filler" * 20 + " on NASDAQ", token_distance_max=4)
     assert near.get("normalized_ticker") == "MSFT"
-    assert far == {}
+    assert far["accepted"] is False
+    assert set(mod.CANONICAL_EXTRACTION_FIELDS).issubset(far.keys())
 
 
 def test_duplicate_context_collapse_and_diagnostics(monkeypatch):
@@ -550,3 +554,34 @@ def test_duplicate_context_collapse_and_diagnostics(monkeypatch):
     samples = summary.get("strict_identifier_normalization_sample_before_after", [])
     assert len(samples) <= 5
     assert all(len(s.get("before", "")) <= 240 and len(s.get("after", "")) <= 240 for s in samples)
+
+
+def test_extraction_result_schema_consistent_across_outcomes():
+    cases = {
+        "accepted": "NASDAQ: NVDA",
+        "rejected": "ticker NVDA",
+        "malformed": "{NASDAQ: NVDA}",
+        "duplicate": "NASDAQ: NVDA NASDAQ: NVDA",
+        "empty": "",
+        "normalized": "  Nasdaq:   amd  ",
+        "ambiguous": "NASDAQ: NVDA and NYSE: IBM",
+    }
+    for _, text in cases.items():
+        out = mod._extract_strict_exchange_qualified_identifier(text)
+        assert set(mod.CANONICAL_EXTRACTION_FIELDS).issubset(out.keys())
+
+
+def test_build_records_populates_canonical_schema_for_rejected_and_accepted(monkeypatch):
+    rows = [{
+        "source_url": "https://example.com/a",
+        "source_title": "mixed",
+        "source_snippet": "NASDAQ: NVDA. ticker XYZ without exchange.",
+        "source_rank": 1,
+        "retrieved_at": "2026-05-16T00:00:00+00:00",
+        "cache_reused": True,
+    }]
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
+    _, evidence_rows, _, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert evidence_rows
+    for key in mod.CANONICAL_EXTRACTION_FIELDS:
+        assert key in evidence_rows[0]

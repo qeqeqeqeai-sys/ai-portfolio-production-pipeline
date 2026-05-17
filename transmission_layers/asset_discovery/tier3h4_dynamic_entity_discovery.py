@@ -123,6 +123,45 @@ STRICT_TICKER_ON_EXCHANGE_PATTERN = re.compile(
     rf"(?i)\b(?:stock\s+symbol|ticker|symbol)\s+(?P<ticker>[A-Za-z0-9]{{1,6}})\s+on\s+(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b"
 )
 MEANINGFUL_TEXT_MIN_LENGTH = 40
+
+CANONICAL_EXTRACTION_FIELDS = (
+    "extraction_method",
+    "extraction_confidence",
+    "extraction_notes",
+    "normalized_ticker",
+    "normalized_exchange",
+    "extracted_ticker",
+    "extracted_exchange",
+    "accepted",
+    "rejection_reason",
+    "ambiguity_reason",
+)
+
+
+def _canonical_extraction_result(**overrides: Any) -> dict[str, Any]:
+    base = {
+        "extraction_method": None,
+        "extraction_confidence": None,
+        "extraction_notes": None,
+        "normalized_ticker": None,
+        "normalized_exchange": None,
+        "extracted_ticker": None,
+        "extracted_exchange": None,
+        "accepted": False,
+        "rejection_reason": None,
+        "ambiguity_reason": None,
+        "warnings": [],
+        "multiple_matches_detected": False,
+    }
+    base.update(overrides)
+    return base
+
+
+def _apply_canonical_extraction_result(row: dict[str, Any], extraction: dict[str, Any]) -> None:
+    if row.get("accepted") and not extraction.get("accepted"):
+        return
+    for key in CANONICAL_EXTRACTION_FIELDS:
+        row[key] = extraction.get(key)
 METADATA_ONLY_PATTERN = re.compile(r"^\s*(?:weighted_score|evidence_count|suppression|metadata|operational|source_domain|tavily_score|published_date|evidence_rank)[\s:=;\w,._-]*$", re.IGNORECASE)
 
 
@@ -291,7 +330,7 @@ def _collect_tavily(query_text: str, api_key: str, max_results: int = 5) -> tupl
 def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max: int = STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX) -> dict[str, Any]:
     raw_text = _normalize_text(text)
     if not raw_text:
-        return {}
+        return _canonical_extraction_result(rejection_reason="empty_context")
     candidate_matches: list[dict[str, str]] = []
     matcher_specs = [
         (STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, "strict_exchange_colon_regex"),
@@ -311,7 +350,7 @@ def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max:
                 }
             )
     if not candidate_matches:
-        return {}
+        return _canonical_extraction_result(rejection_reason="no_context_phrase")
     normalized_matches: list[dict[str, str]] = []
     noise_rejections: list[str] = []
     unsupported_rejections: list[str] = []
@@ -339,25 +378,26 @@ def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max:
     if len(normalized_matches) > 1:
         unique_pairs = {(m["normalized_exchange"], m["normalized_ticker"]) for m in normalized_matches}
         if len(unique_pairs) > 1:
-            return {"warnings": ["ambiguous_multiple_matches_rejected"], "multiple_matches_detected": True}
+            return _canonical_extraction_result(warnings=["ambiguous_multiple_matches_rejected"], multiple_matches_detected=True, rejection_reason="ambiguous_context_window", ambiguity_reason="ambiguous_context_window")
     if normalized_matches:
         selected = normalized_matches[0]
-        return {
-            "extracted_ticker": selected["normalized_ticker"],
-            "extracted_exchange": selected["normalized_exchange"],
-            "normalized_ticker": selected["normalized_ticker"],
-            "normalized_exchange": selected["normalized_exchange"],
-            "extraction_method": selected["extraction_method"],
-            "extraction_confidence": "high",
-            "extraction_notes": selected["extraction_notes"],
-            "warnings": [],
-            "multiple_matches_detected": len(normalized_matches) > 1,
-        }
+        return _canonical_extraction_result(
+            extracted_ticker=selected["normalized_ticker"],
+            extracted_exchange=selected["normalized_exchange"],
+            normalized_ticker=selected["normalized_ticker"],
+            normalized_exchange=selected["normalized_exchange"],
+            extraction_method=selected["extraction_method"],
+            extraction_confidence="high",
+            extraction_notes=selected["extraction_notes"],
+            warnings=[],
+            multiple_matches_detected=len(normalized_matches) > 1,
+            accepted=True,
+        )
     if noise_rejections:
-        return {"warnings": [f"noise_token_rejected:{noise_rejections[0]}"]}
+        return _canonical_extraction_result(warnings=[f"noise_token_rejected:{noise_rejections[0]}"], rejection_reason="noisy_token")
     if unsupported_rejections:
-        return {"warnings": [f"unsupported_exchange_rejected:{unsupported_rejections[0]}"]}
-    return {}
+        return _canonical_extraction_result(warnings=[f"unsupported_exchange_rejected:{unsupported_rejections[0]}"], rejection_reason="unsupported_exchange_label")
+    return _canonical_extraction_result(rejection_reason="no_context_phrase")
 
 STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
     "multiple_tickers_in_context",
@@ -830,14 +870,13 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                                 if len(strict_diag["strict_identifier_candidate_explainability"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
                                     strict_diag["strict_identifier_candidate_explainability"].append(explainability)
                                 continue
-                            if "extracted_ticker" not in extracted:
-                                continue
-                            for k in ("extracted_ticker", "extracted_exchange", "normalized_ticker", "normalized_exchange", "extraction_method", "extraction_confidence", "extraction_notes"):
-                                row[k] = extracted[k]
-                            if "extraction_method" not in extracted:
+                            _apply_canonical_extraction_result(row, extracted)
+                            if not extracted.get("accepted"):
                                 continue
                             strict_propagated_row_keys.add(f"{row.get('theme_name','')}|{row.get('query_text','')}|{row.get('source_url','')}")
-                        method = extracted["extraction_method"]
+                        method = extracted.get("extraction_method")
+                        if not method:
+                            continue
                         strict_diag["strict_identifier_match_pattern_counts"][method] = strict_diag["strict_identifier_match_pattern_counts"].get(method, 0) + 1
                         strict_diag["strict_identifier_matches_found"] += 1
                         strict_unique_tickers.add(extracted["normalized_ticker"])
