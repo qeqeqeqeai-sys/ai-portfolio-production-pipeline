@@ -59,3 +59,32 @@ def write_audit_rows(rows: list[dict]) -> dict:
         }
     except Exception as exc:
         return {"status": f"write_exception:{type(exc).__name__}"}
+
+
+def write_evidence_rows(rows: list[dict]) -> dict:
+    if not rows:
+        return {"status": "skipped:no_rows", "rows_written": 0}
+    url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+    if not url or not key:
+        return {"status": "skipped:missing_supabase_env", "rows_written": 0}
+    payload = [{k: v for k, v in row.items() if k in EVIDENCE_COLUMNS} for row in rows]
+    try:
+        resp = requests.post(
+            f"{url}/rest/v1/{EVIDENCE_TABLE_NAME}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "return=minimal"},
+            json=payload,
+            timeout=30,
+        )
+        if resp.status_code < 400:
+            return {"status": "written", "rows_written": len(payload)}
+        return {"status": f"write_failed:{resp.status_code}", "rows_written": 0}
+    except Exception as exc:
+        return {"status": f"write_exception:{type(exc).__name__}", "rows_written": 0}
+EVIDENCE_TABLE_NAME = "tier3h_dynamic_entity_evidence"
+EVIDENCE_COLUMNS = {
+    "run_date_sgt", "workflow_run_id", "theme_name", "candidate_id", "candidate_asset_id", "candidate_name",
+    "evidence_text", "source_url", "source_title", "source_domain", "evidence_type", "evidence_rank",
+    "evidence_confidence", "extracted_ticker", "extracted_exchange", "extraction_method",
+    "extraction_confidence", "extraction_notes", "raw_evidence",
+}

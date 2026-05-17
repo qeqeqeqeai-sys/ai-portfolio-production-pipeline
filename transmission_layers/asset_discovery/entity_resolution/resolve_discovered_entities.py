@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 try:
-    from .audit_writer import fetch_table_rows_with_fallback, write_audit_rows
+    from .audit_writer import fetch_table_rows_with_fallback, write_audit_rows, write_evidence_rows
     from .canonical_normalizer import normalize_name, guess_asset_type, is_generic_name
     from .ticker_normalizer import normalize_ticker
     from .exchange_normalizer import normalize_exchange
@@ -17,7 +17,7 @@ try:
     from .canonical_registry import lookup_by_ticker, lookup_by_name, lookup_by_alias
     from ..security_identifier_extraction import extract_security_identifier
 except ImportError:
-    from transmission_layers.asset_discovery.entity_resolution.audit_writer import fetch_table_rows_with_fallback, write_audit_rows
+    from transmission_layers.asset_discovery.entity_resolution.audit_writer import fetch_table_rows_with_fallback, write_audit_rows, write_evidence_rows
     from transmission_layers.asset_discovery.entity_resolution.canonical_normalizer import normalize_name, guess_asset_type, is_generic_name
     from transmission_layers.asset_discovery.entity_resolution.ticker_normalizer import normalize_ticker
     from transmission_layers.asset_discovery.entity_resolution.exchange_normalizer import normalize_exchange
@@ -31,6 +31,51 @@ LOG_PATH = Path("logs/tier3h4c_entity_resolution_summary.json")
 CANDIDATE_TABLES = ["tier3h_dynamic_entity_discovery", "tier3h4_dynamic_entity_discovery", "tier3h_entity_discovery"]
 EVIDENCE_TABLES = ["tier3h_dynamic_entity_evidence", "tier3h4_dynamic_entity_evidence", "tier3h_dynamic_discovery_evidence", "tier3h_entity_evidence"]
 EMBEDDED_EVIDENCE_KEYS = ["evidence_url", "source_url", "source_domain", "evidence_snippet", "source_title", "tavily_response", "evidence_sources", "source_count"]
+
+def _normalize_embedded_evidence_rows(candidate: dict, run_date: str, workflow_run_id: str | None, theme: str) -> list[dict]:
+    base = {
+        "run_date_sgt": run_date,
+        "workflow_run_id": workflow_run_id,
+        "theme_name": theme,
+        "candidate_id": candidate.get("candidate_id"),
+        "candidate_asset_id": candidate.get("candidate_asset_id"),
+        "candidate_name": candidate.get("candidate_name"),
+        "extracted_ticker": candidate.get("ticker") or candidate.get("candidate_ticker"),
+        "extracted_exchange": candidate.get("exchange") or candidate.get("candidate_exchange"),
+        "extraction_method": "embedded_candidate_fields",
+        "extraction_confidence": None,
+        "extraction_notes": {},
+    }
+    rows: list[dict] = []
+    sources = candidate.get("evidence_sources")
+    if isinstance(sources, list) and sources:
+        for i, src in enumerate(sources, start=1):
+            if not isinstance(src, dict):
+                continue
+            rows.append({
+                **base,
+                "evidence_text": src.get("source_snippet") or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
+                "source_url": src.get("source_url"),
+                "source_title": src.get("source_title"),
+                "source_domain": src.get("source_domain"),
+                "evidence_type": "evidence_sources",
+                "evidence_rank": i,
+                "evidence_confidence": src.get("quality"),
+                "raw_evidence": {"evidence_source": src, "source_node": candidate.get("source_node"), "target_node": candidate.get("target_node"), "llm_classification_json": candidate.get("llm_classification_json")},
+            })
+    elif any(candidate.get(k) for k in ("source_url", "evidence_url", "confidence_explanation", "rejection_reason")):
+        rows.append({
+            **base,
+            "evidence_text": candidate.get("evidence_snippet") or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
+            "source_url": candidate.get("source_url") or candidate.get("evidence_url"),
+            "source_title": candidate.get("source_title"),
+            "source_domain": candidate.get("source_domain"),
+            "evidence_type": "embedded_candidate_fields",
+            "evidence_rank": 1,
+            "evidence_confidence": candidate.get("source_quality_score"),
+            "raw_evidence": {"source_node": candidate.get("source_node"), "target_node": candidate.get("target_node"), "confidence_explanation": candidate.get("confidence_explanation"), "rejection_reason": candidate.get("rejection_reason"), "llm_classification_json": candidate.get("llm_classification_json")},
+        })
+    return rows
 
 def _extract_embedded_evidence(row: dict) -> tuple[list[str], int]:
     urls = []
@@ -57,6 +102,12 @@ def main() -> int:
     warnings, errors = [], []
 
     candidates, cand_meta = fetch_table_rows_with_fallback(CANDIDATE_TABLES, run_date, theme)
+    persisted_rows_to_write = []
+    for candidate in candidates:
+        persisted_rows_to_write.extend(_normalize_embedded_evidence_rows(candidate, run_date, workflow_run_id, theme))
+    write_evidence_result = write_evidence_rows(persisted_rows_to_write)
+    evidence_table_created_or_available = write_evidence_result.get("status") in {"written", "skipped:no_rows", "skipped:missing_supabase_env"}
+
     evidence, ev_meta = fetch_table_rows_with_fallback(EVIDENCE_TABLES, run_date, theme)
     if cand_meta.get("warning"): warnings.append(cand_meta["warning"])
     warnings.extend([w for w in ev_meta.get("warnings", []) if w])
@@ -66,7 +117,7 @@ def main() -> int:
         by_asset.setdefault(str(e.get("candidate_asset_id") or e.get("candidate_name") or ""), []).append(e)
 
     has_embedded_fields = any(any(k in c for k in EMBEDDED_EVIDENCE_KEYS) for c in candidates)
-    evidence_source_mode = "separate_table" if evidence else ("embedded_candidate_fields" if has_embedded_fields else "unavailable")
+    evidence_source_mode = "persisted_evidence_table" if evidence else ("embedded_candidate_fields" if has_embedded_fields else "unavailable")
     evidence_selected_reason = "separate evidence table rows found" if evidence else ("candidate rows contain embedded evidence-like fields" if has_embedded_fields else "no evidence rows or embedded fields found")
 
     stats = Counter()
@@ -155,8 +206,12 @@ def main() -> int:
     counts = Counter(r["resolution_status"] for r in audit_rows)
     summary = {
         "run_date_sgt": run_date, "workflow_run_id": workflow_run_id, "theme_name": theme,
+        "evidence_table_created_or_available": evidence_table_created_or_available,
         "candidate_table_selected": cand_meta.get("table_selected"), "evidence_table_selected": ev_meta.get("table_selected"),
         "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason,
+        "evidence_rows_written": write_evidence_result.get("rows_written", 0),
+        "evidence_fallback_used": not bool(evidence),
+        "evidence_candidate_join_key_used": "candidate_asset_id_or_candidate_name",
         "failed_evidence_table_attempts": ev_meta.get("warnings", []),
         "candidate_tables_attempted": cand_meta.get("tables_attempted", []), "evidence_tables_attempted": ev_meta.get("tables_attempted", []),
         "candidate_read_warning": cand_meta.get("warning"), "evidence_read_warning": ev_meta.get("warning"),

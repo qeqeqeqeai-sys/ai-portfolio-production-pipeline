@@ -129,3 +129,28 @@ Audit fields added:
 `extracted_ticker`, `raw_exchange`, `normalized_exchange`, `security_type`, `canonical_security_id`, `identifier_source`, `identifier_method`, `identifier_confidence`, `identifier_status`, `identifier_explanation`, `identifier_warnings`.
 
 Future LLM suggestions (if introduced) must remain quarantined and require deterministic registry validation before any resolver impact.
+
+## Tier 3H.4C.3 Phase 1 — Stabilize Evidence Table Creation
+
+### Purpose of `public.tier3h_dynamic_entity_evidence`
+Create a canonical, advisory-only persisted evidence table that stores normalized evidence rows derived from embedded candidate fields and enables deterministic evidence reuse across runs.
+
+### Advisory-only status
+- Evidence writes are additive-only and do not mutate monitored-universe tables.
+- No autonomous promotion is triggered by evidence persistence.
+- No LLM/fuzzy identifier mapping is performed in this phase.
+- `llm_classification_json` may be preserved only as raw evidence context.
+
+### Fallback behavior (non-blocking)
+- Resolver first attempts to read from `tier3h_dynamic_entity_evidence`.
+- Legacy fallback read order remains:
+  1. `tier3h4_dynamic_entity_evidence`
+  2. `tier3h_dynamic_discovery_evidence`
+  3. `tier3h_entity_evidence`
+- If persisted evidence read fails or returns zero rows, resolver falls back to `embedded_candidate_fields`.
+- Workflow remains non-blocking; diagnostics capture warnings without failing the run.
+
+### Phase 1 success criterion
+- `evidence_rows_read > 0` after evidence persistence (same run or subsequent run).
+- `evidence_table_selected = tier3h_dynamic_entity_evidence`.
+- `evidence_source_mode = persisted_evidence_table` when rows are available.
