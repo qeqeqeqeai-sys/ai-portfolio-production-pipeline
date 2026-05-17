@@ -481,6 +481,12 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["strict_identifier_counter_reconciliation_passed"] is True
     assert summary["strict_identifier_counter_reconciliation_warnings"] == []
     assert summary["strict_identifier_runtime_vs_summary_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
+    assert summary["strict_identifier_payload_canonicalized"] is True
+    assert summary["strict_identifier_final_payload_validated"] is True
+    assert summary["strict_identifier_final_payload_matches_runtime"] is True
+    assert summary["strict_identifier_serialization_order_valid"] is True
+    assert summary["strict_identifier_stale_payload_detected"] is False
+    assert summary["strict_identifier_runtime_vs_final_payload_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "sample_match_delta": 0}
     assert summary["strict_identifier_summary_serialization_complete"] is True
     assert summary["strict_identifier_canonical_counter_source"] == "strict_identifier_accepted_matches"
     assert summary["strict_identifier_final_summary_source"] == "strict_identifier_accepted_matches"
@@ -644,3 +650,52 @@ def test_build_records_populates_canonical_schema_for_rejected_and_accepted(monk
     assert evidence_rows
     for key in mod.CANONICAL_EXTRACTION_FIELDS:
         assert key in evidence_rows[0]
+
+
+def test_final_payload_canonicalization_detects_stale_payload():
+    evidence_summary = {
+        "strict_identifier_accepted_match_collection_size": 1,
+        "strict_identifier_accepted_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ", "extraction_notes": []}],
+        "strict_identifier_matches_found": 1,
+        "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ", "note": []}],
+        "rows_with_ticker": 1,
+        "rows_with_exchange": 1,
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+    }
+    final_summary_payload = {
+        "strict_identifier_matches_found": 0,
+        "strict_identifier_sample_matches": [],
+        "rows_with_ticker": 0,
+        "rows_with_exchange": 0,
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+    }
+    mod._canonicalize_final_summary_payload(final_summary_payload, evidence_summary, [{"ticker": "NVDA", "exchange": "NASDAQ"}])
+    assert final_summary_payload["strict_identifier_matches_found"] == 1
+    assert final_summary_payload["strict_identifier_sample_matches"]
+    assert final_summary_payload["strict_identifier_stale_payload_detected"] is False
+    assert final_summary_payload["strict_identifier_counter_reconciliation_passed"] is True
+
+
+def test_final_payload_validation_fails_on_runtime_divergence():
+    evidence_summary = {
+        "strict_identifier_accepted_match_collection_size": 1,
+        "strict_identifier_accepted_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ", "extraction_notes": []}],
+        "strict_identifier_matches_found": 2,
+        "strict_identifier_sample_matches": [{"ticker": "NVDA", "exchange": "NASDAQ", "note": []}],
+        "rows_with_ticker": 2,
+        "rows_with_exchange": 2,
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+    }
+    final_summary_payload = {
+        "strict_identifier_summary_serialization_complete": True,
+        "strict_identifier_counter_reconciliation_warnings": [],
+    }
+    mod._canonicalize_final_summary_payload(final_summary_payload, evidence_summary, [{"ticker": "NVDA", "exchange": "NASDAQ"}])
+    assert final_summary_payload["strict_identifier_stale_payload_detected"] is True
+    assert final_summary_payload["strict_identifier_final_payload_matches_runtime"] is False
+    assert final_summary_payload["strict_identifier_counter_reconciliation_passed"] is False
+    assert "stale_final_payload_detected" in final_summary_payload["strict_identifier_counter_reconciliation_warnings"]
+
