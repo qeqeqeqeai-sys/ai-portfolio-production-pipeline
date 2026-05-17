@@ -462,3 +462,30 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["strict_identifier_log_summary_match"] is True
     assert summary["evidence_rows_with_ticker"] >= 1
     assert summary["evidence_rows_with_exchange"] >= 1
+
+
+def test_strict_identifier_ambiguity_diagnostics_fields_and_bounds(monkeypatch):
+    rows = [{
+        "source_url": "https://example.com/a",
+        "source_title": "Ambiguous symbols",
+        "source_snippet": "NASDAQ: NVDA and NYSE: IBM and ticker AI on NASDAQ",
+        "source_rank": 1,
+        "retrieved_at": "2026-05-16T00:00:00+00:00",
+        "cache_reused": True,
+    }]
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows)
+    _, evidence_rows, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert summary["strict_identifier_ambiguity_diagnostics_enabled"] is True
+    assert isinstance(summary["strict_identifier_rejection_reason_counts"], dict)
+    assert summary["strict_identifier_ambiguous_match_count"] >= 1
+    assert summary["strict_identifier_multiple_ticker_count"] >= 1
+    assert summary["strict_identifier_multiple_exchange_count"] >= 1
+    assert summary["strict_identifier_exchange_conflict_count"] >= 0
+    assert summary["strict_identifier_ticker_conflict_count"] >= 0
+    assert summary["strict_identifier_malformed_context_count"] >= 0
+    assert len(summary["strict_identifier_ambiguous_match_examples"]) <= summary["strict_identifier_explainability_sample_size"]
+    assert len(summary["strict_identifier_context_window_examples"]) <= summary["strict_identifier_explainability_sample_size"]
+    for w in summary["strict_identifier_context_window_examples"]:
+        assert len(w) <= mod.STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN
+    for ex in summary["strict_identifier_ambiguous_match_examples"]:
+        assert len(ex["context_window"]) <= mod.STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN

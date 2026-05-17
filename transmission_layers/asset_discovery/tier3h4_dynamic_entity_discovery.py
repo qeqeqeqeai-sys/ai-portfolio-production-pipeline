@@ -99,6 +99,8 @@ EXCHANGE_LABEL_TO_CANONICAL = {
     "Tokyo Stock Exchange": "TSE",
 }
 NOISE_TICKER_DENYLIST = {"AI", "ETF", "CEO", "IPO", "SEC", "USD", "ADR", "LLC", "INC", "LTD", "PLC", "CORP", "THE", "AND"}
+STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE = 8
+STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN = 240
 STRICT_EXCHANGE_LABEL_PATTERN = "|".join(sorted((re.escape(k) for k in EXCHANGE_LABEL_TO_CANONICAL), key=len, reverse=True))
 STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN = re.compile(
     rf"(?i)(?:^|[\s\(\[\{{,;])(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*:\s*(?P<ticker>[A-Za-z0-9]{{1,6}})\b"
@@ -353,6 +355,13 @@ def _extract_strict_exchange_qualified_identifier(text: str) -> dict[str, Any]:
         return {"warnings": [f"unsupported_exchange_rejected:{unsupported_rejections[0]}"]}
     return {}
 
+def _bounded_context_window(text: str, max_len: int = STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN) -> str:
+    clean = _normalize_text(text)
+    if len(clean) <= max_len:
+        return clean
+    half = max(1, (max_len - 3) // 2)
+    return f"{clean[:half]}...{clean[-half:]}"
+
 def _fresh_evidence_quality_diagnostics(evidence_rows: list[dict[str, Any]]) -> dict[str, Any]:
     domains: list[str] = []
     missing_payload_reasons: list[str] = []
@@ -527,10 +536,28 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "strict_identifier_log_summary_match": True,
         "strict_identifier_propagation_target": "evidence_rows",
         "strict_identifier_propagation_warnings": [],
+        "strict_identifier_ambiguity_diagnostics_enabled": True,
+        "strict_identifier_rejection_reason_counts": {},
+        "strict_identifier_ambiguous_match_count": 0,
+        "strict_identifier_ambiguous_match_examples": [],
+        "strict_identifier_context_window_examples": [],
+        "strict_identifier_multiple_ticker_count": 0,
+        "strict_identifier_multiple_exchange_count": 0,
+        "strict_identifier_exchange_conflict_count": 0,
+        "strict_identifier_ticker_conflict_count": 0,
+        "strict_identifier_duplicate_context_count": 0,
+        "strict_identifier_malformed_context_count": 0,
+        "strict_identifier_noise_rejection_examples": [],
+        "strict_identifier_unsupported_exchange_examples": [],
+        "strict_identifier_no_context_phrase_examples": [],
+        "strict_identifier_explainability_sample_size": STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE,
+        "strict_identifier_candidate_explainability": [],
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
     strict_propagated_row_keys: set[str] = set()
+    seen_context_windows: set[str] = set()
+    matcher_patterns = [STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN, STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN, STRICT_LISTED_CONTEXT_PATTERN, STRICT_HYPHENATED_LISTED_PATTERN, STRICT_TICKER_ON_EXCHANGE_PATTERN]
     for idx, seed in enumerate(seeds, start=1):
         queries = _generate_queries(seed)
         ops["generated_queries"] += len(queries)
@@ -641,22 +668,62 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 for text in scan_texts:
                     if not text:
                         continue
+                    context_window = _bounded_context_window(text)
+                    matches = [m for p in matcher_patterns for m in p.finditer(text)]
+                    detected_exchange_labels = sorted({_normalize_text(m.group("label")) for m in matches})
+                    detected_ticker_tokens = sorted({_normalize_text(m.group("ticker")).upper() for m in matches})
+                    if context_window in seen_context_windows:
+                        strict_diag["strict_identifier_duplicate_context_count"] += 1
+                    else:
+                        seen_context_windows.add(context_window)
+                    if len(detected_ticker_tokens) > 1:
+                        strict_diag["strict_identifier_multiple_ticker_count"] += 1
+                    if len(detected_exchange_labels) > 1:
+                        strict_diag["strict_identifier_multiple_exchange_count"] += 1
+                    if len(detected_exchange_labels) > 1 and len(detected_ticker_tokens) == 1:
+                        strict_diag["strict_identifier_exchange_conflict_count"] += 1
+                    if len(detected_ticker_tokens) > 1 and len(detected_exchange_labels) == 1:
+                        strict_diag["strict_identifier_ticker_conflict_count"] += 1
+                    if "{" in text or "}" in text:
+                        strict_diag["strict_identifier_malformed_context_count"] += 1
+                    explainability = {"candidate_name": _normalize_text(row.get("candidate_name")), "source_url": _normalize_text(str(row.get("source_url") or "")), "source_domain": _normalize_text(row.get("source_domain")), "source_title": _normalize_text(row.get("source_title")), "detected_exchange_labels": detected_exchange_labels, "detected_ticker_tokens": detected_ticker_tokens, "matched_pattern_family": "no_match", "context_window": context_window, "rejection_reason": None, "ambiguity_reason": None, "accepted": False}
                     extracted = _extract_strict_exchange_qualified_identifier(text)
                     if extracted:
                         if extracted.get("multiple_matches_detected"):
                             strict_diag["strict_identifier_rows_with_multiple_matches"] += 1
                         if extracted.get("warnings"):
                             warning = extracted["warnings"][0]
+                            rejection_reason = "unknown_rejection_reason"
                             if warning.startswith("ambiguous_multiple_matches_rejected"):
                                 strict_diag["strict_identifier_rows_rejected_ambiguous"] += 1
+                                strict_diag["strict_identifier_ambiguous_match_count"] += 1
+                                rejection_reason = "ambiguous_context_window"
+                                explainability["ambiguity_reason"] = "multiple_tickers_in_context" if len(detected_ticker_tokens) > 1 else "ambiguous_context_window"
+                                if len(strict_diag["strict_identifier_ambiguous_match_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                    strict_diag["strict_identifier_ambiguous_match_examples"].append(explainability)
                             elif warning.startswith("noise_token_rejected:"):
                                 strict_diag["strict_identifier_rows_rejected_noise_token"] += 1
+                                rejection_reason = "noisy_token"
+                                if len(strict_diag["strict_identifier_noise_rejection_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                    strict_diag["strict_identifier_noise_rejection_examples"].append(explainability)
                             elif warning.startswith("unsupported_exchange_rejected:"):
                                 strict_diag["strict_identifier_rows_rejected_unsupported_exchange"] += 1
+                                rejection_reason = "unsupported_exchange_label"
+                                if len(strict_diag["strict_identifier_unsupported_exchange_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                    strict_diag["strict_identifier_unsupported_exchange_examples"].append(explainability)
                             else:
                                 strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
+                                rejection_reason = "no_context_phrase"
+                                if len(strict_diag["strict_identifier_no_context_phrase_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                    strict_diag["strict_identifier_no_context_phrase_examples"].append(explainability)
+                            explainability["rejection_reason"] = rejection_reason
+                            strict_diag["strict_identifier_rejection_reason_counts"][rejection_reason] = strict_diag["strict_identifier_rejection_reason_counts"].get(rejection_reason, 0) + 1
                             if len(strict_diag["strict_identifier_sample_rejections"]) < 5:
                                 strict_diag["strict_identifier_sample_rejections"].append({"reason": warning, "text_preview": text[:140]})
+                            if len(strict_diag["strict_identifier_context_window_examples"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                strict_diag["strict_identifier_context_window_examples"].append(context_window)
+                            if len(strict_diag["strict_identifier_candidate_explainability"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                                strict_diag["strict_identifier_candidate_explainability"].append(explainability)
                             continue
                         for k in ("extracted_ticker", "extracted_exchange", "normalized_ticker", "normalized_exchange", "extraction_method", "extraction_confidence", "extraction_notes"):
                             row[k] = extracted[k]
@@ -668,10 +735,15 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                         strict_unique_exchanges.add(extracted["normalized_exchange"])
                         if len(strict_diag["strict_identifier_sample_matches"]) < 5:
                             strict_diag["strict_identifier_sample_matches"].append({"ticker": extracted["normalized_ticker"], "exchange": extracted["normalized_exchange"], "note": extracted["extraction_notes"]})
+                        explainability["accepted"] = True
+                        explainability["matched_pattern_family"] = extracted["extraction_method"]
+                        if len(strict_diag["strict_identifier_candidate_explainability"]) < STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE:
+                            strict_diag["strict_identifier_candidate_explainability"].append(explainability)
                         break
                 if not row.get("normalized_ticker"):
                     strict_diag["strict_identifier_rows_rejected_no_exchange_label"] += 1
                     strict_diag["strict_identifier_rows_rejected_no_context_phrase"] += 1
+                    strict_diag["strict_identifier_rejection_reason_counts"]["missing_explicit_ticker"] = strict_diag["strict_identifier_rejection_reason_counts"].get("missing_explicit_ticker", 0) + 1
                 if discovery_method == "tavily_search":
                     ops["tavily_result_rows_persisted_before_aggregation"] += 1
                     ops["fresh_source_rows_written"] += 1
@@ -717,7 +789,7 @@ def main() -> int:
     telemetry_row = {"run_date_sgt": sgt_date, "workflow_name": "tier3h4_dynamic_entity_discovery", "provider": "tavily", "api_calls_attempted": ops["executed_queries"], "api_calls_executed": ops["executed_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "fallback_events": ops["fallback_events"], "rate_limit_events": ops["rate_limit_events"], "quota_exhaustion_events": ops["quota_exhaustion_events"], "retry_events": ops["retry_events"], "success_count": ops["success_count"], "failure_count": ops["failure_count"], "estimated_cost": None, "execution_seconds": elapsed, "metadata": {"fallback_mode": evidence_summary["fallback_mode"], "tavily_enabled": evidence_summary["tavily_enabled"], "soft_fallback_used": soft_fallback}}
     telemetry_status = upsert_supabase([telemetry_row], OPERATIONAL_TABLE_NAME, "run_date_sgt,workflow_name,provider")
     runtime = _runtime_provenance("main")
-    summary = {"module": "tier3h4_dynamic_entity_discovery", "run_timestamp_utc": utc_now().isoformat(), "run_date_sgt": sgt_date, "seed_count": len(seeds), "record_count": len(records), "source_counts": source_counts, "soft_fallback_used": soft_fallback, "upsert_status": upsert_status, "confidence_band_counts": dict(Counter(r["candidate_confidence_band"] for r in records)), "advisory_status_counts": dict(Counter(r["advisory_status"] for r in records)), "advisory_only": True, "llm_used": False, **runtime, "runtime_evidence_generation_branch_taken": evidence_summary["runtime_evidence_generation_branch_taken"], "runtime_persisted_reuse_branch_taken": evidence_summary["runtime_persisted_reuse_branch_taken"], "runtime_fresh_generation_branch_reachable": evidence_summary["runtime_fresh_generation_branch_reachable"], "runtime_source_loop_instrumentation_loaded": evidence_summary["runtime_source_loop_instrumentation_loaded"], "runtime_force_fresh_branch_taken": evidence_summary["runtime_force_fresh_branch_taken"], "rows_with_ticker": sum(1 for r in records if r.get("ticker")), "rows_with_exchange": sum(1 for r in records if r.get("exchange")), "evidence_rows_with_ticker": sum(1 for e in evidence_rows if e.get("normalized_ticker")), "evidence_rows_with_exchange": sum(1 for e in evidence_rows if e.get("normalized_exchange")), "strict_identifier_runtime_source": evidence_summary.get("evidence_source_mode"), "strict_identifier_extraction_enabled": evidence_summary.get("strict_identifier_extraction_enabled"), "strict_identifier_phase": evidence_summary.get("strict_identifier_phase"), "strict_identifier_rows_scanned": evidence_summary.get("strict_identifier_rows_scanned"), "strict_identifier_matches_found": evidence_summary.get("strict_identifier_matches_found"), "strict_identifier_unique_tickers_found": evidence_summary.get("strict_identifier_unique_tickers_found"), "strict_identifier_unique_exchanges_found": evidence_summary.get("strict_identifier_unique_exchanges_found"), "strict_identifier_sample_matches": evidence_summary.get("strict_identifier_sample_matches"), "strict_identifier_results_propagated": evidence_summary.get("strict_identifier_results_propagated"), "strict_identifier_propagated_rows_count": evidence_summary.get("strict_identifier_propagated_rows_count"), "strict_identifier_summary_consistent": evidence_summary.get("strict_identifier_summary_consistent"), "strict_identifier_log_summary_match": evidence_summary.get("strict_identifier_log_summary_match"), "strict_identifier_propagation_target": evidence_summary.get("strict_identifier_propagation_target"), "strict_identifier_propagation_warnings": evidence_summary.get("strict_identifier_propagation_warnings"), "preview": records[:10]}
+    summary = {"module": "tier3h4_dynamic_entity_discovery", "run_timestamp_utc": utc_now().isoformat(), "run_date_sgt": sgt_date, "seed_count": len(seeds), "record_count": len(records), "source_counts": source_counts, "soft_fallback_used": soft_fallback, "upsert_status": upsert_status, "confidence_band_counts": dict(Counter(r["candidate_confidence_band"] for r in records)), "advisory_status_counts": dict(Counter(r["advisory_status"] for r in records)), "advisory_only": True, "llm_used": False, **runtime, "runtime_evidence_generation_branch_taken": evidence_summary["runtime_evidence_generation_branch_taken"], "runtime_persisted_reuse_branch_taken": evidence_summary["runtime_persisted_reuse_branch_taken"], "runtime_fresh_generation_branch_reachable": evidence_summary["runtime_fresh_generation_branch_reachable"], "runtime_source_loop_instrumentation_loaded": evidence_summary["runtime_source_loop_instrumentation_loaded"], "runtime_force_fresh_branch_taken": evidence_summary["runtime_force_fresh_branch_taken"], "rows_with_ticker": sum(1 for r in records if r.get("ticker")), "rows_with_exchange": sum(1 for r in records if r.get("exchange")), "evidence_rows_with_ticker": sum(1 for e in evidence_rows if e.get("normalized_ticker")), "evidence_rows_with_exchange": sum(1 for e in evidence_rows if e.get("normalized_exchange")), "strict_identifier_runtime_source": evidence_summary.get("evidence_source_mode"), "strict_identifier_extraction_enabled": evidence_summary.get("strict_identifier_extraction_enabled"), "strict_identifier_phase": evidence_summary.get("strict_identifier_phase"), "strict_identifier_rows_scanned": evidence_summary.get("strict_identifier_rows_scanned"), "strict_identifier_matches_found": evidence_summary.get("strict_identifier_matches_found"), "strict_identifier_unique_tickers_found": evidence_summary.get("strict_identifier_unique_tickers_found"), "strict_identifier_unique_exchanges_found": evidence_summary.get("strict_identifier_unique_exchanges_found"), "strict_identifier_sample_matches": evidence_summary.get("strict_identifier_sample_matches"), "strict_identifier_results_propagated": evidence_summary.get("strict_identifier_results_propagated"), "strict_identifier_propagated_rows_count": evidence_summary.get("strict_identifier_propagated_rows_count"), "strict_identifier_summary_consistent": evidence_summary.get("strict_identifier_summary_consistent"), "strict_identifier_log_summary_match": evidence_summary.get("strict_identifier_log_summary_match"), "strict_identifier_propagation_target": evidence_summary.get("strict_identifier_propagation_target"), "strict_identifier_propagation_warnings": evidence_summary.get("strict_identifier_propagation_warnings"), "strict_identifier_ambiguity_diagnostics_enabled": evidence_summary.get("strict_identifier_ambiguity_diagnostics_enabled"), "strict_identifier_rejection_reason_counts": evidence_summary.get("strict_identifier_rejection_reason_counts"), "strict_identifier_ambiguous_match_count": evidence_summary.get("strict_identifier_ambiguous_match_count"), "strict_identifier_ambiguous_match_examples": evidence_summary.get("strict_identifier_ambiguous_match_examples"), "strict_identifier_context_window_examples": evidence_summary.get("strict_identifier_context_window_examples"), "strict_identifier_multiple_ticker_count": evidence_summary.get("strict_identifier_multiple_ticker_count"), "strict_identifier_multiple_exchange_count": evidence_summary.get("strict_identifier_multiple_exchange_count"), "strict_identifier_exchange_conflict_count": evidence_summary.get("strict_identifier_exchange_conflict_count"), "strict_identifier_ticker_conflict_count": evidence_summary.get("strict_identifier_ticker_conflict_count"), "strict_identifier_duplicate_context_count": evidence_summary.get("strict_identifier_duplicate_context_count"), "strict_identifier_malformed_context_count": evidence_summary.get("strict_identifier_malformed_context_count"), "strict_identifier_noise_rejection_examples": evidence_summary.get("strict_identifier_noise_rejection_examples"), "strict_identifier_unsupported_exchange_examples": evidence_summary.get("strict_identifier_unsupported_exchange_examples"), "strict_identifier_no_context_phrase_examples": evidence_summary.get("strict_identifier_no_context_phrase_examples"), "strict_identifier_explainability_sample_size": evidence_summary.get("strict_identifier_explainability_sample_size"), "preview": records[:10]}
     evidence_summary_full = {"run_date_sgt": sgt_date, **evidence_summary, "evidence_rows_persisted": len(evidence_rows) if evidence_upsert_status == "upserted" else 0, "candidates_scored": len(records), "candidates_suppressed": sum(1 for r in records if r["advisory_status"] == "advisory_rejected"), "top_domains": dict(Counter(e.get("source_domain") for e in evidence_rows).most_common(10)), "upsert_status": evidence_upsert_status, "telemetry_upsert_status": telemetry_status}
     validation = {"all_rows_llm_used_false": all(r["llm_used"] is False for r in records), "all_rows_advisory_only": all(r["advisory_status"] in {"advisory_review", "advisory_rejected"} for r in records), "no_monitored_universe_writes_attempted": True, "idempotency_fields_present": all(all(k in r for k in ["run_date_sgt", "theme_name", "candidate_asset_id", "discovery_method"]) for r in records)}
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed}
@@ -742,6 +814,14 @@ def main() -> int:
     print(f"[tier3h4] unique_exchanges={len(evidence_summary['strict_identifier_unique_exchanges_found'])}")
     print(f"[tier3h4] rejected_ambiguous={evidence_summary['strict_identifier_rows_rejected_ambiguous']}")
     print(f"[tier3h4] rejected_noise_token={evidence_summary['strict_identifier_rows_rejected_noise_token']}")
+    print("[tier3h4] strict identifier ambiguity diagnostics:")
+    print(f"[tier3h4] ambiguous_matches={evidence_summary['strict_identifier_ambiguous_match_count']}")
+    print(f"[tier3h4] multiple_ticker_contexts={evidence_summary['strict_identifier_multiple_ticker_count']}")
+    print(f"[tier3h4] multiple_exchange_contexts={evidence_summary['strict_identifier_multiple_exchange_count']}")
+    print(f"[tier3h4] exchange_conflicts={evidence_summary['strict_identifier_exchange_conflict_count']}")
+    print(f"[tier3h4] malformed_contexts={evidence_summary['strict_identifier_malformed_context_count']}")
+    top_rejection_reasons = sorted((evidence_summary.get("strict_identifier_rejection_reason_counts") or {}).items(), key=lambda kv: (-kv[1], kv[0]))[:3]
+    print(f"[tier3h4] top_rejection_reasons={top_rejection_reasons}")
     print(f"[tier3h4] warnings={evidence_summary['fresh_evidence_quality_warning_count']}")
     return 0
 
