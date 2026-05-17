@@ -318,3 +318,49 @@ def test_fresh_evidence_quality_warnings_are_advisory_only():
     rows, evidence_rows, summary, _ = mod.build_records(monkeypatch_seed, "2026-05-16")
     assert rows is not None and evidence_rows is not None
     assert "fresh_evidence_quality_warnings" in summary
+
+
+def test_strict_exchange_qualified_identifier_positive_cases():
+    cases = [
+        ("NASDAQ: NVDA", "NASDAQ", "NVDA"),
+        ("Nasdaq: AMD", "NASDAQ", "AMD"),
+        ("NYSE: IBM", "NYSE", "IBM"),
+        ("(NASDAQ: PLTR)", "NASDAQ", "PLTR"),
+        ("SGX: D05", "SGX", "D05"),
+        ("HKEX: 0700", "HKEX", "0700"),
+        ("LSE: ARM", "LSE", "ARM"),
+        ("Tokyo Stock Exchange: 7203", "TSE", "7203"),
+    ]
+    for text, expected_exchange, expected_ticker in cases:
+        out = mod._extract_strict_exchange_qualified_identifier(text)
+        assert out["normalized_exchange"] == expected_exchange
+        assert out["normalized_ticker"] == expected_ticker
+        assert out["extraction_method"] == "strict_exchange_qualified_regex"
+        assert out["extraction_confidence"] == "high"
+
+
+def test_strict_exchange_qualified_identifier_negative_cases():
+    for text in ["NVDA", "AMD", "Nvidia Corporation", "AI", "IPO", "CEO", "ETF", "SEC", "USD", "HELLO WORLD", "TSX: SHOP", "Ticker NVDA"]:
+        out = mod._extract_strict_exchange_qualified_identifier(text)
+        assert out == {}
+
+
+def test_strict_extraction_populates_only_when_explicit_pattern_exists():
+    rows = [{
+        "source_url": "https://example.com/a",
+        "source_title": "Company update",
+        "source_snippet": "Ticker: NASDAQ: NVDA momentum",
+        "source_rank": 1,
+        "retrieved_at": "2026-05-16T00:00:00+00:00",
+        "cache_reused": True,
+    }]
+    seed = [mod.DiscoverySeed("ai_power_demand", "a", "b", None)]
+    from unittest.mock import patch
+    with patch.object(mod, "_fetch_cached_evidence", lambda *args, **kwargs: rows):
+        _, evidence_rows, summary, _ = mod.build_records(seed, "2026-05-16")
+    assert evidence_rows
+    assert evidence_rows[0]["normalized_ticker"] == "NVDA"
+    assert evidence_rows[0]["normalized_exchange"] == "NASDAQ"
+    assert summary["strict_identifier_extraction_enabled"] is True
+    assert summary["strict_identifier_matches_found"] > 0
+    assert "NASDAQ" in summary["strict_identifier_unique_exchanges_found"]
