@@ -1130,21 +1130,25 @@ def _apply_canonical_strict_identifier_fields_to_final_payload(
     canonical_summary: dict[str, Any],
 ) -> None:
     final_summary_payload.update(canonical_summary)
-    final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "unknown_runtime_source")
-    final_summary_payload["strict_identifier_rows_scanned"] = evidence_summary.get("strict_identifier_rows_scanned", 0)
-    final_summary_payload["strict_identifier_matches_found"] = canonical_summary.get("strict_identifier_matches_found", 0)
-    final_summary_payload["strict_identifier_sample_matches"] = canonical_summary.get("strict_identifier_sample_matches", [])
-    final_summary_payload["rows_with_ticker"] = canonical_summary.get("rows_with_ticker", 0)
-    final_summary_payload["rows_with_exchange"] = canonical_summary.get("rows_with_exchange", 0)
-    final_summary_payload["evidence_rows_with_ticker"] = canonical_summary.get("evidence_rows_with_ticker", 0)
-    final_summary_payload["evidence_rows_with_exchange"] = canonical_summary.get("evidence_rows_with_exchange", 0)
+    runtime_strict_identifier_summary = {
+        "strict_identifier_runtime_source": evidence_summary.get("strict_identifier_runtime_source", "unknown_runtime_source"),
+        "strict_identifier_rows_scanned": evidence_summary.get("strict_identifier_rows_scanned", 0),
+        "strict_identifier_matches_found": evidence_summary.get("strict_identifier_matches_found", 0),
+        "strict_identifier_sample_matches": list(evidence_summary.get("strict_identifier_sample_matches") or []),
+        "rows_with_ticker": evidence_summary.get("rows_with_ticker", 0),
+        "rows_with_exchange": evidence_summary.get("rows_with_exchange", 0),
+        "evidence_rows_with_ticker": evidence_summary.get("evidence_rows_with_ticker", 0),
+        "evidence_rows_with_exchange": evidence_summary.get("evidence_rows_with_exchange", 0),
+    }
+    final_summary_payload.update(runtime_strict_identifier_summary)
     final_summary_payload["final_summary_strict_identifier_source"] = "canonical_runtime_reconciliation"
-    final_summary_payload["final_summary_assignment_origin"] = "canonical_summary_plus_runtime_source_mode"
+    final_summary_payload["final_summary_assignment_origin"] = "runtime_strict_identifier_summary_object"
     final_summary_payload["final_summary_matches_found"] = final_summary_payload["strict_identifier_matches_found"]
     final_summary_payload["final_export_summary_source"] = "canonical_runtime_extraction"
-    final_summary_payload["final_export_runtime_metrics_origin"] = "evidence_summary.strict_identifier_runtime_counters"
-    final_summary_payload["final_export_evidence_mode"] = evidence_summary.get("strict_identifier_runtime_source", evidence_summary.get("evidence_source_mode"))
-    final_summary_payload["final_export_assignment_path"] = "_apply_canonical_strict_identifier_fields_to_final_payload"
+    final_summary_payload["final_export_runtime_metrics_origin"] = "evidence_summary.runtime_strict_identifier_summary"
+    final_summary_payload["final_export_assignment_path"] = "_apply_canonical_strict_identifier_fields_to_final_payload.runtime_strict_identifier_summary"
+    final_summary_payload["final_export_runtime_source"] = runtime_strict_identifier_summary["strict_identifier_runtime_source"]
+    final_summary_payload["final_export_evidence_mode"] = runtime_strict_identifier_summary["strict_identifier_runtime_source"]
 
 
 def _finalize_and_verify_summary_payload(final_summary_payload: dict, canonical_summary: dict, summary_path: Path) -> None:
