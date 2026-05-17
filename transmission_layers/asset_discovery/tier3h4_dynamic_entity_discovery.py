@@ -1177,8 +1177,14 @@ def _integrate_operational_summary_with_canonical_reconciliation(
         "evidence_rows_with_exchange_delta": (serialized_summary_payload.get("evidence_rows_with_exchange") or 0) - (operational_summary_payload.get("evidence_rows_with_exchange") or 0),
     }
     export_matches_runtime = all(v == 0 for v in runtime_vs_operational_export_delta.values()) and all(v == 0 for v in serialized_vs_operational_export_delta.values())
+    operational_warnings = list(operational_summary_payload.get("strict_identifier_operational_export_warnings") or [])
+    if not export_matches_runtime and "operational_export_mismatch_detected" not in operational_warnings:
+        operational_warnings.append("operational_export_mismatch_detected")
+    if export_matches_runtime and "operational_export_mismatch_detected" in operational_warnings:
+        operational_warnings = [w for w in operational_warnings if w != "operational_export_mismatch_detected"]
     operational_summary_payload["strict_identifier_runtime_vs_operational_export_delta"] = runtime_vs_operational_export_delta
     operational_summary_payload["strict_identifier_serialized_vs_operational_export_delta"] = serialized_vs_operational_export_delta
+    operational_summary_payload["strict_identifier_operational_export_warnings"] = operational_warnings
     operational_summary_payload["strict_identifier_operational_summary_integrated"] = True
     operational_summary_payload["strict_identifier_operational_summary_source"] = "strict_identifier_accepted_matches"
     operational_summary_payload["strict_identifier_operational_export_connected"] = True
