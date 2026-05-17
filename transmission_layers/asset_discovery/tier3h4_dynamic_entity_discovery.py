@@ -659,6 +659,10 @@ def _sanitize_persistence_rows(rows: list[dict[str, Any]], table_name: str) -> t
         "removed_runtime_only_fields": [],
         "sanitized_payload_column_count": 0,
         "sanitized_payload_contains_nested_objects": False,
+        "final_upsert_variable_name": None,
+        "final_upsert_contains_nested_objects": False,
+        "final_upsert_nested_fields": [],
+        "final_upsert_first_row_keys": [],
     }
     if table_name != EVIDENCE_TABLE_NAME or not rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -727,6 +731,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "removed_runtime_only_fields": [],
         "sanitized_payload_column_count": 0,
         "sanitized_payload_contains_nested_objects": False,
+        "final_upsert_variable_name": None,
+        "final_upsert_contains_nested_objects": False,
+        "final_upsert_nested_fields": [],
+        "final_upsert_first_row_keys": [],
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -762,19 +770,31 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         return (status, diagnostics) if include_diagnostics else status
     rows, sanitize_diag = _sanitize_persistence_rows(rows, table_name)
     diagnostics.update(sanitize_diag)
-    diagnostics["evidence_upsert_payload_count"] = len(rows)
+    final_upsert_rows = rows
+    diagnostics["final_upsert_variable_name"] = "final_upsert_rows"
+    diagnostics["evidence_upsert_payload_count"] = len(final_upsert_rows)
     diagnostics["evidence_upsert_payload_columns"] = diagnostics["sanitized_payload_keys"]
     diagnostics["evidence_upsert_payload_keys"] = diagnostics["sanitized_payload_keys"]
-    if rows:
-        diagnostics["evidence_upsert_first_row_keys"] = sorted(list(rows[0].keys())) if isinstance(rows[0], dict) else []
-        diagnostics["evidence_upsert_first_failed_row"] = rows[0] if isinstance(rows[0], dict) else None
+    final_nested_fields: set[str] = set()
+    for row in final_upsert_rows:
+        if not isinstance(row, dict):
+            continue
+        for k, v in row.items():
+            if isinstance(v, (dict, list, tuple)):
+                final_nested_fields.add(k)
+    diagnostics["final_upsert_contains_nested_objects"] = bool(final_nested_fields)
+    diagnostics["final_upsert_nested_fields"] = sorted(final_nested_fields)
+    if final_upsert_rows:
+        diagnostics["final_upsert_first_row_keys"] = sorted(list(final_upsert_rows[0].keys())) if isinstance(final_upsert_rows[0], dict) else []
+        diagnostics["evidence_upsert_first_row_keys"] = diagnostics["final_upsert_first_row_keys"]
+        diagnostics["evidence_upsert_first_failed_row"] = final_upsert_rows[0] if isinstance(final_upsert_rows[0], dict) else None
     url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:
         status = "skipped:missing_supabase_env"
         return (status, diagnostics) if include_diagnostics else status
     try:
-        r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=rows, timeout=60)
+        r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=final_upsert_rows, timeout=60)
         destination_columns_header = (r.headers.get("x-rel-columns") or r.headers.get("content-profile") or "") if hasattr(r, "headers") else ""
         if isinstance(destination_columns_header, str) and destination_columns_header:
             diagnostics["evidence_upsert_destination_table_columns"] = sorted([c.strip() for c in destination_columns_header.split(",") if c.strip()])
@@ -1494,7 +1514,7 @@ def main() -> int:
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
-    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint"]})
+    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
@@ -1572,6 +1592,10 @@ def main() -> int:
     print(f"[tier3h4] evidence_upsert_contains_resolution_fields={evidence_upsert_diag.get('evidence_upsert_contains_resolution_fields')}")
     print(f"[tier3h4] evidence_upsert_contains_nested_objects={evidence_upsert_diag.get('evidence_upsert_contains_nested_objects')}")
     print(f"[tier3h4] evidence_upsert_nested_object_fields={evidence_upsert_diag.get('evidence_upsert_nested_object_fields')}")
+    print(f"[tier3h4] final_upsert_variable_name={evidence_upsert_diag.get('final_upsert_variable_name')}")
+    print(f"[tier3h4] final_upsert_contains_nested_objects={evidence_upsert_diag.get('final_upsert_contains_nested_objects')}")
+    print(f"[tier3h4] final_upsert_nested_fields={evidence_upsert_diag.get('final_upsert_nested_fields')}")
+    print(f"[tier3h4] final_upsert_first_row_keys={evidence_upsert_diag.get('final_upsert_first_row_keys')}")
     print(f"[tier3h4] evidence_upsert_resolution_fields_present={evidence_upsert_diag.get('evidence_upsert_resolution_fields_present')}")
     print(f"[tier3h4] evidence_upsert_first_row={evidence_upsert_diag.get('evidence_upsert_first_failed_row')}")
     return 0
