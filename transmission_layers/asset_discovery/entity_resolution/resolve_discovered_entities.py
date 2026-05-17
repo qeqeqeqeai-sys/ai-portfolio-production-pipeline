@@ -28,6 +28,23 @@ except ImportError:
 LOG_PATH = Path("logs/tier3h4c_entity_resolution_summary.json")
 CANDIDATE_TABLES = ["tier3h_dynamic_entity_discovery", "tier3h4_dynamic_entity_discovery", "tier3h_entity_discovery"]
 EVIDENCE_TABLES = ["tier3h_dynamic_entity_evidence", "tier3h4_dynamic_entity_evidence", "tier3h_dynamic_discovery_evidence", "tier3h_entity_evidence"]
+EMBEDDED_EVIDENCE_KEYS = ["evidence_url", "source_url", "source_domain", "evidence_snippet", "source_title", "tavily_response", "evidence_sources", "source_count"]
+
+def _extract_embedded_evidence(row: dict) -> tuple[list[str], int]:
+    urls = []
+    if row.get("evidence_url"):
+        urls.append(str(row.get("evidence_url")))
+    if row.get("source_url"):
+        urls.append(str(row.get("source_url")))
+    sources = row.get("evidence_sources")
+    if isinstance(sources, list):
+        for item in sources:
+            if isinstance(item, dict) and item.get("source_url"):
+                urls.append(str(item.get("source_url")))
+    unique_urls = list(dict.fromkeys([u for u in urls if u]))
+    explicit_count = row.get("source_count") or row.get("evidence_count")
+    source_count = int(explicit_count) if isinstance(explicit_count, int) else len(unique_urls)
+    return unique_urls, max(source_count, len(unique_urls))
 
 def _run_date_sgt() -> str:
     return os.getenv("RUN_DATE_SGT") or (datetime.now(timezone.utc) + timedelta(hours=8)).date().isoformat()
@@ -40,11 +57,15 @@ def main() -> int:
     candidates, cand_meta = fetch_table_rows_with_fallback(CANDIDATE_TABLES, run_date, theme)
     evidence, ev_meta = fetch_table_rows_with_fallback(EVIDENCE_TABLES, run_date, theme)
     if cand_meta.get("warning"): warnings.append(cand_meta["warning"])
-    if ev_meta.get("warning"): warnings.append(ev_meta["warning"])
+    warnings.extend([w for w in ev_meta.get("warnings", []) if w])
 
     by_asset = {}
     for e in evidence:
         by_asset.setdefault(str(e.get("candidate_asset_id") or e.get("candidate_name") or ""), []).append(e)
+
+    has_embedded_fields = any(any(k in c for k in EMBEDDED_EVIDENCE_KEYS) for c in candidates)
+    evidence_source_mode = "separate_table" if evidence else ("embedded_candidate_fields" if has_embedded_fields else "unavailable")
+    evidence_selected_reason = "separate evidence table rows found" if evidence else ("candidate rows contain embedded evidence-like fields" if has_embedded_fields else "no evidence rows or embedded fields found")
 
     stats = Counter()
     audit_rows = []
@@ -67,6 +88,8 @@ def main() -> int:
         ev = by_asset.get(str(c.get("candidate_asset_id") or c.get("candidate_name") or ""), [])
         urls = [x.get("source_url") for x in ev if x.get("source_url")]
         source_count = len({u for u in urls})
+        if not urls:
+            urls, source_count = _extract_embedded_evidence(c)
         asset_type = guess_asset_type(raw_name, nt, c)
         flags = {
             "has_ticker": bool(nt), "has_exchange": bool(normalized_exchange), "has_name": bool(nn),
@@ -91,13 +114,21 @@ def main() -> int:
             "candidate_exchange": c.get("exchange") or c.get("candidate_exchange"), "normalized_exchange": normalized_exchange,
             "asset_type_guess": asset_type, "canonical_entity_id": ticker_matches[0].ticker if len(ticker_matches) == 1 else None,
             "resolution_status": status, "resolution_confidence": score,
-            "rules_fired": rules, "suppression_reason": suppression_reason,
-            "evidence_urls": urls, "source_count": source_count,
-            "exchange_confidence_source": "registry" if inferred_exchange else None,
+            "rules_fired": list(rules or []), "suppression_reason": suppression_reason,
+            "evidence_urls": list(urls or []), "source_count": int(source_count or 0),
+            "duplicate_group_size": 1,
         })
 
     audit_rows = apply_duplicate_sizes(audit_rows)
-    write_status = write_audit_rows(audit_rows)
+    for r in audit_rows:
+        r.setdefault("run_date_sgt", run_date)
+        r.setdefault("resolution_status", "unresolved_review")
+        r.setdefault("rules_fired", [])
+        r.setdefault("evidence_urls", [])
+        r.setdefault("source_count", 0)
+        r.setdefault("duplicate_group_size", 1)
+    write_result = write_audit_rows(audit_rows)
+    write_status = write_result.get("status", "unknown")
     if write_status.startswith("write_"): errors.append(write_status)
     elif write_status.startswith("skipped"): warnings.append(write_status)
 
@@ -105,8 +136,16 @@ def main() -> int:
     summary = {
         "run_date_sgt": run_date, "workflow_run_id": workflow_run_id, "theme_name": theme,
         "candidate_table_selected": cand_meta.get("table_selected"), "evidence_table_selected": ev_meta.get("table_selected"),
+        "evidence_source_mode": evidence_source_mode, "evidence_selected_reason": evidence_selected_reason,
+        "failed_evidence_table_attempts": ev_meta.get("warnings", []),
         "candidate_tables_attempted": cand_meta.get("tables_attempted", []), "evidence_tables_attempted": ev_meta.get("tables_attempted", []),
         "candidate_read_warning": cand_meta.get("warning"), "evidence_read_warning": ev_meta.get("warning"),
+        "sample_candidate_keys": sorted(list((candidates[0].keys() if candidates else [])))[:25],
+        "sample_candidate_fields_present": [k for k in EMBEDDED_EVIDENCE_KEYS if candidates and k in candidates[0]],
+        "sample_audit_row_keys": sorted(list((audit_rows[0].keys() if audit_rows else []))),
+        "audit_payload_column_count": len(audit_rows[0].keys()) if audit_rows else 0,
+        "candidate_table_columns_detected": sorted(list({k for c in candidates for k in c.keys()}))[:120],
+        "evidence_table_columns_detected": sorted(list({k for e in evidence for k in e.keys()}))[:120],
         "candidate_rows_read": cand_meta.get("rows_read", 0), "evidence_rows_read": ev_meta.get("rows_read", 0),
         "evidence_join_rows_used": sum(len(v) for v in by_asset.values()),
         "input_rows": len(candidates), "audit_rows_written": len(audit_rows) if write_status == "written" else 0,
@@ -120,6 +159,10 @@ def main() -> int:
         "downgraded_missing_exchange_count": stats["downgraded_missing_exchange_count"], "hard_suppressed_count": stats["hard_suppressed_count"],
         "unresolved_due_to_missing_exchange_count": stats["unresolved_due_to_missing_exchange_count"],
         "status": "ok" if not errors else "warning", "warnings": warnings, "errors": errors,
+        "write_error_code": write_result.get("write_error_code"),
+        "write_error_message": write_result.get("write_error_message"),
+        "write_error_details": write_result.get("write_error_details"),
+        "write_error_hint": write_result.get("write_error_hint"),
     }
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     LOG_PATH.write_text(json.dumps(summary, indent=2), encoding="utf-8")
