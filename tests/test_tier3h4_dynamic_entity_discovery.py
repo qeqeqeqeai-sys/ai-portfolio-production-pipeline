@@ -207,6 +207,7 @@ def test_force_fresh_bypasses_reuse_and_executes_collection(monkeypatch):
     assert summary["tavily_collection_path_executed"] is True
     assert summary["source_result_persistence_helper_called_count"] > 0
     assert summary["fresh_source_rows_written"] > 0
+    assert summary["runtime_force_fresh_branch_taken"] is True
 
 
 def test_runtime_provenance_payload_fields_and_sentinel(monkeypatch):
@@ -217,7 +218,7 @@ def test_runtime_provenance_payload_fields_and_sentinel(monkeypatch):
         "runtime_workflow", "runtime_workflow_run_id", "runtime_file_path", "runtime_file_exists",
         "runtime_file_mtime_utc", "runtime_module_name", "runtime_entrypoint_name", "runtime_python_executable",
         "runtime_python_version", "runtime_cwd", "runtime_sys_path_head", "runtime_phase2b_validation_code_loaded",
-        "runtime_force_fresh_env_detected", "runtime_force_fresh_env_value",
+        "runtime_force_fresh_env_detected", "runtime_force_fresh_env_value", "runtime_workflow_name",
     ]
     assert all(k in runtime for k in required)
     assert runtime["runtime_phase2b_validation_code_loaded"] is True
@@ -244,5 +245,17 @@ def test_runtime_branch_flags_for_persisted_reuse(monkeypatch):
     _, _, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
     assert summary["runtime_evidence_generation_branch_taken"] == "persisted_reuse"
     assert summary["runtime_persisted_reuse_branch_taken"] is True
+    assert summary["runtime_force_fresh_branch_taken"] is False
     assert isinstance(summary["runtime_fresh_generation_branch_reachable"], bool)
     assert summary["runtime_source_loop_instrumentation_loaded"] is True
+
+
+def test_force_fresh_env_parsing_and_branch_flag(monkeypatch):
+    monkeypatch.setenv("TIER3H4_FORCE_FRESH_EVIDENCE", "true")
+    monkeypatch.setenv("TAVILY_API_KEY", "x")
+    monkeypatch.setenv("TIER3H4_TAVILY_ENABLED", "true")
+    monkeypatch.setattr(mod, "_fetch_cached_evidence", lambda *args, **kwargs: [{"source_url": "https://cached.example.com/a", "source_title": "cached", "source_snippet": "cached", "source_rank": 1}])
+    monkeypatch.setattr(mod, "_collect_tavily", lambda *args, **kwargs: ([{"url": "https://fresh.example.com/a", "title": "Fresh", "content": "AI data center power"}], None))
+    assert mod._force_fresh_evidence_enabled() is True
+    _, _, summary, _ = mod.build_records([mod.DiscoverySeed("ai_power_demand", "a", "b", None)], "2026-05-16")
+    assert summary["runtime_force_fresh_branch_taken"] is True
