@@ -12,7 +12,7 @@ from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules 
 from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import duplicate_group_key
 from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_alias
 from transmission_layers.asset_discovery.entity_resolution import audit_writer
-from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence
+from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows
 
 
 def test_normalize_name():
@@ -112,3 +112,31 @@ def test_write_payload_validation(monkeypatch):
 def test_summary_shape_empty():
     assert is_generic_name("ai")
     assert guess_asset_type("ABC ETF Trust", None, {}) == "etf"
+
+
+def test_phase1_migration_exists():
+    p = Path("database/migrations/202605171200_create_tier3h_dynamic_entity_evidence.sql")
+    assert p.exists()
+
+
+def test_evidence_payload_columns_only():
+    rows = _normalize_embedded_evidence_rows(
+        {"candidate_name": "X", "source_url": "https://a", "source_node": "s", "target_node": "t", "llm_classification_json": {"a": 1}},
+        "2026-05-17",
+        "wf-1",
+        "ai",
+    )
+    assert rows
+    assert set(rows[0].keys()).issubset(audit_writer.EVIDENCE_COLUMNS)
+
+
+def test_evidence_write_advisory_only_no_universe_writes():
+    rows = _normalize_embedded_evidence_rows({"candidate_name": "X", "source_url": "https://a"}, "2026-05-17", None, "ai")
+    assert all(r.get("extraction_method") == "embedded_candidate_fields" for r in rows)
+    assert all("monitored_universe" not in k for r in rows for k in r.keys())
+
+
+def test_phase1_no_invented_ticker_exchange():
+    rows = _normalize_embedded_evidence_rows({"candidate_name": "X", "source_url": "https://a"}, "2026-05-17", None, "ai")
+    assert rows[0].get("extracted_ticker") is None
+    assert rows[0].get("extracted_exchange") is None
