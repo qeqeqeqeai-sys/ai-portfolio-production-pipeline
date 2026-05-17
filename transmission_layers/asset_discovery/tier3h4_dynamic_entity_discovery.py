@@ -663,6 +663,18 @@ def _sanitize_persistence_rows(rows: list[dict[str, Any]], table_name: str) -> t
         "final_upsert_contains_nested_objects": False,
         "final_upsert_nested_fields": [],
         "final_upsert_first_row_keys": [],
+        "evidence_table_actual_columns": [],
+        "evidence_table_actual_column_types": {},
+        "evidence_table_nullable_fields": [],
+        "payload_vs_schema_missing_columns": [],
+        "payload_vs_schema_extra_columns": [],
+        "payload_vs_schema_type_conflicts": [],
+        "payload_fields_missing_from_table": [],
+        "required_table_fields_missing_from_payload": [],
+        "type_conflict_fields": [],
+        "full_upsert_response_text": None,
+        "schema_introspection_status": "not_attempted",
+        "schema_introspection_error": None,
     }
     if table_name != EVIDENCE_TABLE_NAME or not rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
@@ -793,6 +805,43 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     if not url or not key:
         status = "skipped:missing_supabase_env"
         return (status, diagnostics) if include_diagnostics else status
+    payload_keys_set = set(diagnostics.get("final_upsert_first_row_keys") or [])
+    try:
+        openapi_headers = {"apikey": key, "Authorization": f"Bearer {key}", "Accept": "application/openapi+json"}
+        schema_response = requests.get(f"{url}/rest/v1/", headers=openapi_headers, timeout=60)
+        schema_json = schema_response.json() if schema_response.status_code < 400 else {}
+        definitions = (schema_json.get("definitions") if isinstance(schema_json, dict) else {}) or {}
+        table_schema = definitions.get(table_name) if isinstance(definitions, dict) else None
+        if isinstance(table_schema, dict):
+            properties = table_schema.get("properties") or {}
+            required_fields = set(table_schema.get("required") or [])
+            actual_columns = sorted(properties.keys()) if isinstance(properties, dict) else []
+            actual_types = {}
+            nullable_fields = []
+            for col, col_schema in (properties.items() if isinstance(properties, dict) else []):
+                if not isinstance(col_schema, dict):
+                    actual_types[col] = str(type(col_schema).__name__)
+                    continue
+                actual_types[col] = col_schema.get("format") or col_schema.get("type") or str(col_schema)
+                if col_schema.get("nullable") is True or "null" in (col_schema.get("type") if isinstance(col_schema.get("type"), list) else []):
+                    nullable_fields.append(col)
+            diagnostics["evidence_table_actual_columns"] = actual_columns
+            diagnostics["evidence_table_actual_column_types"] = actual_types
+            diagnostics["evidence_table_nullable_fields"] = sorted(nullable_fields)
+            diagnostics["evidence_upsert_destination_table_columns"] = actual_columns
+            payload_missing_from_table = sorted(payload_keys_set - set(actual_columns))
+            required_missing_from_payload = sorted(required_fields - payload_keys_set)
+            diagnostics["payload_fields_missing_from_table"] = payload_missing_from_table
+            diagnostics["required_table_fields_missing_from_payload"] = required_missing_from_payload
+            diagnostics["payload_vs_schema_missing_columns"] = required_missing_from_payload
+            diagnostics["payload_vs_schema_extra_columns"] = payload_missing_from_table
+            diagnostics["schema_introspection_status"] = "ok"
+        else:
+            diagnostics["schema_introspection_status"] = f"table_schema_not_found:{schema_response.status_code}"
+            diagnostics["schema_introspection_error"] = (schema_response.text or "")[:4000]
+    except Exception as schema_exc:
+        diagnostics["schema_introspection_status"] = f"exception:{type(schema_exc).__name__}"
+        diagnostics["schema_introspection_error"] = repr(schema_exc)
     try:
         r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=final_upsert_rows, timeout=60)
         destination_columns_header = (r.headers.get("x-rel-columns") or r.headers.get("content-profile") or "") if hasattr(r, "headers") else ""
@@ -801,6 +850,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["evidence_upsert_http_status"] = r.status_code
         diagnostics["evidence_upsert_response_body"] = r.content[:16000].decode("utf-8", errors="replace") if isinstance(r.content, (bytes, bytearray)) else None
         diagnostics["evidence_upsert_response_text"] = (r.text or "")[:8000]
+        diagnostics["full_upsert_response_text"] = (r.text or "")[:32000]
         try:
             diagnostics["evidence_upsert_response_json"] = r.json()
         except Exception:
@@ -835,6 +885,24 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                     if isinstance(v, (set, bytes, bytearray, complex, dict, list, tuple)):
                         suspect_fields.append(k)
             diagnostics["evidence_upsert_suspect_type_fields"] = suspect_fields
+            schema_types = diagnostics.get("evidence_table_actual_column_types") if isinstance(diagnostics.get("evidence_table_actual_column_types"), dict) else {}
+            inferred_type_conflicts: list[str] = []
+            if isinstance(first_row, dict):
+                for key_name, value in first_row.items():
+                    expected = str(schema_types.get(key_name, "")).lower()
+                    if not expected:
+                        continue
+                    if value is None:
+                        continue
+                    actual = type(value).__name__.lower()
+                    if expected in {"number", "numeric", "integer"} and actual not in {"int", "float"}:
+                        inferred_type_conflicts.append(key_name)
+                    if expected in {"string", "text"} and actual not in {"str"}:
+                        inferred_type_conflicts.append(key_name)
+                    if expected in {"boolean"} and actual not in {"bool"}:
+                        inferred_type_conflicts.append(key_name)
+            diagnostics["type_conflict_fields"] = sorted(set(inferred_type_conflicts))
+            diagnostics["payload_vs_schema_type_conflicts"] = diagnostics["type_conflict_fields"]
         status = "upserted" if r.status_code < 400 else f"upsert_failed:{r.status_code}"
         return (status, diagnostics) if include_diagnostics else status
     except Exception as exc:
@@ -1514,7 +1582,7 @@ def main() -> int:
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
-    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys"]})
+    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "schema_introspection_status", "schema_introspection_error"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
@@ -1587,6 +1655,16 @@ def main() -> int:
     print(f"[tier3h4] evidence_upsert_payload_type={evidence_upsert_diag.get('evidence_upsert_payload_type')}")
     print(f"[tier3h4] evidence_upsert_destination_table={evidence_upsert_diag.get('evidence_upsert_destination_table')}")
     print(f"[tier3h4] evidence_upsert_destination_table_columns={evidence_upsert_diag.get('evidence_upsert_destination_table_columns')}")
+    print(f"[tier3h4] evidence_table_actual_columns={evidence_upsert_diag.get('evidence_table_actual_columns')}")
+    print(f"[tier3h4] evidence_table_actual_column_types={evidence_upsert_diag.get('evidence_table_actual_column_types')}")
+    print(f"[tier3h4] evidence_table_nullable_fields={evidence_upsert_diag.get('evidence_table_nullable_fields')}")
+    print(f"[tier3h4] schema_introspection_status={evidence_upsert_diag.get('schema_introspection_status')}")
+    print(f"[tier3h4] payload_vs_schema_missing_columns={evidence_upsert_diag.get('payload_vs_schema_missing_columns')}")
+    print(f"[tier3h4] payload_vs_schema_extra_columns={evidence_upsert_diag.get('payload_vs_schema_extra_columns')}")
+    print(f"[tier3h4] payload_vs_schema_type_conflicts={evidence_upsert_diag.get('payload_vs_schema_type_conflicts')}")
+    print(f"[tier3h4] payload_fields_missing_from_table={evidence_upsert_diag.get('payload_fields_missing_from_table')}")
+    print(f"[tier3h4] required_table_fields_missing_from_payload={evidence_upsert_diag.get('required_table_fields_missing_from_payload')}")
+    print(f"[tier3h4] type_conflict_fields={evidence_upsert_diag.get('type_conflict_fields')}")
     print(f"[tier3h4] evidence_upsert_payload_count={evidence_upsert_diag.get('evidence_upsert_payload_count')}")
     print(f"[tier3h4] evidence_upsert_first_row_keys={evidence_upsert_diag.get('evidence_upsert_first_row_keys')}")
     print(f"[tier3h4] evidence_upsert_contains_resolution_fields={evidence_upsert_diag.get('evidence_upsert_contains_resolution_fields')}")
@@ -1598,6 +1676,7 @@ def main() -> int:
     print(f"[tier3h4] final_upsert_first_row_keys={evidence_upsert_diag.get('final_upsert_first_row_keys')}")
     print(f"[tier3h4] evidence_upsert_resolution_fields_present={evidence_upsert_diag.get('evidence_upsert_resolution_fields_present')}")
     print(f"[tier3h4] evidence_upsert_first_row={evidence_upsert_diag.get('evidence_upsert_first_failed_row')}")
+    print(f"[tier3h4] full_upsert_response_text={evidence_upsert_diag.get('full_upsert_response_text')}")
     return 0
 
 if __name__ == "__main__":
