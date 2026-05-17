@@ -795,3 +795,33 @@ def test_operational_summary_integration_replaces_legacy_counters():
     assert integrated["strict_identifier_runtime_vs_operational_export_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
     assert integrated["strict_identifier_operational_export_matches_runtime"] is True
     assert integrated["strict_identifier_legacy_operational_counters_detected"] is True
+
+
+def test_operational_summary_integration_flags_export_drift_warning():
+    runtime = {
+        "strict_identifier_matches_found": 3,
+        "rows_with_ticker": 2,
+        "rows_with_exchange": 2,
+        "evidence_rows_with_ticker": 3,
+        "evidence_rows_with_exchange": 3,
+    }
+    canonical = {
+        **runtime,
+        "strict_identifier_sample_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ"}],
+    }
+    serialized = dict(runtime)
+    serialized["rows_with_ticker"] = 1
+    operational = {
+        "strict_identifier_matches_found": 0,
+        "strict_identifier_sample_matches": [],
+        "rows_with_ticker": 0,
+        "rows_with_exchange": 0,
+        "evidence_rows_with_ticker": 0,
+        "evidence_rows_with_exchange": 0,
+        "strict_identifier_operational_export_warnings": [],
+    }
+    integrated = mod._integrate_operational_summary_with_canonical_reconciliation(operational, runtime, serialized, canonical)
+    assert integrated["strict_identifier_operational_export_matches_runtime"] is False
+    assert integrated["strict_identifier_runtime_vs_operational_export_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
+    assert integrated["strict_identifier_serialized_vs_operational_export_delta"]["rows_with_ticker_delta"] == -1
+    assert "operational_export_mismatch_detected" in integrated["strict_identifier_operational_export_warnings"]
