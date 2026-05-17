@@ -970,12 +970,29 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     print(f"[tier3h4] actual_upsert_contains_query_text={diagnostics.get('actual_upsert_contains_query_text')}")
     print(f"[tier3h4] actual_upsert_payload_matches_schema={diagnostics.get('actual_upsert_payload_matches_schema')}")
     try:
-        r = requests.post(f"{url}/rest/v1/{table_name}", headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"}, params={"on_conflict": on_conflict}, json=actual_upsert_payload, timeout=60)
+        request_headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+        request_params: dict[str, str] = {}
+        if table_name == EVIDENCE_TABLE_NAME:
+            request_headers["Prefer"] = "return=minimal"
+            diagnostics["evidence_write_method"] = "insert"
+            diagnostics["evidence_insert_row_count"] = len(actual_upsert_payload)
+            diagnostics["evidence_insert_payload_keys"] = sorted({k for row in actual_upsert_payload if isinstance(row, dict) for k in row.keys()})
+        else:
+            request_headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
+            request_params["on_conflict"] = on_conflict
+        r = requests.post(
+            f"{url}/rest/v1/{table_name}",
+            headers=request_headers,
+            params=request_params or None,
+            json=actual_upsert_payload,
+            timeout=60,
+        )
         destination_columns_header = (r.headers.get("x-rel-columns") or r.headers.get("content-profile") or "") if hasattr(r, "headers") else ""
         if isinstance(destination_columns_header, str) and destination_columns_header:
             diagnostics["evidence_upsert_destination_table_columns"] = sorted([c.strip() for c in destination_columns_header.split(",") if c.strip()])
         diagnostics["evidence_upsert_http_status"] = r.status_code
         diagnostics["response_status_code"] = r.status_code
+        diagnostics["evidence_insert_response_status"] = r.status_code if table_name == EVIDENCE_TABLE_NAME else None
         diagnostics["evidence_upsert_response_body"] = r.content[:16000].decode("utf-8", errors="replace") if isinstance(r.content, (bytes, bytearray)) else None
         diagnostics["evidence_upsert_response_text"] = (r.text or "")[:8000]
         diagnostics["full_upsert_response_text"] = (r.text or "")[:32000]
@@ -987,6 +1004,8 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         if r.status_code >= 400:
             body = diagnostics["evidence_upsert_response_json"] if isinstance(diagnostics["evidence_upsert_response_json"], (dict, list)) else diagnostics["evidence_upsert_response_text"]
             diagnostics["evidence_upsert_error_body"] = body
+            if table_name == EVIDENCE_TABLE_NAME:
+                diagnostics["evidence_insert_error_body"] = body
             if isinstance(diagnostics["evidence_upsert_response_json"], dict):
                 postgrest_payload = diagnostics["evidence_upsert_response_json"]
             else:
@@ -1036,6 +1055,8 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         return (status, diagnostics) if include_diagnostics else status
     except Exception as exc:
         diagnostics["evidence_upsert_error_body"] = f"exception:{type(exc).__name__}:{exc}"
+        if table_name == EVIDENCE_TABLE_NAME:
+            diagnostics["evidence_insert_error_body"] = diagnostics["evidence_upsert_error_body"]
         diagnostics["exception_repr"] = repr(exc)
         diagnostics["evidence_upsert_exception_type"] = type(exc).__name__
         diagnostics["evidence_upsert_exception_args"] = [str(a) for a in getattr(exc, "args", ())]
