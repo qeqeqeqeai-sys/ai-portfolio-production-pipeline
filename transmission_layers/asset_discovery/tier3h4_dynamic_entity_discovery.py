@@ -619,7 +619,47 @@ def compute_candidate_score(evidence_count_score: float, source_quality_score: f
 
 def _sanitize_persistence_rows(rows: list[dict[str, Any]], table_name: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     runtime_nested_fields = {"matched_entity_terms", "raw_evidence", "suppression_flags", "thematic_keyword_matches"}
-    diagnostics = {"sanitized_payload_keys": [], "removed_nested_fields": [], "json_serialized_fields": [], "final_payload_column_count": 0}
+    evidence_persistence_allowlist = {
+        "run_date_sgt",
+        "workflow_run_id",
+        "theme_name",
+        "source_node",
+        "target_node",
+        "query_text",
+        "candidate_id",
+        "candidate_asset_id",
+        "candidate_name",
+        "candidate_ticker",
+        "source_url",
+        "source_domain",
+        "source_title",
+        "source_snippet",
+        "evidence_text",
+        "evidence_type",
+        "evidence_confidence",
+        "evidence_quality_score",
+        "evidence_rank",
+        "extracted_exchange",
+        "extracted_ticker",
+        "normalized_exchange",
+        "normalized_ticker",
+        "extraction_confidence",
+        "extraction_method",
+        "extraction_notes",
+        "accepted",
+        "rejection_reason",
+        "retrieved_at",
+        "cache_reused",
+    }
+    diagnostics = {
+        "sanitized_payload_keys": [],
+        "removed_nested_fields": [],
+        "final_payload_column_count": 0,
+        "persistence_projection_fields": [],
+        "removed_runtime_only_fields": [],
+        "sanitized_payload_column_count": 0,
+        "sanitized_payload_contains_nested_objects": False,
+    }
     if table_name != EVIDENCE_TABLE_NAME or not rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
         diagnostics["sanitized_payload_keys"] = row_keys
@@ -627,31 +667,26 @@ def _sanitize_persistence_rows(rows: list[dict[str, Any]], table_name: str) -> t
         return rows, diagnostics
     sanitized_rows: list[dict[str, Any]] = []
     removed_fields: set[str] = set()
-    json_fields: set[str] = set()
     for row in rows:
         if not isinstance(row, dict):
             continue
-        cleaned = dict(row)
+        cleaned = {k: row.get(k) for k in evidence_persistence_allowlist if k in row}
         for field in runtime_nested_fields:
-            if field not in cleaned:
-                continue
-            value = cleaned.get(field)
-            if value is None:
-                cleaned.pop(field, None)
+            if field in row:
                 removed_fields.add(field)
-                continue
-            if isinstance(value, (dict, list, tuple, set)):
-                cleaned[field] = json.dumps(value, ensure_ascii=False, default=str)
-                json_fields.add(field)
-                continue
-            cleaned.pop(field, None)
-            removed_fields.add(field)
         sanitized_rows.append(cleaned)
     sanitized_keys = sorted({k for row in sanitized_rows if isinstance(row, dict) for k in row.keys()})
     diagnostics["sanitized_payload_keys"] = sanitized_keys
     diagnostics["removed_nested_fields"] = sorted(removed_fields)
-    diagnostics["json_serialized_fields"] = sorted(json_fields)
     diagnostics["final_payload_column_count"] = len(sanitized_keys)
+    diagnostics["persistence_projection_fields"] = sorted(evidence_persistence_allowlist)
+    diagnostics["removed_runtime_only_fields"] = sorted(removed_fields)
+    diagnostics["sanitized_payload_column_count"] = len(sanitized_keys)
+    diagnostics["sanitized_payload_contains_nested_objects"] = any(
+        isinstance(value, (dict, list, tuple, set))
+        for row in sanitized_rows if isinstance(row, dict)
+        for value in row.values()
+    )
     return sanitized_rows, diagnostics
 
 def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: str, include_diagnostics: bool = False) -> str | tuple[str, dict[str, Any]]:
@@ -687,8 +722,11 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "write_error_hint": None,
         "sanitized_payload_keys": [],
         "removed_nested_fields": [],
-        "json_serialized_fields": [],
         "final_payload_column_count": 0,
+        "persistence_projection_fields": [],
+        "removed_runtime_only_fields": [],
+        "sanitized_payload_column_count": 0,
+        "sanitized_payload_contains_nested_objects": False,
     }
     if rows:
         row_keys = sorted({k for row in rows if isinstance(row, dict) for k in row.keys()})
