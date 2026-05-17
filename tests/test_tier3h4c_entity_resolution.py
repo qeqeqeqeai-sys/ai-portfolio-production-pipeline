@@ -149,3 +149,58 @@ def test_conflicting_evidence_identifiers_aggregator():
     ])
     assert conflict is True
     assert agg["normalized_ticker"] is None
+
+
+def test_main_uses_evidence_for_candidate_without_unboundlocalerror(monkeypatch):
+    from transmission_layers.asset_discovery.entity_resolution import resolve_discovered_entities as mod
+
+    def fake_fetch(tables, *_args):
+        if "dynamic_entity_discovery" in tables[0]:
+            return [{"candidate_asset_id": "1", "candidate_name": "NVIDIA"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+        return [{"candidate_asset_id": "1", "source_url": "https://e", "normalized_ticker": "NVDA", "normalized_exchange": "XNAS", "extracted_ticker": "NVDA", "extracted_exchange": "XNAS"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+
+    monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
+    monkeypatch.setattr(mod, "write_evidence_rows", lambda rows: {"status": "written", "rows_written": len(rows)})
+    monkeypatch.setattr(mod, "write_audit_rows", lambda rows: {"status": "written", "rows": rows})
+
+    assert mod.main() == 0
+
+
+def test_main_candidate_without_evidence_rows_keeps_ticker_exchange_null(monkeypatch):
+    from transmission_layers.asset_discovery.entity_resolution import resolve_discovered_entities as mod
+
+    captured = {}
+
+    def fake_fetch(tables, *_args):
+        if "dynamic_entity_discovery" in tables[0]:
+            return [{"candidate_asset_id": "2", "candidate_name": "Unknown Startup"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+        return [], {"rows_read": 0, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+
+    monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
+    monkeypatch.setattr(mod, "write_evidence_rows", lambda rows: {"status": "skipped:no_rows", "rows_written": 0})
+
+    def fake_write_audit(rows):
+        captured["rows"] = rows
+        return {"status": "written"}
+
+    monkeypatch.setattr(mod, "write_audit_rows", fake_write_audit)
+    assert mod.main() == 0
+    row = captured["rows"][0]
+    assert row["normalized_ticker"] is None
+    assert row["normalized_exchange"] is None
+    assert row["resolution_status"] in {"suppressed", "unresolved_review", "resolved_medium_confidence", "resolved_high_confidence"}
+
+
+def test_main_empty_evidence_table_non_blocking(monkeypatch):
+    from transmission_layers.asset_discovery.entity_resolution import resolve_discovered_entities as mod
+
+    def fake_fetch(tables, *_args):
+        if "dynamic_entity_discovery" in tables[0]:
+            return [{"candidate_asset_id": "3", "candidate_name": "Acme"}], {"rows_read": 1, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+        return [], {"rows_read": 0, "table_selected": tables[0], "tables_attempted": tables, "warnings": []}
+
+    monkeypatch.setattr(mod, "fetch_table_rows_with_fallback", fake_fetch)
+    monkeypatch.setattr(mod, "write_evidence_rows", lambda rows: {"status": "skipped:no_rows", "rows_written": 0})
+    monkeypatch.setattr(mod, "write_audit_rows", lambda rows: {"status": "written"})
+
+    assert mod.main() == 0

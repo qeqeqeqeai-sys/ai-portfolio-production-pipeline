@@ -140,7 +140,9 @@ def main() -> int:
     for c in candidates:
         raw_name = c.get("candidate_name")
         identifier = extract_security_identifier(c)
-        agg, conflict = _aggregate_evidence_identifiers(ev)
+        join_key = str(c.get("candidate_asset_id") or c.get("candidate_name") or "")
+        evidence_for_candidate = by_asset.get(join_key, [])
+        agg, conflict = _aggregate_evidence_identifiers(evidence_for_candidate)
         nt, suspicious = normalize_ticker(agg.get("candidate_ticker") or identifier.extracted_ticker or c.get("ticker") or c.get("candidate_ticker"))
         ne_raw = normalize_exchange(agg.get("candidate_exchange") or identifier.raw_exchange or c.get("exchange") or c.get("candidate_exchange"))
         nn = normalize_name(raw_name)
@@ -155,8 +157,7 @@ def main() -> int:
         if inferred_exchange: stats["exchange_inferred_from_registry_count"] += 1
         if registry_matches: stats["registry_matched_count"] += 1
 
-        ev = by_asset.get(str(c.get("candidate_asset_id") or c.get("candidate_name") or ""), [])
-        urls = [x.get("source_url") for x in ev if x.get("source_url")]
+        urls = [x.get("source_url") for x in evidence_for_candidate if x.get("source_url")]
         source_count = len({u for u in urls})
         if not urls:
             urls, source_count = _extract_embedded_evidence(c)
