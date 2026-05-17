@@ -330,19 +330,44 @@ def test_strict_exchange_qualified_identifier_positive_cases():
         ("HKEX: 0700", "HKEX", "0700"),
         ("LSE: ARM", "LSE", "ARM"),
         ("Tokyo Stock Exchange: 7203", "TSE", "7203"),
+        ("NVDA (NASDAQ)", "NASDAQ", "NVDA"),
+        ("IBM (NYSE)", "NYSE", "IBM"),
+        ("D05 (SGX)", "SGX", "D05"),
+        ("0700 (HKEX)", "HKEX", "0700"),
+        ("ARM (LSE)", "LSE", "ARM"),
+        ("NASDAQ (NVDA)", "NASDAQ", "NVDA"),
+        ("NYSE (IBM)", "NYSE", "IBM"),
+        ("listed on NASDAQ under ticker NVDA", "NASDAQ", "NVDA"),
+        ("trades on NYSE as IBM", "NYSE", "IBM"),
+        ("traded on Nasdaq under symbol AMD", "NASDAQ", "AMD"),
+        ("NASDAQ-listed NVDA", "NASDAQ", "NVDA"),
+        ("SGX-listed D05", "SGX", "D05"),
+        ("ticker NVDA on NASDAQ", "NASDAQ", "NVDA"),
+        ("symbol IBM on NYSE", "NYSE", "IBM"),
     ]
     for text, expected_exchange, expected_ticker in cases:
         out = mod._extract_strict_exchange_qualified_identifier(text)
         assert out["normalized_exchange"] == expected_exchange
         assert out["normalized_ticker"] == expected_ticker
-        assert out["extraction_method"] == "strict_exchange_qualified_regex"
+        assert out["extraction_method"] in {
+            "strict_exchange_colon_regex",
+            "strict_exchange_parenthetical_regex",
+            "strict_exchange_listed_context_regex",
+            "strict_exchange_ticker_on_exchange_regex",
+        }
         assert out["extraction_confidence"] == "high"
 
 
 def test_strict_exchange_qualified_identifier_negative_cases():
-    for text in ["NVDA", "AMD", "Nvidia Corporation", "AI", "IPO", "CEO", "ETF", "SEC", "USD", "HELLO WORLD", "TSX: SHOP", "Ticker NVDA"]:
+    for text in ["NVDA", "AMD", "Nvidia Corporation", "AI", "IPO", "CEO", "ETF", "SEC", "USD", "HELLO WORLD", "TSX: SHOP", "Ticker NVDA", "listed on NASDAQ", "ticker NVDA", "ADR", "LLC", "INC", "LTD", "PLC", "CORP", "THE", "AND"]:
         out = mod._extract_strict_exchange_qualified_identifier(text)
         assert out == {}
+
+
+def test_strict_exchange_qualified_identifier_rejects_ambiguous():
+    out = mod._extract_strict_exchange_qualified_identifier("NASDAQ: NVDA and NYSE: IBM")
+    assert out["warnings"][0] == "ambiguous_multiple_matches_rejected"
+    assert out.get("normalized_ticker") is None
 
 
 def test_strict_extraction_populates_only_when_explicit_pattern_exists():
@@ -364,3 +389,5 @@ def test_strict_extraction_populates_only_when_explicit_pattern_exists():
     assert summary["strict_identifier_extraction_enabled"] is True
     assert summary["strict_identifier_matches_found"] > 0
     assert "NASDAQ" in summary["strict_identifier_unique_exchanges_found"]
+    assert summary["strict_identifier_phase"] == "3B_exchange_contextual"
+    assert summary["strict_identifier_contextual_patterns_enabled"] is True
