@@ -12,7 +12,7 @@ from transmission_layers.asset_discovery.entity_resolution.disambiguation_rules 
 from transmission_layers.asset_discovery.entity_resolution.duplicate_consolidator import duplicate_group_key
 from transmission_layers.asset_discovery.entity_resolution.canonical_registry import lookup_by_ticker, lookup_by_alias
 from transmission_layers.asset_discovery.entity_resolution import audit_writer
-from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows, _aggregate_evidence_identifiers
+from transmission_layers.asset_discovery.entity_resolution.resolve_discovered_entities import _extract_embedded_evidence, _normalize_embedded_evidence_rows, _aggregate_evidence_identifiers, build_enriched_evidence_text
 
 
 def test_normalize_name():
@@ -204,3 +204,44 @@ def test_main_empty_evidence_table_non_blocking(monkeypatch):
     monkeypatch.setattr(mod, "write_audit_rows", lambda rows: {"status": "written"})
 
     assert mod.main() == 0
+
+
+def test_build_enriched_evidence_text_includes_title_snippet_metadata_and_operational():
+    text = build_enriched_evidence_text(
+        "Utility infra update",
+        "NASDAQ: NVDA mentioned in article",
+        {"source_type": "news", "tavily_score": 0.82},
+        {"weighted_score": 39.9, "suppression": "weak_thematic_relevance"},
+    )
+    assert "Title: Utility infra update" in text
+    assert "Snippet: NASDAQ: NVDA mentioned in article" in text
+    assert "Metadata:" in text and "source_type=news" in text
+    assert "Operational:" in text and "weighted_score=39.9" in text
+
+
+def test_phase2a_embedded_evidence_preserves_raw_and_enriches_without_inference():
+    candidate = {
+        "candidate_name": "MOCK::AI_POWER_DEMAND::1",
+        "source_node": "data_center_load",
+        "target_node": "grid_resilience",
+        "evidence_sources": [{
+            "source_url": "https://example.com/story",
+            "source_title": "Grid supplier update",
+            "source_snippet": "capital plans and procurement updates",
+            "source_domain": "example.com",
+            "quality": 88.8,
+            "source_type": "news",
+            "tavily_score": 0.75,
+        }],
+        "candidate_ticker": None,
+        "candidate_exchange": None,
+        "candidate_confidence_score": 39.9,
+        "rejection_reason": "weak_thematic_relevance",
+    }
+    rows = _normalize_embedded_evidence_rows(candidate, "2026-05-17", "wf-1", "ai")
+    assert rows and rows[0]["source_title"] == "Grid supplier update"
+    assert "Snippet: capital plans and procurement updates" in rows[0]["evidence_text"]
+    assert "Operational:" in rows[0]["evidence_text"]
+    assert rows[0]["raw_evidence"]["evidence_source"]["source_url"] == "https://example.com/story"
+    assert rows[0]["extracted_ticker"] is None
+    assert rows[0]["extracted_exchange"] is None
