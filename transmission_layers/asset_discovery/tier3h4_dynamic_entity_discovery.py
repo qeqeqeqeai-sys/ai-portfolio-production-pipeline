@@ -200,7 +200,19 @@ def _normalize_column_list(columns: Any) -> list[str]:
     if columns is None:
         return []
     if isinstance(columns, str):
-        raw_items = columns.split(",")
+        stripped = columns.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = json.loads(stripped)
+            except Exception:
+                parsed = None
+            if isinstance(parsed, list):
+                return _normalize_column_list(parsed)
+        if stripped.startswith("{") and stripped.endswith("}"):
+            stripped = stripped[1:-1]
+        if stripped.startswith("(") and stripped.endswith(")"):
+            stripped = stripped[1:-1]
+        raw_items = stripped.split(",")
     elif isinstance(columns, (list, tuple)):
         raw_items = []
         for item in columns:
@@ -212,6 +224,43 @@ def _normalize_column_list(columns: Any) -> list[str]:
         raw_items = [columns]
     normalized = [_normalize_identifier_token(item) for item in raw_items]
     return [item for item in normalized if item]
+
+
+def _extract_rows_from_supabase_metadata_response(payload: Any) -> list[dict[str, Any]]:
+    if payload is None:
+        return []
+    parsed_payload = payload
+    if isinstance(payload, str):
+        try:
+            parsed_payload = json.loads(payload)
+        except Exception:
+            return []
+    if hasattr(parsed_payload, "data"):
+        data_value = getattr(parsed_payload, "data", None)
+        if isinstance(data_value, list):
+            return [row for row in data_value if isinstance(row, dict)]
+    if isinstance(parsed_payload, dict):
+        data_value = parsed_payload.get("data")
+        if isinstance(data_value, list):
+            return [row for row in data_value if isinstance(row, dict)]
+        if isinstance(data_value, dict):
+            return [data_value]
+        if isinstance(parsed_payload.get("error"), dict):
+            return []
+        return [parsed_payload] if parsed_payload else []
+    if isinstance(parsed_payload, list):
+        return [row for row in parsed_payload if isinstance(row, dict)]
+    return []
+
+
+def _extract_unique_index_columns_from_indexdef(indexdef: Any) -> list[str]:
+    text = str(indexdef or "")
+    if not text:
+        return []
+    match = re.search(r"USING\s+\w+\s*\((.*)\)", text, flags=re.IGNORECASE)
+    if not match:
+        return []
+    return _normalize_column_list(match.group(1))
 
 def _normalize_domain(url: str) -> str:
     host = urlparse(url).netloc.lower().replace("www.", "")
@@ -1108,6 +1157,11 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
 
         unique_constraint_rows: list[dict[str, Any]] = []
         diagnostics["unique_contract_introspection_status"] = None
+        diagnostics["unique_contract_query_status"] = None
+        diagnostics["unique_contract_query_error"] = None
+        diagnostics["unique_contract_raw_response_type"] = None
+        diagnostics["unique_contract_raw_response_preview"] = None
+        diagnostics["unique_contract_rows_returned"] = 0
         constraints_response = requests.get(
             f"{url}/rest/v1/information_schema.table_constraints",
             headers=constraint_headers,
@@ -1120,14 +1174,24 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             timeout=60,
         )
         if constraints_response.status_code >= 400:
+            diagnostics["unique_contract_query_status"] = f"http_{constraints_response.status_code}"
+            diagnostics["unique_contract_query_error"] = (constraints_response.text or "")[:500]
             raise RuntimeError(
                 f"information_schema.table_constraints:{constraints_response.status_code}:{(constraints_response.text or '')[:500]}"
             )
-        constraints_payload = constraints_response.json()
-        if not isinstance(constraints_payload, list):
-            raise RuntimeError(f"information_schema.table_constraints:unexpected_payload:{type(constraints_payload).__name__}")
+        try:
+            constraints_payload = constraints_response.json()
+        except Exception:
+            constraints_payload = constraints_response.text
+        diagnostics["unique_contract_raw_response_type"] = type(constraints_payload).__name__
+        diagnostics["unique_contract_raw_response_preview"] = str(constraints_payload)[:500]
+        constraints_rows = _extract_rows_from_supabase_metadata_response(constraints_payload)
+        diagnostics["unique_contract_rows_returned"] = len(constraints_rows)
+        diagnostics["unique_contract_query_status"] = "ok"
+        if not constraints_rows:
+            diagnostics["unique_contract_query_status"] = "ok_empty"
         constraint_names = sorted(
-            [row.get("constraint_name") for row in constraints_payload if isinstance(row, dict) and row.get("constraint_name")]
+            [row.get("constraint_name") for row in constraints_rows if isinstance(row, dict) and row.get("constraint_name")]
         )
         for cname in constraint_names:
             cols_response = requests.get(
@@ -1144,11 +1208,31 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             )
             if cols_response.status_code >= 400:
                 continue
-            cols_payload = cols_response.json()
-            if not isinstance(cols_payload, list):
+            try:
+                cols_payload = cols_response.json()
+            except Exception:
+                cols_payload = cols_response.text
+            cols_rows = _extract_rows_from_supabase_metadata_response(cols_payload)
+            if not cols_rows:
                 continue
-            cols = [r.get("column_name") for r in cols_payload if isinstance(r, dict) and r.get("column_name")]
+            cols = [r.get("column_name") for r in cols_rows if isinstance(r, dict) and r.get("column_name")]
             unique_constraint_rows.append({"constraint_name": cname, "table_name": table_name, "column_names": cols})
+        if not unique_constraint_rows:
+            fallback_unique_rows: list[dict[str, Any]] = []
+            for idx_row in diagnostics.get("failing_table_indexes") or []:
+                indexdef = str(idx_row or "")
+                if "UNIQUE INDEX" not in indexdef.upper():
+                    continue
+                idx_match = re.search(r"CREATE\s+UNIQUE\s+INDEX\s+([^\s]+)", indexdef, flags=re.IGNORECASE)
+                idx_name = idx_match.group(1).strip('"') if idx_match else None
+                idx_cols = _extract_unique_index_columns_from_indexdef(indexdef)
+                if idx_name and idx_cols:
+                    fallback_unique_rows.append(
+                        {"constraint_name": idx_name, "table_name": table_name, "column_names": idx_cols}
+                    )
+            if fallback_unique_rows:
+                unique_constraint_rows = fallback_unique_rows
+                diagnostics["unique_contract_query_status"] = "ok_fallback_pg_indexes"
         if unique_constraint_rows:
             diagnostics["unique_contract_introspection_status"] = "ok"
         else:
