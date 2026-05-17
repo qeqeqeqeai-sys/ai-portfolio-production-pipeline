@@ -351,9 +351,12 @@ def test_main_force_fresh_skips_persisted_evidence_read_and_preserves_non_persis
     assert summary["force_fresh_evidence"] is True
     assert summary["evidence_table_read_skipped_due_to_force_fresh"] is True
     assert summary["evidence_rows_read"] == 0
-    assert summary["evidence_join_rows_used"] == 0
+    assert summary["evidence_join_rows_used"] > 0
     assert summary["evidence_source_mode"] != "persisted_evidence_table"
     assert summary["evidence_selected_reason"] != "separate evidence table rows found"
+    assert summary["strict_identifier_extraction_enabled"] is True
+    assert summary["strict_identifier_runtime_source"] == "embedded_in_memory_evidence"
+    assert summary["strict_identifier_rows_scanned"] > 0
 
 
 def test_main_default_mode_still_reads_persisted_evidence(monkeypatch):
@@ -380,3 +383,5 @@ def test_main_default_mode_still_reads_persisted_evidence(monkeypatch):
     assert summary["evidence_selected_reason"] == "separate evidence table rows found"
     assert summary["evidence_rows_read"] == 1
     assert summary["evidence_join_rows_used"] == 1
+    assert summary["strict_identifier_extraction_enabled"] is True
+    assert summary["strict_identifier_runtime_source"] == "persisted_evidence_rows"
