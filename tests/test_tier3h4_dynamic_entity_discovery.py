@@ -475,6 +475,7 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert rc == 0
     import json
     summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    operational = json.loads((tmp_path / "operational_summary.json").read_text(encoding="utf-8"))
     assert summary["strict_identifier_matches_found"] >= 1
     assert summary["strict_identifier_sample_matches"]
     assert summary["strict_identifier_log_summary_match"] is True
@@ -500,6 +501,17 @@ def test_main_summary_includes_strict_identifier_fields(tmp_path, monkeypatch):
     assert summary["strict_identifier_candidate_level_matches_found"] >= summary["rows_with_exchange"]
     assert summary["strict_identifier_accepted_match_collection_size"] >= 1
     assert summary["strict_identifier_matches_found"] == summary["strict_identifier_accepted_match_collection_size"]
+    assert operational["strict_identifier_matches_found"] == summary["strict_identifier_accepted_match_collection_size"]
+    assert operational["rows_with_ticker"] == summary["rows_with_ticker"]
+    assert operational["rows_with_exchange"] == summary["rows_with_exchange"]
+    assert operational["strict_identifier_sample_matches"]
+    assert operational["strict_identifier_runtime_vs_operational_export_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
+    assert operational["strict_identifier_operational_summary_integrated"] is True
+    assert operational["strict_identifier_operational_summary_source"] == "strict_identifier_accepted_matches"
+    assert operational["strict_identifier_operational_export_connected"] is True
+    assert operational["strict_identifier_operational_export_matches_runtime"] is True
+    assert operational["strict_identifier_operational_payload_replaced"] is True
+    assert operational["strict_identifier_legacy_operational_counters_detected"] is True
 
 
 def test_strict_identifier_runtime_summary_delta_flags_divergence():
@@ -753,3 +765,33 @@ def test_post_serialization_mismatch_flips_reconciliation(tmp_path):
     assert payload["strict_identifier_counter_reconciliation_passed"] is False
     assert payload["strict_identifier_payload_overwritten_after_reconciliation"] is True
     assert "serialized_payload_mismatch_detected" in payload["strict_identifier_counter_reconciliation_warnings"]
+
+
+def test_operational_summary_integration_replaces_legacy_counters():
+    runtime = {
+        "strict_identifier_matches_found": 3,
+        "rows_with_ticker": 2,
+        "rows_with_exchange": 2,
+        "evidence_rows_with_ticker": 3,
+        "evidence_rows_with_exchange": 3,
+    }
+    canonical = {
+        **runtime,
+        "strict_identifier_sample_matches": [{"normalized_ticker": "NVDA", "normalized_exchange": "NASDAQ"}],
+    }
+    operational = {
+        "strict_identifier_matches_found": 0,
+        "strict_identifier_sample_matches": [],
+        "rows_with_ticker": 0,
+        "rows_with_exchange": 0,
+        "evidence_rows_with_ticker": 0,
+        "evidence_rows_with_exchange": 0,
+    }
+    integrated = mod._integrate_operational_summary_with_canonical_reconciliation(operational, runtime, dict(runtime), canonical)
+    assert integrated["strict_identifier_matches_found"] == 3
+    assert integrated["rows_with_ticker"] == 2
+    assert integrated["rows_with_exchange"] == 2
+    assert integrated["strict_identifier_sample_matches"]
+    assert integrated["strict_identifier_runtime_vs_operational_export_delta"] == {"matches_found_delta": 0, "rows_with_ticker_delta": 0, "rows_with_exchange_delta": 0, "evidence_rows_with_ticker_delta": 0, "evidence_rows_with_exchange_delta": 0}
+    assert integrated["strict_identifier_operational_export_matches_runtime"] is True
+    assert integrated["strict_identifier_legacy_operational_counters_detected"] is True
