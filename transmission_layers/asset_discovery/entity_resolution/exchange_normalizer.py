@@ -3,7 +3,7 @@ from __future__ import annotations
 EXCHANGE_MAP = {
     "NASDAQ": "XNAS", "NMS": "XNAS",
     "NYSE": "XNYS",
-    "NYSE ARCA": "ARCX", "ARCA": "ARCX",
+    "NYSE ARCA": "ARCX", "NYSEARCA": "ARCX", "ARCA": "ARCX",
     "LSE": "XLON",
     "HKEX": "XHKG", "SEHK": "XHKG",
     "SGX": "XSES",

@@ -115,3 +115,17 @@ The resolver remains non-blocking and advisory-only:
 - no LLM classification
 - no autonomous mapping
 - deterministic exact-match registry inference only
+
+## Tier 3H.4C.3 Deterministic Security Identifier Extraction
+
+This layer is **advisory-only** and **additive-only**. It is upstream of Tier 3H.4C entity resolution and does not write to monitored universe tables.
+
+Policy requirements:
+- deterministic-only extraction from explicit `exchange:ticker`, explicit ticker fields, exact alias registry, exact ticker+exchange registry matches.
+- no fuzzy matching, no LLM classification, no invented ticker/exchange mappings.
+- unresolved/suppressed outcomes are preferred over unsafe inference.
+
+Audit fields added:
+`extracted_ticker`, `raw_exchange`, `normalized_exchange`, `security_type`, `canonical_security_id`, `identifier_source`, `identifier_method`, `identifier_confidence`, `identifier_status`, `identifier_explanation`, `identifier_warnings`.
+
+Future LLM suggestions (if introduced) must remain quarantined and require deterministic registry validation before any resolver impact.
