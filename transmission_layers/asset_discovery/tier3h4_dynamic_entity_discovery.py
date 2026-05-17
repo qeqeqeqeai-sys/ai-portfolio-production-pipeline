@@ -736,6 +736,58 @@ def _sanitize_raw_evidence_for_json(value: Any, invalid_types: set[str]) -> Any:
     except Exception:
         return f"<unserializable:{type(value).__name__}>"
 
+def _coerce_numeric_confidence_fields(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    label_map = {
+        "high": 1.0,
+        "medium": 0.5,
+        "moderate": 0.5,
+        "low": 0.25,
+        "unknown": None,
+        "": None,
+    }
+    numeric_fields = ("evidence_confidence", "extraction_confidence")
+    coercions_applied = 0
+    invalid_before_write: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        for field in numeric_fields:
+            if field not in row:
+                continue
+            value = row.get(field)
+            if value is None:
+                continue
+            if isinstance(value, bool):
+                row[field] = float(value)
+                coercions_applied += 1
+                continue
+            if isinstance(value, (int, float)):
+                continue
+            normalized = str(value).strip().lower()
+            if normalized in label_map:
+                mapped = label_map[normalized]
+                if row.get(field) != mapped:
+                    row[field] = mapped
+                    coercions_applied += 1
+                continue
+            try:
+                parsed = float(str(value).strip())
+                if row.get(field) != parsed:
+                    row[field] = parsed
+                    coercions_applied += 1
+            except Exception:
+                invalid_before_write.append(field)
+    diag = {
+        "numeric_confidence_coercions_applied": coercions_applied,
+        "invalid_numeric_fields_before_write": sorted(set(invalid_before_write)),
+        "evidence_confidence_type": None,
+        "extraction_confidence_type": None,
+    }
+    first_row = rows[0] if rows and isinstance(rows[0], dict) else {}
+    diag["evidence_confidence_type"] = type(first_row.get("evidence_confidence")).__name__ if "evidence_confidence" in first_row else None
+    diag["extraction_confidence_type"] = type(first_row.get("extraction_confidence")).__name__ if "extraction_confidence" in first_row else None
+    return rows, diag
+
 def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: str, include_diagnostics: bool = False) -> str | tuple[str, dict[str, Any]]:
     resolution_fields = {"canonical_entity_id", "normalized_ticker", "normalized_exchange", "duplicate_group_key", "duplicate_group_size", "resolution_confidence", "resolution_status", "rules_fired", "suppression_reason"}
     diagnostics: dict[str, Any] = {
@@ -758,6 +810,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         "evidence_upsert_suspect_type_fields": [],
         "evidence_upsert_payload_type": "unknown",
         "evidence_upsert_destination_table": table_name,
+        "numeric_confidence_coercions_applied": 0,
+        "invalid_numeric_fields_before_write": [],
+        "evidence_confidence_type": None,
+        "extraction_confidence_type": None,
         "evidence_upsert_destination_table_columns": [],
         "evidence_upsert_contains_resolution_fields": False,
         "evidence_upsert_contains_nested_objects": False,
@@ -973,6 +1029,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     except Exception:
         diagnostics["table_unique_constraints"] = diagnostics.get("table_unique_constraints") or []
     actual_upsert_payload = final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else final_upsert_rows
+    if table_name == EVIDENCE_TABLE_NAME:
+        actual_upsert_payload, confidence_diag = _coerce_numeric_confidence_fields(actual_upsert_payload)
+        diagnostics.update(confidence_diag)
     if table_name == EVIDENCE_TABLE_NAME:
         raw_evidence_invalid_types: set[str] = set()
         raw_evidence_sanitization_applied = False
@@ -1800,7 +1859,7 @@ def main() -> int:
     operational_summary = {"generated_queries": ops["generated_queries"], "deduplicated_queries": ops["deduplicated_queries"], "executed_queries": ops["executed_queries"], "skipped_duplicate_queries": ops["skipped_duplicate_queries"], "cache_hits": ops["cache_hits"], "cache_misses": ops["cache_misses"], "tavily_enabled": evidence_summary["tavily_enabled"], "fallback_mode": evidence_summary["fallback_mode"], "quota_exhausted": evidence_summary["quota_exhausted"], "retry_events": ops["retry_events"], "rate_limit_events": ops["rate_limit_events"], "evidence_rows_reused": ops["evidence_rows_reused"], "evidence_rows_collected": len(evidence_rows), "execution_seconds": elapsed, "strict_identifier_matches_found": 0, "strict_identifier_sample_matches": [], "rows_with_ticker": 0, "rows_with_exchange": 0, "evidence_rows_with_ticker": 0, "evidence_rows_with_exchange": 0}
     canonical_summary = _canonicalize_final_summary_payload(final_summary_payload, evidence_summary, records)
     _apply_canonical_strict_identifier_fields_to_final_payload(final_summary_payload, evidence_summary, canonical_summary)
-    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_write_method", "discovery_write_method", "failing_upsert_has_matching_unique_constraint", "evidence_insert_row_count", "evidence_insert_success", "evidence_insert_response_status", "evidence_insert_response_body", "evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "final_payload_contains_raw_evidence", "raw_evidence_type", "raw_evidence_json_serializable", "raw_evidence_nested_invalid_types", "raw_evidence_sanitization_applied", "raw_evidence_post_sanitization_type", "final_payload_missing_required_columns", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "actual_on_conflict_value", "actual_upsert_conflict_columns", "conflict_columns_exist_in_schema", "schema_introspection_status", "schema_introspection_error", "failing_table_name", "failing_write_method", "failing_on_conflict_value", "failing_table_unique_constraints", "failing_response_body", "table_unique_constraints"]})
+    final_summary_payload.update({k: evidence_upsert_diag.get(k) for k in ["evidence_write_method", "discovery_write_method", "failing_upsert_has_matching_unique_constraint", "evidence_insert_row_count", "evidence_insert_success", "evidence_insert_response_status", "evidence_insert_response_body", "evidence_upsert_payload_columns", "evidence_upsert_first_row_keys", "evidence_upsert_response_body", "evidence_upsert_response_text", "evidence_upsert_error_body", "evidence_upsert_first_failed_row", "evidence_upsert_response_json", "evidence_upsert_http_status", "evidence_upsert_postgrest_error_payload", "evidence_upsert_exception_type", "evidence_upsert_exception_args", "evidence_upsert_exception_repr", "evidence_upsert_schema_mismatch_columns", "evidence_upsert_suspect_type_fields", "evidence_upsert_payload_count", "evidence_upsert_payload_size_bytes", "write_error_code", "write_error_message", "write_error_details", "write_error_hint", "numeric_confidence_coercions_applied", "invalid_numeric_fields_before_write", "evidence_confidence_type", "extraction_confidence_type", "final_upsert_variable_name", "final_upsert_contains_nested_objects", "final_upsert_nested_fields", "final_upsert_first_row_keys", "final_schema_aligned_payload_keys", "removed_unsupported_columns", "final_payload_matches_schema", "final_payload_contains_raw_evidence", "raw_evidence_type", "raw_evidence_json_serializable", "raw_evidence_nested_invalid_types", "raw_evidence_sanitization_applied", "raw_evidence_post_sanitization_type", "final_payload_missing_required_columns", "evidence_table_actual_columns", "evidence_table_actual_column_types", "evidence_table_nullable_fields", "payload_vs_schema_missing_columns", "payload_vs_schema_extra_columns", "payload_vs_schema_type_conflicts", "payload_fields_missing_from_table", "required_table_fields_missing_from_payload", "type_conflict_fields", "full_upsert_response_text", "full_upsert_response_json", "response_status_code", "exception_repr", "actual_upsert_variable_name", "actual_upsert_first_row_keys", "actual_upsert_extra_columns", "actual_upsert_contains_query_text", "actual_upsert_payload_matches_schema", "actual_upsert_contains_accepted", "actual_upsert_contains_normalized_exchange", "actual_upsert_contains_normalized_ticker", "actual_upsert_contains_source_snippet", "actual_on_conflict_value", "actual_upsert_conflict_columns", "conflict_columns_exist_in_schema", "schema_introspection_status", "schema_introspection_error", "failing_table_name", "failing_write_method", "failing_on_conflict_value", "failing_table_unique_constraints", "failing_response_body", "table_unique_constraints"]})
     if evidence_upsert_status != "upserted":
         final_summary_payload["strict_identifier_runtime_source"] = evidence_summary.get("strict_identifier_runtime_source", "fresh_source_generation")
         final_summary_payload["final_export_runtime_metrics_origin"] = "runtime_canonical_preserved_on_upsert_failure"
