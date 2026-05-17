@@ -2,6 +2,11 @@ name: Tier 3H.4B Dynamic Entity Discovery
 
 on:
   workflow_dispatch:
+    inputs:
+      force_fresh_evidence:
+        description: "Force bypass of persisted evidence reuse for this manual run only"
+        required: false
+        default: "false"
   schedule:
     - cron: "35 1 * * *"
 
@@ -16,6 +21,7 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
       TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
       TIER3H4_TAVILY_ENABLED: ${{ vars.TIER3H4_TAVILY_ENABLED || 'true' }}
+      TIER3H4_FORCE_FRESH_EVIDENCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_fresh_evidence == 'true' && '1' || '0' }}
 
     steps:
       - name: Checkout repository
