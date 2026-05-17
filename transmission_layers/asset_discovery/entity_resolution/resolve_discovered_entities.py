@@ -32,6 +32,76 @@ CANDIDATE_TABLES = ["tier3h_dynamic_entity_discovery", "tier3h4_dynamic_entity_d
 EVIDENCE_TABLES = ["tier3h_dynamic_entity_evidence", "tier3h4_dynamic_entity_evidence", "tier3h_dynamic_discovery_evidence", "tier3h_entity_evidence"]
 EMBEDDED_EVIDENCE_KEYS = ["evidence_url", "source_url", "source_domain", "evidence_snippet", "source_title", "tavily_response", "evidence_sources", "source_count"]
 
+
+def _normalize_value(value: object) -> str:
+    return " ".join(str(value or "").strip().split())
+
+
+def build_enriched_evidence_text(source_title: object, source_snippet: object, structured_metadata: dict[str, object] | None, operational_metadata: dict[str, object] | None) -> str:
+    parts: list[str] = []
+    title = _normalize_value(source_title)
+    snippet = _normalize_value(source_snippet)
+    if title:
+        parts.append(f"Title: {title}")
+    if snippet:
+        parts.append(f"Snippet: {snippet}")
+
+    metadata_tokens: list[str] = []
+    for key, value in (structured_metadata or {}).items():
+        v = _normalize_value(value)
+        if v:
+            metadata_tokens.append(f"{key}={v}")
+    if metadata_tokens:
+        parts.append(f"Metadata: {'; '.join(metadata_tokens)}")
+
+    operational_tokens: list[str] = []
+    for key, value in (operational_metadata or {}).items():
+        v = _normalize_value(value)
+        if v:
+            operational_tokens.append(f"{key}={v}")
+    if operational_tokens:
+        parts.append(f"Operational: {'; '.join(operational_tokens)}")
+    return "\n\n".join(parts)
+
+
+def compose_enriched_evidence_payload(candidate: dict, source: dict, base: dict, evidence_rank: int, evidence_type: str) -> dict:
+    source_title = source.get("source_title") or source.get("title") or candidate.get("source_title")
+    source_snippet = source.get("source_snippet") or source.get("content") or source.get("snippet") or candidate.get("evidence_snippet")
+    structured_metadata = {
+        "source_type": source.get("source_type") or source.get("type") or candidate.get("discovery_method"),
+        "source_rank": source.get("source_rank") or source.get("rank"),
+        "tavily_score": source.get("tavily_score") or source.get("score"),
+        "published_date": source.get("published_date") or source.get("published"),
+        "retrieved_at": source.get("retrieved_at"),
+        "cache_reused": source.get("cache_reused"),
+        "candidate_ticker": source.get("candidate_ticker"),
+        "candidate_exchange": source.get("candidate_exchange"),
+    }
+    operational_metadata = {
+        "weighted_score": candidate.get("candidate_confidence_score"),
+        "suppression": candidate.get("rejection_reason") or "none",
+        "confidence_band": candidate.get("candidate_confidence_band"),
+        "advisory_status": candidate.get("advisory_status"),
+        "domains": candidate.get("cross_source_score"),
+    }
+    evidence_text = build_enriched_evidence_text(source_title, source_snippet, structured_metadata, operational_metadata)
+    return {
+        **base,
+        "evidence_text": evidence_text or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
+        "source_url": source.get("source_url") or candidate.get("source_url") or candidate.get("evidence_url"),
+        "source_title": source_title,
+        "source_domain": source.get("source_domain") or candidate.get("source_domain"),
+        "evidence_type": evidence_type,
+        "evidence_rank": evidence_rank,
+        "evidence_confidence": source.get("quality") or candidate.get("source_quality_score"),
+        "raw_evidence": {
+            "evidence_source": source,
+            "source_node": candidate.get("source_node"),
+            "target_node": candidate.get("target_node"),
+            "llm_classification_json": candidate.get("llm_classification_json"),
+        },
+    }
+
 def _normalize_embedded_evidence_rows(candidate: dict, run_date: str, workflow_run_id: str | None, theme: str) -> list[dict]:
     base = {
         "run_date_sgt": run_date,
@@ -52,29 +122,9 @@ def _normalize_embedded_evidence_rows(candidate: dict, run_date: str, workflow_r
         for i, src in enumerate(sources, start=1):
             if not isinstance(src, dict):
                 continue
-            rows.append({
-                **base,
-                "evidence_text": src.get("source_snippet") or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
-                "source_url": src.get("source_url"),
-                "source_title": src.get("source_title"),
-                "source_domain": src.get("source_domain"),
-                "evidence_type": "evidence_sources",
-                "evidence_rank": i,
-                "evidence_confidence": src.get("quality"),
-                "raw_evidence": {"evidence_source": src, "source_node": candidate.get("source_node"), "target_node": candidate.get("target_node"), "llm_classification_json": candidate.get("llm_classification_json")},
-            })
+            rows.append(compose_enriched_evidence_payload(candidate, src, base, i, "evidence_sources"))
     elif any(candidate.get(k) for k in ("source_url", "evidence_url", "confidence_explanation", "rejection_reason")):
-        rows.append({
-            **base,
-            "evidence_text": candidate.get("evidence_snippet") or candidate.get("confidence_explanation") or candidate.get("rejection_reason"),
-            "source_url": candidate.get("source_url") or candidate.get("evidence_url"),
-            "source_title": candidate.get("source_title"),
-            "source_domain": candidate.get("source_domain"),
-            "evidence_type": "embedded_candidate_fields",
-            "evidence_rank": 1,
-            "evidence_confidence": candidate.get("source_quality_score"),
-            "raw_evidence": {"source_node": candidate.get("source_node"), "target_node": candidate.get("target_node"), "confidence_explanation": candidate.get("confidence_explanation"), "rejection_reason": candidate.get("rejection_reason"), "llm_classification_json": candidate.get("llm_classification_json")},
-        })
+        rows.append(compose_enriched_evidence_payload(candidate, candidate, base, 1, "embedded_candidate_fields"))
     return rows
 
 def _extract_embedded_evidence(row: dict) -> tuple[list[str], int]:
@@ -250,6 +300,13 @@ def main() -> int:
         "rows_with_exchange": sum(1 for r in audit_rows if r.get("normalized_exchange")), "rows_without_exchange": sum(1 for r in audit_rows if not r.get("normalized_exchange")),
         "evidence_rows_with_ticker": sum(1 for e in evidence if e.get("normalized_ticker")),
         "evidence_rows_with_exchange": sum(1 for e in evidence if e.get("normalized_exchange")),
+        "evidence_rows_with_title": sum(1 for e in evidence if _normalize_value(e.get("source_title"))),
+        "evidence_rows_with_snippet": sum(1 for e in evidence if "Snippet:" in str(e.get("evidence_text") or "")),
+        "evidence_rows_with_long_text": sum(1 for e in evidence if len(_normalize_value(e.get("evidence_text"))) >= 120),
+        "enriched_evidence_rows_written": sum(1 for e in evidence if "Title:" in str(e.get("evidence_text") or "") or "Snippet:" in str(e.get("evidence_text") or "")),
+        "evidence_rows_missing_textual_content": sum(1 for e in evidence if not _normalize_value(e.get("evidence_text"))),
+        "evidence_rows_with_structured_metadata": sum(1 for e in evidence if "Metadata:" in str(e.get("evidence_text") or "")),
+        "evidence_rows_with_candidate_name_mentions": sum(1 for e in evidence if _normalize_value(e.get("candidate_name", "")).lower() in _normalize_value(e.get("evidence_text", "")).lower() and _normalize_value(e.get("candidate_name", ""))),
         "resolved_high_confidence_count": counts.get("resolved_high_confidence", 0), "resolved_medium_confidence_count": counts.get("resolved_medium_confidence", 0),
         "unresolved_review_count": counts.get("unresolved_review", 0), "suppressed_count": counts.get("suppressed", 0),
         "duplicate_groups_count": len({r.get("duplicate_group_key") for r in audit_rows}), "missing_exchange_count": sum(1 for r in audit_rows if not r.get("normalized_exchange")),

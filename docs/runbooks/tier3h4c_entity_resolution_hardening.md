@@ -193,3 +193,38 @@ Create a canonical, advisory-only persisted evidence table that stores normalize
 ### Phase 2 success metric
 - `rows_with_ticker > 0` and `rows_with_exchange > 0` only when explicit evidence supports those fields.
 - `evidence_rows_with_ticker > 0` and `evidence_rows_with_exchange > 0` when explicit identifiers are present in persisted evidence rows.
+
+## Tier 3H.4C.3 Phase 2A — Evidence Content Enrichment
+
+### Purpose
+Persist richer, deterministic evidence content so downstream deterministic extraction operates on explicit, identifier-bearing text rather than sparse operational-only strings.
+
+### Separation of concerns
+- **Enrichment** composes human-readable evidence text from deterministic source fields already returned by discovery/persistence layers.
+- **Extraction** remains a separate deterministic phase that only reads explicit identifiers from evidence text/structured fields.
+
+### Deterministic-only policy (unchanged)
+- no LLM/OpenAI extraction
+- no semantic ticker/exchange inference
+- no fuzzy alias matching
+- no hallucinated mappings
+- no autonomous promotion
+- advisory-only behavior remains unchanged
+
+### Enrichment composition order
+1. Source title (including Tavily title when present)
+2. Source snippet/content/summary (including Tavily snippet/content when present)
+3. Deterministic structured metadata already present in payload
+4. Existing operational metadata appendix
+
+### Governance and safety constraints
+- `raw_evidence` is preserved and not stripped.
+- Provenance fields remain persisted (`source_url`, `source_domain`, `source_title`, `evidence_rank`, `evidence_confidence`, `workflow_run_id`, `run_date_sgt`).
+- No monitored-universe writes are introduced.
+- Workflow remains non-blocking when evidence is absent or sparse.
+
+### Expected outcomes
+- `evidence_text` becomes materially richer and human-readable.
+- `enriched_evidence_rows_written > 0` in healthy runs.
+- `rows_with_ticker` / `rows_with_exchange` may remain near zero when explicit identifiers are absent.
+- Status should remain `ok` with empty `errors` under normal operation.
