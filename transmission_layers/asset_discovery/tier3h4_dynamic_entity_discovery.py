@@ -303,15 +303,6 @@ def _is_retryable(reason: str) -> bool:
     return reason in {"rate_limited", "provider_unavailable", "timeout"}
 
 def _collect_tavily(query_text: str, api_key: str, max_results: int = 5) -> tuple[list[dict[str, Any]], str | None]:
-    actual_upsert_payload = final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else final_upsert_rows
-    actual_upsert_variable_name = "final_upsert_rows_schema_aligned" if actual_upsert_payload is (final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else None) else "final_upsert_rows"
-    actual_upsert_first_row_keys = sorted(list(actual_upsert_payload[0].keys())) if actual_upsert_payload and isinstance(actual_upsert_payload[0], dict) else []
-    actual_upsert_extra_columns = sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_upsert_destination_table_columns") or [])) if diagnostics.get("evidence_upsert_destination_table_columns") else sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_table_actual_columns") or []))
-    diagnostics["actual_upsert_variable_name"] = actual_upsert_variable_name
-    diagnostics["actual_upsert_first_row_keys"] = actual_upsert_first_row_keys
-    diagnostics["actual_upsert_contains_query_text"] = "query_text" in actual_upsert_first_row_keys
-    diagnostics["actual_upsert_payload_matches_schema"] = len(actual_upsert_extra_columns) == 0
-    diagnostics["actual_upsert_extra_columns"] = actual_upsert_extra_columns
     try:
         r = requests.post("https://api.tavily.com/search", json={"api_key": api_key, "query": query_text, "max_results": max_results, "search_depth": "basic"}, timeout=TAVILY_TIMEOUT_SECONDS)
         if r.status_code >= 400:
