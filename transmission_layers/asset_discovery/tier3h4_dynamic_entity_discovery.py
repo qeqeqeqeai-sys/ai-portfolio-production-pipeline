@@ -1167,59 +1167,40 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["uniqueness_query_execution_started"] = True
         print("[tier3h4] uniqueness_query_execution_started=True")
         try:
-            constraints_response = requests.get(
-                f"{url}/rest/v1/information_schema.table_constraints",
+            rpc_response = requests.post(
+                f"{url}/rest/v1/rpc/get_unique_constraints_for_table",
                 headers=constraint_headers,
-                params={
-                    "table_schema": "eq.public",
-                    "table_name": f"eq.{table_name}",
-                    "constraint_type": "eq.UNIQUE",
-                    "select": "constraint_name,table_name",
-                },
+                json={"target_table": table_name},
                 timeout=60,
             )
-            if constraints_response.status_code >= 400:
+            if rpc_response.status_code >= 400:
                 diagnostics["unique_contract_query_status"] = "error"
                 diagnostics["unique_contract_query_error"] = (
-                    f"information_schema.table_constraints:{constraints_response.status_code}:{(constraints_response.text or '')[:500]}"
+                    f"get_unique_constraints_for_table RPC error:{rpc_response.status_code}:{(rpc_response.text or '')[:500]}"
                 )
                 raise RuntimeError(diagnostics["unique_contract_query_error"])
             try:
-                constraints_payload = constraints_response.json()
+                constraints_payload = rpc_response.json()
             except Exception:
-                constraints_payload = constraints_response.text
+                constraints_payload = rpc_response.text
             diagnostics["unique_contract_raw_response_type"] = type(constraints_payload).__name__
             diagnostics["unique_contract_raw_response_preview"] = str(constraints_payload)[:500]
             constraints_rows = _extract_rows_from_supabase_metadata_response(constraints_payload)
             diagnostics["unique_contract_rows_returned"] = len(constraints_rows)
             diagnostics["unique_contract_query_status"] = "ok" if constraints_rows else "empty"
-            constraint_names = sorted(
-                [row.get("constraint_name") for row in constraints_rows if isinstance(row, dict) and row.get("constraint_name")]
-            )
-            for cname in constraint_names:
-                cols_response = requests.get(
-                    f"{url}/rest/v1/information_schema.key_column_usage",
-                    headers=constraint_headers,
-                    params={
-                        "table_schema": "eq.public",
-                        "table_name": f"eq.{table_name}",
-                        "constraint_name": f"eq.{cname}",
-                        "select": "column_name,ordinal_position",
-                        "order": "ordinal_position.asc",
-                    },
-                    timeout=60,
+            for row in constraints_rows:
+                if not isinstance(row, dict):
+                    continue
+                cname = row.get("constraint_name")
+                if not cname:
+                    continue
+                unique_constraint_rows.append(
+                    {
+                        "constraint_name": cname,
+                        "table_name": table_name,
+                        "column_names": row.get("column_names") or [],
+                    }
                 )
-                if cols_response.status_code >= 400:
-                    continue
-                try:
-                    cols_payload = cols_response.json()
-                except Exception:
-                    cols_payload = cols_response.text
-                cols_rows = _extract_rows_from_supabase_metadata_response(cols_payload)
-                if not cols_rows:
-                    continue
-                cols = [r.get("column_name") for r in cols_rows if isinstance(r, dict) and r.get("column_name")]
-                unique_constraint_rows.append({"constraint_name": cname, "table_name": table_name, "column_names": cols})
         except Exception as unique_query_exc:
             diagnostics["unique_contract_query_status"] = "error"
             diagnostics["unique_contract_query_error"] = repr(unique_query_exc)
