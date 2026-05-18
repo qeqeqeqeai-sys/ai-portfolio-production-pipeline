@@ -167,9 +167,10 @@ def _fixture_registry_records() -> list[dict[str, Any]]:
 def run_sample_registry_resolution() -> dict[str, Any]:
     fixture_registry = _fixture_registry_records()
     attempts = [
-        resolve_security_from_registry("EXM", "NASDAQ", fixture_registry, security_type="common_stock"),
-        resolve_security_from_registry("EXM", "NYSE", fixture_registry),
+        resolve_security_from_registry("MSFT", "NASDAQ", fixture_registry, security_type="equity"),
+        resolve_security_from_registry("IBM", "NYSE", fixture_registry),
         resolve_security_from_registry("MISSING", "NASDAQ", fixture_registry),
+        resolve_security_from_registry("AAPL", "NASDAQ", fixture_registry),
         resolve_security_from_registry("", "NASDAQ", fixture_registry),
     ]
     summary = summarize_registry_resolution(attempts)
