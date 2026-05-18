@@ -87,6 +87,15 @@ jobs:
           else
             echo "No Tier 3H.5 Phase 2D time-travel reconstruction module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 3A cross-registry governance
+        run: |
+          mkdir -p logs
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/cross_registry_identity_governance.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.cross_registry_identity_governance
+          else
+            echo "No Tier 3H.5 Phase 3A cross-registry governance module found; skipping."
+          fi
       - name: Run Tier 3H.5 Phase 3 sample/CLI (if present)
         run: |
           if [ -f "transmission_layers/asset_discovery/tier3h5/canonical_graph_governance.py" ]; then
@@ -119,6 +128,7 @@ jobs:
             tests/test_tier3h5_registry_replay_governance.py \
             tests/test_tier3h5_registry_snapshot_time_travel.py \
             tests/test_tier3h5_canonical_graph_governance.py \
+            tests/test_tier3h5_cross_registry_identity_governance.py \
             tests/test_tier3h5_canonical_propagation_memory.py
       - name: Upload observability summary
         uses: actions/upload-artifact@v4
@@ -161,3 +171,8 @@ jobs:
             logs/tier3h5_time_travel_reconstruction_summary.json
             logs/tier3h5_snapshot_retention_governance.json
             logs/tier3h5_phase2d_snapshot_time_travel_summary.json
+            logs/tier3h5_cross_registry_alias_summary.json
+            logs/tier3h5_dual_listing_governance_summary.json
+            logs/tier3h5_cross_registry_lineage_summary.json
+            logs/tier3h5_alias_replay_governance_summary.json
+            logs/tier3h5_phase3a_cross_registry_summary.json
