@@ -18,6 +18,10 @@ SNAPSHOT_ARCHIVE_PATH = LOG_DIR / "tier3h5_canonical_registry_snapshot_archive.j
 SNAPSHOT_MANIFEST_PATH = LOG_DIR / "tier3h5_snapshot_archive_manifest.json"
 GOV_INTELLIGENCE_PATH = LOG_DIR / "tier3h5_governance_operational_intelligence.json"
 GOV_ANOMALY_PATH = LOG_DIR / "tier3h5_governance_anomaly_summary.json"
+GOV_RISK_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_risk_summary.json"
+GOV_ESCALATION_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_escalation_summary.json"
+GOV_INCIDENT_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_incident_summary.json"
+GOV_WATCHLISTS_PATH = LOG_DIR / "tier3h5_governance_watchlists.json"
 
 EXPLAINABILITY_PATH = LOG_DIR / "tier3h5_governance_explainability_summary.json"
 LINEAGE_AUDIT_PATH = LOG_DIR / "tier3h5_lineage_audit_summary.json"
@@ -165,11 +169,47 @@ def explain_anomalies() -> dict[str, Any]:
     return out
 
 
+def inspect_governance_risk() -> dict[str, Any]:
+    risk = _load_json(GOV_RISK_SUMMARY_PATH)
+    escalation = _load_json(GOV_ESCALATION_SUMMARY_PATH)
+    incidents = _load_json(GOV_INCIDENT_SUMMARY_PATH)
+    watchlists = _load_json(GOV_WATCHLISTS_PATH)
+    incident_items = incidents.get("incidents", []) if isinstance(incidents.get("incidents"), list) else []
+    out = {
+        "phase": PHASE,
+        "risk_explainability_status": "explainable" if risk else "risk_summary_unavailable",
+        "governance_risk_status": risk.get("governance_risk_status", "risk_summary_unavailable"),
+        "escalation_status": escalation.get("escalation_status", "no_escalation"),
+        "incident_explanations": [
+            {
+                "incident_id": item.get("incident_id"),
+                "category": item.get("category"),
+                "severity": item.get("severity"),
+                "signal": item.get("signal"),
+                "evidence": item.get("evidence", {}),
+                "advisory_recommendation": "operator_review_recommended" if item.get("severity") in {"governance_review_recommended", "critical_governance_instability"} else "monitoring_only",
+            }
+            for item in incident_items
+        ],
+        "watchlist_counts": watchlists.get("watchlist_counts", {}),
+        "risk_summary_hash": risk.get("risk_summary_hash"),
+        "escalation_summary_hash": escalation.get("escalation_summary_hash"),
+        "incident_summary_hash": incidents.get("incident_summary_hash"),
+        "watchlist_summary_hash": watchlists.get("watchlist_summary_hash"),
+        "replay_mode": "advisory_only",
+        "enforcement_enabled": False,
+        "canonical_override_enabled": False,
+    }
+    out["risk_explainability_hash"] = _stable_hash(out)
+    return out
+
+
 def run_phase4a_governance_explainability() -> dict[str, Any]:
     lineage = inspect_lineage()
     replay = inspect_replay()
     snapshot = inspect_snapshot()
     anomaly = explain_anomalies()
+    risk = inspect_governance_risk()
 
     explainability = {
         "phase": PHASE,
@@ -183,6 +223,8 @@ def run_phase4a_governance_explainability() -> dict[str, Any]:
             "governance_anomaly_explanation",
             "lineage_dedup_explanation",
             "provenance_lineage_explanation",
+            "governance_risk_explanation",
+            "governance_escalation_explanation",
         ],
         "deterministic_explainability_enabled": True,
         "explainability_hash": "",
@@ -198,6 +240,7 @@ def run_phase4a_governance_explainability() -> dict[str, Any]:
         "lineage_audit_status": lineage["lineage_explainability_status"],
         "replay_audit_status": replay["replay_stability_status"],
         "anomaly_explainability_status": anomaly["anomaly_explainability_status"],
+        "risk_explainability_status": risk["risk_explainability_status"],
         "audit_hash_verified": all([lineage.get("lineage_hash_verified"), replay.get("replay_hash_verified"), snapshot.get("snapshot_hash_verified", False) or snapshot.get("reconstruction_status") == "archive_unavailable"]),
         "deterministic_explainability_enabled": True,
         "replay_mode": "advisory_only",
@@ -206,6 +249,7 @@ def run_phase4a_governance_explainability() -> dict[str, Any]:
         "lineage_audit_hash": lineage["lineage_hash"],
         "replay_audit_hash": replay["replay_audit_hash"],
         "anomaly_explainability_hash": anomaly["anomaly_explainability_hash"],
+        "risk_explainability_hash": risk["risk_explainability_hash"],
     }
 
     _write_json(EXPLAINABILITY_PATH, explainability)
@@ -220,6 +264,7 @@ def run_phase4a_governance_explainability() -> dict[str, Any]:
         "replay_audit": replay,
         "snapshot_audit": snapshot,
         "anomaly_explainability": anomaly,
+        "risk_explainability": risk,
         "phase_summary": phase_summary,
     }
 
