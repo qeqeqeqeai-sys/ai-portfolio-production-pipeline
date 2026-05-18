@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'transmission_layers/asset_discovery/tier3h5/**'
+      - 'transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py'
       - 'tests/test_tier3h5_*'
       - '.github/workflows/tier3h5_registry_foundations.yml'
 
@@ -26,6 +27,15 @@ jobs:
       - name: Run Tier 3H.5 registry resolution sample
         run: |
           python -m transmission_layers.asset_discovery.tier3h5.canonical_registry_resolution
+      - name: Run Tier 3H.5 Phase 2 sample/CLI (if present)
+        run: |
+          if [ -f "transmission_layers/asset_discovery/tier3h5/registry_propagation_governance.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.registry_propagation_governance
+          elif [ -f "transmission_layers/asset_discovery/tier3h5/registry_propagation_governance_cli.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.registry_propagation_governance_cli
+          else
+            echo "No Tier 3H.5 Phase 2 sample/CLI module found; skipping."
+          fi
       - name: Run Tier 3H.5 tests
         run: |
           python -m pytest -q \
@@ -34,7 +44,8 @@ jobs:
             tests/test_tier3h5_registry_ingestion.py \
             tests/test_tier3h5_registry_resolution.py \
             tests/test_tier3h5_advisory_registry_hooks.py \
-            tests/test_tier3h5_advisory_registry_observability.py
+            tests/test_tier3h5_advisory_registry_observability.py \
+            tests/test_tier3h5_registry_propagation_governance.py
       - name: Upload observability summary
         uses: actions/upload-artifact@v4
         with:
@@ -43,3 +54,4 @@ jobs:
             logs/tier3h5_registry_foundation_summary.json
             logs/tier3h5_registry_resolution_summary.json
             logs/tier3h5_advisory_registry_summary.json
+            logs/tier3h5_registry_propagation_governance_summary.json
