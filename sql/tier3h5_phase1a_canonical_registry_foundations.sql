@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS public.tier3h5_institutional_issuer_registry (
   source_authority TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT tier3h5_issuer_identity_unique UNIQUE (issuer_name_normalized, COALESCE(sec_cik, ''), COALESCE(lei, '')),
   CONSTRAINT tier3h5_issuer_sec_cik_key UNIQUE (sec_cik),
   CONSTRAINT tier3h5_issuer_lei_key UNIQUE (lei)
 );
@@ -65,6 +64,9 @@ CREATE TABLE IF NOT EXISTS public.tier3h5_registry_provenance (
   schema_version TEXT NOT NULL DEFAULT 'tier3h5_phase1a_v1',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tier3h5_issuer_identity_unique
+  ON public.tier3h5_institutional_issuer_registry(issuer_name_normalized, COALESCE(sec_cik, ''), COALESCE(lei, ''));
 
 CREATE INDEX IF NOT EXISTS idx_tier3h5_security_issuer_id ON public.tier3h5_institutional_security_registry(issuer_id);
 CREATE INDEX IF NOT EXISTS idx_tier3h5_provenance_ingestion_run_id ON public.tier3h5_registry_provenance(ingestion_run_id);
