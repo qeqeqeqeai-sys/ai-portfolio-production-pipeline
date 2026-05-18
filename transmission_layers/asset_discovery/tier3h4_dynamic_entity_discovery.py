@@ -1283,9 +1283,14 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["extraction_notes_default_applied_count"] = extraction_notes_default_applied_count
         diagnostics["extraction_notes_json_serializable"] = extraction_notes_json_serializable
     actual_on_conflict_value = "" if table_name == EVIDENCE_TABLE_NAME else (on_conflict or "").strip()
+    uniqueness_contract_not_required = table_name in {EVIDENCE_TABLE_NAME, TABLE_NAME} and not actual_on_conflict_value
     actual_upsert_conflict_columns = [c.strip() for c in actual_on_conflict_value.split(",") if c.strip()]
     schema_columns = set(diagnostics.get("evidence_upsert_destination_table_columns") or diagnostics.get("evidence_table_actual_columns") or [])
-    conflict_columns_exist_in_schema = bool(actual_upsert_conflict_columns) and all(c in schema_columns for c in actual_upsert_conflict_columns)
+    conflict_columns_exist_in_schema = (
+        True
+        if uniqueness_contract_not_required
+        else bool(actual_upsert_conflict_columns) and all(c in schema_columns for c in actual_upsert_conflict_columns)
+    )
     actual_upsert_variable_name = "final_upsert_rows_schema_aligned" if actual_upsert_payload is (final_upsert_rows_schema_aligned if "final_upsert_rows_schema_aligned" in locals() else None) else "final_upsert_rows"
     actual_upsert_first_row_keys = sorted(list(actual_upsert_payload[0].keys())) if actual_upsert_payload and isinstance(actual_upsert_payload[0], dict) else []
     actual_upsert_extra_columns = sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_upsert_destination_table_columns") or [])) if diagnostics.get("evidence_upsert_destination_table_columns") else sorted(set(actual_upsert_first_row_keys) - set(diagnostics.get("evidence_table_actual_columns") or []))
@@ -1352,15 +1357,18 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
         diagnostics["raw_evidence_json_serializable"] = False
     diagnostics["raw_evidence_post_sanitization_type"] = type(first_row_raw_evidence).__name__ if first_row_raw_evidence is not None else None
     diagnostics["final_payload_missing_required_columns"] = diagnostics.get("required_table_fields_missing_from_payload") or []
-    print(f"[tier3h4] actual_on_conflict_value={diagnostics.get('actual_on_conflict_value')}")
-    print(f"[tier3h4] actual_upsert_conflict_columns={diagnostics.get('actual_upsert_conflict_columns')}")
-    print(f"[tier3h4] normalized_conflict_target_columns={diagnostics.get('normalized_conflict_target_columns')}")
-    print(f"[tier3h4] detected_unique_contracts={diagnostics.get('detected_unique_contracts')}")
-    print(f"[tier3h4] matched_unique_contract_name={diagnostics.get('matched_unique_contract_name')}")
+    if uniqueness_contract_not_required:
+        print("[tier3h4] uniqueness_contract_not_required_for_table=True")
+    else:
+        print(f"[tier3h4] actual_on_conflict_value={diagnostics.get('actual_on_conflict_value')}")
+        print(f"[tier3h4] actual_upsert_conflict_columns={diagnostics.get('actual_upsert_conflict_columns')}")
+        print(f"[tier3h4] normalized_conflict_target_columns={diagnostics.get('normalized_conflict_target_columns')}")
+        print(f"[tier3h4] detected_unique_contracts={diagnostics.get('detected_unique_contracts')}")
+        print(f"[tier3h4] matched_unique_contract_name={diagnostics.get('matched_unique_contract_name')}")
     schema_drift_detected = (
         not diagnostics.get("actual_upsert_payload_matches_schema")
         or bool(diagnostics.get("actual_upsert_extra_columns"))
-        or not diagnostics.get("conflict_columns_exist_in_schema")
+        or (not uniqueness_contract_not_required and not diagnostics.get("conflict_columns_exist_in_schema"))
     )
     if schema_drift_detected:
         print(f"[tier3h4] conflict_columns_exist_in_schema={diagnostics.get('conflict_columns_exist_in_schema')}")
