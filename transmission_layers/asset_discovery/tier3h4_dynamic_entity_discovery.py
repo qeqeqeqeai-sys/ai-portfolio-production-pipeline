@@ -2277,41 +2277,73 @@ def main() -> int:
     print(f"[tier3h4] top_rejection_reasons={top_rejection_reasons}")
     print(f"[tier3h4] warnings={evidence_summary['fresh_evidence_quality_warning_count']}")
     print("[tier3h4] evidence upsert payload diagnostics:")
+    response_status_code = evidence_upsert_diag.get("response_status_code")
+    schema_introspection_status = evidence_upsert_diag.get("schema_introspection_status")
+    exception_repr = evidence_upsert_diag.get("exception_repr") or evidence_upsert_diag.get("evidence_upsert_exception_repr")
+    payload_vs_schema_missing_columns = evidence_upsert_diag.get("payload_vs_schema_missing_columns") or []
+    payload_vs_schema_extra_columns = evidence_upsert_diag.get("payload_vs_schema_extra_columns") or []
+    payload_vs_schema_type_conflicts = evidence_upsert_diag.get("payload_vs_schema_type_conflicts") or []
+    payload_fields_missing_from_table = evidence_upsert_diag.get("payload_fields_missing_from_table") or []
+    required_table_fields_missing_from_payload = evidence_upsert_diag.get("required_table_fields_missing_from_payload") or []
+    type_conflict_fields = evidence_upsert_diag.get("type_conflict_fields") or []
+    raw_evidence_nested_invalid_types = evidence_upsert_diag.get("raw_evidence_nested_invalid_types") or []
+    raw_evidence_json_serializable = bool(evidence_upsert_diag.get("raw_evidence_json_serializable", True))
+    final_payload_matches_schema = evidence_upsert_diag.get("final_payload_matches_schema")
+    mismatch_signals_present = bool(required_table_fields_missing_from_payload or type_conflict_fields or payload_vs_schema_missing_columns or payload_vs_schema_type_conflicts)
+    mismatch_requires_debug = bool(final_payload_matches_schema is False and mismatch_signals_present)
+    evidence_payload_debug_required = any([
+        response_status_code != 201,
+        schema_introspection_status != "ok",
+        bool(payload_vs_schema_missing_columns),
+        bool(payload_vs_schema_extra_columns),
+        bool(payload_vs_schema_type_conflicts),
+        bool(payload_fields_missing_from_table),
+        bool(required_table_fields_missing_from_payload),
+        bool(type_conflict_fields),
+        mismatch_requires_debug,
+        not raw_evidence_json_serializable,
+        bool(raw_evidence_nested_invalid_types),
+        evidence_upsert_diag.get("full_upsert_response_json") is not None,
+        exception_repr is not None,
+        bool(evidence_upsert_diag.get("write_error_code") or evidence_upsert_diag.get("write_error_message") or evidence_upsert_diag.get("evidence_upsert_error_body")),
+    ])
     print(f"[tier3h4] evidence_upsert_payload_type={evidence_upsert_diag.get('evidence_upsert_payload_type')}")
     print(f"[tier3h4] evidence_upsert_destination_table={evidence_upsert_diag.get('evidence_upsert_destination_table')}")
-    print(f"[tier3h4] evidence_upsert_destination_table_columns={evidence_upsert_diag.get('evidence_upsert_destination_table_columns')}")
-    print(f"[tier3h4] evidence_table_actual_columns={evidence_upsert_diag.get('evidence_table_actual_columns')}")
-    print(f"[tier3h4] evidence_table_actual_column_types={evidence_upsert_diag.get('evidence_table_actual_column_types')}")
-    print(f"[tier3h4] evidence_table_nullable_fields={evidence_upsert_diag.get('evidence_table_nullable_fields')}")
-    print(f"[tier3h4] schema_introspection_status={evidence_upsert_diag.get('schema_introspection_status')}")
-    print(f"[tier3h4] payload_vs_schema_missing_columns={evidence_upsert_diag.get('payload_vs_schema_missing_columns')}")
-    print(f"[tier3h4] payload_vs_schema_extra_columns={evidence_upsert_diag.get('payload_vs_schema_extra_columns')}")
-    print(f"[tier3h4] payload_vs_schema_type_conflicts={evidence_upsert_diag.get('payload_vs_schema_type_conflicts')}")
-    print(f"[tier3h4] payload_fields_missing_from_table={evidence_upsert_diag.get('payload_fields_missing_from_table')}")
-    print(f"[tier3h4] required_table_fields_missing_from_payload={evidence_upsert_diag.get('required_table_fields_missing_from_payload')}")
-    print(f"[tier3h4] type_conflict_fields={evidence_upsert_diag.get('type_conflict_fields')}")
+    print(f"[tier3h4] schema_introspection_status={schema_introspection_status}")
     print(f"[tier3h4] evidence_upsert_payload_count={evidence_upsert_diag.get('evidence_upsert_payload_count')}")
-    print(f"[tier3h4] evidence_upsert_first_row_keys={evidence_upsert_diag.get('evidence_upsert_first_row_keys')}")
     print(f"[tier3h4] evidence_upsert_contains_resolution_fields={evidence_upsert_diag.get('evidence_upsert_contains_resolution_fields')}")
     print(f"[tier3h4] evidence_upsert_contains_nested_objects={evidence_upsert_diag.get('evidence_upsert_contains_nested_objects')}")
-    print(f"[tier3h4] evidence_upsert_nested_object_fields={evidence_upsert_diag.get('evidence_upsert_nested_object_fields')}")
-    print(f"[tier3h4] final_upsert_variable_name={evidence_upsert_diag.get('final_upsert_variable_name')}")
-    print(f"[tier3h4] final_upsert_contains_nested_objects={evidence_upsert_diag.get('final_upsert_contains_nested_objects')}")
-    print(f"[tier3h4] final_upsert_nested_fields={evidence_upsert_diag.get('final_upsert_nested_fields')}")
-    print(f"[tier3h4] final_upsert_first_row_keys={evidence_upsert_diag.get('final_upsert_first_row_keys')}")
-    print(f"[tier3h4] final_schema_aligned_payload_keys={evidence_upsert_diag.get('final_schema_aligned_payload_keys')}")
-    print(f"[tier3h4] removed_unsupported_columns={evidence_upsert_diag.get('removed_unsupported_columns')}")
-    print(f"[tier3h4] final_payload_matches_schema={evidence_upsert_diag.get('final_payload_matches_schema')}")
-    print(f"[tier3h4] evidence_upsert_resolution_fields_present={evidence_upsert_diag.get('evidence_upsert_resolution_fields_present')}")
-    print(f"[tier3h4] evidence_upsert_first_row={evidence_upsert_diag.get('evidence_upsert_first_failed_row')}")
-    print(f"[tier3h4] raw_evidence_json_serializable={evidence_upsert_diag.get('raw_evidence_json_serializable')}")
-    print(f"[tier3h4] raw_evidence_nested_invalid_types={evidence_upsert_diag.get('raw_evidence_nested_invalid_types')}")
+    print(f"[tier3h4] final_payload_matches_schema={final_payload_matches_schema}")
+    print(f"[tier3h4] raw_evidence_json_serializable={raw_evidence_json_serializable}")
     print(f"[tier3h4] raw_evidence_sanitization_applied={evidence_upsert_diag.get('raw_evidence_sanitization_applied')}")
     print(f"[tier3h4] raw_evidence_post_sanitization_type={evidence_upsert_diag.get('raw_evidence_post_sanitization_type')}")
-    print(f"[tier3h4] full_upsert_response_text={evidence_upsert_diag.get('full_upsert_response_text')}")
-    print(f"[tier3h4] full_upsert_response_json={evidence_upsert_diag.get('full_upsert_response_json')}")
-    print(f"[tier3h4] exception_repr={evidence_upsert_diag.get('exception_repr') or evidence_upsert_diag.get('evidence_upsert_exception_repr')}")
-    print(f"[tier3h4] response_status_code={evidence_upsert_diag.get('response_status_code')}")
+    print(f"[tier3h4] response_status_code={response_status_code}")
+    print(f"[tier3h4] evidence_payload_debug_required={evidence_payload_debug_required}")
+    if evidence_payload_debug_required:
+        print(f"[tier3h4] evidence_upsert_destination_table_columns={evidence_upsert_diag.get('evidence_upsert_destination_table_columns')}")
+        print(f"[tier3h4] evidence_table_actual_columns={evidence_upsert_diag.get('evidence_table_actual_columns')}")
+        print(f"[tier3h4] evidence_table_actual_column_types={evidence_upsert_diag.get('evidence_table_actual_column_types')}")
+        print(f"[tier3h4] evidence_table_nullable_fields={evidence_upsert_diag.get('evidence_table_nullable_fields')}")
+        print(f"[tier3h4] payload_vs_schema_missing_columns={payload_vs_schema_missing_columns}")
+        print(f"[tier3h4] payload_vs_schema_extra_columns={payload_vs_schema_extra_columns}")
+        print(f"[tier3h4] payload_vs_schema_type_conflicts={payload_vs_schema_type_conflicts}")
+        print(f"[tier3h4] payload_fields_missing_from_table={payload_fields_missing_from_table}")
+        print(f"[tier3h4] required_table_fields_missing_from_payload={required_table_fields_missing_from_payload}")
+        print(f"[tier3h4] type_conflict_fields={type_conflict_fields}")
+        print(f"[tier3h4] evidence_upsert_first_row_keys={evidence_upsert_diag.get('evidence_upsert_first_row_keys')}")
+        print(f"[tier3h4] evidence_upsert_nested_object_fields={evidence_upsert_diag.get('evidence_upsert_nested_object_fields')}")
+        print(f"[tier3h4] final_upsert_variable_name={evidence_upsert_diag.get('final_upsert_variable_name')}")
+        print(f"[tier3h4] final_upsert_contains_nested_objects={evidence_upsert_diag.get('final_upsert_contains_nested_objects')}")
+        print(f"[tier3h4] final_upsert_nested_fields={evidence_upsert_diag.get('final_upsert_nested_fields')}")
+        print(f"[tier3h4] final_upsert_first_row_keys={evidence_upsert_diag.get('final_upsert_first_row_keys')}")
+        print(f"[tier3h4] final_schema_aligned_payload_keys={evidence_upsert_diag.get('final_schema_aligned_payload_keys')}")
+        print(f"[tier3h4] removed_unsupported_columns={evidence_upsert_diag.get('removed_unsupported_columns')}")
+        print(f"[tier3h4] evidence_upsert_resolution_fields_present={evidence_upsert_diag.get('evidence_upsert_resolution_fields_present')}")
+        print(f"[tier3h4] evidence_upsert_first_row={evidence_upsert_diag.get('evidence_upsert_first_failed_row')}")
+        print(f"[tier3h4] raw_evidence_nested_invalid_types={raw_evidence_nested_invalid_types}")
+        print(f"[tier3h4] full_upsert_response_text={evidence_upsert_diag.get('full_upsert_response_text')}")
+        print(f"[tier3h4] full_upsert_response_json={evidence_upsert_diag.get('full_upsert_response_json')}")
+        print(f"[tier3h4] exception_repr={exception_repr}")
     return 0
 
 if __name__ == "__main__":
