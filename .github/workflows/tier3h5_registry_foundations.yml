@@ -133,3 +133,9 @@ jobs:
             logs/tier3h5_registry_snapshot_comparison.json
             logs/tier3h5_registry_replay_metrics.json
             logs/tier3h5_phase2c_replay_governance_summary.json
+            logs/tier3h5_replay_baseline_manifest.json
+            logs/tier3h5_replay_history_summary.json
+            logs/tier3h5_replay_continuity_lineage.json
+            logs/tier3h5_replay_chain_metrics.json
+            logs/tier3h5_phase2c1_replay_persistence_summary.json
+            logs/tier3h5_registry_replay_baseline_history.json
