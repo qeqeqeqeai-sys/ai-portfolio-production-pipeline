@@ -54,6 +54,15 @@ jobs:
           else
             echo "No Tier 3H.5 normalization diagnostics module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 2B registry quality and freshness diagnostics
+        run: |
+          mkdir -p logs
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/registry_quality_freshness_governance.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.registry_quality_freshness_governance
+          else
+            echo "No Tier 3H.5 Phase 2B registry quality/freshness module found; skipping."
+          fi
       - name: Run Tier 3H.5 Phase 3 sample/CLI (if present)
         run: |
           if [ -f "transmission_layers/asset_discovery/tier3h5/canonical_graph_governance.py" ]; then
@@ -82,6 +91,7 @@ jobs:
             tests/test_tier3h5_advisory_registry_hooks.py \
             tests/test_tier3h5_advisory_registry_observability.py \
             tests/test_tier3h5_registry_propagation_governance.py \
+            tests/test_tier3h5_registry_quality_freshness_governance.py \
             tests/test_tier3h5_canonical_graph_governance.py \
             tests/test_tier3h5_canonical_propagation_memory.py
       - name: Upload observability summary
@@ -103,3 +113,8 @@ jobs:
             logs/tier3h5_phase2a_coverage_summary.json
             logs/tier3h5_advisory_coverage_diagnostics.json
             logs/tier3h5_provenance_diagnostics.json
+            logs/tier3h5_registry_freshness_summary.json
+            logs/tier3h5_registry_quality_summary.json
+            logs/tier3h5_registry_snapshot_lineage.json
+            logs/tier3h5_source_precedence_diagnostics.json
+            logs/tier3h5_phase2b_quality_freshness_summary.json
