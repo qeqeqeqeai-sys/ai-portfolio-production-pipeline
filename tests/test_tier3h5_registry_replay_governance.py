@@ -114,3 +114,21 @@ def test_transient_vs_persistent_drift_detection(tmp_path: Path, monkeypatch) ->
 
     continuity2 = json.loads(Path("logs/tier3h5_replay_continuity_lineage.json").read_text(encoding="utf-8"))
     assert continuity2["drift_continuity_diagnostics"]["persistent_drift_detected"] is True
+
+
+def test_optional_snapshot_ids_serialize_as_json_null_in_phase2c_artifacts(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("logs").mkdir()
+    rows = _stable_rows(snapshot_id=None, run_id="run-null")
+
+    run_phase2c_replay_governance(current_rows=rows, prior_rows=None)
+
+    lineage = json.loads(Path("logs/tier3h5_replay_continuity_lineage.json").read_text(encoding="utf-8"))
+    history = json.loads(Path("logs/tier3h5_replay_history_summary.json").read_text(encoding="utf-8"))
+    baseline = json.loads(Path("logs/tier3h5_replay_baseline_manifest.json").read_text(encoding="utf-8"))
+    serialized_lineage = Path("logs/tier3h5_replay_continuity_lineage.json").read_text(encoding="utf-8")
+
+    assert lineage["compared_registry_snapshot_id"] is None
+    assert history["latest_replay_snapshot_id"] is None
+    assert baseline["replay_comparison_baseline_id"] is None
+    assert '"None"' not in serialized_lineage

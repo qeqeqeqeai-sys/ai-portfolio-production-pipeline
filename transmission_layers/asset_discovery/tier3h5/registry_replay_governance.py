@@ -74,12 +74,16 @@ def _density(value: int, seen: int) -> float:
     return round(value / seen, 6) if seen > 0 else 0.0
 
 
-def _snapshot_id(rows: list[dict[str, Any]]) -> str:
-    return str(rows[0].get("registry_snapshot_id") if rows else "none")
+def _snapshot_id(rows: list[dict[str, Any]]) -> str | None:
+    if not rows:
+        return None
+    snapshot_id = rows[0].get("registry_snapshot_id")
+    return str(snapshot_id) if snapshot_id is not None else None
 
 
-def _comparison_baseline_id(rows: list[dict[str, Any]]) -> str:
-    return f"baseline::{_snapshot_id(rows)}"
+def _comparison_baseline_id(rows: list[dict[str, Any]]) -> str | None:
+    snapshot_id = _snapshot_id(rows)
+    return f"baseline::{snapshot_id}" if snapshot_id is not None else None
 
 
 def _load_replay_history() -> list[dict[str, Any]]:
