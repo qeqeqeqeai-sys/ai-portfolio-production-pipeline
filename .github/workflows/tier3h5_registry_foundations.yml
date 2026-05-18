@@ -38,6 +38,22 @@ jobs:
           else
             echo "No Tier 3H.5 Phase 2 sample/CLI module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 2A coverage telemetry (if present)
+        run: |
+          # Phase 2A expanded security type/exchange telemetry is optional and advisory-only.
+          mkdir -p logs
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/phase2a_coverage_telemetry.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.phase2a_coverage_telemetry
+          else
+            echo "No Tier 3H.5 Phase 2A coverage telemetry module found; skipping."
+          fi
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/normalization_diagnostics.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.normalization_diagnostics
+          else
+            echo "No Tier 3H.5 normalization diagnostics module found; skipping."
+          fi
       - name: Run Tier 3H.5 Phase 3 sample/CLI (if present)
         run: |
           if [ -f "transmission_layers/asset_discovery/tier3h5/canonical_graph_governance.py" ]; then
@@ -79,3 +95,11 @@ jobs:
             logs/tier3h5_registry_propagation_governance_summary.json
             logs/tier3h5_canonical_graph_governance_summary.json
             logs/tier3h5_canonical_propagation_memory_summary.json
+            # Phase 2A coverage diagnostics are uploaded when optional telemetry modules emit them.
+            logs/tier3h5_registry_coverage_summary.json
+            logs/tier3h5_normalization_diagnostics.json
+            logs/tier3h5_exchange_coverage_breakdown.json
+            logs/tier3h5_security_type_coverage_breakdown.json
+            logs/tier3h5_phase2a_coverage_summary.json
+            logs/tier3h5_advisory_coverage_diagnostics.json
+            logs/tier3h5_provenance_diagnostics.json
