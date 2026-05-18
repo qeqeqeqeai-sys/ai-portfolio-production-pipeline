@@ -3003,6 +3003,7 @@ def _integrate_operational_summary_with_canonical_reconciliation(
     runtime_summary_payload: dict[str, Any],
     serialized_summary_payload: dict[str, Any],
     canonical_summary: dict[str, Any],
+    evidence_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
     pre_integration = {
         "strict_identifier_matches_found": operational_summary_payload.get("strict_identifier_matches_found", 0),
@@ -3031,20 +3032,24 @@ def _integrate_operational_summary_with_canonical_reconciliation(
     ]
     authority_counter: Counter[str] = Counter()
     authority_scores: list[float] = []
+    authority_sample_rows: list[dict[str, Any]] = []
     for row in evidence_rows:
+        if not isinstance(row, dict):
+            continue
         tier = _normalize_text(row.get("source_authority_tier")) or "generic_web"
         score_val = max(0.0, min(1.0, _safe_float(row.get("source_authority_score"), 0.0)))
         authority_counter[tier] += 1
         authority_scores.append(score_val)
-        if len(strict_diag["source_authority_sample_rows"]) < 6:
-            strict_diag["source_authority_sample_rows"].append({"source_domain": row.get("source_domain"), "source_url": row.get("source_url"), "source_authority_tier": tier, "source_authority_score": score_val})
-    strict_diag["source_authority_tier_counts"] = dict(sorted(authority_counter.items(), key=lambda kv: (-kv[1], kv[0])))
-    strict_diag["source_authority_score_avg"] = round(sum(authority_scores) / max(1, len(authority_scores)), 4) if authority_scores else 0.0
-    strict_diag["high_authority_source_count"] = sum(authority_counter.get(k, 0) for k in HIGH_AUTHORITY_TIERS)
-    strict_diag["exchange_official_source_count"] = authority_counter.get("exchange_official", 0)
-    strict_diag["regulator_source_count"] = authority_counter.get("regulator_filing", 0)
-    strict_diag["company_ir_source_count"] = authority_counter.get("company_investor_relations", 0)
-    strict_diag["authority_weighted_consensus_confidence_avg"] = strict_diag["consensus_confidence_avg"]
+        if len(authority_sample_rows) < 6:
+            authority_sample_rows.append({"source_domain": row.get("source_domain"), "source_url": row.get("source_url"), "source_authority_tier": tier, "source_authority_score": score_val})
+    operational_summary_payload["source_authority_sample_rows"] = authority_sample_rows
+    operational_summary_payload["source_authority_tier_counts"] = dict(sorted(authority_counter.items(), key=lambda kv: (-kv[1], kv[0])))
+    operational_summary_payload["source_authority_score_avg"] = round(sum(authority_scores) / len(authority_scores), 4) if authority_scores else 0.0
+    operational_summary_payload["high_authority_source_count"] = sum(authority_counter.get(k, 0) for k in HIGH_AUTHORITY_TIERS)
+    operational_summary_payload["exchange_official_source_count"] = authority_counter.get("exchange_official", 0)
+    operational_summary_payload["regulator_source_count"] = authority_counter.get("regulator_filing", 0)
+    operational_summary_payload["company_ir_source_count"] = authority_counter.get("company_investor_relations", 0)
+    operational_summary_payload["authority_weighted_consensus_confidence_avg"] = max(0.0, min(1.0, _safe_float(canonical_summary.get("consensus_confidence_avg", 0.0), 0.0)))
     for field in canonical_export_fields:
         if field in canonical_summary:
             operational_summary_payload[field] = canonical_summary[field]
@@ -3129,7 +3134,7 @@ def main() -> int:
     _finalize_and_verify_summary_payload(final_summary_payload, canonical_summary, SUMMARY_PATH)
     serialized_summary_payload = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
     operational_summary = _integrate_operational_summary_with_canonical_reconciliation(
-        operational_summary, final_summary_payload, serialized_summary_payload, canonical_summary
+        operational_summary, final_summary_payload, serialized_summary_payload, canonical_summary, evidence_rows
     )
     if not operational_summary["strict_identifier_operational_export_matches_runtime"]:
         warnings = list(final_summary_payload.get("strict_identifier_counter_reconciliation_warnings") or [])
