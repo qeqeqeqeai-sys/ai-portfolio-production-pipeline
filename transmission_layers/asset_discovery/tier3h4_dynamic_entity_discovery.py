@@ -26,6 +26,20 @@ SUPABASE_UPSTREAM_SOURCES = [
 
 WEIGHTS = {"evidence_count_score": 0.30, "thematic_relevance_score": 0.25, "source_quality_score": 0.20, "entity_resolution_score": 0.15, "cross_source_score": 0.10}
 QUERY_TEMPLATES = ["{theme_label} public companies", "{theme_label} listed companies", "{theme_label} infrastructure suppliers", "{theme_label} earnings transcript companies", "{theme_label} ETF holdings companies"]
+EXCHANGE_AWARE_QUERY_TEMPLATES = [
+    "{theme_label} listed companies ticker exchange",
+    "{theme_label} companies Nasdaq NYSE",
+    "{theme_label} public companies stock symbol",
+    "{theme_label} suppliers listed on Nasdaq",
+    "{theme_label} suppliers listed on NYSE",
+    "{theme_label} stocks ticker symbol exchange",
+    "{theme_label} companies investor relations ticker",
+]
+SOURCE_TYPE_DIVERSITY_QUERY_TEMPLATES = [
+    "{theme_label} company investor relations stock symbol",
+    "{theme_label} SEC filing listed company ticker",
+    "{theme_label} exchange listed companies Reuters Bloomberg",
+]
 THEME_LABELS = {"ai_power_demand": ["AI data center power infrastructure", "AI electricity demand grid infrastructure", "AI hyperscaler power equipment", "AI data center cooling UPS"]}
 THEME_KEYWORDS = {"ai_power_demand": ["ai", "data center", "power", "grid", "infrastructure", "cooling", "ups", "electricity"]}
 TIER_A_DOMAINS = {"sec.gov", "reuters.com", "bloomberg.com", "wsj.com", "ft.com", "nasdaq.com", "nyse.com", "blackrock.com", "vanguard.com", "state street.com"}
@@ -343,13 +357,19 @@ def _compose_evidence_text(source_title: str, source_snippet: str, source_domain
     )
     return "\n\n".join(parts)
 
-def _generate_queries(seed: DiscoverySeed) -> list[str]:
+def _generate_queries(seed: DiscoverySeed) -> tuple[list[str], int]:
     labels = THEME_LABELS.get(seed.theme_name, [seed.theme_name.replace("_", " ")])
     queries: list[str] = []
+    exchange_aware_queries_generated = 0
     for label in labels:
         for template in QUERY_TEMPLATES:
             queries.append(template.format(theme_label=label))
-    return list(dict.fromkeys(queries))
+        for template in EXCHANGE_AWARE_QUERY_TEMPLATES:
+            queries.append(template.format(theme_label=label))
+            exchange_aware_queries_generated += 1
+        for template in SOURCE_TYPE_DIVERSITY_QUERY_TEMPLATES:
+            queries.append(template.format(theme_label=label))
+    return list(dict.fromkeys(queries)), exchange_aware_queries_generated
 
 def _deduplicate_queries(queries: list[str]) -> list[str]:
     seen: set[str] = set()
@@ -1972,6 +1992,20 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "consensus_reinforced_strict_matches": 0,
         "consensus_conflict_rejections": 0,
         "consensus_sample_matches": [],
+        "evidence_diversity_enabled": True,
+        "evidence_distinct_domains": 0,
+        "evidence_distinct_urls": 0,
+        "evidence_avg_urls_per_candidate": 0.0,
+        "evidence_avg_domains_per_candidate": 0.0,
+        "exchange_aware_queries_generated": 0,
+        "exchange_aware_queries_executed": 0,
+        "distinct_source_domains": 0,
+        "distinct_source_urls": 0,
+        "duplicate_domain_suppression_count": 0,
+        "source_diversity_score": 0.0,
+        "source_diversity_score_avg": 0.0,
+        "candidate_rows_with_multi_source_support": 0,
+        "consensus_ready_candidate_count": 0,
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
@@ -1980,19 +2014,22 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     seen_context_windows: set[str] = set()
     matcher_patterns = [STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN, STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN, STRICT_LISTED_CONTEXT_PATTERN, STRICT_HYPHENATED_LISTED_PATTERN, STRICT_TICKER_ON_EXCHANGE_PATTERN, STRICT_TICKER_COMMA_DASH_EXCHANGE_PATTERN, STRICT_SHARES_TRADE_ON_EXCHANGE_PATTERN, STRICT_LISTED_SUFFIX_PATTERN]
     for idx, seed in enumerate(seeds, start=1):
-        queries = _generate_queries(seed)
+        queries, exchange_aware_generated = _generate_queries(seed)
+        strict_diag["exchange_aware_queries_generated"] += exchange_aware_generated
         ops["generated_queries"] += len(queries)
         deduped_queries = _deduplicate_queries(queries)
         deduped_queries = deduped_queries[:MAX_QUERIES_PER_THEME]
         ops["deduplicated_queries"] += len(deduped_queries)
         ops["skipped_duplicate_queries"] += max(0, len(queries) - len(deduped_queries))
         seed_evidence: list[dict[str, Any]] = []
+        seed_domains_seen: set[str] = set()
         for query in deduped_queries:
             qkey = f"{seed.theme_name}|{_normalize_query(query)}"
             if qkey in executed_query_keys:
                 ops["skipped_duplicate_queries"] += 1
                 continue
             executed_query_keys.add(qkey)
+            query_is_exchange_aware = any(_normalize_query(query) == _normalize_query(t.format(theme_label=label)) for label in THEME_LABELS.get(seed.theme_name, [seed.theme_name.replace("_", " ")]) for t in EXCHANGE_AWARE_QUERY_TEMPLATES)
             cached = _fetch_cached_evidence(seed.theme_name, query, lookback_start, sgt_date)
             should_reuse_cached = bool(cached) and not force_fresh
             # TEMP DEBUG INSTRUMENTATION FOR FORCE-FRESH VALIDATION
@@ -2028,6 +2065,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     attempts = 0
                     while attempts <= MAX_TAVILY_RETRIES:
                         ops["executed_queries"] += 1
+                        if query_is_exchange_aware:
+                            strict_diag["exchange_aware_queries_executed"] += 1
                         items, err = _collect_tavily(query, api_key, max_results=MAX_RESULTS_PER_QUERY)
                         if not err:
                             ops["success_count"] += 1
@@ -2066,6 +2105,13 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                     if discovery_method == "tavily_search":
                         ops["fresh_source_rows_write_errors"] += 1
                     continue
+                domain = _normalize_text(row.get("source_domain")).lower()
+                if domain and domain in seed_domains_seen and len(seed_domains_seen) >= 2:
+                    penalty = 4.0
+                    row["evidence_quality_score"] = max(0.0, round(_safe_float(row.get("evidence_quality_score")) - penalty, 4))
+                    strict_diag["duplicate_domain_suppression_count"] += 1
+                if domain:
+                    seed_domains_seen.add(domain)
                 evidence_rows.append(row)
                 seed_evidence.append(row)
                 scan_texts: list[str] = [
@@ -2255,6 +2301,10 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 candidate_row[key] = best_match.get(key)
             for match in owned_matches:
                 match["propagation_target"] = "candidate_audit_row"
+        candidate_urls = {e.get("source_url") for e in seed_evidence if e.get("source_url")}
+        candidate_domains = {e.get("source_domain") for e in seed_evidence if e.get("source_domain")}
+        if len(candidate_urls) >= 2 or len(candidate_domains) >= 2:
+            strict_diag["candidate_rows_with_multi_source_support"] += 1
         candidate_rows.append(candidate_row)
     inference_scores: list[float] = []
     inferred_exchange_counter: Counter[str] = Counter()
@@ -2394,6 +2444,25 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         if len(strict_diag["consensus_sample_matches"]) < 8:
             strict_diag["consensus_sample_matches"].append({"candidate_asset_id": entry["candidate_asset_id"], "ticker": entry["normalized_ticker"], "exchange": entry["normalized_exchange"], "confidence": score["consensus_confidence"], "band": score["consensus_band"]})
     strict_diag["consensus_distinct_domain_support_avg"] = round(sum(consensus_domains) / max(1, len(consensus_domains)), 4) if consensus_domains else 0.0
+    evidence_domains = {_normalize_text(e.get("source_domain")).lower() for e in evidence_rows if _normalize_text(e.get("source_domain"))}
+    evidence_urls = {_normalize_text(e.get("source_url")) for e in evidence_rows if _normalize_text(e.get("source_url"))}
+    strict_diag["distinct_source_domains"] = len(evidence_domains)
+    strict_diag["distinct_source_urls"] = len(evidence_urls)
+    strict_diag["evidence_distinct_domains"] = len(evidence_domains)
+    strict_diag["evidence_distinct_urls"] = len(evidence_urls)
+    per_candidate_urls = []
+    per_candidate_domains = []
+    for c in candidate_rows:
+        srcs = c.get("evidence_sources") or []
+        urls = {s.get("source_url") for s in srcs if isinstance(s, dict) and s.get("source_url")}
+        domains = {s.get("source_domain") for s in srcs if isinstance(s, dict) and s.get("source_domain")}
+        per_candidate_urls.append(len(urls))
+        per_candidate_domains.append(len(domains))
+    strict_diag["evidence_avg_urls_per_candidate"] = round(sum(per_candidate_urls) / max(1, len(per_candidate_urls)), 4) if per_candidate_urls else 0.0
+    strict_diag["evidence_avg_domains_per_candidate"] = round(sum(per_candidate_domains) / max(1, len(per_candidate_domains)), 4) if per_candidate_domains else 0.0
+    strict_diag["consensus_ready_candidate_count"] = sum(1 for d, u in zip(consensus_domains, consensus_urls) if d >= 2 or u >= 2)
+    strict_diag["source_diversity_score"] = round(min(1.0, len(evidence_domains) * 0.2 + len(evidence_urls) * 0.08), 4)
+    strict_diag["source_diversity_score_avg"] = strict_diag["source_diversity_score"]
     strict_diag["consensus_distinct_url_support_avg"] = round(sum(consensus_urls) / max(1, len(consensus_urls)), 4) if consensus_urls else 0.0
     strict_diag["consensus_confidence_avg"] = round(sum(consensus_scores) / max(1, len(consensus_scores)), 4) if consensus_scores else 0.0
     strict_diag["exchange_inference_confidence_avg"] = round(sum(inference_scores) / max(1, len(inference_scores)), 4) if inference_scores else 0.0
@@ -2800,6 +2869,13 @@ def main() -> int:
     print(f"[tier3h4] confidence_band_high={evidence_summary.get('confidence_band_high',0)}")
     print(f"[tier3h4] confidence_band_medium={evidence_summary.get('confidence_band_medium',0)}")
     print(f"[tier3h4] confidence_band_low={evidence_summary.get('confidence_band_low',0)}")
+    print("[tier3h4] evidence diversity:")
+    print(f"[tier3h4] exchange_aware_queries_generated={evidence_summary.get('exchange_aware_queries_generated',0)}")
+    print(f"[tier3h4] exchange_aware_queries_executed={evidence_summary.get('exchange_aware_queries_executed',0)}")
+    print(f"[tier3h4] evidence_distinct_domains={evidence_summary.get('evidence_distinct_domains',0)}")
+    print(f"[tier3h4] evidence_distinct_urls={evidence_summary.get('evidence_distinct_urls',0)}")
+    print(f"[tier3h4] candidate_rows_with_multi_source_support={evidence_summary.get('candidate_rows_with_multi_source_support',0)}")
+    print(f"[tier3h4] consensus_ready_candidate_count={evidence_summary.get('consensus_ready_candidate_count',0)}")
     print("[tier3h4] cross-source consensus:")
     print(f"[tier3h4] consensus_candidates_evaluated={evidence_summary.get('consensus_candidates_evaluated',0)}")
     print(f"[tier3h4] consensus_candidates_accepted={evidence_summary.get('consensus_candidates_accepted',0)}")
