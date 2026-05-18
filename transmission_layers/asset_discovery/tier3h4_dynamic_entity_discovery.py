@@ -173,6 +173,36 @@ EXCHANGE_SIGNAL_DOMAIN_PRIORS = {
     "jpx.co.jp": "TSE",
 }
 MEANINGFUL_TEXT_MIN_LENGTH = 40
+HIGH_AUTHORITY_TIERS = {"exchange_official", "regulator_filing", "company_investor_relations"}
+
+
+def _classify_source_authority(source_domain: str, source_url: str, source_title: str) -> dict[str, Any]:
+    domain = _normalize_text(source_domain).lower()
+    url = _normalize_text(source_url).lower()
+    title = _normalize_text(source_title).lower()
+    combined = f"{url} {title}"
+    if not domain:
+        return {"authority_tier": "low_authority_or_noise", "authority_score": 0.1, "authority_reason": "missing_source_domain", "source_type": "unknown"}
+    exchange_domains = {"nasdaq.com", "nyse.com", "sgx.com", "londonstockexchange.com", "hkex.com.hk", "jpx.co.jp"}
+    regulator_domains = {"sec.gov"}
+    media_domains = {"reuters.com", "bloomberg.com", "ft.com", "wsj.com", "cnbc.com", "marketwatch.com", "barrons.com"}
+    market_data_domains = {"spglobal.com", "morningstar.com", "tradingview.com", "finance.yahoo.com"}
+    specialist_domains = {"utilitydive.com", "datacenterdynamics.com"}
+    if any(domain == d or domain.endswith(f".{d}") for d in exchange_domains):
+        return {"authority_tier": "exchange_official", "authority_score": 0.98, "authority_reason": "exchange_domain_match", "source_type": "exchange"}
+    if any(domain == d or domain.endswith(f".{d}") for d in regulator_domains):
+        return {"authority_tier": "regulator_filing", "authority_score": 0.97, "authority_reason": "regulator_domain_match", "source_type": "regulator"}
+    if any(tok in combined for tok in ["investor relations", "/investor", "/ir", "sec filing", "annual report"]):
+        return {"authority_tier": "company_investor_relations", "authority_score": 0.92, "authority_reason": "investor_relations_signal", "source_type": "company_ir"}
+    if any(domain == d or domain.endswith(f".{d}") for d in media_domains):
+        return {"authority_tier": "reputable_financial_media", "authority_score": 0.82, "authority_reason": "reputable_financial_media_domain", "source_type": "financial_media"}
+    if any(domain == d or domain.endswith(f".{d}") for d in market_data_domains):
+        return {"authority_tier": "market_data_provider", "authority_score": 0.72, "authority_reason": "market_data_provider_domain", "source_type": "market_data"}
+    if any(domain == d or domain.endswith(f".{d}") for d in specialist_domains):
+        return {"authority_tier": "industry_specialist", "authority_score": 0.63, "authority_reason": "industry_specialist_domain", "source_type": "industry_specialist"}
+    if any(tok in combined for tok in ["blog", "opinion", "forum", "reddit", "wikipedia", "aggregator", "sponsored"]):
+        return {"authority_tier": "low_authority_or_noise", "authority_score": 0.2, "authority_reason": "low_authority_content_signal", "source_type": "generic_web"}
+    return {"authority_tier": "generic_web", "authority_score": 0.45, "authority_reason": "generic_domain_fallback", "source_type": "generic_web"}
 
 CANONICAL_EXTRACTION_FIELDS = (
     "extraction_method",
@@ -664,6 +694,12 @@ def _build_cross_source_consensus(evidence_rows: list[dict[str, Any]], accepted_
                 "domain_prior_support": False,
                 "metadata_only_count": 0,
                 "textual_support_count": 0,
+                "authority_scores": [],
+                "authority_tier_counts": Counter(),
+                "high_authority_support": False,
+                "exchange_official_support": False,
+                "regulator_support": False,
+                "company_ir_support": False,
             },
         )
         entry["source_domains"].add(_normalize_text(row.get("source_domain")).lower())
@@ -671,6 +707,21 @@ def _build_cross_source_consensus(evidence_rows: list[dict[str, Any]], accepted_
         method = _normalize_text(row.get("extraction_method") or row.get("inference_method") or "unknown")
         entry["methods"][method] += 1
         entry["quality_scores"].append(_safe_float(row.get("evidence_quality_score"), 0.0))
+        authority = _classify_source_authority(
+            _normalize_text(row.get("source_domain")),
+            _normalize_text(row.get("source_url")),
+            _normalize_text(row.get("source_title")),
+        )
+        row["source_authority_tier"] = authority["authority_tier"]
+        row["source_authority_score"] = _safe_float(authority.get("authority_score"), 0.0)
+        if isinstance(row.get("raw_evidence"), dict):
+            row["raw_evidence"]["source_authority"] = authority
+        entry["authority_scores"].append(row["source_authority_score"])
+        entry["authority_tier_counts"][authority["authority_tier"]] += 1
+        entry["high_authority_support"] = entry["high_authority_support"] or authority["authority_tier"] in HIGH_AUTHORITY_TIERS
+        entry["exchange_official_support"] = entry["exchange_official_support"] or authority["authority_tier"] == "exchange_official"
+        entry["regulator_support"] = entry["regulator_support"] or authority["authority_tier"] == "regulator_filing"
+        entry["company_ir_support"] = entry["company_ir_support"] or authority["authority_tier"] == "company_investor_relations"
         if method.startswith("strict_"):
             entry["strict_support"] = True
         if "registry_assisted_inference" in method:
@@ -709,7 +760,11 @@ def _score_cross_source_consensus(consensus_entry: dict[str, Any]) -> dict[str, 
     conflict_ticker_count = max(0, len(consensus_entry.get("ticker_values_for_candidate", set())) - 1)
     conflict_exchange_count = max(0, len(consensus_entry.get("exchange_values_for_candidate", set())) - 1)
     ticker = consensus_entry.get("normalized_ticker") or ""
+    authority_scores = [max(0.0, min(1.0, _safe_float(v, 0.0))) for v in consensus_entry.get("authority_scores", [])]
+    avg_authority_score = sum(authority_scores) / max(1, len(authority_scores))
     score = 0.0
+    authority_boost_applied = False
+    authority_penalty_applied = False
     score += min(0.25, distinct_domains * 0.12)
     score += min(0.25, distinct_urls * 0.10)
     score += min(0.15, max(0, len(consensus_entry.get("quality_scores", [])) - 1) * 0.05)
@@ -717,6 +772,16 @@ def _score_cross_source_consensus(consensus_entry: dict[str, Any]) -> dict[str, 
     score += 0.08 if consensus_entry.get("enriched_signal_support") else 0.0
     score += 0.07 if consensus_entry.get("domain_prior_support") else 0.0
     score += min(0.10, (sum(qualities) / (100.0 * max(1, len(qualities))))) if qualities else 0.0
+    score += min(0.12, avg_authority_score * 0.12) if authority_scores else 0.0
+    if consensus_entry.get("high_authority_support"):
+        score += 0.08
+        authority_boost_applied = True
+    if consensus_entry.get("exchange_official_support") or consensus_entry.get("regulator_support"):
+        score += 0.06
+        authority_boost_applied = True
+    if consensus_entry.get("company_ir_support") and consensus_entry.get("strict_support"):
+        score += 0.04
+        authority_boost_applied = True
     if conflict_exchange_count > 0:
         score -= min(0.60, 0.30 + 0.20 * conflict_exchange_count)
     if conflict_ticker_count > 0:
@@ -729,6 +794,13 @@ def _score_cross_source_consensus(consensus_entry: dict[str, Any]) -> dict[str, 
         score -= 0.50
     if consensus_entry.get("metadata_only_count", 0) > 0 and consensus_entry.get("textual_support_count", 0) == 0:
         score -= 0.20
+        authority_penalty_applied = True
+    if authority_scores and avg_authority_score < 0.45:
+        score -= 0.16
+        authority_penalty_applied = True
+    if len(set((consensus_entry.get("authority_tier_counts") or {}).keys())) >= 4:
+        score -= 0.05
+        authority_penalty_applied = True
     if (sum(qualities) / max(1, len(qualities))) < 35:
         score -= 0.20
     score = round(max(0.0, min(1.0, score)), 4)
@@ -747,6 +819,14 @@ def _score_cross_source_consensus(consensus_entry: dict[str, Any]) -> dict[str, 
         "rejected_noise_ticker": ticker in NOISE_TICKER_DENYLIST,
         "rejected_low_quality": (sum(qualities) / max(1, len(qualities))) < 35 if qualities else True,
         "domain_only_support_rejection": consensus_entry.get("textual_support_count", 0) == 0 and consensus_entry.get("domain_prior_support"),
+        "avg_authority_score": round(avg_authority_score, 4),
+        "authority_tier_counts": dict(consensus_entry.get("authority_tier_counts") or {}),
+        "high_authority_support": bool(consensus_entry.get("high_authority_support")),
+        "exchange_official_support": bool(consensus_entry.get("exchange_official_support")),
+        "regulator_support": bool(consensus_entry.get("regulator_support")),
+        "company_ir_support": bool(consensus_entry.get("company_ir_support")),
+        "authority_boost_applied": authority_boost_applied,
+        "authority_penalty_applied": authority_penalty_applied,
     }
 
 
@@ -760,6 +840,8 @@ def _adjudicate_consensus_conflict(consensus_entry: dict[str, Any], peer_entries
     winner_signals = max(len(winner_urls), len(winner_domains))
     winner_quality_values = [q for q in consensus_entry.get("quality_scores", []) if q > 0]
     winner_quality_avg = (sum(winner_quality_values) / max(1, len(winner_quality_values))) if winner_quality_values else 0.0
+    winner_authority_values = [max(0.0, min(1.0, _safe_float(v, 0.0))) for v in consensus_entry.get("authority_scores", [])]
+    winner_authority_avg = (sum(winner_authority_values) / max(1, len(winner_authority_values))) if winner_authority_values else 0.0
     winner_strict = bool(consensus_entry.get("strict_support"))
     winner_domain_prior_only = bool(consensus_entry.get("domain_prior_support")) and consensus_entry.get("textual_support_count", 0) == 0
     has_duplicate_url = len(winner_urls) < len(consensus_entry.get("quality_scores", []))
@@ -798,7 +880,13 @@ def _adjudicate_consensus_conflict(consensus_entry: dict[str, Any], peer_entries
     ownership_clear = bool(consensus_entry.get("candidate_asset_id"))
     winner_margin = round(winner_score["consensus_confidence"] - best_loser_score, 4)
     conservative_margin_pass = winner_margin >= 0.20 or winner_signals >= (losing_signal_count + 2)
-    adjudication_confidence = round(min(1.0, winner_score["consensus_confidence"] + (0.08 if winner_strict else 0.0) + (0.06 if len(winner_urls) >= 2 else 0.0) + (0.04 if len(winner_domains) >= 2 else 0.0)), 4)
+    authority_boost = (0.08 if consensus_entry.get("exchange_official_support") else 0.0) + (0.06 if consensus_entry.get("regulator_support") else 0.0) + (0.04 if consensus_entry.get("company_ir_support") else 0.0) + min(0.08, winner_authority_avg * 0.08)
+    authority_penalty = 0.0
+    if winner_authority_avg < 0.45:
+        authority_penalty += 0.10
+    if len(winner_urls) <= 1 and len(winner_domains) <= 1:
+        authority_penalty += 0.08
+    adjudication_confidence = round(min(1.0, max(0.0, winner_score["consensus_confidence"] + (0.08 if winner_strict else 0.0) + (0.06 if len(winner_urls) >= 2 else 0.0) + (0.04 if len(winner_domains) >= 2 else 0.0) + authority_boost - authority_penalty)), 4)
     accepted = (
         ownership_clear
         and winner_pair[0] not in NOISE_TICKER_DENYLIST
@@ -828,7 +916,7 @@ def _adjudicate_consensus_conflict(consensus_entry: dict[str, Any], peer_entries
         reason = "low_quality_source_support"
     elif not ownership_clear:
         reason = "candidate_ownership_unclear"
-    return {"adjudication_status": "accepted" if accepted else "rejected", "winning_ticker": winner_pair[0], "winning_exchange": winner_pair[1], "adjudication_confidence": adjudication_confidence, "adjudication_reason": reason, "winning_signal_count": winner_signals, "losing_signal_count": losing_signal_count, "conflict_type": conflict_type, "accepted": accepted, "winner_margin": winner_margin}
+    return {"adjudication_status": "accepted" if accepted else "rejected", "winning_ticker": winner_pair[0], "winning_exchange": winner_pair[1], "adjudication_confidence": adjudication_confidence, "adjudication_reason": reason, "winning_signal_count": winner_signals, "losing_signal_count": losing_signal_count, "conflict_type": conflict_type, "accepted": accepted, "winner_margin": winner_margin, "winner_authority_score_avg": round(winner_authority_avg, 4), "authority_boost_applied": authority_boost > 0.0, "authority_penalty_applied": authority_penalty > 0.0}
 
 STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
     "multiple_tickers_in_context",
@@ -2123,6 +2211,21 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "source_diversity_score_avg": 0.0,
         "candidate_rows_with_multi_source_support": 0,
         "consensus_ready_candidate_count": 0,
+        "source_authority_weighting_enabled": True,
+        "source_authority_tier_counts": {},
+        "source_authority_score_avg": 0.0,
+        "high_authority_source_count": 0,
+        "exchange_official_source_count": 0,
+        "regulator_source_count": 0,
+        "company_ir_source_count": 0,
+        "consensus_authority_boosts_applied": 0,
+        "consensus_authority_penalties_applied": 0,
+        "adjudication_authority_boosts_applied": 0,
+        "adjudication_authority_penalties_applied": 0,
+        "conflict_winner_authority_score_avg": 0.0,
+        "authority_weighted_consensus_confidence_avg": 0.0,
+        "authority_weighted_adjudication_confidence_avg": 0.0,
+        "source_authority_sample_rows": [],
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
@@ -2532,9 +2635,14 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         consensus_entries_by_candidate.setdefault(_entry.get("candidate_asset_id") or "", []).append(_entry)
     conflict_confidences: list[float] = []
     conflict_margins: list[float] = []
+    conflict_authority_avgs: list[float] = []
     for key, entry in consensus_map.items():
         strict_diag["consensus_candidates_evaluated"] += 1
         score = _score_cross_source_consensus(entry)
+        if score.get("authority_boost_applied"):
+            strict_diag["consensus_authority_boosts_applied"] += 1
+        if score.get("authority_penalty_applied"):
+            strict_diag["consensus_authority_penalties_applied"] += 1
         consensus_domains.append(score["distinct_domains"])
         consensus_urls.append(score["distinct_urls"])
         consensus_scores.append(score["consensus_confidence"])
@@ -2556,6 +2664,11 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             strict_diag["conflict_type_counts"][conflict_type] = strict_diag["conflict_type_counts"].get(conflict_type, 0) + 1
             conflict_confidences.append(_safe_float(adjudication.get("adjudication_confidence"), 0.0))
             conflict_margins.append(_safe_float(adjudication.get("winner_margin"), 0.0))
+            conflict_authority_avgs.append(_safe_float(adjudication.get("winner_authority_score_avg"), 0.0))
+            if adjudication.get("authority_boost_applied"):
+                strict_diag["adjudication_authority_boosts_applied"] += 1
+            if adjudication.get("authority_penalty_applied"):
+                strict_diag["adjudication_authority_penalties_applied"] += 1
             if adjudication.get("accepted"):
                 strict_diag["conflict_candidates_resolved"] += 1
                 strict_diag["consensus_resolved_via_adjudication"] += 1
@@ -2597,7 +2710,9 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         note = (
             f"distinct_domains={score['distinct_domains']}; distinct_urls={score['distinct_urls']}; strict_support={entry.get('strict_support')}; "
             f"enriched_signal_support={entry.get('enriched_signal_support')}; domain_prior_support={entry.get('domain_prior_support')}; "
-            f"conflict_count={score['conflict_count']}; consensus_confidence={score['consensus_confidence']}"
+            f"conflict_count={score['conflict_count']}; consensus_confidence={score['consensus_confidence']}; authority_tier_counts={score.get('authority_tier_counts')}; "
+            f"avg_authority_score={score.get('avg_authority_score')}; high_authority_support={score.get('high_authority_support')}; exchange_official_support={score.get('exchange_official_support')}; "
+            f"regulator_support={score.get('regulator_support')}; company_ir_support={score.get('company_ir_support')}; authority_boost_applied={score.get('authority_boost_applied')}; authority_penalty_applied={score.get('authority_penalty_applied')}"
         )
         if adjudication and adjudication.get("accepted"):
             strict_diag["conflict_resolution_promotions"] += 1
@@ -2654,7 +2769,9 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     strict_diag["consensus_distinct_url_support_avg"] = round(sum(consensus_urls) / max(1, len(consensus_urls)), 4) if consensus_urls else 0.0
     strict_diag["consensus_confidence_avg"] = round(sum(consensus_scores) / max(1, len(consensus_scores)), 4) if consensus_scores else 0.0
     strict_diag["conflict_resolution_confidence_avg"] = round(sum(conflict_confidences) / max(1, len(conflict_confidences)), 4) if conflict_confidences else 0.0
+    strict_diag["authority_weighted_adjudication_confidence_avg"] = strict_diag["conflict_resolution_confidence_avg"]
     strict_diag["conflict_resolution_winner_margin_avg"] = round(sum(conflict_margins) / max(1, len(conflict_margins)), 4) if conflict_margins else 0.0
+    strict_diag["conflict_winner_authority_score_avg"] = round(sum(conflict_authority_avgs) / max(1, len(conflict_authority_avgs)), 4) if conflict_authority_avgs else 0.0
     strict_diag["exchange_inference_confidence_avg"] = round(sum(inference_scores) / max(1, len(inference_scores)), 4) if inference_scores else 0.0
     strict_diag["inferred_exchange_counts"] = dict(sorted(inferred_exchange_counter.items(), key=lambda kv: (-kv[1], kv[0])))
     sampled = evidence_rows[:3]
@@ -2912,6 +3029,22 @@ def _integrate_operational_summary_with_canonical_reconciliation(
         "strict_identifier_unique_tickers_found",
         "strict_identifier_unique_exchanges_found",
     ]
+    authority_counter: Counter[str] = Counter()
+    authority_scores: list[float] = []
+    for row in evidence_rows:
+        tier = _normalize_text(row.get("source_authority_tier")) or "generic_web"
+        score_val = max(0.0, min(1.0, _safe_float(row.get("source_authority_score"), 0.0)))
+        authority_counter[tier] += 1
+        authority_scores.append(score_val)
+        if len(strict_diag["source_authority_sample_rows"]) < 6:
+            strict_diag["source_authority_sample_rows"].append({"source_domain": row.get("source_domain"), "source_url": row.get("source_url"), "source_authority_tier": tier, "source_authority_score": score_val})
+    strict_diag["source_authority_tier_counts"] = dict(sorted(authority_counter.items(), key=lambda kv: (-kv[1], kv[0])))
+    strict_diag["source_authority_score_avg"] = round(sum(authority_scores) / max(1, len(authority_scores)), 4) if authority_scores else 0.0
+    strict_diag["high_authority_source_count"] = sum(authority_counter.get(k, 0) for k in HIGH_AUTHORITY_TIERS)
+    strict_diag["exchange_official_source_count"] = authority_counter.get("exchange_official", 0)
+    strict_diag["regulator_source_count"] = authority_counter.get("regulator_filing", 0)
+    strict_diag["company_ir_source_count"] = authority_counter.get("company_investor_relations", 0)
+    strict_diag["authority_weighted_consensus_confidence_avg"] = strict_diag["consensus_confidence_avg"]
     for field in canonical_export_fields:
         if field in canonical_summary:
             operational_summary_payload[field] = canonical_summary[field]
@@ -3087,6 +3220,15 @@ def main() -> int:
     print(f"[tier3h4] consensus_resolved_via_adjudication={evidence_summary.get('consensus_resolved_via_adjudication',0)}")
     print(f"[tier3h4] consensus_rejected_conflict_after_adjudication={evidence_summary.get('consensus_rejected_conflict_after_adjudication',0)}")
     print(f"[tier3h4] conflict_resolution_confidence_avg={evidence_summary.get('conflict_resolution_confidence_avg',0.0)}")
+    print("[tier3h4] source authority weighting:")
+    print(f"[tier3h4] source_authority_score_avg={evidence_summary.get('source_authority_score_avg',0.0)}")
+    print(f"[tier3h4] high_authority_source_count={evidence_summary.get('high_authority_source_count',0)}")
+    print(f"[tier3h4] exchange_official_source_count={evidence_summary.get('exchange_official_source_count',0)}")
+    print(f"[tier3h4] company_ir_source_count={evidence_summary.get('company_ir_source_count',0)}")
+    print(f"[tier3h4] consensus_authority_boosts_applied={evidence_summary.get('consensus_authority_boosts_applied',0)}")
+    print(f"[tier3h4] adjudication_authority_boosts_applied={evidence_summary.get('adjudication_authority_boosts_applied',0)}")
+    print(f"[tier3h4] authority_weighted_consensus_confidence_avg={evidence_summary.get('authority_weighted_consensus_confidence_avg',0.0)}")
+    print(f"[tier3h4] authority_weighted_adjudication_confidence_avg={evidence_summary.get('authority_weighted_adjudication_confidence_avg',0.0)}")
     print("[tier3h4] strict identifier propagation:")
     print(f"[tier3h4] accepted_match_collection_size={evidence_summary.get('strict_identifier_accepted_match_collection_size',0)}")
     print(f"[tier3h4] propagated_rows={evidence_summary.get('strict_identifier_propagated_rows_count',0)}")
