@@ -52,6 +52,12 @@ MAX_TAVILY_RETRIES = int(os.getenv("TIER3H4_MAX_TAVILY_RETRIES", "2"))
 QUERY_CACHE_LOOKBACK_DAYS = int(os.getenv("TIER3H4_QUERY_CACHE_LOOKBACK_DAYS", "3"))
 MAX_QUERIES_PER_THEME = int(os.getenv("TIER3H4_MAX_QUERIES_PER_THEME", "5"))
 TAVILY_TIMEOUT_SECONDS = int(os.getenv("TIER3H4_TAVILY_TIMEOUT_SECONDS", "30"))
+try:
+    EXCHANGE_AWARE_QUERY_BUDGET_RATIO = float(os.getenv("TIER3H4_EXCHANGE_AWARE_QUERY_BUDGET_RATIO", "0.30"))
+except (TypeError, ValueError):
+    EXCHANGE_AWARE_QUERY_BUDGET_RATIO = 0.30
+EXCHANGE_AWARE_QUERY_BUDGET_RATIO = max(0.0, min(1.0, EXCHANGE_AWARE_QUERY_BUDGET_RATIO))
+MIN_EXCHANGE_AWARE_QUERIES_PER_RUN = max(0, int(os.getenv("TIER3H4_MIN_EXCHANGE_AWARE_QUERIES_PER_RUN", "3")))
 
 
 def _safe_git_command(args: list[str]) -> str | None:
@@ -989,6 +995,15 @@ def _fetch_cached_evidence(theme_name: str, query_text: str, start_date: str, en
             continue
         out.append({**row, "cache_reused": True, "retrieved_at": row.get("retrieved_at") or utc_now().isoformat()})
     return out
+
+
+def _is_exchange_aware_query(theme_name: str, query: str) -> bool:
+    norm = _normalize_query(query)
+    return any(
+        norm == _normalize_query(t.format(theme_label=label))
+        for label in THEME_LABELS.get(theme_name, [theme_name.replace("_", " ")])
+        for t in EXCHANGE_AWARE_QUERY_TEMPLATES
+    )
 
 def load_upstream_context() -> tuple[list[DiscoverySeed], dict[str, int], bool]:
     seeds: list[DiscoverySeed] = []
@@ -1999,6 +2014,14 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "evidence_avg_domains_per_candidate": 0.0,
         "exchange_aware_queries_generated": 0,
         "exchange_aware_queries_executed": 0,
+        "exchange_aware_query_prioritization_enabled": True,
+        "exchange_aware_query_budget_reserved": 0,
+        "exchange_aware_query_budget_used": 0,
+        "general_query_budget_used": 0,
+        "exchange_aware_queries_prioritized": 0,
+        "exchange_aware_queries_skipped_due_to_caps": 0,
+        "general_queries_deprioritized_due_to_exchange_budget": 0,
+        "query_execution_order_sample": [],
         "distinct_source_domains": 0,
         "distinct_source_urls": 0,
         "duplicate_domain_suppression_count": 0,
@@ -2013,12 +2036,34 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     strict_candidate_owner_matches: dict[str, list[dict[str, Any]]] = {}
     seen_context_windows: set[str] = set()
     matcher_patterns = [STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN, STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN, STRICT_LISTED_CONTEXT_PATTERN, STRICT_HYPHENATED_LISTED_PATTERN, STRICT_TICKER_ON_EXCHANGE_PATTERN, STRICT_TICKER_COMMA_DASH_EXCHANGE_PATTERN, STRICT_SHARES_TRADE_ON_EXCHANGE_PATTERN, STRICT_LISTED_SUFFIX_PATTERN]
+    reserved_exchange_budget_total = min(
+        MAX_TAVILY_QUERIES_PER_RUN,
+        max(MIN_EXCHANGE_AWARE_QUERIES_PER_RUN, int(math.ceil(MAX_TAVILY_QUERIES_PER_RUN * EXCHANGE_AWARE_QUERY_BUDGET_RATIO))),
+    )
+    strict_diag["exchange_aware_query_budget_reserved"] = reserved_exchange_budget_total
     for idx, seed in enumerate(seeds, start=1):
         queries, exchange_aware_generated = _generate_queries(seed)
         strict_diag["exchange_aware_queries_generated"] += exchange_aware_generated
         ops["generated_queries"] += len(queries)
         deduped_queries = _deduplicate_queries(queries)
-        deduped_queries = deduped_queries[:MAX_QUERIES_PER_THEME]
+        exchange_aware_queries = [q for q in deduped_queries if _is_exchange_aware_query(seed.theme_name, q)]
+        general_queries = [q for q in deduped_queries if not _is_exchange_aware_query(seed.theme_name, q)]
+        per_theme_exchange_reserved = min(
+            len(exchange_aware_queries),
+            max(0, min(MAX_QUERIES_PER_THEME, reserved_exchange_budget_total - strict_diag["exchange_aware_query_budget_used"])),
+        )
+        prioritized_queries = exchange_aware_queries[:per_theme_exchange_reserved]
+        exchange_aware_deprioritized = max(0, len(exchange_aware_queries) - per_theme_exchange_reserved)
+        remaining_theme_slots = max(0, MAX_QUERIES_PER_THEME - len(prioritized_queries))
+        prioritized_queries.extend(general_queries[:remaining_theme_slots])
+        if remaining_theme_slots > len(general_queries):
+            additional_exchange_slots = MAX_QUERIES_PER_THEME - len(prioritized_queries)
+            if additional_exchange_slots > 0:
+                prioritized_queries.extend(exchange_aware_queries[per_theme_exchange_reserved : per_theme_exchange_reserved + additional_exchange_slots])
+        deduped_queries = prioritized_queries[:MAX_QUERIES_PER_THEME]
+        strict_diag["exchange_aware_queries_prioritized"] += sum(1 for q in deduped_queries if _is_exchange_aware_query(seed.theme_name, q))
+        strict_diag["exchange_aware_queries_skipped_due_to_caps"] += exchange_aware_deprioritized
+        strict_diag["general_queries_deprioritized_due_to_exchange_budget"] += max(0, min(len(general_queries), per_theme_exchange_reserved))
         ops["deduplicated_queries"] += len(deduped_queries)
         ops["skipped_duplicate_queries"] += max(0, len(queries) - len(deduped_queries))
         seed_evidence: list[dict[str, Any]] = []
@@ -2029,7 +2074,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 ops["skipped_duplicate_queries"] += 1
                 continue
             executed_query_keys.add(qkey)
-            query_is_exchange_aware = any(_normalize_query(query) == _normalize_query(t.format(theme_label=label)) for label in THEME_LABELS.get(seed.theme_name, [seed.theme_name.replace("_", " ")]) for t in EXCHANGE_AWARE_QUERY_TEMPLATES)
+            query_is_exchange_aware = _is_exchange_aware_query(seed.theme_name, query)
             cached = _fetch_cached_evidence(seed.theme_name, query, lookback_start, sgt_date)
             should_reuse_cached = bool(cached) and not force_fresh
             # TEMP DEBUG INSTRUMENTATION FOR FORCE-FRESH VALIDATION
@@ -2067,6 +2112,18 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                         ops["executed_queries"] += 1
                         if query_is_exchange_aware:
                             strict_diag["exchange_aware_queries_executed"] += 1
+                            strict_diag["exchange_aware_query_budget_used"] += 1
+                        else:
+                            strict_diag["general_query_budget_used"] += 1
+                        if len(strict_diag["query_execution_order_sample"]) < 25:
+                            strict_diag["query_execution_order_sample"].append(
+                                {
+                                    "theme_name": seed.theme_name,
+                                    "query_text": query,
+                                    "query_class": "exchange_aware" if query_is_exchange_aware else "general",
+                                    "execution_index": ops["executed_queries"],
+                                }
+                            )
                         items, err = _collect_tavily(query, api_key, max_results=MAX_RESULTS_PER_QUERY)
                         if not err:
                             ops["success_count"] += 1
@@ -2872,6 +2929,12 @@ def main() -> int:
     print("[tier3h4] evidence diversity:")
     print(f"[tier3h4] exchange_aware_queries_generated={evidence_summary.get('exchange_aware_queries_generated',0)}")
     print(f"[tier3h4] exchange_aware_queries_executed={evidence_summary.get('exchange_aware_queries_executed',0)}")
+    print("[tier3h4] exchange-aware query prioritization:")
+    print(f"[tier3h4] exchange_aware_query_budget_reserved={evidence_summary.get('exchange_aware_query_budget_reserved',0)}")
+    print(f"[tier3h4] exchange_aware_query_budget_used={evidence_summary.get('exchange_aware_query_budget_used',0)}")
+    print(f"[tier3h4] general_query_budget_used={evidence_summary.get('general_query_budget_used',0)}")
+    print(f"[tier3h4] exchange_aware_queries_prioritized={evidence_summary.get('exchange_aware_queries_prioritized',0)}")
+    print(f"[tier3h4] exchange_aware_queries_skipped_due_to_caps={evidence_summary.get('exchange_aware_queries_skipped_due_to_caps',0)}")
     print(f"[tier3h4] evidence_distinct_domains={evidence_summary.get('evidence_distinct_domains',0)}")
     print(f"[tier3h4] evidence_distinct_urls={evidence_summary.get('evidence_distinct_urls',0)}")
     print(f"[tier3h4] candidate_rows_with_multi_source_support={evidence_summary.get('candidate_rows_with_multi_source_support',0)}")
