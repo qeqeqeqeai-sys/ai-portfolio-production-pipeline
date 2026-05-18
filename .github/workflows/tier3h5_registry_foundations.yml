@@ -1,0 +1,33 @@
+name: tier3h5_registry_foundations
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'transmission_layers/asset_discovery/tier3h5/**'
+      - 'tests/test_tier3h5_*'
+      - '.github/workflows/tier3h5_registry_foundations.yml'
+
+jobs:
+  run-tier3h5:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+      - name: Run Tier 3H.5 sample execution
+        run: |
+          python -m transmission_layers.asset_discovery.tier3h5.canonical_registry_ingestion
+      - name: Run Tier 3H.5 tests
+        run: |
+          python -m pytest -q tests/test_tier3h5_normalization.py tests/test_tier3h5_deterministic_ids.py tests/test_tier3h5_registry_ingestion.py
+      - name: Upload observability summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier3h5-registry-summary
+          path: logs/tier3h5_registry_foundation_summary.json

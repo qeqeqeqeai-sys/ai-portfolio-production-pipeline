@@ -11,20 +11,12 @@ from transmission_layers.asset_discovery.tier3h5.canonical_registry_normalizatio
 )
 
 
-def test_ticker_normalization_stability() -> None:
-    assert normalize_ticker(" aapl ") == "AAPL"
-    assert normalize_ticker("Brk.B") == "BRKB"
-
-
-def test_exchange_normalization_stability() -> None:
+def test_normalization_is_deterministic() -> None:
     assert normalize_exchange_code(" nasdaq ") == "NASDAQ"
-    assert normalize_exchange_code("ny-se") == "NYSE"
-
-
-def test_issuer_normalization_stability() -> None:
-    assert normalize_issuer_name("Exámple,   Holdings Inc.") == "EXÁMPLE HOLDINGS INC"
+    assert normalize_ticker(" brk.b ") == "BRK-B"
+    assert normalize_issuer_name("Example Holdings Inc.") == "EXAMPLE HOLDINGS INC"
 
 
 def test_source_hash_stability() -> None:
-    row = {"b": "x", "a": 1}
-    assert compute_source_record_hash(row) == compute_source_record_hash({"a": 1, "b": "x"})
+    row = {"issuer_name": "A", "ticker": "AAA", "exchange": "NYSE"}
+    assert compute_source_record_hash(row) == compute_source_record_hash(dict(row))

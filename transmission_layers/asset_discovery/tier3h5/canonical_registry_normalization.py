@@ -3,42 +3,34 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import unicodedata
 from typing import Any
 
-_WHITESPACE_RE = re.compile(r"\s+")
-_NON_ALNUM_RE = re.compile(r"[^A-Z0-9]")
-_PUNCT_TO_SPACE_RE = re.compile(r"[\-_,./:;()\[\]{}'\"`]+")
+_WHITESPACE = re.compile(r"\s+")
 
 
-def _unicode_normalize(value: str) -> str:
-    return unicodedata.normalize("NFKC", value)
+def _collapse_spaces(value: str) -> str:
+    return _WHITESPACE.sub(" ", value).strip()
 
 
-def normalize_exchange_code(value: str | None) -> str:
-    if not value:
-        return "UNKNOWN"
-    cleaned = _unicode_normalize(value).upper().strip()
-    cleaned = _NON_ALNUM_RE.sub("", cleaned)
-    return cleaned or "UNKNOWN"
-
-
-def normalize_ticker(value: str | None) -> str:
-    if not value:
+def normalize_exchange_code(exchange_code: str | None) -> str:
+    if not exchange_code:
         return ""
-    cleaned = _unicode_normalize(value).upper().strip()
-    cleaned = _WHITESPACE_RE.sub("", cleaned)
-    cleaned = _NON_ALNUM_RE.sub("", cleaned)
-    return cleaned
+    return _collapse_spaces(exchange_code).upper().replace(" ", "")
 
 
-def normalize_issuer_name(value: str | None) -> str:
-    if not value:
+def normalize_ticker(ticker: str | None) -> str:
+    if not ticker:
         return ""
-    cleaned = _unicode_normalize(value).upper().strip()
-    cleaned = _PUNCT_TO_SPACE_RE.sub(" ", cleaned)
-    cleaned = _WHITESPACE_RE.sub(" ", cleaned).strip()
-    return cleaned
+    cleaned = _collapse_spaces(ticker).upper()
+    return cleaned.replace(" ", "").replace(".", "-")
+
+
+def normalize_issuer_name(issuer_name: str | None) -> str:
+    if not issuer_name:
+        return ""
+    cleaned = _collapse_spaces(issuer_name).upper()
+    cleaned = cleaned.replace(".", "")
+    return _collapse_spaces(cleaned)
 
 
 def compute_source_record_hash(record: dict[str, Any]) -> str:
