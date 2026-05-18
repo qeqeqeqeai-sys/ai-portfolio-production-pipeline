@@ -2236,7 +2236,6 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     executed_query_keys: set[str] = set()
     lookback_start = (date.fromisoformat(sgt_date) - timedelta(days=QUERY_CACHE_LOOKBACK_DAYS)).isoformat()
     force_fresh = _force_fresh_evidence_enabled()
-    # TEMP DEBUG INSTRUMENTATION FOR FORCE-FRESH VALIDATION
     runtime_force_fresh_branch_taken = False
     evidence_generation_mode = "fallback" if fallback_mode else ("fresh_generation_forced" if force_fresh else "fresh_generation")
     fresh_skip_reason = None
@@ -2521,11 +2520,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             query_is_authority_aware = _is_authority_aware_query(seed.theme_name, query)
             cached = _fetch_cached_evidence(seed.theme_name, query, lookback_start, sgt_date)
             should_reuse_cached = bool(cached) and not force_fresh
-            # TEMP DEBUG INSTRUMENTATION FOR FORCE-FRESH VALIDATION
             runtime_force_fresh_branch_taken = bool(force_fresh)
-            print(f"[tier3h4] force_fresh_evidence={force_fresh} reuse_cached={should_reuse_cached}")
-            if force_fresh:
-                print("[tier3h4] bypassing persisted evidence selection")
             if should_reuse_cached:
                 ops["cache_hits"] += 1
                 ops["evidence_rows_reused"] += len(cached)
@@ -2549,7 +2544,6 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 items, err = [], None
                 tavily_collection_path_executed = True
                 fresh_source_generation_active = True
-                print("[tier3h4] executing fresh Tavily/source generation path")
                 if tavily_enabled and ops["executed_queries"] < MAX_TAVILY_QUERIES_PER_RUN and not quota_exhausted:
                     attempts = 0
                     while attempts <= MAX_TAVILY_RETRIES:
