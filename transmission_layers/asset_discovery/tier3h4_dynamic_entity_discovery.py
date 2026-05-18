@@ -238,6 +238,72 @@ MEANINGFUL_TEXT_MIN_LENGTH = 40
 HIGH_AUTHORITY_TIERS = {"exchange_official", "regulator_filing", "company_investor_relations"}
 AUTHORITY_BOOST_CAP_CONSENSUS = 0.12
 AUTHORITY_BOOST_CAP_ADJUDICATION = 0.10
+STRUCTURED_AUTHORITY_FEED_PATH = Path("data/authority_feeds/listed_equities_registry.json")
+
+
+def _normalize_company_name_tokens(value: Any) -> list[str]:
+    normalized = re.sub(r"[^a-z0-9\s]", " ", _normalize_text(str(value or "")).lower())
+    tokens = [tok for tok in normalized.split() if tok]
+    return tokens
+
+
+def _load_structured_authority_registry(feed_path: Path) -> tuple[dict[tuple[str, str], dict[str, Any]], dict[str, Any]]:
+    diagnostics = {
+        "structured_authority_feed_enabled": True,
+        "structured_authority_feed_path": str(feed_path),
+        "structured_authority_feed_rows_loaded": 0,
+        "structured_authority_feed_load_status": "not_loaded",
+    }
+    registry: dict[tuple[str, str], dict[str, Any]] = {}
+    if not feed_path.exists():
+        diagnostics["structured_authority_feed_load_status"] = "missing_file"
+        return registry, diagnostics
+    try:
+        payload = json.loads(feed_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        diagnostics["structured_authority_feed_load_status"] = f"load_error:{type(exc).__name__}"
+        return registry, diagnostics
+    if not isinstance(payload, list):
+        diagnostics["structured_authority_feed_load_status"] = "invalid_schema_non_list"
+        return registry, diagnostics
+    for row in payload:
+        if not isinstance(row, dict):
+            continue
+        ticker = _normalize_text(row.get("ticker")).upper()
+        exchange = _normalize_exchange_label(row.get("exchange"))
+        if not ticker or not exchange:
+            continue
+        registry[(ticker, exchange)] = row
+    diagnostics["structured_authority_feed_rows_loaded"] = len(registry)
+    diagnostics["structured_authority_feed_load_status"] = "ok"
+    return registry, diagnostics
+
+
+def _lookup_structured_authority_registry(
+    *,
+    registry: dict[tuple[str, str], dict[str, Any]],
+    ticker: Any,
+    exchange: Any,
+    company_name: Any = None,
+) -> dict[str, Any]:
+    ticker_norm = _normalize_text(ticker).upper()
+    exchange_norm = _normalize_exchange_label(exchange)
+    if not ticker_norm or not exchange_norm:
+        return {"status": "invalid_lookup"}
+    hit = registry.get((ticker_norm, exchange_norm))
+    if hit:
+        if company_name:
+            candidate_tokens = set(_normalize_company_name_tokens(company_name))
+            registry_tokens = set(_normalize_company_name_tokens(hit.get("company_name")))
+            if candidate_tokens and registry_tokens:
+                overlap = candidate_tokens & registry_tokens
+                if not overlap:
+                    return {"status": "name_mismatch", "ticker": ticker_norm, "exchange": exchange_norm, "entry": hit}
+        return {"status": "match", "ticker": ticker_norm, "exchange": exchange_norm, "entry": hit}
+    exchange_rows = [row for (t, _ex), row in registry.items() if t == ticker_norm]
+    if exchange_rows:
+        return {"status": "conflict", "ticker": ticker_norm, "exchange": exchange_norm, "entry": exchange_rows[0]}
+    return {"status": "no_match", "ticker": ticker_norm, "exchange": exchange_norm}
 
 
 def _classify_source_authority(source_domain: str, source_url: str, source_title: str) -> dict[str, Any]:
@@ -2369,7 +2435,20 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "authority_boost_cap_applied": 0,
         "authority_duplicate_domain_penalties_applied": 0,
         "source_authority_sample_rows": [],
+        "structured_authority_feed_enabled": True,
+        "structured_authority_feed_path": str(STRUCTURED_AUTHORITY_FEED_PATH),
+        "structured_authority_feed_rows_loaded": 0,
+        "structured_authority_feed_load_status": "not_loaded",
+        "registry_authority_lookups_attempted": 0,
+        "registry_authority_matches_found": 0,
+        "registry_authority_conflicts_found": 0,
+        "registry_authority_support_applied": 0,
+        "registry_authority_conflict_rejections": 0,
+        "registry_authority_sample_matches": [],
+        "registry_authority_sample_conflicts": [],
     }
+    structured_registry, structured_registry_diag = _load_structured_authority_registry(STRUCTURED_AUTHORITY_FEED_PATH)
+    strict_diag.update(structured_registry_diag)
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
     strict_propagated_row_keys: set[str] = set()
@@ -2795,6 +2874,58 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             else:
                 strict_diag["exchange_inference_rejected_low_confidence"] += 1
     consensus_map = _build_cross_source_consensus(evidence_rows, strict_diag.get("strict_identifier_accepted_matches") or [])
+    proposed_registry_pairs: dict[tuple[str, str], dict[str, Any]] = {}
+    for m in strict_diag.get("strict_identifier_accepted_matches") or []:
+        ticker = _normalize_text(m.get("normalized_ticker")).upper()
+        exchange = _normalize_exchange_label(m.get("normalized_exchange"))
+        candidate_asset_id = _normalize_text(m.get("candidate_asset_id"))
+        if ticker and exchange:
+            proposed_registry_pairs[(ticker, exchange)] = {"candidate_asset_id": candidate_asset_id, "candidate_name": m.get("candidate_name")}
+    for entry in consensus_map.values():
+        ticker = _normalize_text(entry.get("normalized_ticker")).upper()
+        exchange = _normalize_exchange_label(entry.get("normalized_exchange"))
+        candidate_asset_id = _normalize_text(entry.get("candidate_asset_id"))
+        if ticker and exchange:
+            proposed_registry_pairs.setdefault((ticker, exchange), {"candidate_asset_id": candidate_asset_id, "candidate_name": entry.get("candidate_name")})
+    registry_support_keys: set[tuple[str, str]] = set()
+    registry_conflict_keys: set[tuple[str, str]] = set()
+    registry_support_metadata: dict[tuple[str, str], dict[str, Any]] = {}
+    for (ticker, exchange), meta in proposed_registry_pairs.items():
+        strict_diag["registry_authority_lookups_attempted"] += 1
+        lookup = _lookup_structured_authority_registry(
+            registry=structured_registry,
+            ticker=ticker,
+            exchange=exchange,
+            company_name=meta.get("candidate_name"),
+        )
+        if lookup.get("status") == "match":
+            strict_diag["registry_authority_matches_found"] += 1
+            registry_support_keys.add((ticker, exchange))
+            entry = lookup.get("entry") if isinstance(lookup.get("entry"), dict) else {}
+            registry_support_metadata[(ticker, exchange)] = {
+                "registry_authority_source_type": _normalize_text(entry.get("source_type")),
+                "registry_authority_source_url": _normalize_text(entry.get("source_url")),
+            }
+            if len(strict_diag["registry_authority_sample_matches"]) < 8:
+                strict_diag["registry_authority_sample_matches"].append({"ticker": ticker, "exchange": exchange, "source_url": _normalize_text(entry.get("source_url"))})
+        elif lookup.get("status") in {"conflict", "name_mismatch"}:
+            strict_diag["registry_authority_conflicts_found"] += 1
+            registry_conflict_keys.add((ticker, exchange))
+            if len(strict_diag["registry_authority_sample_conflicts"]) < 8:
+                strict_diag["registry_authority_sample_conflicts"].append({"ticker": ticker, "exchange": exchange, "status": lookup.get("status")})
+    for row in evidence_rows + candidate_rows:
+        ticker = _normalize_text(row.get("normalized_ticker") or row.get("extracted_ticker") or row.get("ticker")).upper()
+        exchange = _normalize_exchange_label(row.get("normalized_exchange") or row.get("extracted_exchange") or row.get("exchange"))
+        if not ticker or not exchange:
+            continue
+        key = (ticker, exchange)
+        if key in registry_support_keys:
+            row["registry_authority_support"] = True
+            row["registry_authority_source_type"] = registry_support_metadata.get(key, {}).get("registry_authority_source_type")
+            row["registry_authority_source_url"] = registry_support_metadata.get(key, {}).get("registry_authority_source_url")
+            strict_diag["registry_authority_support_applied"] += 1
+        if key in registry_conflict_keys:
+            row["registry_authority_conflict"] = True
     consensus_domains: list[int] = []
     consensus_urls: list[int] = []
     consensus_scores: list[float] = []
@@ -2878,6 +3009,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         )
         if not accepted:
             strict_diag["consensus_candidates_rejected"] += 1
+            if (entry.get("normalized_ticker"), entry.get("normalized_exchange")) in registry_conflict_keys:
+                strict_diag["registry_authority_conflict_rejections"] += 1
             if score["rejected_single_source"]:
                 strict_diag["consensus_rejected_single_source"] += 1
             if rejected_for_conflict:

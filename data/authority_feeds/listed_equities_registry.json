@@ -1,0 +1,65 @@
+[
+  {
+    "ticker": "NVDA",
+    "exchange": "NASDAQ",
+    "company_name": "NVIDIA Corporation",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/nvda",
+    "effective_date": "2026-05-18"
+  },
+  {
+    "ticker": "MSFT",
+    "exchange": "NASDAQ",
+    "company_name": "Microsoft Corporation",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/msft",
+    "effective_date": "2026-05-18"
+  },
+  {
+    "ticker": "AAPL",
+    "exchange": "NASDAQ",
+    "company_name": "Apple Inc.",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/aapl",
+    "effective_date": "2026-05-18"
+  },
+  {
+    "ticker": "AMZN",
+    "exchange": "NASDAQ",
+    "company_name": "Amazon.com, Inc.",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/amzn",
+    "effective_date": "2026-05-18"
+  },
+  {
+    "ticker": "META",
+    "exchange": "NASDAQ",
+    "company_name": "Meta Platforms, Inc.",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/meta",
+    "effective_date": "2026-05-18"
+  },
+  {
+    "ticker": "GOOGL",
+    "exchange": "NASDAQ",
+    "company_name": "Alphabet Inc.",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/googl",
+    "effective_date": "2026-05-18"
+  },
+  {
+    "ticker": "TSLA",
+    "exchange": "NASDAQ",
+    "company_name": "Tesla, Inc.",
+    "source_type": "exchange_registry",
+    "source_authority_tier": "exchange_official",
+    "source_url": "https://www.nasdaq.com/market-activity/stocks/tsla",
+    "effective_date": "2026-05-18"
+  }
+]
