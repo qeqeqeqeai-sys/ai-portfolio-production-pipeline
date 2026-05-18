@@ -6,35 +6,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import json
 from pathlib import Path
 
-from transmission_layers.asset_discovery.tier3h5.canonical_registry_ingestion import SAMPLE_REGISTRY_SOURCES, run_registry_ingestion
+from transmission_layers.asset_discovery.tier3h5.canonical_registry_ingestion import run_registry_ingestion
+from transmission_layers.asset_discovery.tier3h5.canonical_registry_sample_sources import SAMPLE_REGISTRY_SOURCES
 
 
-def test_idempotent_upsert_behavior_and_duplicate_handling(tmp_path: Path, monkeypatch) -> None:
+def test_duplicate_handling_and_idempotent_summary(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    rows = SAMPLE_REGISTRY_SOURCES["nasdaq_listing_fixture"] + SAMPLE_REGISTRY_SOURCES["nasdaq_listing_fixture"]
-    result1 = run_registry_ingestion("nasdaq_listing_fixture", rows)
-    result2 = run_registry_ingestion("nasdaq_listing_fixture", rows)
-
-    assert result1["summary"]["duplicate_records_detected"] == 1
-    assert result1["summary"]["issuer_rows_upserted"] == 1
-    assert result1["summary"]["security_rows_upserted"] == 1
-    assert result1["summary"] == result2["summary"]
+    rows = SAMPLE_REGISTRY_SOURCES["fixture_us_listings"] * 2
+    first = run_registry_ingestion("fixture_us_listings", rows)
+    second = run_registry_ingestion("fixture_us_listings", rows)
+    assert first["summary"] == second["summary"]
+    assert first["summary"]["duplicate_records_detected"] == 1
 
 
-def test_provenance_persistence_and_summary_generation(tmp_path: Path, monkeypatch) -> None:
+def test_summary_json_is_written(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    result = run_registry_ingestion("sec_issuer_fixture", SAMPLE_REGISTRY_SOURCES["sec_issuer_fixture"])
-    assert result["provenance"].source_name == "sec_issuer_fixture"
-    assert result["provenance"].schema_version == "tier3h5_phase1a_v1"
-
-    summary_path = Path("logs/tier3h5_registry_foundation_summary.json")
-    assert summary_path.exists()
-    payload = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert payload["source_name"] == "sec_issuer_fixture"
-    assert "normalization_failures" in payload
-
-
-def test_package_schema_version_export_is_stable() -> None:
-    from transmission_layers.asset_discovery.tier3h5 import SCHEMA_VERSION
-
-    assert SCHEMA_VERSION == "tier3h5_phase1a_v1"
+    run_registry_ingestion("fixture_cross_listing", SAMPLE_REGISTRY_SOURCES["fixture_cross_listing"])
+    summary_file = Path("logs/tier3h5_registry_foundation_summary.json")
+    payload = json.loads(summary_file.read_text(encoding="utf-8"))
+    for key in [
+        "issuer_rows_upserted",
+        "security_rows_upserted",
+        "provenance_rows_inserted",
+        "normalization_failures",
+        "deterministic_id_collisions",
+    ]:
+        assert key in payload

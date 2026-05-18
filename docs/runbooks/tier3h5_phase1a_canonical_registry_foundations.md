@@ -1,37 +1,24 @@
-# Tier 3H.5 Phase 1A — Canonical Registry Foundations
+# Tier 3H.5 Phase 1A Runbook: Canonical Registry Foundations
 
-## Scope
-This phase adds deterministic, replay-safe canonical issuer/security registry foundations **above Tier 3H.4** while preserving Tier 3H.4 discovery and adjudication workflows unchanged.
+## Purpose
+Tier 3H.5 Phase 1A provides a deterministic, replayable institutional issuer/security registry foundation separated from Tier 3H.4.
 
-## Components
-- SQL migration: `sql/tier3h5_phase1a_canonical_registry_foundations.sql`
-- Python modules under `transmission_layers/asset_discovery/tier3h5/`:
-  - canonical models
-  - deterministic normalization
-  - deterministic ID generation
-  - fixture-first ingestion scaffolding
-  - observability summary writing
+## Execute
+- Local entrypoint:
+  - `python -m transmission_layers.asset_discovery.tier3h5.canonical_registry_ingestion`
+- CI workflow:
+  - `.github/workflows/tier3h5_registry_foundations.yml`
 
-## Deterministic Governance
-- No fuzzy matching, semantic ranking, heuristics, or AI adjudication.
-- IDs are SHA-256-derived from normalized deterministic key material.
-- Source record hashing uses sorted JSON serialization.
+## Observable outputs
+- Console diagnostics prefixed with `[tier3h5]`.
+- Summary file: `logs/tier3h5_registry_foundation_summary.json`.
+- Required counters in summary:
+  - `issuer_rows_upserted`
+  - `security_rows_upserted`
+  - `provenance_rows_inserted`
+  - `normalization_failures`
+  - `deterministic_id_collisions`
 
-## Replayability & Idempotency Protections
-- Ingestion run IDs derive from `(source_name, source_checksum)`.
-- Duplicate row detection is hash-based and deterministic.
-- Conflict detection is deterministic and explicitly counted.
-- Observability summary is emitted to `logs/tier3h5_registry_foundation_summary.json`.
-
-## Deferred by Design
-- ADR logic
-- issuer graphing / ownership linkage
-- symbol continuity/cross-exchange lineage
-- semantic inference or confidence expansion
-- transmission integration and discovery redesign
-
-## Operating Notes
-1. Apply migration.
-2. Run fixture-first ingestion.
-3. Validate summary counters and status.
-4. Replay the same fixture and verify stable IDs and stable summary outcomes.
+## Governance boundaries
+- Tier 3H.4 remains frozen; Tier 3H.5 execution is independent.
+- No fuzzy matching, LLM logic, ranking heuristics, or probabilistic scoring.
