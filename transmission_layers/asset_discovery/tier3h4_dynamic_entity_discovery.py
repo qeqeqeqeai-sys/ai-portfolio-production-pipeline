@@ -578,11 +578,13 @@ def _bounded_context_window(text: str, max_len: int = STRICT_IDENTIFIER_CONTEXT_
 
 
 def _normalize_identifier_context_window(text: str) -> str:
-    value = (text or "")
+    value = _strip_json_like_fragments(text or "")
     value = value.replace("–", "-").replace("—", "-")
     value = value.replace("‘", "'").replace("’", "'")
     value = value.replace("“", '"').replace("”", '"')
     value = value.replace("−", "-").replace(" ", " ")
+    value = re.sub(r"\s*([{}\[\]])\s*", " ", value)
+    value = re.sub(r"\s*([,;:])\s*", r"\1 ", value)
     value = re.sub(r"[|;,:\-]{2,}", lambda m: m.group(0)[0], value)
     value = re.sub(r"\s+", " ", value).strip()
     value = re.sub(r"^[|;,:\-\s]+", "", value)
@@ -610,6 +612,51 @@ def _segment_identifier_context_windows(text: str, max_chars: int = STRICT_IDENT
     return windows
 
 
+
+
+_JSON_LINE_PATTERN = re.compile(r'(?i)^\s*(raw_evidence|source_result|metadata|candidate_context|persistence_phase|retrieved_at|cache_reused|source_rank|evidence_rank|theme_name|source_node|target_node|candidate_asset_id|candidate_id)\s*[:=]')
+
+def _strip_json_like_fragments(text: str) -> str:
+    value = _normalize_text(text)
+    if not value:
+        return ""
+    value = re.sub(r'\"', '"', value)
+    value = re.sub(r"\'", "'", value)
+    value = re.sub(r"(?is)(?:^|[\s,;])(?:raw_evidence|source_result|candidate_context|metadata)\s*[:=]\s*\{[^{}]{20,}\}", " ", value)
+    value = re.sub(r"(?is)\{[^{}]{80,}\}", " ", value)
+    value = re.sub(r"(?is)\[[^\[\]]{120,}\]", " ", value)
+    value = re.sub(r"(?i)\b(?:persistence_phase|retrieved_at|cache_reused|source_rank|evidence_rank)\s*[:=]\s*[^,;|]+", " ", value)
+    return _normalize_text(value)
+
+
+def _is_low_value_identifier_context(window: str) -> bool:
+    value = _normalize_text(window)
+    if not value:
+        return True
+    if METADATA_ONLY_PATTERN.search(value):
+        return True
+    if _JSON_LINE_PATTERN.search(value):
+        return True
+    alnum = sum(ch.isalnum() for ch in value)
+    punct = sum(not ch.isalnum() and not ch.isspace() for ch in value)
+    if alnum < 12:
+        return True
+    return punct > max(10, alnum)
+
+
+def _is_context_window_malformed(window: str) -> bool:
+    value = _normalize_text(window)
+    if not value:
+        return True
+    opens = value.count("{") + value.count("[") + value.count("(")
+    closes = value.count("}") + value.count("]") + value.count(")")
+    if abs(opens - closes) > 1:
+        return True
+    if "{" in value or "}" in value:
+        return True
+    if re.search(r"(?i)\b(dict|json|raw_evidence|source_result)\s*[:=]", value):
+        return True
+    return False
 def _token_distance_within_guardrail(text: str, ticker: str, exchange_label: str, max_distance: int = STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX) -> bool:
     token_pattern = re.compile(r"[A-Za-z0-9]+")
     tokens = [(m.group(0), m.start()) for m in token_pattern.finditer(text)]
@@ -1689,6 +1736,12 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "strict_identifier_malformed_context_count_before_normalization": 0,
         "strict_identifier_malformed_context_count_after_normalization": 0,
         "strict_identifier_malformed_context_delta": 0,
+        "context_windows_dropped_malformed": 0,
+        "context_windows_dropped_metadata_only": 0,
+        "context_windows_dropped_json_fragment": 0,
+        "context_windows_after_hygiene": 0,
+        "malformed_context_hygiene_improvement": 0,
+        "malformed_context_delta": 0,
         "strict_identifier_normalization_sample_before_after": [],
         "strict_identifier_token_distance_guardrail_enabled": True,
         "strict_identifier_token_distance_max": STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX,
@@ -1833,7 +1886,6 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 for text in scan_texts:
                     if not text:
                         continue
-                    strict_diag["strict_identifier_malformed_context_count_before_normalization"] += int("{" in text or "}" in text)
                     windows = _segment_identifier_context_windows(text, STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN)
                     strict_diag["strict_identifier_context_windows_generated"] += len(windows)
                     for window in windows:
@@ -1841,6 +1893,22 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                         strict_diag["strict_identifier_context_windows_normalized"] += 1
                         if len(strict_diag["strict_identifier_normalization_sample_before_after"]) < STRICT_IDENTIFIER_NORMALIZATION_SAMPLE_MAX and window != normalized_window:
                             strict_diag["strict_identifier_normalization_sample_before_after"].append({"before": _bounded_context_window(window), "after": _bounded_context_window(normalized_window)})
+                        if _is_context_window_malformed(window):
+                            strict_diag["strict_identifier_malformed_context_count_before_normalization"] += 1
+                        dropped_json_fragment = bool(re.search(r"[{}\[\]]", window)) and not bool(re.search(r"[{}\[\]]", normalized_window))
+                        if not normalized_window:
+                            continue
+                        if _is_context_window_malformed(normalized_window):
+                            strict_diag["strict_identifier_malformed_context_count_after_normalization"] += 1
+                            strict_diag["context_windows_dropped_malformed"] += 1
+                            strict_diag["strict_identifier_rejection_reason_counts"]["malformed_context"] += 1
+                            continue
+                        if _is_low_value_identifier_context(normalized_window):
+                            strict_diag["context_windows_dropped_metadata_only"] += 1
+                            continue
+                        if dropped_json_fragment:
+                            strict_diag["context_windows_dropped_json_fragment"] += 1
+                        strict_diag["context_windows_after_hygiene"] += 1
                         context_window = _bounded_context_window(normalized_window)
                         dedupe_key = "|".join([context_window.lower(), _normalize_text(row.get("candidate_name")).lower(), _normalize_text(str(row.get("source_url") or row.get("source_domain") or "")).lower()])
                         if dedupe_key in seen_context_windows:
@@ -1865,9 +1933,6 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                         if len(detected_ticker_tokens) > 1 and len(detected_exchange_labels) == 1:
                             strict_diag["strict_identifier_ticker_conflict_count"] += 1
                             strict_diag["strict_identifier_rejection_reason_counts"]["ticker_exchange_conflict"] += 1
-                        if "{" in normalized_window or "}" in normalized_window:
-                            strict_diag["strict_identifier_malformed_context_count_after_normalization"] += 1
-                            strict_diag["strict_identifier_rejection_reason_counts"]["malformed_context"] += 1
                         explainability = {"candidate_name": _normalize_text(row.get("candidate_name")), "source_url": _normalize_text(str(row.get("source_url") or "")), "source_domain": _normalize_text(row.get("source_domain")), "source_title": _normalize_text(row.get("source_title")), "detected_exchange_labels": detected_exchange_labels, "detected_ticker_tokens": detected_ticker_tokens, "matched_pattern_family": "no_match", "context_window": context_window, "rejection_reason": None, "ambiguity_reason": None, "accepted": False}
                         extracted = _extract_strict_exchange_qualified_identifier(normalized_window, STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX)
                         if extracted:
@@ -2044,6 +2109,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     fresh_quality = _fresh_evidence_quality_diagnostics(evidence_rows)
     strict_diag["strict_identifier_malformed_context_count"] = strict_diag["strict_identifier_malformed_context_count_after_normalization"]
     strict_diag["strict_identifier_malformed_context_delta"] = strict_diag["strict_identifier_malformed_context_count_before_normalization"] - strict_diag["strict_identifier_malformed_context_count_after_normalization"]
+    strict_diag["malformed_context_hygiene_improvement"] = strict_diag["strict_identifier_malformed_context_count_before_normalization"] - strict_diag["strict_identifier_malformed_context_count_after_normalization"]
+    strict_diag["malformed_context_delta"] = strict_diag["strict_identifier_malformed_context_count_after_normalization"] - strict_diag["strict_identifier_malformed_context_count_before_normalization"]
     strict_diag["strict_identifier_unique_tickers_found"] = sorted(strict_unique_tickers)
     strict_diag["strict_identifier_unique_exchanges_found"] = sorted(strict_unique_exchanges)
     target_counts = dict(Counter((m.get("propagation_target") or "summary_only") for m in strict_diag["strict_identifier_accepted_matches"]))
@@ -2400,6 +2467,11 @@ def main() -> int:
     print(f"[tier3h4] duplicates_collapsed={evidence_summary.get('strict_identifier_duplicate_contexts_collapsed',0)}")
     print(f"[tier3h4] malformed_before={evidence_summary.get('strict_identifier_malformed_context_count_before_normalization',0)}")
     print(f"[tier3h4] malformed_after={evidence_summary.get('strict_identifier_malformed_context_count_after_normalization',0)}")
+    print(f"[tier3h4] context_windows_dropped_malformed={evidence_summary.get('context_windows_dropped_malformed',0)}")
+    print(f"[tier3h4] context_windows_dropped_json_fragment={evidence_summary.get('context_windows_dropped_json_fragment',0)}")
+    print(f"[tier3h4] context_windows_dropped_metadata_only={evidence_summary.get('context_windows_dropped_metadata_only',0)}")
+    print(f"[tier3h4] context_windows_after_hygiene={evidence_summary.get('context_windows_after_hygiene',0)}")
+    print(f"[tier3h4] malformed_context_hygiene_improvement={evidence_summary.get('malformed_context_hygiene_improvement',0)}")
     print(f"[tier3h4] token_distance_max={evidence_summary.get('strict_identifier_token_distance_max',STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX)}")
     print(f"[tier3h4] malformed_contexts={evidence_summary['strict_identifier_malformed_context_count']}")
     print("[tier3h4] exchange inference:")
