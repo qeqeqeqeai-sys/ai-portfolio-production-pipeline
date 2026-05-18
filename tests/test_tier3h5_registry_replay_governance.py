@@ -12,13 +12,13 @@ from transmission_layers.asset_discovery.tier3h5.registry_replay_governance impo
 )
 
 
-def _stable_rows():
+def _stable_rows(snapshot_id: str = "snap-002", run_id: str = "run-002", dataset_version: str = "2026.05"):
     return [
         {
-            "registry_snapshot_id": "snap-002",
+            "registry_snapshot_id": snapshot_id,
             "source_name": "exchange_primary",
-            "source_dataset_version": "2026.05",
-            "ingestion_run_id": "run-002",
+            "source_dataset_version": dataset_version,
+            "ingestion_run_id": run_id,
             "normalization_version": "tier3h5_phase2a_v1",
             "records_seen": 100,
             "records_accepted": 95,
@@ -74,9 +74,43 @@ def test_phase2c_artifact_generation_and_advisory_guards(tmp_path: Path, monkeyp
         "logs/tier3h5_registry_snapshot_comparison.json",
         "logs/tier3h5_registry_replay_metrics.json",
         "logs/tier3h5_phase2c_replay_governance_summary.json",
+        "logs/tier3h5_replay_baseline_manifest.json",
+        "logs/tier3h5_replay_history_summary.json",
+        "logs/tier3h5_replay_continuity_lineage.json",
+        "logs/tier3h5_replay_chain_metrics.json",
+        "logs/tier3h5_phase2c1_replay_persistence_summary.json",
+        "logs/tier3h5_registry_replay_baseline_history.json",
     ]
     for path in expected:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
         assert payload["enforcement_enabled"] is False
         assert payload["canonical_override_enabled"] is False
 
+
+def test_deterministic_baseline_loading_and_history_status(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("logs").mkdir()
+
+    run_phase2c_replay_governance(current_rows=_stable_rows(snapshot_id="snap-100", run_id="run-100"), prior_rows=None)
+    second = run_phase2c_replay_governance(current_rows=_stable_rows(snapshot_id="snap-101", run_id="run-101"), prior_rows=None)
+
+    assert second["comparison"]["baseline_available"] is True
+    assert "replay_history_established" in second["lineage"]["replay_status_tags"]
+
+
+def test_transient_vs_persistent_drift_detection(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("logs").mkdir()
+
+    run_phase2c_replay_governance(current_rows=_stable_rows(snapshot_id="snap-200", run_id="run-200"), prior_rows=None)
+    drift_once = [dict(_stable_rows(snapshot_id="snap-201", run_id="run-201")[0], normalization_version="tier3h5_phase2a_v9")]
+    run_phase2c_replay_governance(current_rows=drift_once, prior_rows=None)
+
+    continuity = json.loads(Path("logs/tier3h5_replay_continuity_lineage.json").read_text(encoding="utf-8"))
+    assert continuity["drift_continuity_diagnostics"]["transient_drift_detected"] is True
+
+    drift_twice = [dict(_stable_rows(snapshot_id="snap-202", run_id="run-202")[0], normalization_version="tier3h5_phase2a_v10")]
+    run_phase2c_replay_governance(current_rows=drift_twice, prior_rows=None)
+
+    continuity2 = json.loads(Path("logs/tier3h5_replay_continuity_lineage.json").read_text(encoding="utf-8"))
+    assert continuity2["drift_continuity_diagnostics"]["persistent_drift_detected"] is True
