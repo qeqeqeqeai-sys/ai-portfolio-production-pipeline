@@ -8,6 +8,7 @@ on:
       - 'transmission_layers/asset_discovery/tier3h4_dynamic_entity_discovery.py'
       - 'tests/test_tier3h5_*'
       - 'transmission_layers/graph_foundation/**'
+      - 'transmission_layers/graph_foundation/continuity/**'
       - '.github/workflows/tier3h5_registry_foundations.yml'
 
 jobs:
@@ -46,6 +47,15 @@ jobs:
           else
             echo "No Tier 3H.5 Phase 3 sample/CLI module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 4 sample/CLI (if present)
+        run: |
+          if [ -f "transmission_layers/asset_discovery/tier3h5/canonical_propagation_memory.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.canonical_propagation_memory
+          elif [ -f "transmission_layers/asset_discovery/tier3h5/canonical_propagation_memory_cli.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.canonical_propagation_memory_cli
+          else
+            echo "No Tier 3H.5 Phase 4 sample/CLI module found; skipping."
+          fi
       - name: Run Tier 3H.5 tests
         run: |
           python -m pytest -q \
@@ -56,7 +66,8 @@ jobs:
             tests/test_tier3h5_advisory_registry_hooks.py \
             tests/test_tier3h5_advisory_registry_observability.py \
             tests/test_tier3h5_registry_propagation_governance.py \
-            tests/test_tier3h5_canonical_graph_governance.py
+            tests/test_tier3h5_canonical_graph_governance.py \
+            tests/test_tier3h5_canonical_propagation_memory.py
       - name: Upload observability summary
         uses: actions/upload-artifact@v4
         with:
@@ -67,3 +78,4 @@ jobs:
             logs/tier3h5_advisory_registry_summary.json
             logs/tier3h5_registry_propagation_governance_summary.json
             logs/tier3h5_canonical_graph_governance_summary.json
+            logs/tier3h5_canonical_propagation_memory_summary.json
