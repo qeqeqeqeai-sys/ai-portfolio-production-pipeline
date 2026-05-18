@@ -1196,8 +1196,10 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             diagnostics["unique_contract_query_error"] = repr(unique_query_exc)
         finally:
             print(f"[tier3h4] unique_contract_query_status={diagnostics.get('unique_contract_query_status')}")
-            if diagnostics.get("unique_contract_query_status") != "ok":
-                print(f"[tier3h4] unique_contract_query_error={diagnostics.get('unique_contract_query_error')}")
+            query_status = diagnostics.get("unique_contract_query_status")
+            query_error = diagnostics.get("unique_contract_query_error")
+            if query_status not in {"ok", "empty"} and query_error:
+                print(f"[tier3h4] unique_contract_query_error={query_error}")
         if not unique_constraint_rows:
             fallback_unique_rows: list[dict[str, Any]] = []
             for idx_row in diagnostics.get("failing_table_indexes") or []:
@@ -1354,14 +1356,20 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
     print(f"[tier3h4] actual_upsert_conflict_columns={diagnostics.get('actual_upsert_conflict_columns')}")
     print(f"[tier3h4] normalized_conflict_target_columns={diagnostics.get('normalized_conflict_target_columns')}")
     print(f"[tier3h4] detected_unique_contracts={diagnostics.get('detected_unique_contracts')}")
-    print(f"[tier3h4] normalized_detected_unique_column_sets={diagnostics.get('normalized_detected_unique_column_sets')}")
     print(f"[tier3h4] matched_unique_contract_name={diagnostics.get('matched_unique_contract_name')}")
-    print(f"[tier3h4] conflict_columns_exist_in_schema={diagnostics.get('conflict_columns_exist_in_schema')}")
-    print(f"[tier3h4] actual_upsert_variable_name={diagnostics.get('actual_upsert_variable_name')}")
-    print(f"[tier3h4] actual_upsert_first_row_keys={diagnostics.get('actual_upsert_first_row_keys')}")
-    print(f"[tier3h4] actual_upsert_extra_columns={diagnostics.get('actual_upsert_extra_columns')}")
-    print(f"[tier3h4] actual_upsert_contains_query_text={diagnostics.get('actual_upsert_contains_query_text')}")
-    print(f"[tier3h4] actual_upsert_payload_matches_schema={diagnostics.get('actual_upsert_payload_matches_schema')}")
+    schema_drift_detected = (
+        not diagnostics.get("actual_upsert_payload_matches_schema")
+        or bool(diagnostics.get("actual_upsert_extra_columns"))
+        or not diagnostics.get("conflict_columns_exist_in_schema")
+    )
+    if schema_drift_detected:
+        print(f"[tier3h4] conflict_columns_exist_in_schema={diagnostics.get('conflict_columns_exist_in_schema')}")
+        print(f"[tier3h4] actual_upsert_variable_name={diagnostics.get('actual_upsert_variable_name')}")
+        print(f"[tier3h4] actual_upsert_first_row_keys={diagnostics.get('actual_upsert_first_row_keys')}")
+        print(f"[tier3h4] actual_upsert_extra_columns={diagnostics.get('actual_upsert_extra_columns')}")
+        print(f"[tier3h4] actual_upsert_contains_query_text={diagnostics.get('actual_upsert_contains_query_text')}")
+        print(f"[tier3h4] actual_upsert_payload_matches_schema={diagnostics.get('actual_upsert_payload_matches_schema')}")
+        print(f"[tier3h4] normalized_detected_unique_column_sets={diagnostics.get('normalized_detected_unique_column_sets')}")
     try:
         request_headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
         request_params: dict[str, str] = {}
