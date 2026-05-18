@@ -14,28 +14,46 @@ from transmission_layers.asset_discovery.tier3h5.canonical_registry_resolution_o
 
 REGISTRY_FIXTURE = [
     {
-        "security_id": "sec_nasdaq_exm_common",
-        "issuer_id": "issuer_1",
-        "ticker": "EXM",
+        "security_id": "sec_nasdaq_aapl_equity",
+        "issuer_id": "issuer_aapl",
+        "ticker": "AAPL",
         "exchange": "NASDAQ",
-        "security_type": "common_stock",
+        "security_type": "equity",
         "is_active": True,
         "source_name": "fixture_us_listings",
     },
     {
-        "security_id": "sec_nyse_exm_preferred",
-        "issuer_id": "issuer_1",
-        "ticker": "EXM",
+        "security_id": "sec_nasdaq_msft_equity",
+        "issuer_id": "issuer_msft",
+        "ticker": "MSFT",
+        "exchange": "NASDAQ",
+        "security_type": "equity",
+        "is_active": True,
+        "source_name": "fixture_us_listings",
+    },
+    {
+        "security_id": "sec_nyse_ibm_equity",
+        "issuer_id": "issuer_ibm",
+        "ticker": "IBM",
         "exchange": "NYSE",
-        "security_type": "preferred_stock",
+        "security_type": "equity",
         "is_active": True,
         "source_name": "fixture_cross_listing",
+    },
+    {
+        "security_id": "sec_nasdaq_nvda_equity",
+        "issuer_id": "issuer_nvda",
+        "ticker": "NVDA",
+        "exchange": "NASDAQ",
+        "security_type": "equity",
+        "is_active": True,
+        "source_name": "fixture_us_listings",
     },
 ]
 
 
 def test_exact_ticker_exchange_match() -> None:
-    result = resolve_security_from_registry(" exm ", " nasdaq ", REGISTRY_FIXTURE)
+    result = resolve_security_from_registry(" aapl ", " nasdaq ", REGISTRY_FIXTURE)
     assert result.resolution_status == "accepted"
     assert result.match_rule == "exact_exchange_ticker"
 
@@ -52,49 +70,72 @@ def test_missing_ticker_invalid_input() -> None:
 
 
 def test_missing_exchange_invalid_input() -> None:
-    result = resolve_security_from_registry("EXM", "", REGISTRY_FIXTURE)
+    result = resolve_security_from_registry("AAPL", "", REGISTRY_FIXTURE)
     assert result.resolution_status == "invalid_input"
 
 
 def test_multiple_match_conflict() -> None:
-    duplicated = REGISTRY_FIXTURE + [dict(REGISTRY_FIXTURE[0], security_id="sec_nasdaq_exm_common_2")]
-    result = resolve_security_from_registry("EXM", "NASDAQ", duplicated)
+    duplicated = REGISTRY_FIXTURE + [dict(REGISTRY_FIXTURE[0], security_id="sec_nasdaq_aapl_equity_2")]
+    result = resolve_security_from_registry("AAPL", "NASDAQ", duplicated)
     assert result.resolution_status == "conflict"
     assert result.match_rule == "multiple_registry_matches"
 
 
 def test_security_type_narrowing() -> None:
-    duplicated = REGISTRY_FIXTURE + [
+    with_conflict = REGISTRY_FIXTURE + [
         {
-            "security_id": "sec_nasdaq_exm_preferred",
-            "issuer_id": "issuer_1",
-            "ticker": "EXM",
+            "security_id": "sec_nasdaq_aapl_depository",
+            "issuer_id": "issuer_aapl_alt",
+            "ticker": "AAPL",
             "exchange": "NASDAQ",
-            "security_type": "preferred_stock",
+            "security_type": "depositary_receipt",
             "is_active": True,
             "source_name": "fixture_cross_listing",
         }
     ]
-    result = resolve_security_from_registry("EXM", "NASDAQ", duplicated, security_type="preferred_stock")
+    result = resolve_security_from_registry("AAPL", "NASDAQ", with_conflict, security_type="equity")
     assert result.resolution_status == "accepted"
     assert result.match_rule == "exact_exchange_ticker_security_type"
 
 
+def test_ambiguous_case_not_accepted() -> None:
+    with_conflict = REGISTRY_FIXTURE + [
+        {
+            "security_id": "sec_nasdaq_aapl_depository",
+            "issuer_id": "issuer_aapl_alt",
+            "ticker": "AAPL",
+            "exchange": "NASDAQ",
+            "security_type": "depositary_receipt",
+            "is_active": True,
+            "source_name": "fixture_cross_listing",
+        }
+    ]
+    result = resolve_security_from_registry("AAPL", "NASDAQ", with_conflict)
+    assert result.resolution_status == "conflict"
+    assert result.match_rule == "multiple_registry_matches"
+
+
 def test_deterministic_explanation_text() -> None:
-    first = resolve_security_from_registry("EXM", "NASDAQ", REGISTRY_FIXTURE)
-    second = resolve_security_from_registry("EXM", "NASDAQ", REGISTRY_FIXTURE)
+    first = resolve_security_from_registry("AAPL", "NASDAQ", REGISTRY_FIXTURE)
+    second = resolve_security_from_registry("AAPL", "NASDAQ", REGISTRY_FIXTURE)
     assert first.explanation == second.explanation
 
 
 def test_summary_json_generation(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     results = [
-        resolve_security_from_registry("EXM", "NASDAQ", REGISTRY_FIXTURE),
+        resolve_security_from_registry("AAPL", "NASDAQ", REGISTRY_FIXTURE),
+        resolve_security_from_registry("MSFT", "NASDAQ", REGISTRY_FIXTURE),
         resolve_security_from_registry("NOPE", "NASDAQ", REGISTRY_FIXTURE),
+        resolve_security_from_registry("AAPL", "NASDAQ", REGISTRY_FIXTURE + [dict(REGISTRY_FIXTURE[0], security_id="sec_nasdaq_aapl_2")]),
         resolve_security_from_registry("", "NASDAQ", REGISTRY_FIXTURE),
     ]
     summary = summarize_registry_resolution(results)
     write_registry_resolution_summary(summary)
     payload = json.loads(Path("logs/tier3h5_registry_resolution_summary.json").read_text(encoding="utf-8"))
-    assert payload["registry_resolution_attempts"] == 3
+    assert payload["registry_resolution_attempts"] == 5
+    assert payload["registry_resolution_accepted"] == 2
+    assert payload["registry_resolution_conflicts"] == 1
+    assert payload["registry_resolution_invalid_input"] == 1
+    assert payload["registry_resolution_no_match"] == 1
     assert payload["status"] in {"success", "completed_with_findings"}
