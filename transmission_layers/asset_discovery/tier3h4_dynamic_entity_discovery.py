@@ -100,6 +100,17 @@ EXCHANGE_LABEL_TO_CANONICAL = {
     "TSE": "TSE",
     "Tokyo Stock Exchange": "TSE",
 }
+EXCHANGE_ALIAS_TO_CANONICAL = {
+    "NASDAQGS": "NASDAQ",
+    "NASDAQGM": "NASDAQ",
+    "NASDAQCM": "NASDAQ",
+    "NYSEARCA": "ARCA",
+    "NEW YORK STOCK EXCHANGE": "NYSE",
+    "SINGAPORE EXCHANGE": "SGX",
+    "LONDON STOCK EXCHANGE": "LSE",
+    "HONG KONG STOCK EXCHANGE": "HKEX",
+    "TOKYO STOCK EXCHANGE": "TSE",
+}
 NOISE_TICKER_DENYLIST = {"AI", "ETF", "CEO", "IPO", "SEC", "USD", "ADR", "LLC", "INC", "LTD", "PLC", "CORP", "THE", "AND"}
 STRICT_IDENTIFIER_EXPLAINABILITY_SAMPLE_SIZE = 8
 STRICT_IDENTIFIER_CONTEXT_WINDOW_MAX_LEN = 240
@@ -470,6 +481,71 @@ def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max:
     if unsupported_rejections:
         return _canonical_extraction_result(warnings=[f"unsupported_exchange_rejected:{unsupported_rejections[0]}"], rejection_reason="unsupported_exchange_label")
     return _canonical_extraction_result(rejection_reason="no_context_phrase")
+
+
+def _normalize_exchange_label(value: Any) -> str | None:
+    raw = _normalize_text(str(value or ""))
+    if not raw:
+        return None
+    if raw in EXCHANGE_LABEL_TO_CANONICAL:
+        return EXCHANGE_LABEL_TO_CANONICAL[raw]
+    upper = raw.upper()
+    if upper in EXCHANGE_ALIAS_TO_CANONICAL:
+        return EXCHANGE_ALIAS_TO_CANONICAL[upper]
+    if upper in EXCHANGE_LABEL_TO_CANONICAL:
+        return EXCHANGE_LABEL_TO_CANONICAL[upper]
+    return None
+
+
+def _infer_exchange_from_registry_context(*, ticker: str, candidate_name: str, source_domain: str, source_title: str, source_snippet: str, evidence_text: str, accepted_matches: list[dict[str, Any]]) -> dict[str, Any]:
+    ticker_norm = _normalize_text(ticker).upper()
+    if not ticker_norm or not re.match(r"^[A-Z0-9]{1,6}$", ticker_norm):
+        return {"accepted": False, "rejection_reason": "malformed_context", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "invalid_or_missing_ticker", "inferred_exchange": None}
+    if ticker_norm in NOISE_TICKER_DENYLIST:
+        return {"accepted": False, "rejection_reason": "noisy_token", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "ticker_in_noise_denylist", "inferred_exchange": None}
+    evidence_blob = " ".join([_normalize_text(candidate_name), _normalize_text(source_title), _normalize_text(source_snippet), _normalize_text(evidence_text)])
+    if not evidence_blob:
+        return {"accepted": False, "rejection_reason": "malformed_context", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "empty_evidence_context", "inferred_exchange": None}
+    matched_exchanges: list[str] = []
+    for label, canonical in EXCHANGE_LABEL_TO_CANONICAL.items():
+        if re.search(rf"(?i)\b{re.escape(label)}\b", evidence_blob):
+            matched_exchanges.append(canonical)
+    for alias, canonical in EXCHANGE_ALIAS_TO_CANONICAL.items():
+        if re.search(rf"(?i)\b{re.escape(alias)}\b", evidence_blob):
+            matched_exchanges.append(canonical)
+    ticker_matches = [m for m in accepted_matches if _normalize_text(m.get("normalized_ticker")).upper() == ticker_norm]
+    prior_exchange_counts = Counter(_normalize_exchange_label(m.get("normalized_exchange")) for m in ticker_matches if _normalize_exchange_label(m.get("normalized_exchange")))
+    inferred_from_prior = prior_exchange_counts.most_common(1)[0][0] if prior_exchange_counts else None
+    all_candidates = set(matched_exchanges) | set(prior_exchange_counts.keys())
+    if len(all_candidates) > 1:
+        return {"accepted": False, "rejection_reason": "ambiguous_context_window", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": f"conflicting_exchanges={sorted(all_candidates)}", "inferred_exchange": None}
+    inferred_exchange = inferred_from_prior or (next(iter(all_candidates)) if all_candidates else None)
+    if not inferred_exchange:
+        return {"accepted": False, "rejection_reason": "no_context_phrase", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "no_deterministic_exchange_signal", "inferred_exchange": None}
+    score = 0.0
+    if inferred_from_prior:
+        score += min(0.55, 0.2 + 0.15 * prior_exchange_counts.get(inferred_exchange, 0))
+    if inferred_exchange in matched_exchanges:
+        score += 0.20
+    domain_hint = _normalize_text(source_domain).lower()
+    if inferred_exchange == "NASDAQ" and "nasdaq.com" in domain_hint:
+        score += 0.20
+    elif inferred_exchange == "NYSE" and "nyse.com" in domain_hint:
+        score += 0.20
+    elif inferred_exchange in {"LSE", "SGX", "HKEX", "TSE"} and any(h in domain_hint for h in ["lse.co", "sgx.com", "hkex.com", "jpx.co.jp"]):
+        score += 0.15
+    score = round(min(1.0, score), 4)
+    confidence_band = "high_confidence" if score >= 0.85 else "medium_confidence" if score >= 0.65 else "weak_context" if score >= 0.45 else "rejected"
+    accepted = confidence_band in {"high_confidence", "medium_confidence"}
+    return {
+        "inferred_exchange": inferred_exchange,
+        "inference_confidence_score": score,
+        "confidence_band": confidence_band,
+        "inference_method": "registry_assisted_inference",
+        "inference_notes": f"prior_match_count={prior_exchange_counts.get(inferred_exchange, 0)}; matched_exchanges={sorted(set(matched_exchanges))}",
+        "accepted": accepted,
+        "rejection_reason": None if accepted else ("low_confidence" if confidence_band in {"weak_context", "rejected"} else "unknown_rejection_reason"),
+    }
 
 STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
     "multiple_tickers_in_context",
@@ -1626,6 +1702,19 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "strict_identifier_matches_without_candidate_owner": 0,
         "strict_identifier_propagation_target_counts": {},
         "strict_identifier_sample_unmapped_matches": [],
+        "exchange_inference_enabled": True,
+        "exchange_inference_attempts": 0,
+        "exchange_inference_successes": 0,
+        "exchange_inference_rejected_low_confidence": 0,
+        "exchange_inference_rejected_ambiguous": 0,
+        "exchange_inference_rejected_noise": 0,
+        "exchange_inference_confidence_avg": 0.0,
+        "inferred_exchange_counts": {},
+        "registry_assisted_matches": 0,
+        "confidence_band_high": 0,
+        "confidence_band_medium": 0,
+        "confidence_band_low": 0,
+        "confidence_band_rejected": 0,
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
@@ -1897,6 +1986,60 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             for match in owned_matches:
                 match["propagation_target"] = "candidate_audit_row"
         candidate_rows.append(candidate_row)
+    inference_scores: list[float] = []
+    inferred_exchange_counter: Counter[str] = Counter()
+    for row in evidence_rows + candidate_rows:
+        if row.get("accepted") and _normalize_exchange_label(row.get("normalized_exchange")):
+            continue
+        ticker_val = _normalize_text(row.get("normalized_ticker") or row.get("extracted_ticker") or row.get("ticker")).upper()
+        if not ticker_val:
+            continue
+        strict_diag["exchange_inference_attempts"] += 1
+        inferred = _infer_exchange_from_registry_context(
+            ticker=ticker_val,
+            candidate_name=_normalize_text(row.get("candidate_name")),
+            source_domain=_normalize_text(row.get("source_domain")),
+            source_title=_normalize_text(row.get("source_title")),
+            source_snippet=_normalize_text(row.get("source_snippet")),
+            evidence_text=_normalize_text((row.get("raw_evidence") or {}).get("text") if isinstance(row.get("raw_evidence"), dict) else ""),
+            accepted_matches=strict_diag.get("strict_identifier_accepted_matches") or [],
+        )
+        band = inferred.get("confidence_band")
+        if band == "high_confidence":
+            strict_diag["confidence_band_high"] += 1
+        elif band == "medium_confidence":
+            strict_diag["confidence_band_medium"] += 1
+        elif band == "weak_context":
+            strict_diag["confidence_band_low"] += 1
+        else:
+            strict_diag["confidence_band_rejected"] += 1
+        if inferred.get("accepted"):
+            inferred_exchange = inferred.get("inferred_exchange")
+            strict_diag["exchange_inference_successes"] += 1
+            strict_diag["registry_assisted_matches"] += 1
+            inference_scores.append(_safe_float(inferred.get("inference_confidence_score"), 0.0))
+            if inferred_exchange:
+                inferred_exchange_counter[inferred_exchange] += 1
+                row["normalized_exchange"] = inferred_exchange
+                row["extracted_exchange"] = inferred_exchange
+                if not row.get("exchange"):
+                    row["exchange"] = inferred_exchange
+            row["extraction_method"] = inferred.get("inference_method")
+            row["extraction_confidence"] = inferred.get("confidence_band")
+            row["extraction_notes"] = inferred.get("inference_notes")
+            row["accepted"] = True
+            row["rejection_reason"] = None
+            row["ambiguity_reason"] = None
+        else:
+            reason = inferred.get("rejection_reason")
+            if reason == "ambiguous_context_window":
+                strict_diag["exchange_inference_rejected_ambiguous"] += 1
+            elif reason == "noisy_token":
+                strict_diag["exchange_inference_rejected_noise"] += 1
+            else:
+                strict_diag["exchange_inference_rejected_low_confidence"] += 1
+    strict_diag["exchange_inference_confidence_avg"] = round(sum(inference_scores) / max(1, len(inference_scores)), 4) if inference_scores else 0.0
+    strict_diag["inferred_exchange_counts"] = dict(sorted(inferred_exchange_counter.items(), key=lambda kv: (-kv[1], kv[0])))
     sampled = evidence_rows[:3]
     fresh_quality = _fresh_evidence_quality_diagnostics(evidence_rows)
     strict_diag["strict_identifier_malformed_context_count"] = strict_diag["strict_identifier_malformed_context_count_after_normalization"]
@@ -2259,6 +2402,15 @@ def main() -> int:
     print(f"[tier3h4] malformed_after={evidence_summary.get('strict_identifier_malformed_context_count_after_normalization',0)}")
     print(f"[tier3h4] token_distance_max={evidence_summary.get('strict_identifier_token_distance_max',STRICT_IDENTIFIER_TOKEN_DISTANCE_MAX)}")
     print(f"[tier3h4] malformed_contexts={evidence_summary['strict_identifier_malformed_context_count']}")
+    print("[tier3h4] exchange inference:")
+    print(f"[tier3h4] exchange_inference_attempts={evidence_summary.get('exchange_inference_attempts',0)}")
+    print(f"[tier3h4] exchange_inference_successes={evidence_summary.get('exchange_inference_successes',0)}")
+    print(f"[tier3h4] exchange_inference_confidence_avg={evidence_summary.get('exchange_inference_confidence_avg',0.0)}")
+    print(f"[tier3h4] registry_assisted_matches={evidence_summary.get('registry_assisted_matches',0)}")
+    print(f"[tier3h4] inferred_exchange_counts={evidence_summary.get('inferred_exchange_counts',{})}")
+    print(f"[tier3h4] confidence_band_high={evidence_summary.get('confidence_band_high',0)}")
+    print(f"[tier3h4] confidence_band_medium={evidence_summary.get('confidence_band_medium',0)}")
+    print(f"[tier3h4] confidence_band_low={evidence_summary.get('confidence_band_low',0)}")
     print("[tier3h4] strict identifier propagation:")
     print(f"[tier3h4] accepted_match_collection_size={evidence_summary.get('strict_identifier_accepted_match_collection_size',0)}")
     print(f"[tier3h4] propagated_rows={evidence_summary.get('strict_identifier_propagated_rows_count',0)}")
