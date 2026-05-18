@@ -14,6 +14,7 @@ DUAL_LISTING_SUMMARY_PATH = LOG_DIR / "tier3h5_dual_listing_governance_summary.j
 LINEAGE_SUMMARY_PATH = LOG_DIR / "tier3h5_cross_registry_lineage_summary.json"
 ALIAS_REPLAY_SUMMARY_PATH = LOG_DIR / "tier3h5_alias_replay_governance_summary.json"
 PHASE_SUMMARY_PATH = LOG_DIR / "tier3h5_phase3a_cross_registry_summary.json"
+LINEAGE_DEDUP_SUMMARY_PATH = LOG_DIR / "tier3h5_lineage_dedup_summary.json"
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -28,6 +29,58 @@ def normalize_ticker_alias(ticker: str | None) -> str:
 def _stable_hash(payload: Any) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _lineage_edge_identity_key(edge: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    return (
+        str(edge.get("from") or ""),
+        str(edge.get("to") or ""),
+        str(edge.get("edge_type") or ""),
+        str(edge.get("lineage_scope") or "cross_registry"),
+        str(edge.get("status") or ""),
+    )
+
+
+def _deduplicate_lineage_edges(lineage_edges: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    deduped_map: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
+    for edge in lineage_edges:
+        key = _lineage_edge_identity_key(edge)
+        bucket = deduped_map.get(key)
+        if bucket is None:
+            deduped_map[key] = {
+                **edge,
+                "lineage_scope": edge.get("lineage_scope", "cross_registry"),
+                "governance_status": edge.get("governance_status", edge.get("status")),
+                "collapsed_duplicate_count": 1,
+                "contributing_aliases": sorted({str(edge.get("raw_alias") or "")}),
+                "contributing_sources": sorted({str(edge.get("source") or "")}),
+                "contributing_normalized_values": sorted({str(edge.get("normalized_alias") or "")}),
+                "deduplication_reason": "identity_key_match",
+            }
+            continue
+        bucket["collapsed_duplicate_count"] += 1
+        bucket["contributing_aliases"] = sorted(set(bucket["contributing_aliases"]) | {str(edge.get("raw_alias") or "")})
+        bucket["contributing_sources"] = sorted(set(bucket["contributing_sources"]) | {str(edge.get("source") or "")})
+        bucket["contributing_normalized_values"] = sorted(set(bucket["contributing_normalized_values"]) | {str(edge.get("normalized_alias") or "")})
+
+    deduped_edges = sorted(deduped_map.values(), key=lambda edge: _lineage_edge_identity_key(edge))
+    for edge in deduped_edges:
+        edge.pop("raw_alias", None)
+        edge.pop("source", None)
+        edge.pop("normalized_alias", None)
+    duplicate_edges_collapsed = sum(edge["collapsed_duplicate_count"] - 1 for edge in deduped_edges)
+    duplicate_alias_edges_collapsed = sum(
+        edge["collapsed_duplicate_count"] - 1 for edge in deduped_edges if edge.get("edge_type") == "alias"
+    )
+    dedup_status_counts = dict(sorted(Counter(str(edge.get("governance_status") or "") for edge in deduped_edges).items()))
+    return deduped_edges, {
+        "lineage_edges_seen": len(lineage_edges),
+        "lineage_edges_deduplicated": len(deduped_edges),
+        "duplicate_lineage_edges_collapsed": duplicate_edges_collapsed,
+        "duplicate_alias_edges_collapsed": duplicate_alias_edges_collapsed,
+        "lineage_edges_after_dedup": len(deduped_edges),
+        "deduplication_status_counts": dedup_status_counts,
+    }
 
 
 def build_cross_registry_governance(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -94,11 +147,13 @@ def build_cross_registry_governance(rows: list[dict[str, Any]]) -> dict[str, Any
             lineage_nodes[f"EXQ::{exchange_qualified_security_id}"] = {"node_type": "exchange_qualified_security", "id": exchange_qualified_security_id}
 
         if canonical_security_id and canonical_issuer_id:
-            lineage_edges.append({"edge_type": "issuer_security", "from": f"ISS::{canonical_issuer_id}", "to": f"SEC::{canonical_security_id}", "status": status})
+            lineage_edges.append({"edge_type": "issuer_security", "from": f"ISS::{canonical_issuer_id}", "to": f"SEC::{canonical_security_id}", "status": status, "lineage_scope": "cross_registry", "governance_status": status, "raw_alias": raw_ticker or None, "normalized_alias": normalized_ticker or None, "source": provenance})
         if canonical_security_id and exchange_qualified_security_id:
-            lineage_edges.append({"edge_type": "alias", "from": f"SEC::{canonical_security_id}", "to": f"EXQ::{exchange_qualified_security_id}", "status": status})
+            lineage_edges.append({"edge_type": "alias", "from": f"SEC::{canonical_security_id}", "to": f"EXQ::{exchange_qualified_security_id}", "status": status, "lineage_scope": "cross_registry", "governance_status": status, "raw_alias": raw_ticker or None, "normalized_alias": normalized_ticker or None, "source": provenance})
         if row.get("is_dual_listed") and canonical_security_id and exchange_qualified_security_id:
-            lineage_edges.append({"edge_type": "dual_listing", "from": f"SEC::{canonical_security_id}", "to": f"EXQ::{exchange_qualified_security_id}", "status": status})
+            lineage_edges.append({"edge_type": "dual_listing", "from": f"SEC::{canonical_security_id}", "to": f"EXQ::{exchange_qualified_security_id}", "status": status, "lineage_scope": "cross_registry", "governance_status": status, "raw_alias": raw_ticker or None, "normalized_alias": normalized_ticker or None, "source": provenance})
+
+    lineage_edges, dedup_diagnostics = _deduplicate_lineage_edges(lineage_edges)
 
     diagnostics = {
         "deterministic_alias_count": status_counts["deterministic_alias"],
@@ -109,6 +164,7 @@ def build_cross_registry_governance(rows: list[dict[str, Any]]) -> dict[str, Any
         "unresolved_dual_listing_candidates": status_counts["unresolved_cross_registry"],
         "conflicting_dual_listing_candidates": status_counts["conflicting_cross_registry"],
         "exchange_lineage_breaks": status_counts["unresolved_cross_registry"] + status_counts["conflicting_cross_registry"],
+        **dedup_diagnostics,
     }
 
     alias_hash = _stable_hash(alias_records)
@@ -121,6 +177,8 @@ def build_cross_registry_governance(rows: list[dict[str, Any]]) -> dict[str, Any
         "alias_hash_verified": bool(alias_hash),
         "alias_structures_hash": alias_hash,
         "cross_registry_lineage_hash": lineage_hash,
+        "lineage_hash_input": "deduplicated_canonical_lineage",
+        "lineage_dedup_applied": True,
         "dual_listing_continuity_hash": _stable_hash([e for e in lineage_edges if e["edge_type"] == "dual_listing"]),
     }
 
@@ -173,12 +231,14 @@ def run_cross_registry_identity_governance(rows: list[dict[str, Any]] | None = N
 
     replay_summary = {"phase": PHASE, **result["replay"], "enforcement_enabled": False, "canonical_override_enabled": False, "linkage_mode": "deterministic_exact_match_only"}
     phase_summary = {"phase": PHASE, **result["diagnostics"], **result["replay"], "replay_safe_lineage_enabled": True, "enforcement_enabled": False, "canonical_override_enabled": False, "linkage_mode": "deterministic_exact_match_only"}
+    lineage_dedup_summary = {"phase": PHASE, **result["diagnostics"], "lineage_hash_input": result["replay"]["lineage_hash_input"], "lineage_dedup_applied": result["replay"]["lineage_dedup_applied"], "deduplicated_lineage_edges": result["lineage_edges"], "enforcement_enabled": False, "canonical_override_enabled": False, "linkage_mode": "deterministic_exact_match_only"}
 
     _write_json(ALIAS_SUMMARY_PATH, alias_summary)
     _write_json(DUAL_LISTING_SUMMARY_PATH, dual_listing_summary)
     _write_json(LINEAGE_SUMMARY_PATH, lineage_summary)
     _write_json(ALIAS_REPLAY_SUMMARY_PATH, replay_summary)
     _write_json(PHASE_SUMMARY_PATH, phase_summary)
+    _write_json(LINEAGE_DEDUP_SUMMARY_PATH, lineage_dedup_summary)
     return result
 
 
