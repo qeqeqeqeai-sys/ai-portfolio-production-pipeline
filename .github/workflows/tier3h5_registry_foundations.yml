@@ -123,6 +123,15 @@ jobs:
           else
             echo "No Tier 3H.5 Phase 4 sample/CLI module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 4A governance explainability and audit APIs
+        run: |
+          mkdir -p logs
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/governance_explainability_api.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.governance_explainability_api
+          else
+            echo "No Tier 3H.5 Phase 4A explainability API module found; skipping."
+          fi
       - name: Run Tier 3H.5 tests
         run: |
           python -m pytest -q \
@@ -139,7 +148,8 @@ jobs:
             tests/test_tier3h5_canonical_graph_governance.py \
             tests/test_tier3h5_cross_registry_identity_governance.py \
             tests/test_tier3h5_canonical_propagation_memory.py \
-            tests/test_tier3h5_governance_operational_intelligence.py
+            tests/test_tier3h5_governance_operational_intelligence.py \
+            tests/test_tier3h5_governance_explainability_api.py
       - name: Upload observability summary
         uses: actions/upload-artifact@v4
         with:
@@ -192,3 +202,9 @@ jobs:
             logs/tier3h5_replay_health_summary.json
             logs/tier3h5_governance_anomaly_summary.json
             logs/tier3h5_phase3b_operational_intelligence_summary.json
+            logs/tier3h5_governance_explainability_summary.json
+            logs/tier3h5_lineage_audit_summary.json
+            logs/tier3h5_replay_audit_summary.json
+            logs/tier3h5_snapshot_audit_summary.json
+            logs/tier3h5_anomaly_explainability_summary.json
+            logs/tier3h5_phase4a_explainability_audit_summary.json
