@@ -15,7 +15,8 @@ class IssuerRecord:
     issuer_type: str | None = None
     sec_cik: str | None = None
     lei: str | None = None
-    status: str = "active"
+    issuer_status: str = "active"
+    source_authority: str = "fixture"
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,9 @@ class SecurityRecord:
     security_id: str
     issuer_id: str
     ticker: str
+    normalized_ticker: str
     exchange: str
+    normalized_exchange: str
     security_name: str | None
     security_type: str
     share_class: str | None = None
@@ -47,4 +50,14 @@ class ProvenanceRecord:
     rejected_record_count: int
     duplicate_record_count: int
     conflict_record_count: int
+    schema_version: str
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass(frozen=True)
+class IngestionRunRecord:
+    ingestion_run_id: str
+    source_name: str
+    source_checksum: str
+    schema_version: str
+    status: str
