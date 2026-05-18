@@ -38,6 +38,10 @@ def summarize_advisory_registry(lookup_payload: dict[str, Any] | None = None) ->
         "duplicate_legacy_candidates_collapsed_by_canonical_id": int(propagation.get("duplicate_legacy_candidates_collapsed_by_canonical_id", 0)),
         "canonical_identity_conflict_preventions": int(propagation.get("canonical_identity_conflict_preventions", 0)),
         "propagation_identity_mode_counts": dict(propagation.get("propagation_identity_mode_counts", {})),
+        "exchange_coverage_breakdown": dict(payload.get("exchange_coverage_breakdown", {})),
+        "security_type_coverage_breakdown": dict(payload.get("security_type_coverage_breakdown", {})),
+        "registry_coverage_ratio": float(payload.get("registry_coverage_ratio", 0.0)),
+        "unsupported_candidate_ratio": float(payload.get("unsupported_candidate_ratio", 0.0)),
     }
     summary["status"] = "success" if summary["advisory_registry_failures"] == 0 else "completed_with_findings"
     return summary

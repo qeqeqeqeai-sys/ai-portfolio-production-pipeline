@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from transmission_layers.asset_discovery.tier3h5.canonical_registry_normalization import normalize_exchange_code, normalize_ticker
+from transmission_layers.asset_discovery.tier3h5.canonical_registry_normalization import (
+    normalize_exchange_code,
+    normalize_security_type,
+    normalize_ticker,
+)
 from transmission_layers.asset_discovery.tier3h5.canonical_registry_resolution_observability import (
     emit_tier3h5_resolution_diagnostics,
     write_registry_resolution_summary,
@@ -33,7 +37,7 @@ def resolve_security_from_registry(
 ) -> RegistryResolutionResult:
     normalized_ticker = normalize_ticker(ticker)
     normalized_exchange = normalize_exchange_code(exchange)
-    normalized_security_type = (security_type or "").strip().lower()
+    normalized_security_type = normalize_security_type(security_type) if security_type else ""
 
     if not normalized_ticker or not normalized_exchange:
         return RegistryResolutionResult(
@@ -58,7 +62,7 @@ def resolve_security_from_registry(
     ]
 
     if normalized_security_type:
-        narrowed_matches = [row for row in base_matches if (row.get("security_type") or "").strip().lower() == normalized_security_type]
+        narrowed_matches = [row for row in base_matches if normalize_security_type(row.get("security_type")) == normalized_security_type]
         if len(narrowed_matches) == 1:
             row = narrowed_matches[0]
             return RegistryResolutionResult(

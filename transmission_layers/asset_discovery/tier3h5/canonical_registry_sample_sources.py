@@ -83,4 +83,33 @@ SAMPLE_REGISTRY_SOURCES = {
             "currency": "USD",
         }
     ],
+    "fixture_phase2a_global_coverage": [
+        {
+            "source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json",
+            "source_dataset_version": "2026-05-18",
+            "registry_region": "GLOBAL",
+            "exchange_source": "fixture_exchange_registry",
+            "listing_source": "fixture_listing_registry",
+            "registry_effective_date": "2026-05-18",
+            "registry_snapshot_id": "snapshot-2026-05-18-a",
+            "issuer_name": "Berkshire Hathaway Inc.",
+            "country_code": "US",
+            "primary_exchange": "NYSE",
+            "ticker": "BRK.B",
+            "issuer_type": "operating_company",
+            "sec_cik": "0001067983",
+            "security_name": "Class B",
+            "security_type": "equity",
+            "currency": "USD",
+        },
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "iShares Core S&P 500 ETF","country_code": "US","primary_exchange": "NYSEARCA","ticker": "IVV","issuer_type": "fund","sec_cik": "0001100663","security_name": "ETF","security_type": "ETF","currency": "USD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "Taiwan Semiconductor ADR","country_code": "US","primary_exchange": "NASDAQGS","ticker": "TSM","issuer_type": "depositary","sec_cik": "0001046179","security_name": "ADR","security_type": "ADR","currency": "USD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "CapitaLand Integrated Commercial Trust","country_code": "SG","primary_exchange": "SGX","ticker": "C38U","issuer_type": "reit","sec_cik": "SG0000000001","security_name": "REIT Unit","security_type": "REIT","currency": "SGD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "CK Hutchison Holdings","country_code": "HK","primary_exchange": "HKEX","ticker": "0001.HK","issuer_type": "operating_company","sec_cik": "HK0000000001","security_name": "Ordinary","security_type": "equity","currency": "HKD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "Shopify Inc.","country_code": "CA","primary_exchange": "TSX","ticker": "SHOP","issuer_type": "operating_company","sec_cik": "0001594805","security_name": "Class A","security_type": "equity","currency": "CAD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "Shell plc","country_code": "GB","primary_exchange": "LSE","ticker": "RDS.A","issuer_type": "operating_company","sec_cik": "0001306965","security_name": "Class A","security_type": "preferred_share","currency": "GBP"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "Example SPAC Unit","country_code": "US","primary_exchange": "AMEX","ticker": "EXU.U","issuer_type": "spac","sec_cik": "0000000001","security_name": "Unit","security_type": "unit","currency": "USD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "Example Warrant Co","country_code": "US","primary_exchange": "ARCA","ticker": "EXW.WS","issuer_type": "operating_company","sec_cik": "0000000002","security_name": "Warrant","security_type": "warrant","currency": "USD"},
+        {"source_url": "file://fixtures/tier3h5_phase2a_global_coverage.json","issuer_name": "Unsupported Bond","country_code": "US","primary_exchange": "NASDAQGM","ticker": "USBND","issuer_type": "bond","sec_cik": "0000000003","security_name": "Bond","security_type": "bond","currency": "USD"}
+    ],
 }
