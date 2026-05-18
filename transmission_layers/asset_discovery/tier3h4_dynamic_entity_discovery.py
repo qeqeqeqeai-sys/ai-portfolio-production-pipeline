@@ -40,6 +40,14 @@ SOURCE_TYPE_DIVERSITY_QUERY_TEMPLATES = [
     "{theme_label} SEC filing listed company ticker",
     "{theme_label} exchange listed companies Reuters Bloomberg",
 ]
+AUTHORITY_AWARE_QUERY_TEMPLATES = [
+    "{theme_label} site:nasdaq.com stock symbol",
+    "{theme_label} site:nyse.com listed company ticker",
+    "{theme_label} investor relations stock symbol",
+    "{theme_label} annual report ticker exchange",
+    "{theme_label} SEC 10-K ticker",
+    "{theme_label} company IR Nasdaq NYSE",
+]
 THEME_LABELS = {"ai_power_demand": ["AI data center power infrastructure", "AI electricity demand grid infrastructure", "AI hyperscaler power equipment", "AI data center cooling UPS"]}
 THEME_KEYWORDS = {"ai_power_demand": ["ai", "data center", "power", "grid", "infrastructure", "cooling", "ups", "electricity"]}
 TIER_A_DOMAINS = {"sec.gov", "reuters.com", "bloomberg.com", "wsj.com", "ft.com", "nasdaq.com", "nyse.com", "blackrock.com", "vanguard.com", "state street.com"}
@@ -58,6 +66,12 @@ except (TypeError, ValueError):
     EXCHANGE_AWARE_QUERY_BUDGET_RATIO = 0.30
 EXCHANGE_AWARE_QUERY_BUDGET_RATIO = max(0.0, min(1.0, EXCHANGE_AWARE_QUERY_BUDGET_RATIO))
 MIN_EXCHANGE_AWARE_QUERIES_PER_RUN = max(0, int(os.getenv("TIER3H4_MIN_EXCHANGE_AWARE_QUERIES_PER_RUN", "3")))
+try:
+    AUTHORITY_QUERY_BUDGET_RATIO = float(os.getenv("TIER3H4_AUTHORITY_QUERY_BUDGET_RATIO", "0.20"))
+except (TypeError, ValueError):
+    AUTHORITY_QUERY_BUDGET_RATIO = 0.20
+AUTHORITY_QUERY_BUDGET_RATIO = max(0.0, min(1.0, AUTHORITY_QUERY_BUDGET_RATIO))
+MIN_AUTHORITY_QUERIES_PER_RUN = max(0, int(os.getenv("TIER3H4_MIN_AUTHORITY_QUERIES_PER_RUN", "3")))
 
 
 def _safe_git_command(args: list[str]) -> str | None:
@@ -407,10 +421,11 @@ def _compose_evidence_text(source_title: str, source_snippet: str, source_domain
     )
     return "\n\n".join(parts)
 
-def _generate_queries(seed: DiscoverySeed) -> tuple[list[str], int]:
+def _generate_queries(seed: DiscoverySeed) -> tuple[list[str], int, int]:
     labels = THEME_LABELS.get(seed.theme_name, [seed.theme_name.replace("_", " ")])
     queries: list[str] = []
     exchange_aware_queries_generated = 0
+    authority_aware_queries_generated = 0
     for label in labels:
         for template in QUERY_TEMPLATES:
             queries.append(template.format(theme_label=label))
@@ -419,7 +434,10 @@ def _generate_queries(seed: DiscoverySeed) -> tuple[list[str], int]:
             exchange_aware_queries_generated += 1
         for template in SOURCE_TYPE_DIVERSITY_QUERY_TEMPLATES:
             queries.append(template.format(theme_label=label))
-    return list(dict.fromkeys(queries)), exchange_aware_queries_generated
+        for template in AUTHORITY_AWARE_QUERY_TEMPLATES:
+            queries.append(template.format(theme_label=label))
+            authority_aware_queries_generated += 1
+    return list(dict.fromkeys(queries)), exchange_aware_queries_generated, authority_aware_queries_generated
 
 def _deduplicate_queries(queries: list[str]) -> list[str]:
     seen: set[str] = set()
@@ -434,6 +452,15 @@ def _deduplicate_queries(queries: list[str]) -> list[str]:
 
 def _tavily_enabled() -> bool:
     return os.getenv("TIER3H4_TAVILY_ENABLED", "true").lower() in {"1", "true", "yes"}
+
+
+def _is_authority_aware_query(theme_name: str, query: str) -> bool:
+    query_norm = _normalize_query(query)
+    return query_norm in {
+        _normalize_query(t.format(theme_label=label))
+        for label in THEME_LABELS.get(theme_name, [theme_name.replace("_", " ")])
+        for t in AUTHORITY_AWARE_QUERY_TEMPLATES
+    }
 
 def _domain_tier_score(domain: str) -> float:
     if any(x in domain for x in TIER_A_DOMAINS): return 90.0
@@ -2246,6 +2273,13 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "exchange_aware_queries_prioritized": 0,
         "exchange_aware_queries_skipped_due_to_caps": 0,
         "general_queries_deprioritized_due_to_exchange_budget": 0,
+        "authority_source_acquisition_enabled": True,
+        "authority_aware_queries_generated": 0,
+        "authority_aware_queries_prioritized": 0,
+        "authority_aware_queries_executed": 0,
+        "authority_aware_query_budget_reserved": 0,
+        "authority_aware_query_budget_used": 0,
+        "authority_aware_queries_skipped_due_to_caps": 0,
         "query_execution_order_sample": [],
         "distinct_source_domains": 0,
         "distinct_source_urls": 0,
@@ -2288,29 +2322,52 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         MAX_TAVILY_QUERIES_PER_RUN,
         max(MIN_EXCHANGE_AWARE_QUERIES_PER_RUN, int(math.ceil(MAX_TAVILY_QUERIES_PER_RUN * EXCHANGE_AWARE_QUERY_BUDGET_RATIO))),
     )
+    reserved_authority_budget_total = min(
+        MAX_TAVILY_QUERIES_PER_RUN,
+        max(MIN_AUTHORITY_QUERIES_PER_RUN, int(math.ceil(MAX_TAVILY_QUERIES_PER_RUN * AUTHORITY_QUERY_BUDGET_RATIO))),
+    )
     strict_diag["exchange_aware_query_budget_reserved"] = reserved_exchange_budget_total
+    strict_diag["authority_aware_query_budget_reserved"] = reserved_authority_budget_total
     for idx, seed in enumerate(seeds, start=1):
-        queries, exchange_aware_generated = _generate_queries(seed)
+        queries, exchange_aware_generated, authority_aware_generated = _generate_queries(seed)
         strict_diag["exchange_aware_queries_generated"] += exchange_aware_generated
+        strict_diag["authority_aware_queries_generated"] += authority_aware_generated
         ops["generated_queries"] += len(queries)
         deduped_queries = _deduplicate_queries(queries)
+        authority_aware_queries = [q for q in deduped_queries if _is_authority_aware_query(seed.theme_name, q)]
         exchange_aware_queries = [q for q in deduped_queries if _is_exchange_aware_query(seed.theme_name, q)]
-        general_queries = [q for q in deduped_queries if not _is_exchange_aware_query(seed.theme_name, q)]
+        exchange_aware_non_authority_queries = [q for q in exchange_aware_queries if not _is_authority_aware_query(seed.theme_name, q)]
+        general_queries = [q for q in deduped_queries if not _is_exchange_aware_query(seed.theme_name, q) and not _is_authority_aware_query(seed.theme_name, q)]
+        per_theme_authority_reserved = min(
+            len(authority_aware_queries),
+            max(0, min(MAX_QUERIES_PER_THEME, reserved_authority_budget_total - strict_diag["authority_aware_query_budget_used"])),
+        )
         per_theme_exchange_reserved = min(
-            len(exchange_aware_queries),
+            len(exchange_aware_non_authority_queries),
             max(0, min(MAX_QUERIES_PER_THEME, reserved_exchange_budget_total - strict_diag["exchange_aware_query_budget_used"])),
         )
-        prioritized_queries = exchange_aware_queries[:per_theme_exchange_reserved]
-        exchange_aware_deprioritized = max(0, len(exchange_aware_queries) - per_theme_exchange_reserved)
+        prioritized_queries = exchange_aware_non_authority_queries[:per_theme_exchange_reserved]
+        authority_start_idx = 0
+        while len(prioritized_queries) < MAX_QUERIES_PER_THEME and authority_start_idx < per_theme_authority_reserved:
+            prioritized_queries.append(authority_aware_queries[authority_start_idx])
+            authority_start_idx += 1
+        exchange_aware_deprioritized = max(0, len(exchange_aware_non_authority_queries) - per_theme_exchange_reserved)
+        authority_aware_deprioritized = max(0, len(authority_aware_queries) - authority_start_idx)
         remaining_theme_slots = max(0, MAX_QUERIES_PER_THEME - len(prioritized_queries))
         prioritized_queries.extend(general_queries[:remaining_theme_slots])
         if remaining_theme_slots > len(general_queries):
+            additional_authority_slots = MAX_QUERIES_PER_THEME - len(prioritized_queries)
+            if additional_authority_slots > 0 and authority_start_idx < len(authority_aware_queries):
+                prioritized_queries.extend(authority_aware_queries[authority_start_idx : authority_start_idx + additional_authority_slots])
+                authority_start_idx += additional_authority_slots
             additional_exchange_slots = MAX_QUERIES_PER_THEME - len(prioritized_queries)
             if additional_exchange_slots > 0:
-                prioritized_queries.extend(exchange_aware_queries[per_theme_exchange_reserved : per_theme_exchange_reserved + additional_exchange_slots])
+                prioritized_queries.extend(exchange_aware_non_authority_queries[per_theme_exchange_reserved : per_theme_exchange_reserved + additional_exchange_slots])
         deduped_queries = prioritized_queries[:MAX_QUERIES_PER_THEME]
         strict_diag["exchange_aware_queries_prioritized"] += sum(1 for q in deduped_queries if _is_exchange_aware_query(seed.theme_name, q))
+        strict_diag["authority_aware_queries_prioritized"] += sum(1 for q in deduped_queries if _is_authority_aware_query(seed.theme_name, q))
         strict_diag["exchange_aware_queries_skipped_due_to_caps"] += exchange_aware_deprioritized
+        strict_diag["authority_aware_queries_skipped_due_to_caps"] += authority_aware_deprioritized
         strict_diag["general_queries_deprioritized_due_to_exchange_budget"] += max(0, min(len(general_queries), per_theme_exchange_reserved))
         ops["deduplicated_queries"] += len(deduped_queries)
         ops["skipped_duplicate_queries"] += max(0, len(queries) - len(deduped_queries))
@@ -2323,6 +2380,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 continue
             executed_query_keys.add(qkey)
             query_is_exchange_aware = _is_exchange_aware_query(seed.theme_name, query)
+            query_is_authority_aware = _is_authority_aware_query(seed.theme_name, query)
             cached = _fetch_cached_evidence(seed.theme_name, query, lookback_start, sgt_date)
             should_reuse_cached = bool(cached) and not force_fresh
             # TEMP DEBUG INSTRUMENTATION FOR FORCE-FRESH VALIDATION
@@ -2361,6 +2419,9 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                         if query_is_exchange_aware:
                             strict_diag["exchange_aware_queries_executed"] += 1
                             strict_diag["exchange_aware_query_budget_used"] += 1
+                        if query_is_authority_aware:
+                            strict_diag["authority_aware_queries_executed"] += 1
+                            strict_diag["authority_aware_query_budget_used"] += 1
                         else:
                             strict_diag["general_query_budget_used"] += 1
                         if len(strict_diag["query_execution_order_sample"]) < 25:
@@ -2368,7 +2429,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                                 {
                                     "theme_name": seed.theme_name,
                                     "query_text": query,
-                                    "query_class": "exchange_aware" if query_is_exchange_aware else "general",
+                                    "query_class": "authority_aware" if query_is_authority_aware else ("exchange_aware" if query_is_exchange_aware else "general"),
                                     "execution_index": ops["executed_queries"],
                                 }
                             )
@@ -3274,6 +3335,14 @@ def main() -> int:
     print(f"[tier3h4] general_query_budget_used={evidence_summary.get('general_query_budget_used',0)}")
     print(f"[tier3h4] exchange_aware_queries_prioritized={evidence_summary.get('exchange_aware_queries_prioritized',0)}")
     print(f"[tier3h4] exchange_aware_queries_skipped_due_to_caps={evidence_summary.get('exchange_aware_queries_skipped_due_to_caps',0)}")
+    print("[tier3h4] authority-aware query acquisition:")
+    print(f"[tier3h4] authority_source_acquisition_enabled={evidence_summary.get('authority_source_acquisition_enabled',False)}")
+    print(f"[tier3h4] authority_aware_queries_generated={evidence_summary.get('authority_aware_queries_generated',0)}")
+    print(f"[tier3h4] authority_aware_queries_prioritized={evidence_summary.get('authority_aware_queries_prioritized',0)}")
+    print(f"[tier3h4] authority_aware_queries_executed={evidence_summary.get('authority_aware_queries_executed',0)}")
+    print(f"[tier3h4] authority_aware_query_budget_reserved={evidence_summary.get('authority_aware_query_budget_reserved',0)}")
+    print(f"[tier3h4] authority_aware_query_budget_used={evidence_summary.get('authority_aware_query_budget_used',0)}")
+    print(f"[tier3h4] authority_aware_queries_skipped_due_to_caps={evidence_summary.get('authority_aware_queries_skipped_due_to_caps',0)}")
     print(f"[tier3h4] evidence_distinct_domains={evidence_summary.get('evidence_distinct_domains',0)}")
     print(f"[tier3h4] evidence_distinct_urls={evidence_summary.get('evidence_distinct_urls',0)}")
     print(f"[tier3h4] candidate_rows_with_multi_source_support={evidence_summary.get('candidate_rows_with_multi_source_support',0)}")
