@@ -20,4 +20,5 @@ __all__ = [
     "generate_security_id",
     "SAMPLE_REGISTRY_SOURCES",
     "run_registry_ingestion",
+    "SCHEMA_VERSION",
 ]
