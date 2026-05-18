@@ -135,6 +135,23 @@ STRICT_HYPHENATED_LISTED_PATTERN = re.compile(
 STRICT_TICKER_ON_EXCHANGE_PATTERN = re.compile(
     rf"(?i)\b(?:stock\s+symbol|ticker|symbol)\s+(?P<ticker>[A-Za-z0-9]{{1,6}})\s+on\s+(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b"
 )
+STRICT_TICKER_COMMA_DASH_EXCHANGE_PATTERN = re.compile(
+    rf"(?i)\b(?P<ticker>[A-Za-z0-9]{{1,6}})\s*(?:,|-)\s*(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b"
+)
+STRICT_SHARES_TRADE_ON_EXCHANGE_PATTERN = re.compile(
+    rf"(?i)\bshares\s+trade\s+on\s+(?:the\s+)?(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b(?:[^A-Za-z0-9]{{0,20}}(?P<ticker>[A-Za-z0-9]{{1,6}}))?"
+)
+STRICT_LISTED_SUFFIX_PATTERN = re.compile(
+    rf"(?i)\b(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*-\s*listed\b(?:[^A-Za-z0-9]{{0,20}}(?P<ticker>[A-Za-z0-9]{{1,6}}))?"
+)
+EXCHANGE_SIGNAL_DOMAIN_PRIORS = {
+    "nasdaq.com": "NASDAQ",
+    "nyse.com": "NYSE",
+    "sgx.com": "SGX",
+    "londonstockexchange.com": "LSE",
+    "hkex.com.hk": "HKEX",
+    "jpx.co.jp": "TSE",
+}
 MEANINGFUL_TEXT_MIN_LENGTH = 40
 
 CANONICAL_EXTRACTION_FIELDS = (
@@ -422,13 +439,16 @@ def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max:
         (STRICT_LISTED_CONTEXT_PATTERN, "strict_exchange_listed_context_regex"),
         (STRICT_HYPHENATED_LISTED_PATTERN, "strict_exchange_listed_context_regex"),
         (STRICT_TICKER_ON_EXCHANGE_PATTERN, "strict_exchange_ticker_on_exchange_regex"),
+        (STRICT_TICKER_COMMA_DASH_EXCHANGE_PATTERN, "strict_exchange_ticker_exchange_delimited_regex"),
+        (STRICT_SHARES_TRADE_ON_EXCHANGE_PATTERN, "strict_exchange_shares_trade_context_regex"),
+        (STRICT_LISTED_SUFFIX_PATTERN, "strict_exchange_suffix_listed_regex"),
     ]
     for pattern, extraction_method in matcher_specs:
         for match in pattern.finditer(raw_text):
             candidate_matches.append(
                 {
                     "label": _normalize_text(match.group("label")),
-                    "ticker": _normalize_text(match.group("ticker")).upper(),
+                    "ticker": _normalize_text(match.groupdict().get("ticker")).upper(),
                     "method": extraction_method,
                 }
             )
@@ -443,6 +463,8 @@ def _extract_strict_exchange_qualified_identifier(text: str, token_distance_max:
             unsupported_rejections.append(candidate["label"])
             continue
         ticker = candidate["ticker"]
+        if not ticker:
+            continue
         if ticker in NOISE_TICKER_DENYLIST:
             noise_rejections.append(ticker)
             continue
@@ -500,34 +522,65 @@ def _normalize_exchange_label(value: Any) -> str | None:
 def _infer_exchange_from_registry_context(*, ticker: str, candidate_name: str, source_domain: str, source_title: str, source_snippet: str, evidence_text: str, accepted_matches: list[dict[str, Any]]) -> dict[str, Any]:
     ticker_norm = _normalize_text(ticker).upper()
     if not ticker_norm or not re.match(r"^[A-Z0-9]{1,6}$", ticker_norm):
-        return {"accepted": False, "rejection_reason": "malformed_context", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "invalid_or_missing_ticker", "inferred_exchange": None}
+        return {"accepted": False, "rejection_reason": "malformed_context", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "invalid_or_missing_ticker", "inferred_exchange": None, "phrase_hits": 0, "suffix_hits": 0, "domain_prior_hits": 0, "conflict_rejections": 0}
     if ticker_norm in NOISE_TICKER_DENYLIST:
-        return {"accepted": False, "rejection_reason": "noisy_token", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "ticker_in_noise_denylist", "inferred_exchange": None}
+        return {"accepted": False, "rejection_reason": "noisy_token", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "ticker_in_noise_denylist", "inferred_exchange": None, "phrase_hits": 0, "suffix_hits": 0, "domain_prior_hits": 0, "conflict_rejections": 0}
     evidence_blob = " ".join([_normalize_text(candidate_name), _normalize_text(source_title), _normalize_text(source_snippet), _normalize_text(evidence_text)])
     if not evidence_blob:
-        return {"accepted": False, "rejection_reason": "malformed_context", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "empty_evidence_context", "inferred_exchange": None}
+        return {"accepted": False, "rejection_reason": "malformed_context", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "empty_evidence_context", "inferred_exchange": None, "phrase_hits": 0, "suffix_hits": 0, "domain_prior_hits": 0, "conflict_rejections": 0}
     matched_exchanges: list[str] = []
+    phrase_hits = 0
+    suffix_hits = 0
+    domain_prior_hits = 0
+    conflict_rejections = 0
     for label, canonical in EXCHANGE_LABEL_TO_CANONICAL.items():
         if re.search(rf"(?i)\b{re.escape(label)}\b", evidence_blob):
             matched_exchanges.append(canonical)
     for alias, canonical in EXCHANGE_ALIAS_TO_CANONICAL.items():
         if re.search(rf"(?i)\b{re.escape(alias)}\b", evidence_blob):
             matched_exchanges.append(canonical)
+    phrase_patterns = (
+        rf"(?i)\b(?:listed|traded|trades)\s+on\s+(?:the\s+)?(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b",
+        rf"(?i)\b(?:stock\s+symbol|ticker|symbol)\s+{re.escape(ticker_norm)}\s+on\s+(?:the\s+)?(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b",
+        rf"(?i)\b(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*:\s*{re.escape(ticker_norm)}\b",
+        rf"(?i)\b{re.escape(ticker_norm)}\s*\(\s*(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*\)",
+        rf"(?i)\b{re.escape(ticker_norm)}\s*(?:,|-)\s*(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\b",
+    )
+    for pattern in phrase_patterns:
+        for m in re.finditer(pattern, evidence_blob):
+            canonical = EXCHANGE_LABEL_TO_CANONICAL.get(_normalize_text(m.group("label")))
+            if canonical:
+                matched_exchanges.append(canonical)
+                phrase_hits += 1
+    for m in re.finditer(rf"(?i)\b(?P<label>{STRICT_EXCHANGE_LABEL_PATTERN})\s*-\s*listed\b", evidence_blob):
+        canonical = EXCHANGE_LABEL_TO_CANONICAL.get(_normalize_text(m.group("label")))
+        if canonical:
+            matched_exchanges.append(canonical)
+            suffix_hits += 1
     ticker_matches = [m for m in accepted_matches if _normalize_text(m.get("normalized_ticker")).upper() == ticker_norm]
     prior_exchange_counts = Counter(_normalize_exchange_label(m.get("normalized_exchange")) for m in ticker_matches if _normalize_exchange_label(m.get("normalized_exchange")))
     inferred_from_prior = prior_exchange_counts.most_common(1)[0][0] if prior_exchange_counts else None
     all_candidates = set(matched_exchanges) | set(prior_exchange_counts.keys())
+    domain_hint = _normalize_text(source_domain).lower()
+    domain_prior = None
+    for domain_suffix, canonical in EXCHANGE_SIGNAL_DOMAIN_PRIORS.items():
+        if domain_hint.endswith(domain_suffix):
+            domain_prior = canonical
+            break
+    if ticker_norm and domain_prior and len(all_candidates) <= 1:
+        all_candidates.add(domain_prior)
+        domain_prior_hits += 1
     if len(all_candidates) > 1:
-        return {"accepted": False, "rejection_reason": "ambiguous_context_window", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": f"conflicting_exchanges={sorted(all_candidates)}", "inferred_exchange": None}
+        conflict_rejections += 1
+        return {"accepted": False, "rejection_reason": "ambiguous_context_window", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": f"conflicting_exchanges={sorted(all_candidates)}; phrase_hits={phrase_hits}; suffix_hits={suffix_hits}; domain_prior_hits={domain_prior_hits}; conflict_rejections={conflict_rejections}", "inferred_exchange": None, "phrase_hits": phrase_hits, "suffix_hits": suffix_hits, "domain_prior_hits": domain_prior_hits, "conflict_rejections": conflict_rejections}
     inferred_exchange = inferred_from_prior or (next(iter(all_candidates)) if all_candidates else None)
     if not inferred_exchange:
-        return {"accepted": False, "rejection_reason": "no_context_phrase", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "no_deterministic_exchange_signal", "inferred_exchange": None}
+        return {"accepted": False, "rejection_reason": "no_context_phrase", "inference_confidence_score": 0.0, "confidence_band": "rejected", "inference_method": "registry_assisted_inference", "inference_notes": "no_deterministic_exchange_signal", "inferred_exchange": None, "phrase_hits": phrase_hits, "suffix_hits": suffix_hits, "domain_prior_hits": domain_prior_hits, "conflict_rejections": conflict_rejections}
     score = 0.0
     if inferred_from_prior:
         score += min(0.55, 0.2 + 0.15 * prior_exchange_counts.get(inferred_exchange, 0))
     if inferred_exchange in matched_exchanges:
         score += 0.20
-    domain_hint = _normalize_text(source_domain).lower()
     if inferred_exchange == "NASDAQ" and "nasdaq.com" in domain_hint:
         score += 0.20
     elif inferred_exchange == "NYSE" and "nyse.com" in domain_hint:
@@ -542,9 +595,13 @@ def _infer_exchange_from_registry_context(*, ticker: str, candidate_name: str, s
         "inference_confidence_score": score,
         "confidence_band": confidence_band,
         "inference_method": "registry_assisted_inference",
-        "inference_notes": f"prior_match_count={prior_exchange_counts.get(inferred_exchange, 0)}; matched_exchanges={sorted(set(matched_exchanges))}",
+        "inference_notes": f"prior_match_count={prior_exchange_counts.get(inferred_exchange, 0)}; matched_exchanges={sorted(set(matched_exchanges))}; phrase_hits={phrase_hits}; suffix_hits={suffix_hits}; domain_prior_hits={domain_prior_hits}; conflict_rejections={conflict_rejections}",
         "accepted": accepted,
         "rejection_reason": None if accepted else ("low_confidence" if confidence_band in {"weak_context", "rejected"} else "unknown_rejection_reason"),
+        "phrase_hits": phrase_hits,
+        "suffix_hits": suffix_hits,
+        "domain_prior_hits": domain_prior_hits,
+        "conflict_rejections": conflict_rejections,
     }
 
 STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
@@ -1768,13 +1825,23 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "confidence_band_medium": 0,
         "confidence_band_low": 0,
         "confidence_band_rejected": 0,
+        "exchange_signal_enrichment_enabled": True,
+        "exchange_signal_patterns_added": 4,
+        "exchange_signal_contexts_scanned": 0,
+        "exchange_signal_matches_found": 0,
+        "exchange_signal_domain_prior_hits": 0,
+        "exchange_signal_phrase_hits": 0,
+        "exchange_signal_suffix_hits": 0,
+        "exchange_signal_conflict_rejections": 0,
+        "exchange_like_patterns_after_enrichment": 0,
+        "exchange_signal_sample_matches": [],
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
     strict_propagated_row_keys: set[str] = set()
     strict_candidate_owner_matches: dict[str, list[dict[str, Any]]] = {}
     seen_context_windows: set[str] = set()
-    matcher_patterns = [STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN, STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN, STRICT_LISTED_CONTEXT_PATTERN, STRICT_HYPHENATED_LISTED_PATTERN, STRICT_TICKER_ON_EXCHANGE_PATTERN]
+    matcher_patterns = [STRICT_EXCHANGE_QUALIFIED_IDENTIFIER_PATTERN, STRICT_PARENTHEICAL_TICKER_THEN_EXCHANGE_PATTERN, STRICT_PARENTHEICAL_EXCHANGE_THEN_TICKER_PATTERN, STRICT_LISTED_CONTEXT_PATTERN, STRICT_HYPHENATED_LISTED_PATTERN, STRICT_TICKER_ON_EXCHANGE_PATTERN, STRICT_TICKER_COMMA_DASH_EXCHANGE_PATTERN, STRICT_SHARES_TRADE_ON_EXCHANGE_PATTERN, STRICT_LISTED_SUFFIX_PATTERN]
     for idx, seed in enumerate(seeds, start=1):
         queries = _generate_queries(seed)
         ops["generated_queries"] += len(queries)
@@ -1918,6 +1985,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                             continue
                         seen_context_windows.add(dedupe_key)
                         strict_diag["strict_identifier_unique_context_windows_scanned"] += 1
+                        strict_diag["exchange_signal_contexts_scanned"] += 1
                         matches = [m for p in matcher_patterns for m in p.finditer(normalized_window)]
                         detected_exchange_labels = sorted({_normalize_text(m.group("label")) for m in matches})
                         detected_ticker_tokens = sorted({_normalize_text(m.group("ticker")).upper() for m in matches})
@@ -2070,6 +2138,10 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             accepted_matches=strict_diag.get("strict_identifier_accepted_matches") or [],
         )
         band = inferred.get("confidence_band")
+        strict_diag["exchange_signal_phrase_hits"] += int(inferred.get("phrase_hits") or 0)
+        strict_diag["exchange_signal_suffix_hits"] += int(inferred.get("suffix_hits") or 0)
+        strict_diag["exchange_signal_domain_prior_hits"] += int(inferred.get("domain_prior_hits") or 0)
+        strict_diag["exchange_signal_conflict_rejections"] += int(inferred.get("conflict_rejections") or 0)
         if band == "high_confidence":
             strict_diag["confidence_band_high"] += 1
         elif band == "medium_confidence":
@@ -2095,6 +2167,11 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             row["accepted"] = True
             row["rejection_reason"] = None
             row["ambiguity_reason"] = None
+            strict_diag["exchange_signal_matches_found"] += 1
+            if len(strict_diag["exchange_signal_sample_matches"]) < 5:
+                strict_diag["exchange_signal_sample_matches"].append(
+                    {"ticker": ticker_val, "exchange": inferred_exchange, "note": inferred.get("inference_notes")}
+                )
         else:
             reason = inferred.get("rejection_reason")
             if reason == "ambiguous_context_window":
@@ -2108,6 +2185,23 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     sampled = evidence_rows[:3]
     fresh_quality = _fresh_evidence_quality_diagnostics(evidence_rows)
     strict_diag["strict_identifier_malformed_context_count"] = strict_diag["strict_identifier_malformed_context_count_after_normalization"]
+    strict_diag["exchange_like_patterns_after_enrichment"] = sum(
+        1
+        for row in evidence_rows
+        if EXCHANGE_LIKE_PATTERN.search(
+            _normalize_text(
+                " ".join(
+                    [
+                        str(row.get("source_title") or ""),
+                        str(row.get("source_snippet") or ""),
+                        str(row.get("evidence_text") or ""),
+                        str(row.get("normalized_exchange") or ""),
+                        str(row.get("extracted_exchange") or ""),
+                    ]
+                )
+            )
+        )
+    )
     strict_diag["strict_identifier_malformed_context_delta"] = strict_diag["strict_identifier_malformed_context_count_before_normalization"] - strict_diag["strict_identifier_malformed_context_count_after_normalization"]
     strict_diag["malformed_context_hygiene_improvement"] = strict_diag["strict_identifier_malformed_context_count_before_normalization"] - strict_diag["strict_identifier_malformed_context_count_after_normalization"]
     strict_diag["malformed_context_delta"] = strict_diag["strict_identifier_malformed_context_count_after_normalization"] - strict_diag["strict_identifier_malformed_context_count_before_normalization"]
@@ -2447,6 +2541,13 @@ def main() -> int:
     print(f"[tier3h4] source_titles={evidence_summary['fresh_evidence_rows_with_source_title']}")
     print(f"[tier3h4] ticker_like_patterns={evidence_summary['fresh_evidence_rows_with_ticker_like_patterns']}")
     print(f"[tier3h4] exchange_like_patterns={evidence_summary['fresh_evidence_rows_with_exchange_like_patterns']}")
+    print("[tier3h4] exchange signal enrichment:")
+    print(f"[tier3h4] exchange_signal_contexts_scanned={evidence_summary.get('exchange_signal_contexts_scanned',0)}")
+    print(f"[tier3h4] exchange_signal_matches_found={evidence_summary.get('exchange_signal_matches_found',0)}")
+    print(f"[tier3h4] exchange_signal_domain_prior_hits={evidence_summary.get('exchange_signal_domain_prior_hits',0)}")
+    print(f"[tier3h4] exchange_signal_phrase_hits={evidence_summary.get('exchange_signal_phrase_hits',0)}")
+    print(f"[tier3h4] exchange_signal_conflict_rejections={evidence_summary.get('exchange_signal_conflict_rejections',0)}")
+    print(f"[tier3h4] exchange_like_patterns_after_enrichment={evidence_summary.get('exchange_like_patterns_after_enrichment',0)}")
     print("[tier3h4] strict identifier extraction:")
     print(f"[tier3h4] phase={evidence_summary['strict_identifier_phase']}")
     print(f"[tier3h4] runtime_source={evidence_summary['evidence_source_mode']}")
