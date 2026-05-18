@@ -63,6 +63,15 @@ jobs:
           else
             echo "No Tier 3H.5 Phase 2B registry quality/freshness module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 2C replay governance
+        run: |
+          mkdir -p logs
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/registry_replay_governance.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.registry_replay_governance
+          else
+            echo "No Tier 3H.5 Phase 2C replay governance module found; skipping."
+          fi
       - name: Run Tier 3H.5 Phase 3 sample/CLI (if present)
         run: |
           if [ -f "transmission_layers/asset_discovery/tier3h5/canonical_graph_governance.py" ]; then
@@ -92,6 +101,7 @@ jobs:
             tests/test_tier3h5_advisory_registry_observability.py \
             tests/test_tier3h5_registry_propagation_governance.py \
             tests/test_tier3h5_registry_quality_freshness_governance.py \
+            tests/test_tier3h5_registry_replay_governance.py \
             tests/test_tier3h5_canonical_graph_governance.py \
             tests/test_tier3h5_canonical_propagation_memory.py
       - name: Upload observability summary
@@ -118,3 +128,8 @@ jobs:
             logs/tier3h5_registry_snapshot_lineage.json
             logs/tier3h5_source_precedence_diagnostics.json
             logs/tier3h5_phase2b_quality_freshness_summary.json
+            logs/tier3h5_registry_drift_summary.json
+            logs/tier3h5_registry_replay_governance_summary.json
+            logs/tier3h5_registry_snapshot_comparison.json
+            logs/tier3h5_registry_replay_metrics.json
+            logs/tier3h5_phase2c_replay_governance_summary.json
