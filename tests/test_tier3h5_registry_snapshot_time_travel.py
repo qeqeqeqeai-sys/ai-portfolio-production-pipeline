@@ -82,3 +82,18 @@ def test_hash_stability_excludes_archive_timestamp(tmp_path: Path, monkeypatch) 
     summary = run_phase2d_time_travel_reconstruction("snap-304")
     assert summary["snapshot_hash"] == manifest["snapshot_hash"]
     assert summary["snapshot_hash_verified"] is True
+
+
+def test_retention_governance_emits_json_null_for_absent_snapshot_ids(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("logs").mkdir()
+    Path("logs/tier3h5_registry_snapshot_lineage.json").write_text(json.dumps(_rows("snap-305")), encoding="utf-8")
+    Path("logs/tier3h5_registry_replay_baseline_history.json").write_text(json.dumps({"history": [{"registry_snapshot_id": None}]}), encoding="utf-8")
+
+    run_phase2d_snapshot_archive()
+    retention_text = Path("logs/tier3h5_snapshot_retention_governance.json").read_text(encoding="utf-8")
+    retention = json.loads(retention_text)
+
+    assert retention["oldest_snapshot_id"] is None
+    assert retention["newest_snapshot_id"] is None
+    assert '"None"' not in retention_text
