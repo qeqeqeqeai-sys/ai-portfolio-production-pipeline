@@ -49,6 +49,15 @@ REGISTRY_FIXTURE = [
         "is_active": True,
         "source_name": "fixture_us_listings",
     },
+    {
+        "security_id": "sec_arca_ivv_etf",
+        "issuer_id": "issuer_ivv",
+        "ticker": "IVV",
+        "exchange": "ARCA",
+        "security_type": "etf",
+        "is_active": True,
+        "source_name": "fixture_phase2a_global_coverage",
+    },
 ]
 
 
@@ -119,6 +128,12 @@ def test_deterministic_explanation_text() -> None:
     first = resolve_security_from_registry("AAPL", "NASDAQ", REGISTRY_FIXTURE)
     second = resolve_security_from_registry("AAPL", "NASDAQ", REGISTRY_FIXTURE)
     assert first.explanation == second.explanation
+
+
+def test_exchange_alias_and_security_type_alias_support() -> None:
+    result = resolve_security_from_registry("IVV", "NYSEARCA", REGISTRY_FIXTURE, security_type="ETF")
+    assert result.resolution_status == "accepted"
+    assert result.match_rule == "exact_exchange_ticker_security_type"
 
 
 def test_summary_json_generation(tmp_path: Path, monkeypatch) -> None:

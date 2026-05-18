@@ -62,3 +62,16 @@ def test_summary_json_is_written(tmp_path: Path, monkeypatch) -> None:
         "status",
     ]:
         assert key in payload
+
+
+def test_phase2a_global_coverage_and_provenance(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = run_registry_ingestion("fixture_phase2a_global_coverage", SAMPLE_REGISTRY_SOURCES["fixture_phase2a_global_coverage"])
+    summary = result["summary"]
+    assert summary["records_seen"] == 10
+    assert summary["records_accepted"] == 9
+    assert summary["unsupported_security_types"] == ["bond"]
+    assert summary["exchange_coverage_breakdown"]["ARCA"] >= 2
+    assert summary["security_type_coverage_breakdown"]["etf"] == 1
+    assert summary["registry_coverage_ratio"] == 0.9
+    assert result["provenance"].normalization_version.startswith("tier3h5_phase2a")

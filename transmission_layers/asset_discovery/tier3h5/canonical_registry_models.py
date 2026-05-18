@@ -36,6 +36,13 @@ class ProvenanceRecord:
     provenance_id: str
     ingestion_run_id: str
     source_name: str
+    source_dataset_version: str | None
+    registry_region: str | None
+    exchange_source: str | None
+    listing_source: str | None
+    normalization_version: str
+    registry_effective_date: str | None
+    registry_snapshot_id: str | None
     source_url: str | None
     source_retrieved_at: datetime
     source_checksum: str

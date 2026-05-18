@@ -18,3 +18,10 @@ Phase 1D adds an **advisory-only** and **diagnostic-only** side-channel registry
 
 ## Freeze boundary
 Tier 3H.4 behavior remains frozen: no enforcement, no canonical override, no fuzzy/semantic/LLM matching. Any future enforcement remains intentionally deferred.
+
+## Phase 2A coverage extension (deterministic-only)
+- Added centralized canonical normalization for ticker, exchange, and security type with normalization versioning.
+- Exchange aliases are deterministic exact canonicalizations only (for example `NYSEARCA|ARCA|AMEX -> ARCA`, `NASDAQGS|NASDAQGM|NASDAQ -> NASDAQ`).
+- Security types now include `ETF`, `ADR`, `REIT`, `preferred_share`, `warrant`, and `unit` in addition to existing supported types.
+- Added advisory telemetry/ingestion diagnostics for coverage ratios, unsupported candidates, exchange/security coverage breakdowns, and normalization failure counts.
+- Governance preserved: no advisory enforcement, no scoring mutation, no propagation mutation, no canonical overwrite behavior.
