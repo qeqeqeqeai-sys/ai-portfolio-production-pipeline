@@ -1156,16 +1156,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             diagnostics["unique_index_column_sets_detected"] = sorted(unique_index_signatures)
 
         unique_constraint_rows: list[dict[str, Any]] = []
-        diagnostics["uniqueness_diagnostics_branch_entered"] = True
-        print("[tier3h4] uniqueness_diagnostics_branch_entered=True")
         diagnostics["unique_contract_introspection_status"] = None
         diagnostics["unique_contract_query_status"] = None
         diagnostics["unique_contract_query_error"] = None
-        diagnostics["unique_contract_raw_response_type"] = None
-        diagnostics["unique_contract_raw_response_preview"] = None
-        diagnostics["unique_contract_rows_returned"] = 0
-        diagnostics["uniqueness_query_execution_started"] = True
-        print("[tier3h4] uniqueness_query_execution_started=True")
         try:
             rpc_response = requests.post(
                 f"{url}/rest/v1/rpc/get_unique_constraints_for_table",
@@ -1183,10 +1176,7 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
                 constraints_payload = rpc_response.json()
             except Exception:
                 constraints_payload = rpc_response.text
-            diagnostics["unique_contract_raw_response_type"] = type(constraints_payload).__name__
-            diagnostics["unique_contract_raw_response_preview"] = str(constraints_payload)[:500]
             constraints_rows = _extract_rows_from_supabase_metadata_response(constraints_payload)
-            diagnostics["unique_contract_rows_returned"] = len(constraints_rows)
             diagnostics["unique_contract_query_status"] = "ok" if constraints_rows else "empty"
             for row in constraints_rows:
                 if not isinstance(row, dict):
@@ -1205,13 +1195,9 @@ def upsert_supabase(rows: list[dict[str, Any]], table_name: str, on_conflict: st
             diagnostics["unique_contract_query_status"] = "error"
             diagnostics["unique_contract_query_error"] = repr(unique_query_exc)
         finally:
-            diagnostics["uniqueness_query_execution_finished"] = True
-            print("[tier3h4] uniqueness_query_execution_finished=True")
             print(f"[tier3h4] unique_contract_query_status={diagnostics.get('unique_contract_query_status')}")
-            print(f"[tier3h4] unique_contract_query_error={diagnostics.get('unique_contract_query_error')}")
-            print(f"[tier3h4] unique_contract_raw_response_type={diagnostics.get('unique_contract_raw_response_type')}")
-            print(f"[tier3h4] unique_contract_raw_response_preview={diagnostics.get('unique_contract_raw_response_preview')}")
-            print(f"[tier3h4] unique_contract_rows_returned={diagnostics.get('unique_contract_rows_returned')}")
+            if diagnostics.get("unique_contract_query_status") != "ok":
+                print(f"[tier3h4] unique_contract_query_error={diagnostics.get('unique_contract_query_error')}")
         if not unique_constraint_rows:
             fallback_unique_rows: list[dict[str, Any]] = []
             for idx_row in diagnostics.get("failing_table_indexes") or []:
