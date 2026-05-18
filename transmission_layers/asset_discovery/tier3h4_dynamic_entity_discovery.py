@@ -604,6 +604,125 @@ def _infer_exchange_from_registry_context(*, ticker: str, candidate_name: str, s
         "conflict_rejections": conflict_rejections,
     }
 
+
+def _build_cross_source_consensus(evidence_rows: list[dict[str, Any]], accepted_matches: list[dict[str, Any]]) -> dict[tuple[str, str, str], dict[str, Any]]:
+    consensus: dict[tuple[str, str, str], dict[str, Any]] = {}
+    strict_keys: set[tuple[str, str, str]] = set()
+    for match in accepted_matches:
+        candidate_asset_id = _normalize_text(match.get("candidate_asset_id"))
+        ticker = _normalize_text(match.get("normalized_ticker")).upper()
+        exchange = _normalize_exchange_label(match.get("normalized_exchange"))
+        if candidate_asset_id and ticker and exchange:
+            strict_keys.add((candidate_asset_id, ticker, exchange))
+    for row in evidence_rows:
+        candidate_asset_id = _normalize_text(row.get("candidate_asset_id"))
+        ticker = _normalize_text(row.get("normalized_ticker") or row.get("extracted_ticker") or row.get("ticker")).upper()
+        exchange = _normalize_exchange_label(row.get("normalized_exchange") or row.get("extracted_exchange") or row.get("exchange"))
+        if not candidate_asset_id or not ticker or not exchange:
+            continue
+        key = (candidate_asset_id, ticker, exchange)
+        entry = consensus.setdefault(
+            key,
+            {
+                "candidate_asset_id": candidate_asset_id,
+                "normalized_ticker": ticker,
+                "normalized_exchange": exchange,
+                "source_domains": set(),
+                "source_urls": set(),
+                "methods": Counter(),
+                "quality_scores": [],
+                "ticker_values_for_candidate": set(),
+                "exchange_values_for_candidate": set(),
+                "strict_support": False,
+                "enriched_signal_support": False,
+                "domain_prior_support": False,
+                "metadata_only_count": 0,
+                "textual_support_count": 0,
+            },
+        )
+        entry["source_domains"].add(_normalize_text(row.get("source_domain")).lower())
+        entry["source_urls"].add(_normalize_text(str(row.get("source_url") or "")))
+        method = _normalize_text(row.get("extraction_method") or row.get("inference_method") or "unknown")
+        entry["methods"][method] += 1
+        entry["quality_scores"].append(_safe_float(row.get("evidence_quality_score"), 0.0))
+        if method.startswith("strict_"):
+            entry["strict_support"] = True
+        if "registry_assisted_inference" in method:
+            entry["enriched_signal_support"] = True
+        if "domain_prior" in _normalize_text(row.get("extraction_notes")).lower():
+            entry["domain_prior_support"] = True
+        combined_text = _normalize_text(" ".join([str(row.get("source_title") or ""), str(row.get("source_snippet") or ""), str(row.get("evidence_text") or "")]))
+        if combined_text and not _is_low_value_identifier_context(combined_text):
+            entry["textual_support_count"] += 1
+        else:
+            entry["metadata_only_count"] += 1
+    for entry in consensus.values():
+        owner_rows = [r for r in evidence_rows if _normalize_text(r.get("candidate_asset_id")) == entry["candidate_asset_id"]]
+        entry["ticker_values_for_candidate"] = {
+            _normalize_text(r.get("normalized_ticker") or r.get("extracted_ticker") or r.get("ticker")).upper()
+            for r in owner_rows
+            if _normalize_text(r.get("normalized_ticker") or r.get("extracted_ticker") or r.get("ticker"))
+        }
+        entry["exchange_values_for_candidate"] = {
+            _normalize_exchange_label(r.get("normalized_exchange") or r.get("extracted_exchange") or r.get("exchange"))
+            for r in owner_rows
+            if _normalize_exchange_label(r.get("normalized_exchange") or r.get("extracted_exchange") or r.get("exchange"))
+        }
+        entry["strict_support"] = entry["strict_support"] or (
+            (entry["candidate_asset_id"], entry["normalized_ticker"], entry["normalized_exchange"]) in strict_keys
+        )
+    return consensus
+
+
+def _score_cross_source_consensus(consensus_entry: dict[str, Any]) -> dict[str, Any]:
+    domains = {d for d in consensus_entry.get("source_domains", set()) if d}
+    urls = {u for u in consensus_entry.get("source_urls", set()) if u}
+    qualities = [q for q in consensus_entry.get("quality_scores", []) if q > 0]
+    distinct_domains = len(domains)
+    distinct_urls = len(urls)
+    conflict_ticker_count = max(0, len(consensus_entry.get("ticker_values_for_candidate", set())) - 1)
+    conflict_exchange_count = max(0, len(consensus_entry.get("exchange_values_for_candidate", set())) - 1)
+    ticker = consensus_entry.get("normalized_ticker") or ""
+    score = 0.0
+    score += min(0.25, distinct_domains * 0.12)
+    score += min(0.25, distinct_urls * 0.10)
+    score += min(0.15, max(0, len(consensus_entry.get("quality_scores", [])) - 1) * 0.05)
+    score += 0.10 if consensus_entry.get("strict_support") else 0.0
+    score += 0.08 if consensus_entry.get("enriched_signal_support") else 0.0
+    score += 0.07 if consensus_entry.get("domain_prior_support") else 0.0
+    score += min(0.10, (sum(qualities) / (100.0 * max(1, len(qualities))))) if qualities else 0.0
+    if conflict_exchange_count > 0:
+        score -= min(0.60, 0.30 + 0.20 * conflict_exchange_count)
+    if conflict_ticker_count > 0:
+        score -= min(0.60, 0.30 + 0.20 * conflict_ticker_count)
+    if ticker in NOISE_TICKER_DENYLIST:
+        score -= 0.80
+    if distinct_domains < 2 and distinct_urls < 2:
+        score -= 0.25
+    if consensus_entry.get("textual_support_count", 0) == 0 and consensus_entry.get("domain_prior_support"):
+        score -= 0.50
+    if consensus_entry.get("metadata_only_count", 0) > 0 and consensus_entry.get("textual_support_count", 0) == 0:
+        score -= 0.20
+    if (sum(qualities) / max(1, len(qualities))) < 35:
+        score -= 0.20
+    score = round(max(0.0, min(1.0, score)), 4)
+    band = "high_consensus" if score >= 0.85 else "medium_consensus" if score >= 0.65 else "weak_consensus" if score >= 0.45 else "rejected_consensus"
+    conflict_count = conflict_exchange_count + conflict_ticker_count
+    rejected_single_source = distinct_domains < 2 and distinct_urls < 2
+    return {
+        "consensus_confidence": score,
+        "consensus_band": band,
+        "distinct_domains": distinct_domains,
+        "distinct_urls": distinct_urls,
+        "conflict_count": conflict_count,
+        "conflicting_exchange": conflict_exchange_count > 0,
+        "conflicting_ticker": conflict_ticker_count > 0,
+        "rejected_single_source": rejected_single_source,
+        "rejected_noise_ticker": ticker in NOISE_TICKER_DENYLIST,
+        "rejected_low_quality": (sum(qualities) / max(1, len(qualities))) < 35 if qualities else True,
+        "domain_only_support_rejection": consensus_entry.get("textual_support_count", 0) == 0 and consensus_entry.get("domain_prior_support"),
+    }
+
 STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
     "multiple_tickers_in_context",
     "multiple_exchanges_in_context",
@@ -1835,6 +1954,24 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "exchange_signal_conflict_rejections": 0,
         "exchange_like_patterns_after_enrichment": 0,
         "exchange_signal_sample_matches": [],
+        "cross_source_consensus_enabled": True,
+        "consensus_candidates_evaluated": 0,
+        "consensus_candidates_accepted": 0,
+        "consensus_candidates_rejected": 0,
+        "consensus_rejected_single_source": 0,
+        "consensus_rejected_conflict": 0,
+        "consensus_rejected_low_confidence": 0,
+        "consensus_distinct_domain_support_avg": 0.0,
+        "consensus_distinct_url_support_avg": 0.0,
+        "consensus_confidence_avg": 0.0,
+        "consensus_band_high": 0,
+        "consensus_band_medium": 0,
+        "consensus_band_weak": 0,
+        "consensus_band_rejected": 0,
+        "consensus_promoted_matches": 0,
+        "consensus_reinforced_strict_matches": 0,
+        "consensus_conflict_rejections": 0,
+        "consensus_sample_matches": [],
     }
     strict_unique_tickers: set[str] = set()
     strict_unique_exchanges: set[str] = set()
@@ -2180,6 +2317,85 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                 strict_diag["exchange_inference_rejected_noise"] += 1
             else:
                 strict_diag["exchange_inference_rejected_low_confidence"] += 1
+    consensus_map = _build_cross_source_consensus(evidence_rows, strict_diag.get("strict_identifier_accepted_matches") or [])
+    consensus_domains: list[int] = []
+    consensus_urls: list[int] = []
+    consensus_scores: list[float] = []
+    strict_keys = {
+        (_normalize_text(m.get("candidate_asset_id")), _normalize_text(m.get("normalized_ticker")).upper(), _normalize_exchange_label(m.get("normalized_exchange")))
+        for m in strict_diag.get("strict_identifier_accepted_matches") or []
+        if _normalize_text(m.get("candidate_asset_id")) and _normalize_text(m.get("normalized_ticker")) and _normalize_exchange_label(m.get("normalized_exchange"))
+    }
+    for key, entry in consensus_map.items():
+        strict_diag["consensus_candidates_evaluated"] += 1
+        score = _score_cross_source_consensus(entry)
+        consensus_domains.append(score["distinct_domains"])
+        consensus_urls.append(score["distinct_urls"])
+        consensus_scores.append(score["consensus_confidence"])
+        if score["consensus_band"] == "high_consensus":
+            strict_diag["consensus_band_high"] += 1
+        elif score["consensus_band"] == "medium_consensus":
+            strict_diag["consensus_band_medium"] += 1
+        elif score["consensus_band"] == "weak_consensus":
+            strict_diag["consensus_band_weak"] += 1
+        else:
+            strict_diag["consensus_band_rejected"] += 1
+        has_required_support = score["distinct_urls"] >= 2 or score["distinct_domains"] >= 2
+        rejected_for_conflict = score["conflicting_exchange"] or score["conflicting_ticker"]
+        accepted = (
+            bool(entry.get("normalized_ticker"))
+            and bool(entry.get("normalized_exchange"))
+            and has_required_support
+            and not rejected_for_conflict
+            and not score["rejected_noise_ticker"]
+            and not score["domain_only_support_rejection"]
+            and not score["rejected_low_quality"]
+            and score["consensus_confidence"] >= 0.65
+        )
+        if not accepted:
+            strict_diag["consensus_candidates_rejected"] += 1
+            if score["rejected_single_source"]:
+                strict_diag["consensus_rejected_single_source"] += 1
+            if rejected_for_conflict:
+                strict_diag["consensus_rejected_conflict"] += 1
+                strict_diag["consensus_conflict_rejections"] += 1
+            if score["consensus_confidence"] < 0.65:
+                strict_diag["consensus_rejected_low_confidence"] += 1
+            continue
+        strict_diag["consensus_candidates_accepted"] += 1
+        in_strict = key in strict_keys
+        if in_strict:
+            strict_diag["consensus_reinforced_strict_matches"] += 1
+        else:
+            strict_diag["consensus_promoted_matches"] += 1
+        note = (
+            f"distinct_domains={score['distinct_domains']}; distinct_urls={score['distinct_urls']}; strict_support={entry.get('strict_support')}; "
+            f"enriched_signal_support={entry.get('enriched_signal_support')}; domain_prior_support={entry.get('domain_prior_support')}; "
+            f"conflict_count={score['conflict_count']}; consensus_confidence={score['consensus_confidence']}"
+        )
+        for row in evidence_rows + candidate_rows:
+            if _normalize_text(row.get("candidate_asset_id")) != entry["candidate_asset_id"]:
+                continue
+            if _normalize_text(row.get("normalized_ticker") or row.get("extracted_ticker") or row.get("ticker")).upper() != entry["normalized_ticker"]:
+                continue
+            existing_exchange = _normalize_exchange_label(row.get("normalized_exchange") or row.get("extracted_exchange") or row.get("exchange"))
+            if existing_exchange and existing_exchange != entry["normalized_exchange"]:
+                continue
+            row["normalized_ticker"] = entry["normalized_ticker"]
+            row["extracted_ticker"] = entry["normalized_ticker"]
+            row["normalized_exchange"] = entry["normalized_exchange"]
+            row["extracted_exchange"] = entry["normalized_exchange"]
+            row["accepted"] = True
+            row["rejection_reason"] = None
+            row["ambiguity_reason"] = None
+            row["extraction_method"] = "cross_source_consensus_reinforced" if in_strict else "cross_source_consensus_promoted"
+            row["extraction_confidence"] = score["consensus_band"]
+            row["extraction_notes"] = note
+        if len(strict_diag["consensus_sample_matches"]) < 8:
+            strict_diag["consensus_sample_matches"].append({"candidate_asset_id": entry["candidate_asset_id"], "ticker": entry["normalized_ticker"], "exchange": entry["normalized_exchange"], "confidence": score["consensus_confidence"], "band": score["consensus_band"]})
+    strict_diag["consensus_distinct_domain_support_avg"] = round(sum(consensus_domains) / max(1, len(consensus_domains)), 4) if consensus_domains else 0.0
+    strict_diag["consensus_distinct_url_support_avg"] = round(sum(consensus_urls) / max(1, len(consensus_urls)), 4) if consensus_urls else 0.0
+    strict_diag["consensus_confidence_avg"] = round(sum(consensus_scores) / max(1, len(consensus_scores)), 4) if consensus_scores else 0.0
     strict_diag["exchange_inference_confidence_avg"] = round(sum(inference_scores) / max(1, len(inference_scores)), 4) if inference_scores else 0.0
     strict_diag["inferred_exchange_counts"] = dict(sorted(inferred_exchange_counter.items(), key=lambda kv: (-kv[1], kv[0])))
     sampled = evidence_rows[:3]
@@ -2584,6 +2800,14 @@ def main() -> int:
     print(f"[tier3h4] confidence_band_high={evidence_summary.get('confidence_band_high',0)}")
     print(f"[tier3h4] confidence_band_medium={evidence_summary.get('confidence_band_medium',0)}")
     print(f"[tier3h4] confidence_band_low={evidence_summary.get('confidence_band_low',0)}")
+    print("[tier3h4] cross-source consensus:")
+    print(f"[tier3h4] consensus_candidates_evaluated={evidence_summary.get('consensus_candidates_evaluated',0)}")
+    print(f"[tier3h4] consensus_candidates_accepted={evidence_summary.get('consensus_candidates_accepted',0)}")
+    print(f"[tier3h4] consensus_promoted_matches={evidence_summary.get('consensus_promoted_matches',0)}")
+    print(f"[tier3h4] consensus_reinforced_strict_matches={evidence_summary.get('consensus_reinforced_strict_matches',0)}")
+    print(f"[tier3h4] consensus_rejected_single_source={evidence_summary.get('consensus_rejected_single_source',0)}")
+    print(f"[tier3h4] consensus_rejected_conflict={evidence_summary.get('consensus_rejected_conflict',0)}")
+    print(f"[tier3h4] consensus_confidence_avg={evidence_summary.get('consensus_confidence_avg',0.0)}")
     print("[tier3h4] strict identifier propagation:")
     print(f"[tier3h4] accepted_match_collection_size={evidence_summary.get('strict_identifier_accepted_match_collection_size',0)}")
     print(f"[tier3h4] propagated_rows={evidence_summary.get('strict_identifier_propagated_rows_count',0)}")
