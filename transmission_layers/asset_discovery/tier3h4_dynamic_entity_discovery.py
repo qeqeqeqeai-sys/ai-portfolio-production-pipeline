@@ -749,6 +749,87 @@ def _score_cross_source_consensus(consensus_entry: dict[str, Any]) -> dict[str, 
         "domain_only_support_rejection": consensus_entry.get("textual_support_count", 0) == 0 and consensus_entry.get("domain_prior_support"),
     }
 
+
+def _adjudicate_consensus_conflict(consensus_entry: dict[str, Any], peer_entries: list[dict[str, Any]]) -> dict[str, Any]:
+    winner_pair = (consensus_entry.get("normalized_ticker") or "", consensus_entry.get("normalized_exchange") or "")
+    if not all(winner_pair):
+        return {"adjudication_status": "rejected", "winning_ticker": None, "winning_exchange": None, "adjudication_confidence": 0.0, "adjudication_reason": "missing_winner_pair", "winning_signal_count": 0, "losing_signal_count": 0, "conflict_type": "unresolved_conflict", "accepted": False, "winner_margin": 0.0}
+    winner_score = _score_cross_source_consensus(consensus_entry)
+    winner_urls = {u for u in consensus_entry.get("source_urls", set()) if u}
+    winner_domains = {d for d in consensus_entry.get("source_domains", set()) if d}
+    winner_signals = max(len(winner_urls), len(winner_domains))
+    winner_quality_values = [q for q in consensus_entry.get("quality_scores", []) if q > 0]
+    winner_quality_avg = (sum(winner_quality_values) / max(1, len(winner_quality_values))) if winner_quality_values else 0.0
+    winner_strict = bool(consensus_entry.get("strict_support"))
+    winner_domain_prior_only = bool(consensus_entry.get("domain_prior_support")) and consensus_entry.get("textual_support_count", 0) == 0
+    has_duplicate_url = len(winner_urls) < len(consensus_entry.get("quality_scores", []))
+    losing_signal_count = 0
+    best_loser_score = 0.0
+    strict_contradiction = False
+    textual_conflict = False
+    for peer in peer_entries:
+        if peer is consensus_entry:
+            continue
+        peer_score = _score_cross_source_consensus(peer)
+        peer_urls = {u for u in peer.get("source_urls", set()) if u}
+        peer_domains = {d for d in peer.get("source_domains", set()) if d}
+        peer_signals = max(len(peer_urls), len(peer_domains))
+        losing_signal_count = max(losing_signal_count, peer_signals)
+        best_loser_score = max(best_loser_score, peer_score.get("consensus_confidence", 0.0))
+        if peer.get("strict_support") and (peer.get("normalized_ticker"), peer.get("normalized_exchange")) != winner_pair:
+            strict_contradiction = True
+        if peer.get("textual_support_count", 0) > 0:
+            textual_conflict = True
+    same_ticker_multiple_exchanges = len({e.get("normalized_exchange") for e in peer_entries if e.get("normalized_ticker") == winner_pair[0] and e.get("normalized_exchange")}) > 1
+    same_exchange_multiple_tickers = len({e.get("normalized_ticker") for e in peer_entries if e.get("normalized_exchange") == winner_pair[1] and e.get("normalized_ticker")}) > 1
+    conflict_type = "unresolved_conflict"
+    if has_duplicate_url:
+        conflict_type = "duplicate_url_conflict"
+    elif winner_quality_avg < 35:
+        conflict_type = "low_quality_source_conflict"
+    elif strict_contradiction and winner_domain_prior_only:
+        conflict_type = "explicit_vs_domain_prior_conflict"
+    elif consensus_entry.get("enriched_signal_support") and not winner_strict:
+        conflict_type = "strict_vs_enriched_conflict"
+    elif same_ticker_multiple_exchanges:
+        conflict_type = "same_ticker_multiple_exchanges"
+    elif same_exchange_multiple_tickers:
+        conflict_type = "same_exchange_multiple_tickers"
+    ownership_clear = bool(consensus_entry.get("candidate_asset_id"))
+    winner_margin = round(winner_score["consensus_confidence"] - best_loser_score, 4)
+    conservative_margin_pass = winner_margin >= 0.20 or winner_signals >= (losing_signal_count + 2)
+    adjudication_confidence = round(min(1.0, winner_score["consensus_confidence"] + (0.08 if winner_strict else 0.0) + (0.06 if len(winner_urls) >= 2 else 0.0) + (0.04 if len(winner_domains) >= 2 else 0.0)), 4)
+    accepted = (
+        ownership_clear
+        and winner_pair[0] not in NOISE_TICKER_DENYLIST
+        and bool(winner_pair[1])
+        and (len(winner_urls) >= 2 or len(winner_domains) >= 2)
+        and conservative_margin_pass
+        and not strict_contradiction
+        and adjudication_confidence >= 0.65
+        and not winner_domain_prior_only
+        and not has_duplicate_url
+        and winner_quality_avg >= 35
+    )
+    if not accepted and conflict_type == "unresolved_conflict" and winner_domain_prior_only and textual_conflict:
+        conflict_type = "explicit_vs_domain_prior_conflict"
+    reason = "adjudication_not_required"
+    if accepted:
+        reason = "multi_domain_strict_support" if winner_strict and len(winner_domains) >= 2 else "multi_source_consensus_margin_win"
+    elif strict_contradiction:
+        reason = "strict_contradiction_present"
+    elif not conservative_margin_pass:
+        reason = "insufficient_winner_margin"
+    elif winner_domain_prior_only:
+        reason = "domain_prior_only_rejected"
+    elif has_duplicate_url:
+        reason = "duplicate_url_support"
+    elif winner_quality_avg < 35:
+        reason = "low_quality_source_support"
+    elif not ownership_clear:
+        reason = "candidate_ownership_unclear"
+    return {"adjudication_status": "accepted" if accepted else "rejected", "winning_ticker": winner_pair[0], "winning_exchange": winner_pair[1], "adjudication_confidence": adjudication_confidence, "adjudication_reason": reason, "winning_signal_count": winner_signals, "losing_signal_count": losing_signal_count, "conflict_type": conflict_type, "accepted": accepted, "winner_margin": winner_margin}
+
 STRICT_IDENTIFIER_REJECTION_CATEGORIES = [
     "multiple_tickers_in_context",
     "multiple_exchanges_in_context",
@@ -2007,6 +2088,19 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "consensus_reinforced_strict_matches": 0,
         "consensus_conflict_rejections": 0,
         "consensus_sample_matches": [],
+        "conflict_adjudication_enabled": True,
+        "conflict_candidates_evaluated": 0,
+        "conflict_candidates_resolved": 0,
+        "conflict_candidates_unresolved": 0,
+        "conflict_resolution_promotions": 0,
+        "conflict_resolution_rejections": 0,
+        "conflict_resolution_confidence_avg": 0.0,
+        "conflict_resolution_winner_margin_avg": 0.0,
+        "conflict_type_counts": {},
+        "conflict_resolution_sample_winners": [],
+        "conflict_resolution_sample_rejections": [],
+        "consensus_rejected_conflict_after_adjudication": 0,
+        "consensus_resolved_via_adjudication": 0,
         "evidence_diversity_enabled": True,
         "evidence_distinct_domains": 0,
         "evidence_distinct_urls": 0,
@@ -2433,6 +2527,11 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         for m in strict_diag.get("strict_identifier_accepted_matches") or []
         if _normalize_text(m.get("candidate_asset_id")) and _normalize_text(m.get("normalized_ticker")) and _normalize_exchange_label(m.get("normalized_exchange"))
     }
+    consensus_entries_by_candidate: dict[str, list[dict[str, Any]]] = {}
+    for _entry in consensus_map.values():
+        consensus_entries_by_candidate.setdefault(_entry.get("candidate_asset_id") or "", []).append(_entry)
+    conflict_confidences: list[float] = []
+    conflict_margins: list[float] = []
     for key, entry in consensus_map.items():
         strict_diag["consensus_candidates_evaluated"] += 1
         score = _score_cross_source_consensus(entry)
@@ -2449,6 +2548,25 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             strict_diag["consensus_band_rejected"] += 1
         has_required_support = score["distinct_urls"] >= 2 or score["distinct_domains"] >= 2
         rejected_for_conflict = score["conflicting_exchange"] or score["conflicting_ticker"]
+        adjudication = None
+        if rejected_for_conflict:
+            strict_diag["conflict_candidates_evaluated"] += 1
+            adjudication = _adjudicate_consensus_conflict(entry, consensus_entries_by_candidate.get(entry.get("candidate_asset_id") or "", []))
+            conflict_type = adjudication.get("conflict_type") or "unresolved_conflict"
+            strict_diag["conflict_type_counts"][conflict_type] = strict_diag["conflict_type_counts"].get(conflict_type, 0) + 1
+            conflict_confidences.append(_safe_float(adjudication.get("adjudication_confidence"), 0.0))
+            conflict_margins.append(_safe_float(adjudication.get("winner_margin"), 0.0))
+            if adjudication.get("accepted"):
+                strict_diag["conflict_candidates_resolved"] += 1
+                strict_diag["consensus_resolved_via_adjudication"] += 1
+                rejected_for_conflict = False
+            else:
+                strict_diag["conflict_candidates_unresolved"] += 1
+                strict_diag["conflict_resolution_rejections"] += 1
+                if len(strict_diag["conflict_resolution_sample_rejections"]) < 6:
+                    strict_diag["conflict_resolution_sample_rejections"].append(
+                        {"candidate_asset_id": entry.get("candidate_asset_id"), "ticker": entry.get("normalized_ticker"), "exchange": entry.get("normalized_exchange"), "conflict_type": conflict_type, "reason": adjudication.get("adjudication_reason")}
+                    )
         accepted = (
             bool(entry.get("normalized_ticker"))
             and bool(entry.get("normalized_exchange"))
@@ -2466,6 +2584,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             if rejected_for_conflict:
                 strict_diag["consensus_rejected_conflict"] += 1
                 strict_diag["consensus_conflict_rejections"] += 1
+                strict_diag["consensus_rejected_conflict_after_adjudication"] += 1
             if score["consensus_confidence"] < 0.65:
                 strict_diag["consensus_rejected_low_confidence"] += 1
             continue
@@ -2480,6 +2599,18 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
             f"enriched_signal_support={entry.get('enriched_signal_support')}; domain_prior_support={entry.get('domain_prior_support')}; "
             f"conflict_count={score['conflict_count']}; consensus_confidence={score['consensus_confidence']}"
         )
+        if adjudication and adjudication.get("accepted"):
+            strict_diag["conflict_resolution_promotions"] += 1
+            if len(strict_diag["conflict_resolution_sample_winners"]) < 6:
+                strict_diag["conflict_resolution_sample_winners"].append(
+                    {"candidate_asset_id": entry.get("candidate_asset_id"), "ticker": adjudication.get("winning_ticker"), "exchange": adjudication.get("winning_exchange"), "conflict_type": adjudication.get("conflict_type"), "confidence": adjudication.get("adjudication_confidence")}
+                )
+            note = (
+                f"{note}; consensus_adjudicated=True; conflict_type={adjudication.get('conflict_type')}; "
+                f"winning_pair={adjudication.get('winning_ticker')}|{adjudication.get('winning_exchange')}; "
+                f"winning_signal_count={adjudication.get('winning_signal_count')}; losing_signal_count={adjudication.get('losing_signal_count')}; "
+                f"adjudication_confidence={adjudication.get('adjudication_confidence')}; adjudication_reason={adjudication.get('adjudication_reason')}"
+            )
         for row in evidence_rows + candidate_rows:
             if _normalize_text(row.get("candidate_asset_id")) != entry["candidate_asset_id"]:
                 continue
@@ -2522,6 +2653,8 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
     strict_diag["source_diversity_score_avg"] = strict_diag["source_diversity_score"]
     strict_diag["consensus_distinct_url_support_avg"] = round(sum(consensus_urls) / max(1, len(consensus_urls)), 4) if consensus_urls else 0.0
     strict_diag["consensus_confidence_avg"] = round(sum(consensus_scores) / max(1, len(consensus_scores)), 4) if consensus_scores else 0.0
+    strict_diag["conflict_resolution_confidence_avg"] = round(sum(conflict_confidences) / max(1, len(conflict_confidences)), 4) if conflict_confidences else 0.0
+    strict_diag["conflict_resolution_winner_margin_avg"] = round(sum(conflict_margins) / max(1, len(conflict_margins)), 4) if conflict_margins else 0.0
     strict_diag["exchange_inference_confidence_avg"] = round(sum(inference_scores) / max(1, len(inference_scores)), 4) if inference_scores else 0.0
     strict_diag["inferred_exchange_counts"] = dict(sorted(inferred_exchange_counter.items(), key=lambda kv: (-kv[1], kv[0])))
     sampled = evidence_rows[:3]
@@ -2947,6 +3080,13 @@ def main() -> int:
     print(f"[tier3h4] consensus_rejected_single_source={evidence_summary.get('consensus_rejected_single_source',0)}")
     print(f"[tier3h4] consensus_rejected_conflict={evidence_summary.get('consensus_rejected_conflict',0)}")
     print(f"[tier3h4] consensus_confidence_avg={evidence_summary.get('consensus_confidence_avg',0.0)}")
+    print("[tier3h4] conflict-adjudicated consensus:")
+    print(f"[tier3h4] conflict_candidates_evaluated={evidence_summary.get('conflict_candidates_evaluated',0)}")
+    print(f"[tier3h4] conflict_candidates_resolved={evidence_summary.get('conflict_candidates_resolved',0)}")
+    print(f"[tier3h4] conflict_candidates_unresolved={evidence_summary.get('conflict_candidates_unresolved',0)}")
+    print(f"[tier3h4] consensus_resolved_via_adjudication={evidence_summary.get('consensus_resolved_via_adjudication',0)}")
+    print(f"[tier3h4] consensus_rejected_conflict_after_adjudication={evidence_summary.get('consensus_rejected_conflict_after_adjudication',0)}")
+    print(f"[tier3h4] conflict_resolution_confidence_avg={evidence_summary.get('conflict_resolution_confidence_avg',0.0)}")
     print("[tier3h4] strict identifier propagation:")
     print(f"[tier3h4] accepted_match_collection_size={evidence_summary.get('strict_identifier_accepted_match_collection_size',0)}")
     print(f"[tier3h4] propagated_rows={evidence_summary.get('strict_identifier_propagated_rows_count',0)}")
