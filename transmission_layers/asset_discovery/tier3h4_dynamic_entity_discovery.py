@@ -41,13 +41,23 @@ SOURCE_TYPE_DIVERSITY_QUERY_TEMPLATES = [
     "{theme_label} exchange listed companies Reuters Bloomberg",
 ]
 AUTHORITY_AWARE_QUERY_TEMPLATES = [
+    "{theme_label} site:sec.gov 10-K ticker",
     "{theme_label} site:nasdaq.com stock symbol",
-    "{theme_label} site:nyse.com listed company ticker",
-    "{theme_label} investor relations stock symbol",
-    "{theme_label} annual report ticker exchange",
-    "{theme_label} SEC 10-K ticker",
-    "{theme_label} company IR Nasdaq NYSE",
+    "{theme_label} site:nyse.com listed ticker",
+    "{theme_label} site:sgx.com stock code",
+    "{theme_label} site:londonstockexchange.com ticker",
+    "{theme_label} site:hkex.com.hk stock code",
+    "{theme_label} site:jpx.co.jp stock code",
 ]
+AUTHORITY_PREFERRED_DOMAINS = (
+    "sec.gov",
+    "nasdaq.com",
+    "nyse.com",
+    "sgx.com",
+    "londonstockexchange.com",
+    "hkex.com.hk",
+    "jpx.co.jp",
+)
 THEME_LABELS = {"ai_power_demand": ["AI data center power infrastructure", "AI electricity demand grid infrastructure", "AI hyperscaler power equipment", "AI data center cooling UPS"]}
 THEME_KEYWORDS = {"ai_power_demand": ["ai", "data center", "power", "grid", "infrastructure", "cooling", "ups", "electricity"]}
 TIER_A_DOMAINS = {"sec.gov", "reuters.com", "bloomberg.com", "wsj.com", "ft.com", "nasdaq.com", "nyse.com", "blackrock.com", "vanguard.com", "state street.com"}
@@ -72,6 +82,44 @@ except (TypeError, ValueError):
     AUTHORITY_QUERY_BUDGET_RATIO = 0.20
 AUTHORITY_QUERY_BUDGET_RATIO = max(0.0, min(1.0, AUTHORITY_QUERY_BUDGET_RATIO))
 MIN_AUTHORITY_QUERIES_PER_RUN = max(0, int(os.getenv("TIER3H4_MIN_AUTHORITY_QUERIES_PER_RUN", "3")))
+AUTHORITY_RESULT_MIN_KEEP = max(0, int(os.getenv("TIER3H4_AUTHORITY_RESULT_MIN_KEEP", "2")))
+
+
+def _is_preferred_authority_domain(domain: str) -> bool:
+    domain_norm = _normalize_text(domain).lower()
+    return bool(domain_norm) and any(
+        domain_norm == preferred or domain_norm.endswith(f".{preferred}") for preferred in AUTHORITY_PREFERRED_DOMAINS
+    )
+
+
+def _enforce_authority_result_preference(
+    items: list[dict[str, Any]], diagnostics: dict[str, Any]
+) -> list[dict[str, Any]]:
+    if not items:
+        return items
+    authority_items: list[dict[str, Any]] = []
+    generic_items: list[dict[str, Any]] = []
+    for item in items:
+        source_domain = _normalize_domain(_normalize_text(item.get("source_url") or "")) if item.get("source_url") else _normalize_text(item.get("source_domain")).lower()
+        if _is_preferred_authority_domain(source_domain):
+            authority_items.append(item)
+            existing_domains = diagnostics.get("authority_domains_returned", [])
+            if source_domain and source_domain not in existing_domains:
+                existing_domains.append(source_domain)
+                diagnostics["authority_domains_returned"] = existing_domains
+        else:
+            generic_items.append(item)
+    diagnostics["authority_domain_results_seen"] += len(authority_items)
+    if authority_items and len(authority_items) < AUTHORITY_RESULT_MIN_KEEP:
+        diagnostics["authority_domain_selection_warnings"].append(
+            f"authority_result_min_keep_unmet:seen={len(authority_items)} min_keep={AUTHORITY_RESULT_MIN_KEEP}"
+        )
+    selected_authority = authority_items[: max(AUTHORITY_RESULT_MIN_KEEP, len(authority_items))]
+    diagnostics["authority_domain_results_selected"] += len(selected_authority)
+    reordered = selected_authority + generic_items
+    for idx, item in enumerate(reordered, start=1):
+        item["source_rank"] = idx
+    return reordered
 
 
 def _safe_git_command(args: list[str]) -> str | None:
@@ -2280,6 +2328,16 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         "authority_aware_query_budget_reserved": 0,
         "authority_aware_query_budget_used": 0,
         "authority_aware_queries_skipped_due_to_caps": 0,
+        "authority_domain_retrieval_enforcement_enabled": True,
+        "authority_preferred_domains": list(AUTHORITY_PREFERRED_DOMAINS),
+        "authority_domain_queries_generated": 0,
+        "authority_domain_queries_executed": 0,
+        "authority_domain_results_seen": 0,
+        "authority_domain_results_selected": 0,
+        "authority_domain_results_rejected_low_quality": 0,
+        "authority_domain_result_min_keep": AUTHORITY_RESULT_MIN_KEEP,
+        "authority_domains_returned": [],
+        "authority_domain_selection_warnings": [],
         "query_execution_order_sample": [],
         "distinct_source_domains": 0,
         "distinct_source_urls": 0,
@@ -2332,6 +2390,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
         queries, exchange_aware_generated, authority_aware_generated = _generate_queries(seed)
         strict_diag["exchange_aware_queries_generated"] += exchange_aware_generated
         strict_diag["authority_aware_queries_generated"] += authority_aware_generated
+        strict_diag["authority_domain_queries_generated"] += authority_aware_generated
         ops["generated_queries"] += len(queries)
         deduped_queries = _deduplicate_queries(queries)
         authority_aware_queries = [q for q in deduped_queries if _is_authority_aware_query(seed.theme_name, q)]
@@ -2421,6 +2480,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                             strict_diag["exchange_aware_query_budget_used"] += 1
                         if query_is_authority_aware:
                             strict_diag["authority_aware_queries_executed"] += 1
+                            strict_diag["authority_domain_queries_executed"] += 1
                             strict_diag["authority_aware_query_budget_used"] += 1
                         else:
                             strict_diag["general_query_budget_used"] += 1
@@ -2456,6 +2516,7 @@ def build_records(seeds: list[DiscoverySeed], sgt_date: str) -> tuple[list[dict[
                         runtime_evidence_generation_branch_taken = "fallback"
                     ops["fallback_events"] += 1
                     items = generate_mock_evidence(seed, query)
+            items = _enforce_authority_result_preference(items, strict_diag)
             for source_rank, item in enumerate(items, start=1):
                 key = (sgt_date, seed.theme_name, query, item.get("source_url", ""))
                 if key in seen_urls: continue
