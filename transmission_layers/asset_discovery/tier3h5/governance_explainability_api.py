@@ -22,6 +22,9 @@ GOV_RISK_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_risk_summary.json"
 GOV_ESCALATION_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_escalation_summary.json"
 GOV_INCIDENT_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_incident_summary.json"
 GOV_WATCHLISTS_PATH = LOG_DIR / "tier3h5_governance_watchlists.json"
+GOV_HISTORY_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_history_summary.json"
+GOV_TREND_SUMMARY_PATH = LOG_DIR / "tier3h5_governance_trend_summary.json"
+GOV_HISTORY_EXPLAINABILITY_PATH = LOG_DIR / "tier3h5_governance_history_explainability.json"
 
 EXPLAINABILITY_PATH = LOG_DIR / "tier3h5_governance_explainability_summary.json"
 LINEAGE_AUDIT_PATH = LOG_DIR / "tier3h5_lineage_audit_summary.json"
@@ -174,6 +177,9 @@ def inspect_governance_risk() -> dict[str, Any]:
     escalation = _load_json(GOV_ESCALATION_SUMMARY_PATH)
     incidents = _load_json(GOV_INCIDENT_SUMMARY_PATH)
     watchlists = _load_json(GOV_WATCHLISTS_PATH)
+    history = _load_json(GOV_HISTORY_SUMMARY_PATH)
+    trend = _load_json(GOV_TREND_SUMMARY_PATH)
+    history_explainability = _load_json(GOV_HISTORY_EXPLAINABILITY_PATH)
     incident_items = incidents.get("incidents", []) if isinstance(incidents.get("incidents"), list) else []
     out = {
         "phase": PHASE,
@@ -192,6 +198,25 @@ def inspect_governance_risk() -> dict[str, Any]:
             for item in incident_items
         ],
         "watchlist_counts": watchlists.get("watchlist_counts", {}),
+        "persistence_explanation": history_explainability.get(
+            "persistence_explanation",
+            {
+                "status": history.get("historical_governance_status", "governance_history_initializing"),
+                "source": "persisted_governance_history_only",
+            },
+        ),
+        "trend_explanation": history_explainability.get(
+            "trend_explanation",
+            {"governance_trend_status": trend.get("governance_trend_status", "insufficient_history")},
+        ),
+        "continuity_explanation": history_explainability.get(
+            "continuity_explanation",
+            {"historical_continuity_status": history.get("historical_continuity_status", "insufficient_governance_history")},
+        ),
+        "lifecycle_explanation": history_explainability.get("lifecycle_explanation", {"mutation_performed": False}),
+        "governance_history_hash": history.get("governance_history_hash"),
+        "governance_trend_hash": trend.get("governance_trend_hash"),
+        "continuity_hash": history.get("continuity_hash"),
         "risk_summary_hash": risk.get("risk_summary_hash"),
         "escalation_summary_hash": escalation.get("escalation_summary_hash"),
         "incident_summary_hash": incidents.get("incident_summary_hash"),
@@ -225,6 +250,10 @@ def run_phase4a_governance_explainability() -> dict[str, Any]:
             "provenance_lineage_explanation",
             "governance_risk_explanation",
             "governance_escalation_explanation",
+            "governance_persistence_explanation",
+            "governance_trend_explanation",
+            "governance_continuity_explanation",
+            "governance_lifecycle_explanation",
         ],
         "deterministic_explainability_enabled": True,
         "explainability_hash": "",
