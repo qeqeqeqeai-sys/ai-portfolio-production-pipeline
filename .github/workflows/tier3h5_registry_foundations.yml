@@ -32,7 +32,9 @@ jobs:
             tests/test_tier3h5_normalization.py \
             tests/test_tier3h5_deterministic_ids.py \
             tests/test_tier3h5_registry_ingestion.py \
-            tests/test_tier3h5_registry_resolution.py
+            tests/test_tier3h5_registry_resolution.py \
+            tests/test_tier3h5_advisory_registry_hooks.py \
+            tests/test_tier3h5_advisory_registry_observability.py
       - name: Upload observability summary
         uses: actions/upload-artifact@v4
         with:
@@ -40,3 +42,4 @@ jobs:
           path: |
             logs/tier3h5_registry_foundation_summary.json
             logs/tier3h5_registry_resolution_summary.json
+            logs/tier3h5_advisory_registry_summary.json
