@@ -32,3 +32,9 @@ def test_provenance_persistence_and_summary_generation(tmp_path: Path, monkeypat
     payload = json.loads(summary_path.read_text(encoding="utf-8"))
     assert payload["source_name"] == "sec_issuer_fixture"
     assert "normalization_failures" in payload
+
+
+def test_package_schema_version_export_is_stable() -> None:
+    from transmission_layers.asset_discovery.tier3h5 import SCHEMA_VERSION
+
+    assert SCHEMA_VERSION == "tier3h5_phase1a_v1"
