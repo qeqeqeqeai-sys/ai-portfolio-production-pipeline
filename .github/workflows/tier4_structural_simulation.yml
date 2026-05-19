@@ -5,11 +5,15 @@ on:
     paths:
       - 'transmission_layers/intelligence/tier4/**'
       - 'tests/test_tier4_structural_simulation.py'
+      - 'tests/test_tier4_structural_memory.py'
+      - 'tests/test_tier4_temporal_replay.py'
       - '.github/workflows/tier4_structural_simulation.yml'
   pull_request:
     paths:
       - 'transmission_layers/intelligence/tier4/**'
       - 'tests/test_tier4_structural_simulation.py'
+      - 'tests/test_tier4_structural_memory.py'
+      - 'tests/test_tier4_temporal_replay.py'
       - '.github/workflows/tier4_structural_simulation.yml'
   workflow_dispatch:
 
@@ -30,6 +34,8 @@ jobs:
       - name: Run Tier4 tests
         run: |
           python -m pytest -q tests/test_tier4_structural_simulation.py
+          python -m pytest -q tests/test_tier4_structural_memory.py
+          python -m pytest -q tests/test_tier4_temporal_replay.py
       - name: Run Tier4 simulation
         run: python -m transmission_layers.intelligence.tier4.structural_simulation
       - name: Upload logs artifact
