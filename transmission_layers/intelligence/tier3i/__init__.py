@@ -5,6 +5,7 @@ from .structural_influence import SCORING_VERSION as STRUCTURAL_INFLUENCE_SCORIN
 from .intelligence_summary import SCORING_VERSION as INTELLIGENCE_SUMMARY_SCORING_VERSION, build_intelligence_summary
 from .path_explainability import SCORING_VERSION as PATH_EXPLAINABILITY_SCORING_VERSION, explain_paths
 from .structural_regime import SCORING_VERSION as STRUCTURAL_REGIME_SCORING_VERSION, compute_structural_regime
+from .regime_drift import SCORING_VERSION as REGIME_DRIFT_SCORING_VERSION, compute_regime_drift
 
 __all__ = [
     "EDGE_QUALITY_SCORING_VERSION",
@@ -18,4 +19,6 @@ __all__ = [
     "explain_paths",
     "STRUCTURAL_REGIME_SCORING_VERSION",
     "compute_structural_regime",
+    "REGIME_DRIFT_SCORING_VERSION",
+    "compute_regime_drift",
 ]
