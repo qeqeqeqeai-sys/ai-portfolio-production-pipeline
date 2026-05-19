@@ -37,6 +37,22 @@ jobs:
             tests/test_tier3i_multi_hop_quality.py \
             tests/test_tier3i_path_explainability.py
 
+
+      - name: Generate Tier 3I intelligence JSON artifacts
+        run: |
+          mkdir -p logs
+          PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.intelligence_summary
+          PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.multi_hop_quality
+          PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.path_explainability
+
+      - name: Upload Tier 3I intelligence artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tier3i-intelligence-artifacts
+          path: logs/*.json
+          if-no-files-found: warn
+
       - name: Run Tier 3H.5 regression tests (optional)
         run: |
           if [ -f tests/test_tier3h5_registry_resolution.py ]; then
