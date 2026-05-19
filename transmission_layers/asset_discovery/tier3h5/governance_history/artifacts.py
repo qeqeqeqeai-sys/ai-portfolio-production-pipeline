@@ -80,7 +80,11 @@ def run_phase4c_governance_history() -> dict[str, Any]:
     write_json(TREND_HISTORY_PATH, trend_history)
     write_json(CONTINUITY_HISTORY_PATH, continuity_history)
     write_json(EXPLAINABILITY_PATH, explanation)
-    return {"history_summary": summary, "trend_summary": trend, "continuity_summary": continuity, "explainability": explanation, **persisted}
+
+    from transmission_layers.asset_discovery.tier3h5.governance_query.dashboard_views import write_dashboard_artifacts
+
+    dashboard_views = write_dashboard_artifacts()
+    return {"history_summary": summary, "trend_summary": trend, "continuity_summary": continuity, "explainability": explanation, "dashboard_views": dashboard_views, **persisted}
 
 
 if __name__ == "__main__":
