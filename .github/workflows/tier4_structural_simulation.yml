@@ -42,5 +42,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tier4-structural-simulation-logs
-          path: logs/tier4_structural_simulation_summary.json
-          if-no-files-found: ignore
+          path: |
+            logs/tier4_structural_simulation_summary.json
+            tier4_structural_simulation_summary.json
+            transmission_layers/intelligence/tier4/__init__.py
+            transmission_layers/intelligence/tier4/structural_simulation.py
+            transmission_layers/intelligence/tier4/state_snapshot.py
+            transmission_layers/intelligence/tier4/structural_memory.py
+            transmission_layers/intelligence/tier4/temporal_replay.py
+            transmission_layers/intelligence/tier4/topology_drift.py
+            transmission_layers/intelligence/tier4/topology_hashing.py
+            tests/test_tier4_structural_simulation.py
+            tests/test_tier4_structural_memory.py
+            tests/test_tier4_temporal_replay.py
+            logs/tier4*_summary.json
+            logs/tier4*_diagnostics.json
+            logs/tier4*_replay*.json
+            logs/tier4*_memory*.json
+          if-no-files-found: warn
