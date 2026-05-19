@@ -37,7 +37,8 @@ jobs:
             tests/test_tier3i_multi_hop_quality.py \
             tests/test_tier3i_path_explainability.py \
             tests/test_tier3i_regime_drift.py \
-            tests/test_tier3i_contagion_mapping.py
+            tests/test_tier3i_contagion_mapping.py \
+            tests/test_tier3i_historical_replay.py
 
 
       - name: Generate Tier 3I intelligence JSON artifacts
@@ -49,6 +50,7 @@ jobs:
           PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.structural_regime
           PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.regime_drift
           PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.contagion_mapping
+          PYTHONPATH=. python -m transmission_layers.intelligence.tier3i.historical_replay
 
       - name: Upload Tier 3I intelligence artifacts
         uses: actions/upload-artifact@v4

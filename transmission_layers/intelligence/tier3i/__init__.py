@@ -7,6 +7,7 @@ from .path_explainability import SCORING_VERSION as PATH_EXPLAINABILITY_SCORING_
 from .structural_regime import SCORING_VERSION as STRUCTURAL_REGIME_SCORING_VERSION, compute_structural_regime
 from .regime_drift import SCORING_VERSION as REGIME_DRIFT_SCORING_VERSION, compute_regime_drift
 from .contagion_mapping import SCORING_VERSION as CONTAGION_MAPPING_SCORING_VERSION, map_structural_contagion
+from .historical_replay import SCORING_VERSION as HISTORICAL_REPLAY_SCORING_VERSION, build_historical_structural_replay
 
 __all__ = [
     "EDGE_QUALITY_SCORING_VERSION",
@@ -24,4 +25,6 @@ __all__ = [
     "compute_regime_drift",
     "CONTAGION_MAPPING_SCORING_VERSION",
     "map_structural_contagion",
+    "HISTORICAL_REPLAY_SCORING_VERSION",
+    "build_historical_structural_replay",
 ]
