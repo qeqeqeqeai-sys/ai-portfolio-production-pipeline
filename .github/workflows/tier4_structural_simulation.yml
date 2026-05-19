@@ -1,0 +1,32 @@
+name: Tier4 Structural Simulation
+
+on:
+  push:
+    paths:
+      - 'transmission_layers/intelligence/tier4/**'
+      - 'tests/test_tier4_structural_simulation.py'
+      - '.github/workflows/tier4_structural_simulation.yml'
+  pull_request:
+    paths:
+      - 'transmission_layers/intelligence/tier4/**'
+      - 'tests/test_tier4_structural_simulation.py'
+      - '.github/workflows/tier4_structural_simulation.yml'
+
+jobs:
+  tier4-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run tier4 tests
+        run: pytest -q tests/test_tier4_structural_simulation.py
+      - name: Run tier4 simulation CLI
+        run: python -m transmission_layers.intelligence.tier4.structural_simulation
+      - name: Upload logs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier4-structural-simulation-logs
+          path: logs/tier4_structural_simulation_summary.json
+          if-no-files-found: ignore
