@@ -23,6 +23,7 @@ from .exports import bi_history_status, build_all_export_tables
 from .measures import build_measure_catalog
 from .semantic_layer import build_semantic_layer
 from .validation import validate_bi_exports
+from ..governance_bi_validation import build_phase4f_operational_validation_summary, validate_operational_artifacts
 
 
 def _write_fact_exports(exports: dict[str, dict[str, Any]]) -> None:
@@ -70,7 +71,7 @@ def build_bi_export_artifacts() -> dict[str, Any]:
     measure_catalog = build_measure_catalog()
     validation = validate_bi_exports(fact_exports, dimensions, semantic_layer, measure_catalog)
     summary = _summary(fact_exports, dimensions, semantic_layer, measure_catalog, validation)
-    return {
+    artifacts = {
         **fact_exports,
         "governance_dimensions": dimensions,
         "semantic_layer": semantic_layer,
@@ -78,6 +79,9 @@ def build_bi_export_artifacts() -> dict[str, Any]:
         "validation": validation,
         "summary": summary,
     }
+    artifacts["operational_validation"] = validate_operational_artifacts(artifacts, artifacts)
+    artifacts["phase4f_operational_summary"] = build_phase4f_operational_validation_summary(artifacts["operational_validation"])
+    return artifacts
 
 
 def write_bi_export_artifacts() -> dict[str, Any]:
