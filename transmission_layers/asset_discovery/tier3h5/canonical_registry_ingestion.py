@@ -21,10 +21,9 @@ from transmission_layers.asset_discovery.tier3h5.canonical_registry_normalizatio
 )
 from transmission_layers.asset_discovery.tier3h5.canonical_registry_observability import emit_tier3h5_diagnostics, write_registry_summary
 from transmission_layers.asset_discovery.tier3h5.canonical_registry_sample_sources import SAMPLE_REGISTRY_SOURCES
+from transmission_layers.asset_discovery.tier3h5.governance_contracts import SUPPORTED_EXCHANGES, SUPPORTED_SECURITY_TYPES
 
 SCHEMA_VERSION = "tier3h5_phase2a_v1"
-SUPPORTED_SECURITY_TYPES = {"equity", "etf", "adr", "reit", "preferred_share", "warrant", "unit"}
-SUPPORTED_EXCHANGES = {"NYSE", "NASDAQ", "ARCA", "TSX", "LSE", "HKEX", "SGX"}
 
 
 def run_registry_ingestion(source_name: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
