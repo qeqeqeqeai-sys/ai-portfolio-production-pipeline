@@ -24,6 +24,11 @@ from .measures import build_measure_catalog
 from .semantic_layer import build_semantic_layer
 from .validation import validate_bi_exports
 from ..governance_bi_validation import build_phase4f_operational_validation_summary, validate_operational_artifacts
+from ..governance_bi_smoke import build_artifact_inventory, build_operational_readiness_summary, write_artifact_inventory, write_operational_readiness_summary
+from ..governance_bi_smoke.dashboard_smoke_test import validate_dashboard_readiness
+from ..governance_bi_smoke.measure_smoke_test import validate_measure_readiness
+from ..governance_bi_smoke.semantic_smoke_test import validate_semantic_readiness
+from ..governance_query.dashboard_views import write_dashboard_artifacts
 
 
 def _write_fact_exports(exports: dict[str, dict[str, Any]]) -> None:
@@ -63,6 +68,25 @@ def _summary(exports: dict[str, dict[str, Any]], dimensions: dict[str, Any], sem
     return summary
 
 
+
+def _artifact_specs() -> list[dict[str, Any]]:
+    return [
+        {"artifact_name": "tier3h5_bi_governance_incident_fact.json", "artifact_category": "fact_export", "path": "logs/tier3h5_bi_governance_incident_fact.json", "required_fields": ["table_name", "rows", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_governance_escalation_fact.json", "artifact_category": "fact_export", "path": "logs/tier3h5_bi_governance_escalation_fact.json", "required_fields": ["table_name", "rows", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_governance_watchlist_fact.json", "artifact_category": "fact_export", "path": "logs/tier3h5_bi_governance_watchlist_fact.json", "required_fields": ["table_name", "rows", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_governance_trend_fact.json", "artifact_category": "fact_export", "path": "logs/tier3h5_bi_governance_trend_fact.json", "required_fields": ["table_name", "rows", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_governance_continuity_fact.json", "artifact_category": "fact_export", "path": "logs/tier3h5_bi_governance_continuity_fact.json", "required_fields": ["table_name", "rows", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_governance_summary_snapshot.json", "artifact_category": "fact_export", "path": "logs/tier3h5_bi_governance_summary_snapshot.json", "required_fields": ["table_name", "rows", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_governance_dimensions.json", "artifact_category": "dimension_export", "path": "logs/tier3h5_bi_governance_dimensions.json", "required_fields": ["dimensions", "replay_mode"]},
+        {"artifact_name": "tier3h5_bi_semantic_layer.json", "artifact_category": "semantic_layer", "path": "logs/tier3h5_bi_semantic_layer.json", "required_fields": ["tables", "relationships"]},
+        {"artifact_name": "tier3h5_bi_measure_catalog.json", "artifact_category": "measure_catalog", "path": "logs/tier3h5_bi_measure_catalog.json", "required_fields": ["measures"]},
+        {"artifact_name": "tier3h5_dashboard_governance_summary.json", "artifact_category": "dashboard", "path": "logs/tier3h5_dashboard_governance_summary.json", "required_fields": ["dashboard_kind", "dashboard_history_status"]},
+        {"artifact_name": "tier3h5_dashboard_governance_trends.json", "artifact_category": "dashboard", "path": "logs/tier3h5_dashboard_governance_trends.json", "required_fields": ["dashboard_kind", "dashboard_history_status"]},
+        {"artifact_name": "tier3h5_dashboard_watchlist_summary.json", "artifact_category": "dashboard", "path": "logs/tier3h5_dashboard_watchlist_summary.json", "required_fields": ["dashboard_kind", "dashboard_history_status"]},
+        {"artifact_name": "tier3h5_dashboard_continuity_summary.json", "artifact_category": "dashboard", "path": "logs/tier3h5_dashboard_continuity_summary.json", "required_fields": ["dashboard_kind", "dashboard_history_status"]},
+        {"artifact_name": "tier3h5_dashboard_escalation_summary.json", "artifact_category": "dashboard", "path": "logs/tier3h5_dashboard_escalation_summary.json", "required_fields": ["dashboard_kind", "dashboard_history_status"]},
+    ]
+
 def build_bi_export_artifacts() -> dict[str, Any]:
     all_exports = build_all_export_tables()
     fact_exports = {contract.table_name: all_exports[contract.table_name] for contract in FACT_TABLES}
@@ -92,6 +116,15 @@ def write_bi_export_artifacts() -> dict[str, Any]:
     write_stable_json(SEMANTIC_LAYER_PATH, artifacts["semantic_layer"])
     write_stable_json(MEASURE_CATALOG_PATH, artifacts["measure_catalog"])
     write_stable_json(PHASE4E_SUMMARY_PATH, artifacts["summary"])
+    dashboards = write_dashboard_artifacts()
+    inventory = write_artifact_inventory(_artifact_specs())
+    semantic = validate_semantic_readiness(artifacts["semantic_layer"])
+    measure = validate_measure_readiness(artifacts["measure_catalog"])
+    dashboard = validate_dashboard_readiness(dashboards)
+    readiness = build_operational_readiness_summary(inventory, semantic, measure, dashboard, artifacts["summary"]["governance_history_depth"])
+    write_operational_readiness_summary(readiness)
+    artifacts["phase4g_artifact_inventory"] = inventory
+    artifacts["phase4g_operational_readiness"] = readiness
     return artifacts
 
 

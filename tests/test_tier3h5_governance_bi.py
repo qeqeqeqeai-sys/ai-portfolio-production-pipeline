@@ -200,3 +200,27 @@ def test_phase4f_operational_validation_emits_deterministic_diagnostics(tmp_path
         "logs/tier3h5_phase4f_operational_validation_summary.json",
     ]:
         assert Path(path).exists()
+
+
+def test_phase4g_bi_smoke_inventory_and_operational_readiness(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    _seed_governance_inputs()
+    write_bi_export_artifacts()
+
+    inventory = _read("logs/tier3h5_bi_artifact_inventory.json")
+    readiness = _read("logs/tier3h5_phase4g_operational_readiness_summary.json")
+
+    assert inventory["artifact_inventory_count"] >= 14
+    assert all(item["artifact_status"] in {"ready", "invalid", "missing"} for item in inventory["artifact_inventory"])
+    assert readiness["replay_mode"] == "advisory_only"
+    assert readiness["enforcement_enabled"] is False
+    assert readiness["advisory_only_governance_preserved"] is True
+    assert readiness["exact_match_only_preserved"] is True
+    assert readiness["tier3h4_freeze_boundary_preserved"] is True
+    assert readiness["dashboard_ready"] in {True, False}
+
+
+def test_phase4g_runbook_exists(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    runbook = Path(__file__).resolve().parents[1] / "docs/runbooks/tier3h5_phase4g_governance_bi_smoke_runbook.md"
+    assert runbook.exists()
