@@ -6,6 +6,7 @@ from .intelligence_summary import SCORING_VERSION as INTELLIGENCE_SUMMARY_SCORIN
 from .path_explainability import SCORING_VERSION as PATH_EXPLAINABILITY_SCORING_VERSION, explain_paths
 from .structural_regime import SCORING_VERSION as STRUCTURAL_REGIME_SCORING_VERSION, compute_structural_regime
 from .regime_drift import SCORING_VERSION as REGIME_DRIFT_SCORING_VERSION, compute_regime_drift
+from .contagion_mapping import SCORING_VERSION as CONTAGION_MAPPING_SCORING_VERSION, map_structural_contagion
 
 __all__ = [
     "EDGE_QUALITY_SCORING_VERSION",
@@ -21,4 +22,6 @@ __all__ = [
     "compute_structural_regime",
     "REGIME_DRIFT_SCORING_VERSION",
     "compute_regime_drift",
+    "CONTAGION_MAPPING_SCORING_VERSION",
+    "map_structural_contagion",
 ]
