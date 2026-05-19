@@ -16,4 +16,7 @@ __all__ = [
     "persist_governance_history",
     "run_phase4c_governance_history",
     "stable_hash",
+    "run_governance_monitoring_history",
 ]
+
+from .monitoring_history_runner import run_governance_monitoring_history
