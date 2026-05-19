@@ -11,6 +11,7 @@ on:
       - 'transmission_layers/intelligence/tier4/**'
       - 'tests/test_tier4_structural_simulation.py'
       - '.github/workflows/tier4_structural_simulation.yml'
+  workflow_dispatch:
 
 jobs:
   tier4-tests:
