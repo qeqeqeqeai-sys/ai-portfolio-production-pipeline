@@ -7,11 +7,11 @@ import hashlib
 import json
 
 from .structural_simulation import clamp_normalized_score
-from .topology_hashing import generate_topology_hash
+from .topology_hashing import canonical_json_bytes, generate_topology_hash, normalize_deterministic
 
 
 def _freeze_mapping(data: Mapping[str, Any]) -> Dict[str, Any]:
-    return json.loads(json.dumps(data, sort_keys=True, separators=(",", ":")))
+    return json.loads(canonical_json_bytes(data).decode("utf-8"))
 
 
 @dataclass(frozen=True)
@@ -78,7 +78,7 @@ def build_structural_snapshot(run_date_sgt: str, simulation_result: Dict[str, An
         "topology_metadata": topology_metadata,
     }
     topology_hash = generate_topology_hash(topology_payload)
-    replay_checksum = hashlib.sha256(json.dumps(topology_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    replay_checksum = hashlib.sha256(canonical_json_bytes(topology_payload)).hexdigest()
 
     return StructuralSnapshot(
         run_date_sgt=str(run_date_sgt),
@@ -90,8 +90,8 @@ def build_structural_snapshot(run_date_sgt: str, simulation_result: Dict[str, An
         node_structural_metrics=node_metrics,
         corridor_structural_metrics={k: corridor_metrics[k] for k in sorted(corridor_metrics)},
         propagation_summaries=propagation,
-        invariant_summaries=simulation_result.get("invariant_validation", {"all_invariants_valid": True, "failed_invariants": []}),
-        explainability_summaries=simulation_result.get("explainability_payload", {}),
+        invariant_summaries=normalize_deterministic(simulation_result.get("invariant_validation", {"all_invariants_valid": True, "failed_invariants": []})),
+        explainability_summaries=normalize_deterministic(simulation_result.get("explainability_payload", {})),
         topology_metadata=topology_metadata,
         replay_checksum=replay_checksum,
         topology_hash=topology_hash,
