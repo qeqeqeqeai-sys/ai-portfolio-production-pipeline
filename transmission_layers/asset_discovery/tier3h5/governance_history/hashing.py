@@ -15,6 +15,8 @@ HASH_FIELDS = {
     "trend_entry_hash",
     "phase4c_summary_hash",
     "explainability_continuity_hash",
+    "dashboard_view_hash",
+    "snapshot_hash",
 }
 
 VOLATILE_HISTORY_FIELDS = {
