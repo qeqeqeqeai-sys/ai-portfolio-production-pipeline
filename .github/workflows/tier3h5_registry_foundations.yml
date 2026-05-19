@@ -141,6 +141,15 @@ jobs:
           else
             echo "No Tier 3H.5 Phase 4C governance history module found; skipping."
           fi
+      - name: Run Tier 3H.5 Phase 4E governance BI exports
+        run: |
+          mkdir -p logs
+
+          if [ -f "transmission_layers/asset_discovery/tier3h5/governance_bi/artifacts.py" ]; then
+            python -m transmission_layers.asset_discovery.tier3h5.governance_bi.artifacts
+          else
+            echo "No Tier 3H.5 Phase 4E governance BI export module found; skipping."
+          fi
       - name: Run Tier 3H.5 Phase 4A governance explainability and audit APIs
         run: |
           mkdir -p logs
@@ -169,7 +178,8 @@ jobs:
             tests/test_tier3h5_governance_operational_intelligence.py \
             tests/test_tier3h5_governance_explainability_api.py \
             tests/test_tier3h5_governance_risk_intelligence.py \
-            tests/test_tier3h5_governance_history.py
+            tests/test_tier3h5_governance_history.py \
+            tests/test_tier3h5_governance_bi.py
       - name: Upload observability summary
         uses: actions/upload-artifact@v4
         with:
@@ -242,3 +252,13 @@ jobs:
             logs/tier3h5_governance_continuity_history.json
             logs/tier3h5_governance_history_explainability.json
             logs/tier3h5_phase4c_governance_history_summary.json
+            logs/tier3h5_bi_governance_incident_fact.json
+            logs/tier3h5_bi_governance_escalation_fact.json
+            logs/tier3h5_bi_governance_watchlist_fact.json
+            logs/tier3h5_bi_governance_trend_fact.json
+            logs/tier3h5_bi_governance_continuity_fact.json
+            logs/tier3h5_bi_governance_summary_snapshot.json
+            logs/tier3h5_bi_governance_dimensions.json
+            logs/tier3h5_bi_semantic_layer.json
+            logs/tier3h5_bi_measure_catalog.json
+            logs/tier3h5_phase4e_bi_export_summary.json

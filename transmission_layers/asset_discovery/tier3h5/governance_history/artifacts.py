@@ -84,7 +84,11 @@ def run_phase4c_governance_history() -> dict[str, Any]:
     from transmission_layers.asset_discovery.tier3h5.governance_query.dashboard_views import write_dashboard_artifacts
 
     dashboard_views = write_dashboard_artifacts()
-    return {"history_summary": summary, "trend_summary": trend, "continuity_summary": continuity, "explainability": explanation, "dashboard_views": dashboard_views, **persisted}
+
+    from transmission_layers.asset_discovery.tier3h5.governance_bi.artifacts import write_bi_export_artifacts
+
+    bi_exports = write_bi_export_artifacts()
+    return {"history_summary": summary, "trend_summary": trend, "continuity_summary": continuity, "explainability": explanation, "dashboard_views": dashboard_views, "bi_exports": bi_exports, **persisted}
 
 
 if __name__ == "__main__":
