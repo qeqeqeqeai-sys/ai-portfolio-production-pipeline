@@ -168,3 +168,35 @@ def test_phase4e_regression_boundaries_preserve_advisory_read_only_exact_match_a
     assert summary["propagation_mutation_enabled"] is False
     assert summary["confidence_mutation_enabled"] is False
     assert summary["reconciliation_mutation_enabled"] is False
+
+
+def test_phase4f_operational_validation_emits_deterministic_diagnostics(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    _seed_governance_inputs()
+    artifacts = write_bi_export_artifacts()
+
+    op = artifacts["operational_validation"]
+    assert op["validation_status"] == "valid"
+    assert op["determinism"]["replay_equivalence_verified"] is True
+    assert op["bi_history_status"] in {
+        "insufficient_bi_history",
+        "bi_history_initializing",
+        "partial_bi_history_available",
+        "stable_bi_history_available",
+    }
+
+    phase4f = _read("logs/tier3h5_phase4f_operational_validation_summary.json")
+    assert phase4f["replay_mode"] == "advisory_only"
+    assert phase4f["enforcement_enabled"] is False
+    assert phase4f["exact_match_only_preserved"] is True
+    assert phase4f["tier3h4_freeze_boundary_preserved"] is True
+
+    for path in [
+        "logs/tier3h5_bi_export_validation_summary.json",
+        "logs/tier3h5_bi_semantic_validation_summary.json",
+        "logs/tier3h5_bi_measure_validation_summary.json",
+        "logs/tier3h5_bi_relationship_validation_summary.json",
+        "logs/tier3h5_bi_determinism_validation_summary.json",
+        "logs/tier3h5_phase4f_operational_validation_summary.json",
+    ]:
+        assert Path(path).exists()
