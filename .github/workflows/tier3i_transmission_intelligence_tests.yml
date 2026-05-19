@@ -1,0 +1,74 @@
+name: Tier 3I Transmission Intelligence Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tier3i-intelligence-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "requirements.txt not found; skipping dependency install"
+          fi
+
+      - name: Run Tier 3I intelligence tests
+        shell: bash
+        env:
+          PYTHONPATH: .
+        run: |
+          PYTHONPATH=. pytest -q \
+            tests/test_tier3i_edge_quality.py \
+            tests/test_tier3i_structural_influence.py \
+            tests/test_tier3i_intelligence_summary.py \
+            tests/test_tier3i_multi_hop_quality.py
+
+      - name: Run selected Tier 3H.5 non-regression tests if present
+        shell: bash
+        env:
+          PYTHONPATH: .
+        run: |
+          selected_tests=(
+            tests/test_tier3h5_canonical_graph_governance.py
+            tests/test_tier3h5_canonical_propagation_memory.py
+          )
+
+          existing_tests=()
+          for test_file in "${selected_tests[@]}"; do
+            if [ -f "$test_file" ]; then
+              existing_tests+=("$test_file")
+            fi
+          done
+
+          if [ ${#existing_tests[@]} -eq 0 ]; then
+            echo "No selected Tier 3H.5 non-regression test files found; skipping"
+            exit 0
+          fi
+
+          PYTHONPATH=. pytest -q "${existing_tests[@]}"
+
+      - name: Upload Tier 3I logs artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier3i-test-logs
+          path: logs/*.json
+          if-no-files-found: ignore
