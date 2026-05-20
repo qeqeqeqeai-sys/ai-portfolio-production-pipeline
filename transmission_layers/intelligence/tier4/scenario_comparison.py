@@ -13,7 +13,13 @@ def _checksum(payload: Dict[str, Any]) -> str:
 
 
 def _factors(metrics: Dict[str, float]) -> List[str]:
-    return [k for k, _ in sorted(((k, v) for k, v in metrics.items() if k.endswith("_delta")), key=lambda kv: (-kv[1], kv[0]))[:3]]
+    return sorted([k for k, _ in sorted(((k, v) for k, v in metrics.items() if k.endswith("_delta")), key=lambda kv: (-kv[1], kv[0]))[:3]])
+
+
+def _comparison_explanation(impact_delta: float, dominant: List[str]) -> str:
+    factors = ", ".join(sorted(dominant)[:3]) if dominant else "none"
+    direction = "increased" if impact_delta > 0.0 else "unchanged"
+    return f"Deterministic comparison: impact {direction}; dominant factors: {factors}."
 
 
 def compute_scenario_similarity(a: Dict[str, float], b: Dict[str, float]) -> float:
@@ -30,11 +36,12 @@ def compare_scenario_outcomes(baseline_scenario: Dict[str, Any], candidate_scena
     bm = compute_scenario_response_metrics(baseline_result, baseline_result)
     cm = compute_scenario_response_metrics(baseline_result, candidate_result)
     dominant = _factors(cm)
-    expl = "scenario comparison favored higher impact due to greater overload and fragmentation deltas." if cm["scenario_impact_score"] >= bm["scenario_impact_score"] else "scenario response remained regime-stable with limited structural impact."
+    impact_delta = round(cm["scenario_impact_score"] - bm["scenario_impact_score"], 6)
+    expl = _comparison_explanation(impact_delta, dominant)
     out = {
         "baseline_scenario": b["scenario_id"],
         "candidate_scenario": c["scenario_id"],
-        "impact_score_delta": round(cm["scenario_impact_score"] - bm["scenario_impact_score"], 6),
+        "impact_score_delta": impact_delta,
         "regime_change_detected": cm["regime_shift_intensity"] > 0.0,
         "dominant_response_factors": dominant,
         "affected_nodes": c["target_nodes"],

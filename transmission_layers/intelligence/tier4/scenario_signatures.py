@@ -5,6 +5,7 @@ import json
 from typing import Any, Dict
 
 from .scenario_semantics import normalize_structural_scenario
+from .scenario_semantics import clamp_score
 
 
 def _checksum(payload: Dict[str, Any]) -> str:
@@ -20,8 +21,8 @@ def compute_scenario_response_signature(scenario: Dict[str, Any], metrics: Dict[
         "affected_corridors": norm["target_corridors"],
         "regime_name": str(regime.get("regime_name", "stable")),
         "regime_shift_detected": bool(metrics.get("regime_shift_intensity", 0.0) > 0.0),
-        "impact_score": round(float(metrics.get("scenario_impact_score", 0.0)), 6),
-        "sensitivity_score": round(float(sensitivity.get("sensitivity_score", 0.0)), 6),
+        "impact_score": clamp_score(metrics.get("scenario_impact_score", 0.0)),
+        "sensitivity_score": clamp_score(sensitivity.get("sensitivity_score", 0.0)),
     }
     out["signature_checksum"] = _checksum(out)
     return out

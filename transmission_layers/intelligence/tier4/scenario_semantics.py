@@ -33,6 +33,19 @@ def _stable_list(values: Iterable[Any]) -> List[str]:
     return sorted({str(v) for v in values if str(v).strip()})
 
 
+def _stable_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    for key in sorted(metadata.keys(), key=lambda k: str(k)):
+        value = metadata[key]
+        if isinstance(value, float):
+            out[str(key)] = round_score(value)
+        elif isinstance(value, list):
+            out[str(key)] = sorted(value, key=lambda v: str(v))
+        else:
+            out[str(key)] = value
+    return out
+
+
 def normalize_structural_scenario(scenario: Dict[str, Any] | None) -> Dict[str, Any]:
     payload = scenario or {}
     scenario_id = str(payload.get("scenario_id") or "scenario_default")
@@ -46,7 +59,7 @@ def normalize_structural_scenario(scenario: Dict[str, Any] | None) -> Dict[str, 
         "target_nodes": _stable_list(payload.get("target_nodes", [])),
         "target_corridors": _stable_list(payload.get("target_corridors", [])),
         "perturbation_strength": clamp_score(payload.get("perturbation_strength", 0.0)),
-        "metadata": {str(k): metadata[k] for k in sorted(metadata.keys())},
+        "metadata": _stable_metadata(metadata),
     }
     normalized["diagnostics"] = {
         "requested_scenario_type": scenario_type,
@@ -64,7 +77,7 @@ def compute_scenario_checksum(scenario: Dict[str, Any]) -> str:
         "target_nodes": _stable_list(scenario.get("target_nodes", [])),
         "target_corridors": _stable_list(scenario.get("target_corridors", [])),
         "perturbation_strength": clamp_score(scenario.get("perturbation_strength", 0.0)),
-        "metadata": {str(k): scenario.get("metadata", {}).get(k) for k in sorted((scenario.get("metadata") or {}).keys())},
+        "metadata": _stable_metadata(scenario.get("metadata") or {}),
     }
     raw = json.dumps(checksum_payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()

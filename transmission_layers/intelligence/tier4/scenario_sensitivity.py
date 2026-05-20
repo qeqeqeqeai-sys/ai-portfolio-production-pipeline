@@ -12,18 +12,20 @@ def _checksum(payload: Dict[str, Any]) -> str:
 
 
 def compute_node_sensitivity(baseline: Dict[str, Any], candidate: Dict[str, Any]) -> List[Dict[str, Any]]:
-    nodes = sorted({*(str(x) for x in baseline.get("stressed_nodes", [])), *(str(x) for x in candidate.get("stressed_nodes", []))})
+    baseline_nodes = {str(x) for x in baseline.get("stressed_nodes", [])}
+    candidate_nodes = {str(x) for x in candidate.get("stressed_nodes", [])}
+    nodes = sorted(baseline_nodes | candidate_nodes)
     out = []
     for nid in nodes:
-        b = 1.0 if nid in baseline.get("stressed_nodes", []) else 0.0
-        c = 1.0 if nid in candidate.get("stressed_nodes", []) else 0.0
+        b = 1.0 if nid in baseline_nodes else 0.0
+        c = 1.0 if nid in candidate_nodes else 0.0
         out.append({"node_id": nid, "sensitivity_score": clamp_score(abs(c - b))})
     return sorted(out, key=lambda x: (-x["sensitivity_score"], x["node_id"]))
 
 
 def compute_corridor_sensitivity(baseline: Dict[str, Any], candidate: Dict[str, Any]) -> List[Dict[str, Any]]:
-    b = sorted(set(baseline.get("degraded_corridors", []) + baseline.get("suppressed_corridors", []) + baseline.get("failed_corridors", [])))
-    c = sorted(set(candidate.get("degraded_corridors", []) + candidate.get("suppressed_corridors", []) + candidate.get("failed_corridors", [])))
+    b = sorted({str(x) for x in (baseline.get("degraded_corridors", []) + baseline.get("suppressed_corridors", []) + baseline.get("failed_corridors", []))})
+    c = sorted({str(x) for x in (candidate.get("degraded_corridors", []) + candidate.get("suppressed_corridors", []) + candidate.get("failed_corridors", []))})
     corridors = sorted(set(b + c))
     out = []
     for cid in corridors:

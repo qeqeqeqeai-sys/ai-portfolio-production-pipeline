@@ -17,3 +17,12 @@ def test_ranking_tie_breaker():
         {"scenario_id": "a", "scenario_impact_score": 0.5, "regime_shift_intensity": 0.5, "fragmentation_delta": 0.1, "overload_delta": 0.1},
     ])
     assert ranked[0]["scenario_id"] == "a"
+
+
+def test_comparison_explanation_and_factor_ordering_stable():
+    base_in = load_simulation_inputs()
+    base = run_structural_simulation(base_in)
+    cand = run_structural_simulation(apply_structural_perturbation(base_in, {"scenario_id": "s3", "scenario_type": "corridor_degraded", "target_corridors": ["A->B"], "perturbation_strength": 0.5}))
+    comp = compare_scenario_outcomes({"scenario_id": "base"}, {"scenario_id": "s3", "scenario_type": "corridor_degraded", "target_corridors": ["A->B"]}, base, cand)
+    assert comp["dominant_response_factors"] == sorted(comp["dominant_response_factors"])
+    assert comp["comparison_explanation"].startswith("Deterministic comparison:")
