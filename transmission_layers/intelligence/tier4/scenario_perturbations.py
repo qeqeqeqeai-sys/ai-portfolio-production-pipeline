@@ -22,8 +22,9 @@ def remove_corridors(state: Dict[str, Any], targets: List[str]) -> Dict[str, Any
 
 
 def stress_nodes(state: Dict[str, Any], targets: List[str], strength: float) -> Dict[str, Any]:
+    target_set = set(targets)
     for node in sorted(state.get("structural_influence_nodes", []), key=lambda n: str(n.get("node_id", ""))):
-        if str(node.get("node_id", "")) in set(targets):
+        if str(node.get("node_id", "")) in target_set:
             node["influence_score"] = clamp_score(node.get("influence_score", 0.0) * (1.0 + 0.5 * strength))
             node["contagion_score"] = clamp_score(node.get("contagion_score", 0.0) * (1.0 + 0.5 * strength))
             node["traffic_score"] = clamp_score(node.get("traffic_score", 0.0) * (1.0 + 0.4 * strength))
@@ -40,8 +41,9 @@ def degrade_corridors(state: Dict[str, Any], targets: List[str], strength: float
 
 
 def reduce_resilience(state: Dict[str, Any], targets: List[str], strength: float) -> Dict[str, Any]:
+    target_set = set(targets)
     for node in sorted(state.get("structural_influence_nodes", []), key=lambda n: str(n.get("node_id", ""))):
-        if not targets or str(node.get("node_id", "")) in set(targets):
+        if not target_set or str(node.get("node_id", "")) in target_set:
             node["resilience_score"] = clamp_score(node.get("resilience_score", 0.0) * (1.0 - 0.8 * strength))
     return state
 

@@ -10,18 +10,19 @@ def _checksum(payload: Dict[str, Any]) -> str:
 
 
 def replay_scenario_response(sequence: List[Dict[str, Any]], window_size: int | None = None) -> Dict[str, Any]:
-    seq = list(sequence)
+    seq = [dict(item) for item in sequence]
     if window_size is not None:
         seq = seq[: max(0, int(window_size))]
     timeline = [{"step": i, "scenario_id": str(x.get("scenario_id", "")), "regime_name": str(x.get("regime_name", "stable")), "impact_score": round(float(x.get("impact_score", 0.0)), 6)} for i, x in enumerate(seq)]
     transitions = [f"{timeline[i-1]['regime_name']}->{timeline[i]['regime_name']}" for i in range(1, len(timeline)) if timeline[i-1]["regime_name"] != timeline[i]["regime_name"]]
+    chronology_preserved = all(timeline[i]["step"] < timeline[i + 1]["step"] for i in range(len(timeline) - 1))
     out = {
         "scenario_sequence": [t["scenario_id"] for t in timeline],
         "response_timeline": timeline,
         "regime_transitions_under_scenario": transitions,
         "scenario_persistence_summary": "stable" if not transitions else "transitional",
         "scenario_replay_window_size": len(timeline),
-        "replay_consistency_diagnostics": {"chronology_preserved": True, "deterministic_ordering": True},
+        "replay_consistency_diagnostics": {"chronology_preserved": chronology_preserved, "deterministic_ordering": True},
     }
     out["scenario_replay_checksum"] = _checksum(out)
     return out
