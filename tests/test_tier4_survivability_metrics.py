@@ -7,3 +7,4 @@ def test_survivability_metrics_bounded_and_irreversibility_flag():
     out = compute_survivability_metrics(frag, thresh)
     assert 0.0 <= out["survivability_score"] <= 1.0
     assert out["cascade_irreversibility_detected"] is True
+    assert out["system_stability_band"] in {"low", "moderate", "high"}

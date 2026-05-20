@@ -7,3 +7,4 @@ def test_tipping_points_detection_deterministic():
     b = detect_tipping_points(seq, jump_threshold=0.2)
     assert a == b
     assert a["tipping_point_count"] == 1
+    assert a["first_tipping_step"] == 1

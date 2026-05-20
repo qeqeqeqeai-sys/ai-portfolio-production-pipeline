@@ -48,3 +48,9 @@ def compute_fragility_checksum(payload: dict[str, Any]) -> str:
 
 def compute_fragility_replay_checksum(payload: dict[str, Any]) -> str:
     return compute_fragility_checksum(payload)
+
+
+def compute_fragility_signature_id(payload: dict[str, Any], length: int = 16) -> str:
+    checksum = compute_fragility_checksum(payload)
+    bounded_len = max(8, min(int(length), len(checksum)))
+    return checksum[:bounded_len]
