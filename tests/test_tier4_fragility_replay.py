@@ -8,3 +8,4 @@ def test_fragility_replay_deterministic_and_comparable():
     assert a["fragility_replay_checksum"] == b["fragility_replay_checksum"]
     cmp_ = compare_fragility_replays(a, b)
     assert cmp_["same_checksum"] is True
+    assert cmp_["window_delta"] == 0

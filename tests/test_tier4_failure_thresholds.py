@@ -7,3 +7,5 @@ def test_failure_thresholds_bounded_and_sorted():
     out = evaluate_failure_thresholds(frag, threshold=0.3)
     assert 0.0 <= out["failure_threshold"] <= 1.0
     assert out["threshold_breaches"] == sorted(out["threshold_breaches"])
+    assert 0.0 <= out["threshold_breach_ratio"] <= 1.0
+    assert len(out["node_threshold_statuses"]) == 2
