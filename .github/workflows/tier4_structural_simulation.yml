@@ -15,6 +15,12 @@ on:
       - 'tests/test_tier4_regime_persistence.py'
       - 'tests/test_tier4_regime_transitions.py'
       - 'tests/test_tier4_structural_regimes.py'
+      - 'tests/test_tier4_scenario_semantics.py'
+      - 'tests/test_tier4_scenario_perturbations.py'
+      - 'tests/test_tier4_scenario_comparison.py'
+      - 'tests/test_tier4_scenario_sensitivity.py'
+      - 'tests/test_tier4_scenario_replay.py'
+      - 'tests/test_tier4_scenario_signatures.py'
       - '.github/workflows/tier4_structural_simulation.yml'
   pull_request:
     paths:
@@ -26,6 +32,12 @@ on:
       - 'tests/test_tier4_influence_attribution.py'
       - 'tests/test_tier4_causal_lineage.py'
       - 'tests/test_tier4_causal_replay.py'
+      - 'tests/test_tier4_scenario_semantics.py'
+      - 'tests/test_tier4_scenario_perturbations.py'
+      - 'tests/test_tier4_scenario_comparison.py'
+      - 'tests/test_tier4_scenario_sensitivity.py'
+      - 'tests/test_tier4_scenario_replay.py'
+      - 'tests/test_tier4_scenario_signatures.py'
       - '.github/workflows/tier4_structural_simulation.yml'
   workflow_dispatch:
 
@@ -56,6 +68,12 @@ jobs:
           python -m pytest -q tests/test_tier4_regime_transitions.py
           python -m pytest -q tests/test_tier4_regime_persistence.py
           python -m pytest -q tests/test_tier4_regime_state_machine.py
+          python -m pytest -q tests/test_tier4_scenario_semantics.py
+          python -m pytest -q tests/test_tier4_scenario_perturbations.py
+          python -m pytest -q tests/test_tier4_scenario_comparison.py
+          python -m pytest -q tests/test_tier4_scenario_sensitivity.py
+          python -m pytest -q tests/test_tier4_scenario_replay.py
+          python -m pytest -q tests/test_tier4_scenario_signatures.py
       - name: Run Tier4 simulation
         run: python -m transmission_layers.intelligence.tier4.structural_simulation
       - name: Upload logs artifact
