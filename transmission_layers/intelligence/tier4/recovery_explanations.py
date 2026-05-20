@@ -1,22 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict
 
-
-def explain_recovery_dynamics(summary: Dict[str, Any]) -> str:
-    durable = float(summary.get("recovery_durability_score", 0.0)) >= 0.6
-    relapse = bool(summary.get("relapse_detected", False))
-    persistence = float(summary.get("recovery_persistence_score", 0.0))
-    if durable and not relapse:
-        base = "resilience reinforcement persisted across replay windows."
-    elif relapse:
-        base = "recovery trajectory exhibited partial relapse behavior."
-    else:
-        base = "recovery durability remained bounded and stable."
-    factors = [
-        ("dominant_decay_factor", str(summary.get("dominant_decay_factor", "none"))),
-        ("recovery_persistence_score", round(persistence, 6)),
-        ("recovery_durability_score", round(float(summary.get("recovery_durability_score", 0.0)), 6)),
-    ]
-    suffix = "; ".join(f"{k}={v}" for k, v in factors)
-    return f"{base} factors: {suffix}."[:280]
+def explain_structural_recovery(summary: dict[str, object]) -> str:
+    return (
+        "deterministic recovery diagnostics: "
+        f"classification={summary.get('recovery_classification', 'unknown')}; "
+        f"dominant_factor={summary.get('dominant_recovery_factor', 'none')}; "
+        f"recovery={round(float(summary.get('structural_recovery_score', 0.0)), 6)}; "
+        f"reintegration={round(float(summary.get('reintegration_stability_score', 0.0)), 6)}; "
+        f"relapse={round(float(summary.get('recovery_relapse_score', 0.0)), 6)}."
+    )[:280]
