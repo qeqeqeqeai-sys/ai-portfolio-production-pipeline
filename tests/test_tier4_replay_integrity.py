@@ -6,7 +6,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from transmission_layers.intelligence.tier4.state_snapshot import build_structural_snapshot
 from transmission_layers.intelligence.tier4.structural_simulation import run_structural_simulation
 from transmission_layers.intelligence.tier4.temporal_replay import replay_structural_timeline
-from transmission_layers.intelligence.tier4.topology_hashing import canonical_json_bytes, generate_topology_hash
+from transmission_layers.intelligence.tier4.topology_hashing import (
+    canonical_json_bytes,
+    generate_topology_hash,
+    normalize_for_hashing,
+    normalize_for_replay,
+)
 
 
 def _in(edge=0.4, suppress=False):
@@ -47,6 +52,40 @@ def test_replay_edge_cases_and_metric_bounds():
     replay = replay_structural_timeline([s, s, dict(s, run_date_sgt="2026-05-18"), dict(s, run_date_sgt="2026-05-18")])
     assert replay["operational_diagnostics"]["replay_window_size"] == 4
     assert replay["operational_diagnostics"]["replay_ordering_stable"] is True
-    assert replay["operational_diagnostics"]["topology_hash_sequence"] == sorted(replay["operational_diagnostics"]["topology_hash_sequence"])
+    assert replay["operational_diagnostics"]["topology_hash_sequence"] == [
+        s["topology_hash"] for s in sorted([s, s, dict(s, run_date_sgt="2026-05-18"), dict(s, run_date_sgt="2026-05-18")], key=lambda x: (x["run_date_sgt"], x["simulation_run_id"], x["topology_hash"]))
+    ]
     for score in replay["temporal_stability_metrics"].values():
         assert 0.0 <= float(score) <= 1.0
+
+
+def test_normalization_distinguishes_hash_and_replay_semantics():
+    shuffled = {
+        "nodes": ["N2", "N1"],
+        "corridors": [{"id": "c2"}, {"id": "c1"}],
+    }
+    reordered = {
+        "nodes": ["N1", "N2"],
+        "corridors": [{"id": "c1"}, {"id": "c2"}],
+    }
+    assert normalize_for_hashing(shuffled) == normalize_for_hashing(reordered)
+
+    replay_payload = {
+        "timeline": ["t2", "t1"],
+        "topology_hash_sequence": ["h2", "h1"],
+        "newly_failed_corridors": ["c2", "c1", "c2"],
+    }
+    normalized = normalize_for_replay(replay_payload)
+    assert normalized["timeline"] == ["t2", "t1"]
+    assert normalized["topology_hash_sequence"] == ["h2", "h1"]
+    assert normalized["newly_failed_corridors"] == ["c1", "c2", "c2"]
+
+
+def test_replay_preserves_topology_hash_and_transition_order():
+    s1 = build_structural_snapshot("2026-05-18", run_structural_simulation(_in(0.95))).to_dict()
+    s2 = build_structural_snapshot("2026-05-19", run_structural_simulation(_in(0.15, True))).to_dict()
+    s3 = build_structural_snapshot("2026-05-20", run_structural_simulation(_in(0.95))).to_dict()
+    replay = replay_structural_timeline([s3, s1, s2])
+    ordered = sorted([s1, s2, s3], key=lambda s: (s["run_date_sgt"], s["simulation_run_id"], s["topology_hash"]))
+    assert replay["operational_diagnostics"]["topology_hash_sequence"] == [s["topology_hash"] for s in ordered]
+    assert [t["from"] for t in replay["transitions"]] == [ordered[0]["run_date_sgt"], ordered[1]["run_date_sgt"]]

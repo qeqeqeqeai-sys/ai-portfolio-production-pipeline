@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from .topology_hashing import normalize_deterministic
+from .topology_hashing import normalize_for_replay
 
 
 class StructuralMemoryStore:
@@ -11,11 +11,11 @@ class StructuralMemoryStore:
         self._entries: List[Dict[str, Any]] = []
 
     def add_snapshot(self, snapshot: Dict[str, Any]) -> None:
-        self._entries.append(normalize_deterministic(snapshot))
+        self._entries.append(normalize_for_replay(snapshot))
         self._entries = sorted(self._entries, key=lambda s: (str(s.get("run_date_sgt", "")), str(s.get("simulation_run_id", "")), str(s.get("topology_hash", ""))))
 
     def all_snapshots(self) -> List[Dict[str, Any]]:
-        return [normalize_deterministic(s) for s in self._entries]
+        return [normalize_for_replay(s) for s in self._entries]
 
     def query(self, run_date: str | None = None, simulation_health_state: str | None = None, topology_hash: str | None = None, resilience_regime: str | None = None, cascading_failure_presence: bool | None = None, chokepoint_concentration_bucket: str | None = None) -> List[Dict[str, Any]]:
         out = []
@@ -42,5 +42,5 @@ class StructuralMemoryStore:
                 bucket = "low" if concentration < 0.2 else "medium" if concentration < 0.5 else "high"
                 if bucket != chokepoint_concentration_bucket:
                     continue
-            out.append(normalize_deterministic(snapshot))
+            out.append(normalize_for_replay(snapshot))
         return out

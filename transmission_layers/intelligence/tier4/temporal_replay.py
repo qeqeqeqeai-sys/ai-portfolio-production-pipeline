@@ -7,17 +7,17 @@ import json
 
 from .structural_simulation import clamp_normalized_score
 from .topology_drift import analyze_topology_drift
-from .topology_hashing import canonical_json_bytes, normalize_deterministic
+from .topology_hashing import canonical_json_bytes, normalize_for_hashing, normalize_for_replay
 
 
 def load_structural_snapshot(snapshot_payload: Dict[str, Any]) -> Dict[str, Any]:
-    return normalize_deterministic(snapshot_payload)
+    return normalize_for_replay(snapshot_payload)
 
 
 def compare_snapshots(previous: Dict[str, Any], current: Dict[str, Any]) -> Dict[str, Any]:
     prev_failed = {k for k, v in previous.get("corridor_structural_metrics", {}).items() if str(v.get("state")) == "failed"}
     cur_failed = {k for k, v in current.get("corridor_structural_metrics", {}).items() if str(v.get("state")) == "failed"}
-    return normalize_deterministic({
+    return normalize_for_replay({
         "resilience_delta": round(float(current.get("resilience", 0.0)) - float(previous.get("resilience", 0.0)), 6),
         "overload_delta": round(float(current.get("overload", 0.0)) - float(previous.get("overload", 0.0)), 6),
         "propagated_stress_delta": round(float(current.get("propagated_stress", 0.0)) - float(previous.get("propagated_stress", 0.0)), 6),
@@ -45,7 +45,7 @@ def replay_structural_timeline(snapshots: Iterable[Dict[str, Any]]) -> Dict[str,
     for idx in range(1, len(ordered)):
         diff = compare_snapshots(ordered[idx - 1], ordered[idx])
         drift = analyze_topology_drift(ordered[idx - 1], ordered[idx])
-        transitions.append(normalize_deterministic({"from": ordered[idx - 1].get("run_date_sgt", ""), "to": ordered[idx].get("run_date_sgt", ""), "diff": diff, "drift": drift}))
+        transitions.append(normalize_for_replay({"from": ordered[idx - 1].get("run_date_sgt", ""), "to": ordered[idx].get("run_date_sgt", ""), "diff": diff, "drift": drift}))
 
     for snapshot in ordered:
         for cid, c_data in snapshot.get("corridor_structural_metrics", {}).items():
@@ -63,7 +63,7 @@ def replay_structural_timeline(snapshots: Iterable[Dict[str, Any]]) -> Dict[str,
     unique_hashes = len(set(topology_hash_sequence))
     all_corridors = {c for s in ordered for c in s.get("corridor_structural_metrics", {}).keys()}
 
-    metrics = normalize_deterministic({
+    metrics = normalize_for_replay({
         "structural_persistence_score": clamp_normalized_score(1.0 - ((unique_hashes - 1) / max(1, len(ordered) - 1))) if ordered else 1.0,
         "corridor_stability_score": clamp_normalized_score(1.0 - (len(recurring_failed) / max(1, len(all_corridors)))),
         "replay_consistency_score": clamp_normalized_score(1.0),
@@ -72,8 +72,8 @@ def replay_structural_timeline(snapshots: Iterable[Dict[str, Any]]) -> Dict[str,
         "topology_drift_score": clamp_normalized_score(sum(float(t["drift"]["topology_drift_score"]) for t in transitions) / len(transitions) if transitions else 0.0),
     })
 
-    diagnostics = normalize_deterministic({
-        "replay_checksum": hashlib.sha256(canonical_json_bytes({"ordered": ordered, "transitions": transitions})).hexdigest(),
+    diagnostics = normalize_for_replay({
+        "replay_checksum": hashlib.sha256(canonical_json_bytes(normalize_for_hashing({"ordered": ordered, "transitions": transitions}))).hexdigest(),
         "topology_hash": ordered[-1].get("topology_hash", "") if ordered else "",
         "topology_hash_sequence": topology_hash_sequence,
         "topology_drift_detected": any(t["drift"]["topology_changed"] for t in transitions),
@@ -84,7 +84,7 @@ def replay_structural_timeline(snapshots: Iterable[Dict[str, Any]]) -> Dict[str,
         "replay_ordering_stable": [s.get("run_date_sgt") for s in ordered] == sorted([s.get("run_date_sgt") for s in ordered]),
     })
 
-    return normalize_deterministic({
+    return normalize_for_replay({
         "ordered_run_dates": [s.get("run_date_sgt") for s in ordered],
         "health_state_timeline": [s.get("simulation_health_state", "mixed") for s in ordered],
         "transitions": transitions,
