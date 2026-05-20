@@ -14,6 +14,10 @@ def clamp_score(value: float) -> float:
     return max(0.0, min(1.0, round(_to_float(value), 6)))
 
 
+def round_score(value: float) -> float:
+    return round(_to_float(value), 6)
+
+
 def safe_ratio(numerator: float, denominator: float) -> float:
     if _to_float(denominator) <= 0.0:
         return 0.0

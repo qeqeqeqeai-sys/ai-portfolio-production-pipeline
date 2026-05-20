@@ -15,19 +15,20 @@ _ALLOWED = {
 }
 
 def enumerate_allowed_transitions() -> Dict[str, List[str]]:
-    return {k: list(v) for k, v in sorted(_ALLOWED.items())}
+    return {k: sorted(v) for k, v in sorted(_ALLOWED.items())}
 
 def validate_regime_transition(previous_regime: str, current_regime: str) -> Dict[str, object]:
     allowed = current_regime in _ALLOWED.get(previous_regime, [])
     return {"valid": allowed, "previous_regime": previous_regime, "current_regime": current_regime, "diagnostic": "valid_transition" if allowed else "invalid_direct_transition"}
 
 def compute_transition_path(start_regime: str, end_regime: str, max_depth: int = 6) -> Dict[str, object]:
+    bounded_depth = max(1, int(max_depth))
     if start_regime == end_regime: return {"path_found": True, "path": [start_regime]}
     q = deque([(start_regime, [start_regime])])
     while q:
         node, path = q.popleft()
-        if len(path) > max_depth: continue
-        for nxt in _ALLOWED.get(node, []):
+        if len(path) > bounded_depth: continue
+        for nxt in sorted(_ALLOWED.get(node, [])):
             if nxt in path: continue
             p2 = path + [nxt]
             if nxt == end_regime: return {"path_found": True, "path": p2}

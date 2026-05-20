@@ -16,3 +16,12 @@ def test_metrics_bounded():
     p = compute_regime_continuity([snap("2026-01-01"), {**snap("2026-01-02"), "chokepoint_overload_score":0.9}])
     for v in p.values():
         assert 0.0 <= v <= 1.0
+
+
+def test_empty_or_singleton_windows_are_bounded_and_deterministic():
+    a = compute_regime_continuity([])
+    b = compute_regime_continuity([snap("2026-01-01")])
+    assert a == b
+    for values in (a, compute_regime_persistence([])):
+        for v in values.values():
+            assert 0.0 <= v <= 1.0
