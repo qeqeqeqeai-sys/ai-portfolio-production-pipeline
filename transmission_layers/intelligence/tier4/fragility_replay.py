@@ -7,8 +7,7 @@ from .fragility_signatures import compute_fragility_replay_checksum
 
 def replay_fragility(fragility_states: list[dict[str, Any]], window_size: int = 20) -> dict[str, Any]:
     bounded = max(0, min(int(window_size), 200))
-    sequence = [dict(s) for s in fragility_states[:bounded]]
-    timeline = [{"step": i, **state} for i, state in enumerate(sequence)]
+    timeline = [{"step": i, **dict(state)} for i, state in enumerate(fragility_states[:bounded])]
     out = {
         "fragility_timeline": timeline,
         "fragility_replay_window_size": len(timeline),
@@ -21,10 +20,10 @@ def replay_fragility(fragility_states: list[dict[str, Any]], window_size: int = 
 
 
 def compare_fragility_replays(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
-    window_a = int(a.get("fragility_replay_window_size", 0))
-    window_b = int(b.get("fragility_replay_window_size", 0))
+    aw = int(a.get("fragility_replay_window_size", 0))
+    bw = int(b.get("fragility_replay_window_size", 0))
     return {
         "same_checksum": str(a.get("fragility_replay_checksum", "")) == str(b.get("fragility_replay_checksum", "")),
-        "same_window": window_a == window_b,
-        "window_delta": window_a - window_b,
+        "same_window": aw == bw,
+        "window_delta": aw - bw,
     }
