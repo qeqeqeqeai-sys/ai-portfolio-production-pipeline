@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Any, Dict, Iterable, List
 
-from .regime_metrics import clamp_score, compute_regime_metrics
+from .regime_metrics import clamp_score, compute_regime_metrics, round_score
 
 TIE_PRIORITY = ["cascading_failure", "overloaded", "fragmented", "suppressed", "stressed", "recovering", "transitional", "stable"]
 
@@ -30,7 +30,13 @@ def classify_structural_regime(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         "stable": metrics["regime_coherence_score"],
     }
     best = sorted(regime_scores.items(), key=lambda kv: (-kv[1], TIE_PRIORITY.index(kv[0])))[0]
-    factors = _stable([k for k, v in metrics.items() if v >= 0.55])[:3]
+    factors = [
+        name
+        for name, _ in sorted(
+            ((k, round_score(v)) for k, v in metrics.items() if round_score(v) >= 0.55),
+            key=lambda kv: (-kv[1], kv[0]),
+        )[:3]
+    ]
     chokepoints = sorted(snapshot.get("overloaded_nodes", []))[:5]
     corridors = _stable(snapshot.get("failed_corridors", []) + snapshot.get("suppressed_corridors", []) + snapshot.get("degraded_corridors", []))[:5]
     confidence = "low" if best[1] < 0.45 else "medium" if best[1] < 0.75 else "high"
@@ -44,7 +50,8 @@ def classify_structural_regime(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         "dominant_corridors": corridors,
         "regime_explanation": expl[:220],
     }
-    out["regime_checksum"] = _checksum(out)
+    checksum_payload = {**out, "regime_score": round_score(out["regime_score"])}
+    out["regime_checksum"] = _checksum(checksum_payload)
     return out
 
 

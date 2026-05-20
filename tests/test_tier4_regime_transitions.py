@@ -20,3 +20,11 @@ def test_replay_chronology_and_window_truncation():
     assert len(transitions) == 2
     replay = replay_regime_timeline(snaps, window_size=2)
     assert replay["regime_replay_window_size"] == 2
+
+
+def test_replay_checksum_stable_for_identical_inputs():
+    snaps = [s("2026-01-01", 0.2), s("2026-01-02", 0.2), s("2026-01-03", 0.2)]
+    r1 = replay_regime_timeline(snaps)
+    r2 = replay_regime_timeline(snaps)
+    assert r1["regime_replay_checksum"] == r2["regime_replay_checksum"]
+    assert r1["transition_points"] == r2["transition_points"]

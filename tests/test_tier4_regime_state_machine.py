@@ -15,3 +15,14 @@ def test_transition_path_computation_bounded():
 def test_transition_ordering_stable():
     m = enumerate_allowed_transitions()
     assert list(m.keys()) == sorted(m.keys())
+    for values in m.values():
+        assert values == sorted(values)
+
+
+def test_invalid_transition_reason_deterministic_and_path_repeatable():
+    a = validate_regime_transition("stable", "cascading_failure")
+    b = validate_regime_transition("stable", "cascading_failure")
+    assert a == b
+    p1 = compute_transition_path("stable", "cascading_failure", max_depth=6)
+    p2 = compute_transition_path("stable", "cascading_failure", max_depth=6)
+    assert p1 == p2

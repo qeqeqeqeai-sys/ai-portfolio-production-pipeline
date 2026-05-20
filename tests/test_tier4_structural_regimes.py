@@ -1,4 +1,4 @@
-from transmission_layers.intelligence.tier4.structural_regimes import classify_structural_regime, compare_regime_states
+from transmission_layers.intelligence.tier4.structural_regimes import TIE_PRIORITY, classify_structural_regime, compare_regime_states
 
 
 def _snap(**kw):
@@ -17,8 +17,22 @@ def test_regime_classification_deterministic_and_bounded():
 
 def test_tie_breaking_equal_scores():
     s = _snap(chokepoint_overload_score=0.8, suppression_cascade_score=0.8, propagated_stress_score=0.8)
-    r = classify_structural_regime(s)
-    assert r["regime_name"] in {"cascading_failure", "overloaded"}
+    expected = min({"cascading_failure", "overloaded"}, key=TIE_PRIORITY.index)
+    for _ in range(5):
+        assert classify_structural_regime(s)["regime_name"] == expected
+
+
+def test_classification_clamps_out_of_range_scores_and_checksum_is_stable():
+    s = _snap(
+        chokepoint_overload_score=3.0,
+        suppression_cascade_score=-2.0,
+        propagated_stress_score=99.0,
+        resilience_degradation_score=-5.0,
+    )
+    a = classify_structural_regime(s)
+    b = classify_structural_regime(s)
+    assert a["regime_checksum"] == b["regime_checksum"]
+    assert 0.0 <= a["regime_score"] <= 1.0
 
 
 def test_fragmented_recovering_overloaded_suppressed_detection():
