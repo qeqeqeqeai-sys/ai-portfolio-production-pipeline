@@ -21,6 +21,13 @@ on:
       - 'tests/test_tier4_scenario_sensitivity.py'
       - 'tests/test_tier4_scenario_replay.py'
       - 'tests/test_tier4_scenario_signatures.py'
+      - 'tests/test_tier4_fragility_analysis.py'
+      - 'tests/test_tier4_failure_thresholds.py'
+      - 'tests/test_tier4_tipping_points.py'
+      - 'tests/test_tier4_survivability_metrics.py'
+      - 'tests/test_tier4_fragility_replay.py'
+      - 'tests/test_tier4_fragility_explanations.py'
+      - 'tests/test_tier4_fragility_signatures.py'
       - '.github/workflows/tier4_structural_simulation.yml'
   pull_request:
     paths:
@@ -38,6 +45,13 @@ on:
       - 'tests/test_tier4_scenario_sensitivity.py'
       - 'tests/test_tier4_scenario_replay.py'
       - 'tests/test_tier4_scenario_signatures.py'
+      - 'tests/test_tier4_fragility_analysis.py'
+      - 'tests/test_tier4_failure_thresholds.py'
+      - 'tests/test_tier4_tipping_points.py'
+      - 'tests/test_tier4_survivability_metrics.py'
+      - 'tests/test_tier4_fragility_replay.py'
+      - 'tests/test_tier4_fragility_explanations.py'
+      - 'tests/test_tier4_fragility_signatures.py'
       - '.github/workflows/tier4_structural_simulation.yml'
   workflow_dispatch:
 
@@ -74,6 +88,13 @@ jobs:
           python -m pytest -q tests/test_tier4_scenario_sensitivity.py
           python -m pytest -q tests/test_tier4_scenario_replay.py
           python -m pytest -q tests/test_tier4_scenario_signatures.py
+          python -m pytest -q tests/test_tier4_fragility_analysis.py
+          python -m pytest -q tests/test_tier4_failure_thresholds.py
+          python -m pytest -q tests/test_tier4_tipping_points.py
+          python -m pytest -q tests/test_tier4_survivability_metrics.py
+          python -m pytest -q tests/test_tier4_fragility_replay.py
+          python -m pytest -q tests/test_tier4_fragility_explanations.py
+          python -m pytest -q tests/test_tier4_fragility_signatures.py
       - name: Run Tier4 simulation
         run: python -m transmission_layers.intelligence.tier4.structural_simulation
       - name: Upload logs artifact
@@ -81,29 +102,11 @@ jobs:
         with:
           name: tier4-structural-simulation-logs
           path: |
-            logs/tier4_structural_simulation_summary.json
-            tier4_structural_simulation_summary.json
-            transmission_layers/intelligence/tier4/__init__.py
-            transmission_layers/intelligence/tier4/structural_simulation.py
-            transmission_layers/intelligence/tier4/state_snapshot.py
-            transmission_layers/intelligence/tier4/structural_memory.py
-            transmission_layers/intelligence/tier4/temporal_replay.py
-            transmission_layers/intelligence/tier4/topology_drift.py
-            transmission_layers/intelligence/tier4/topology_hashing.py
-            transmission_layers/intelligence/tier4/influence_attribution.py
-            transmission_layers/intelligence/tier4/attribution_metrics.py
-            transmission_layers/intelligence/tier4/causal_paths.py
-            transmission_layers/intelligence/tier4/causal_lineage.py
-            transmission_layers/intelligence/tier4/causal_replay.py
-            tests/test_tier4_influence_attribution.py
-            tests/test_tier4_causal_lineage.py
-            tests/test_tier4_causal_replay.py
-            tests/test_tier4_structural_simulation.py
-            tests/test_tier4_structural_memory.py
-            tests/test_tier4_temporal_replay.py
-            tests/test_tier4_replay_integrity.py
             logs/tier4*_summary.json
             logs/tier4*_diagnostics.json
             logs/tier4*_replay*.json
             logs/tier4*_memory*.json
+            tier4_structural_simulation_summary.json
+            transmission_layers/intelligence/tier4/**
+            tests/test_tier4_*.py
           if-no-files-found: warn
