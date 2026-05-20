@@ -4,15 +4,14 @@ from typing import Any
 
 
 def explain_fragility(summary: dict[str, Any]) -> str:
-    score = round(float(summary.get("system_fragility_score", 0.0)), 6)
-    breaches = int(summary.get("threshold_breach_count", 0))
-    irreversible = bool(summary.get("cascade_irreversibility_detected", False))
-    stability_band = str(summary.get("system_stability_band", ""))
-    band = "low" if score < 0.34 else "moderate" if score < 0.67 else "high"
-    irreversible_txt = "yes" if irreversible else "no"
-    band_txt = stability_band or band
     return (
         "fragility status template: "
-        f"band={band}; system_fragility_score={score}; threshold_breach_count={breaches}; "
-        f"system_stability_band={band_txt}; cascade_irreversibility_detected={irreversible_txt}."
+        f"fragility_id={str(summary.get('fragility_id', 'tier4_fragility'))}; "
+        f"fragility_score={round(float(summary.get('fragility_score', summary.get('system_fragility_score', 0.0))), 6)}; "
+        f"bounded_fragility_score={round(float(summary.get('bounded_fragility_score', summary.get('system_fragility_score', 0.0))), 6)}; "
+        f"dominant_fragility_factor={str(summary.get('dominant_fragility_factor', 'overload'))}; "
+        f"fragility_classification={str(summary.get('fragility_classification', 'stable'))}; "
+        f"structural_survivability_score={round(float(summary.get('structural_survivability_score', 0.0)), 6)}; "
+        f"threshold_proximity_score={round(float(summary.get('threshold_proximity_score', 0.0)), 6)}; "
+        f"fragility_checksum={str(summary.get('fragility_checksum', ''))}."
     )

@@ -9,9 +9,7 @@ EXCLUDED_KEYS = {
     "runtime_duration",
     "duration_ms",
     "duration_seconds",
-    "environment",
-    "host",
-    "pid",
+    "generated_at",
 }
 
 
@@ -24,33 +22,49 @@ def _round_float(value: Any) -> float:
 
 def _normalize_payload(value: Any) -> Any:
     if isinstance(value, dict):
-        out: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
         for key in sorted(value.keys(), key=lambda k: str(k)):
             key_str = str(key)
             if key_str in EXCLUDED_KEYS:
                 continue
-            out[key_str] = _normalize_payload(value[key])
-        return out
+            normalized[key_str] = _normalize_payload(value[key])
+        return normalized
     if isinstance(value, (list, tuple)):
         return [_normalize_payload(v) for v in value]
     if isinstance(value, set):
-        return sorted(_normalize_payload(v) for v in value)
+        return sorted((_normalize_payload(v) for v in value), key=lambda x: json.dumps(x, sort_keys=True, separators=(",", ":")))
     if isinstance(value, float):
         return _round_float(value)
     return value
 
 
-def compute_fragility_checksum(payload: dict[str, Any]) -> str:
+def _checksum(payload: dict[str, Any]) -> str:
     normalized = _normalize_payload(payload)
     encoded = json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
+def compute_fragility_checksum(payload: dict[str, Any]) -> str:
+    return _checksum(payload)
+
+
 def compute_fragility_replay_checksum(payload: dict[str, Any]) -> str:
-    return compute_fragility_checksum(payload)
+    return _checksum(payload)
+
+
+def compute_tipping_point_checksum(payload: dict[str, Any]) -> str:
+    return _checksum(payload)
+
+
+def compute_survivability_checksum(payload: dict[str, Any]) -> str:
+    return _checksum(payload)
+
+
+def compute_fragility_signature_checksum(payload: dict[str, Any]) -> str:
+    return _checksum(payload)
 
 
 def compute_fragility_signature_id(payload: dict[str, Any], length: int = 16) -> str:
-    checksum = compute_fragility_checksum(payload)
+    checksum = compute_fragility_signature_checksum(payload)
     bounded_len = max(8, min(int(length), len(checksum)))
     return checksum[:bounded_len]

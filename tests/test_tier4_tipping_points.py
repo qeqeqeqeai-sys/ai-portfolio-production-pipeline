@@ -8,3 +8,4 @@ def test_tipping_points_detection_deterministic():
     assert a == b
     assert a["tipping_point_count"] == 1
     assert a["first_tipping_step"] == 1
+    assert "tipping_point_checksum" in a
