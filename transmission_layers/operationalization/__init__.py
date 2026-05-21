@@ -8,6 +8,7 @@ from .export_persistence import build_export_filename, persist_manifest_export_e
 from .export_verification import load_manifest_export_envelope, verify_manifest_export_envelope
 from .audit_summary import build_operational_audit_summary
 from .supervisor_review import build_operationalization_supervisor_review
+from .replay_contract import assess_replay_contract, build_replay_plan_skeleton
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -31,4 +32,6 @@ __all__ = [
     "build_operational_audit_summary",
     "run_operationalization_cli_smoke",
     "build_operationalization_supervisor_review",
+    "assess_replay_contract",
+    "build_replay_plan_skeleton",
 ]
