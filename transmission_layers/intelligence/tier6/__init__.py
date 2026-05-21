@@ -9,5 +9,6 @@ from .transmission_risk_register import assess_transmission_risk_register
 from .transmission_governance_summary import assess_transmission_governance_summary
 from .transmission_governance_review_gate import assess_transmission_governance_review_gate
 from .transmission_governance_audit_trail import assess_transmission_governance_audit_trail
+from .transmission_governance_finalization import assess_transmission_governance_finalization
 
-__all__ = ["assess_structural_signal_quality", "assess_transmission_reliability_diagnostics", "assess_transmission_path_integrity", "assess_propagation_distortion_diagnostics", "assess_transmission_explainability", "assess_transmission_risk_register", "assess_transmission_governance_summary", "assess_transmission_governance_review_gate", "assess_transmission_governance_audit_trail"]
+__all__ = ["assess_structural_signal_quality", "assess_transmission_reliability_diagnostics", "assess_transmission_path_integrity", "assess_propagation_distortion_diagnostics", "assess_transmission_explainability", "assess_transmission_risk_register", "assess_transmission_governance_summary", "assess_transmission_governance_review_gate", "assess_transmission_governance_audit_trail", "assess_transmission_governance_finalization"]
