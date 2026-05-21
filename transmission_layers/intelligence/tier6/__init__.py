@@ -6,5 +6,6 @@ from .transmission_path_integrity import assess_transmission_path_integrity
 from .propagation_distortion_diagnostics import assess_propagation_distortion_diagnostics
 from .transmission_explainability import assess_transmission_explainability
 from .transmission_risk_register import assess_transmission_risk_register
+from .transmission_governance_summary import assess_transmission_governance_summary
 
-__all__ = ["assess_structural_signal_quality", "assess_transmission_reliability_diagnostics", "assess_transmission_path_integrity", "assess_propagation_distortion_diagnostics", "assess_transmission_explainability", "assess_transmission_risk_register"]
+__all__ = ["assess_structural_signal_quality", "assess_transmission_reliability_diagnostics", "assess_transmission_path_integrity", "assess_propagation_distortion_diagnostics", "assess_transmission_explainability", "assess_transmission_risk_register", "assess_transmission_governance_summary"]
