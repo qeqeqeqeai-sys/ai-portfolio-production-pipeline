@@ -7,6 +7,7 @@ from .export_envelope import build_manifest_export_envelope, build_dry_run_opera
 from .export_persistence import build_export_filename, persist_manifest_export_envelope
 from .export_verification import load_manifest_export_envelope, verify_manifest_export_envelope
 from .audit_summary import build_operational_audit_summary
+from .supervisor_review import build_operationalization_supervisor_review
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -29,4 +30,5 @@ __all__ = [
     "verify_manifest_export_envelope",
     "build_operational_audit_summary",
     "run_operationalization_cli_smoke",
+    "build_operationalization_supervisor_review",
 ]
