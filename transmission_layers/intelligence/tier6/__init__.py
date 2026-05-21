@@ -4,5 +4,6 @@ from .structural_signal_quality import assess_structural_signal_quality
 from .transmission_reliability_diagnostics import assess_transmission_reliability_diagnostics
 from .transmission_path_integrity import assess_transmission_path_integrity
 from .propagation_distortion_diagnostics import assess_propagation_distortion_diagnostics
+from .transmission_explainability import assess_transmission_explainability
 
-__all__ = ["assess_structural_signal_quality", "assess_transmission_reliability_diagnostics", "assess_transmission_path_integrity", "assess_propagation_distortion_diagnostics"]
+__all__ = ["assess_structural_signal_quality", "assess_transmission_reliability_diagnostics", "assess_transmission_path_integrity", "assess_propagation_distortion_diagnostics", "assess_transmission_explainability"]
