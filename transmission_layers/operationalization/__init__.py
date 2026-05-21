@@ -12,6 +12,7 @@ from .replay_contract import assess_replay_contract, build_replay_plan_skeleton
 from .replay_supervisor_review import build_replay_supervisor_review
 from .replay_guardrails import build_replay_engine_guardrails
 from .replay_preflight import build_replay_engine_preflight
+from .replay_dry_run import execute_replay_dry_run
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -40,4 +41,5 @@ __all__ = [
     "build_replay_supervisor_review",
     "build_replay_engine_guardrails",
     "build_replay_engine_preflight",
+    "execute_replay_dry_run",
 ]
