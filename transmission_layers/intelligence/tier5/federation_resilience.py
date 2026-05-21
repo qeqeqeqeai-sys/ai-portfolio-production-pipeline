@@ -12,12 +12,33 @@ from .federation_resilience_explanations import fixed_federation_resilience_expl
 from .federation_resilience_signatures import federation_resilience_checksum
 
 
-def _score(result: dict[str, Any], key: str) -> float:
-    return round(clamp_score(float(result.get(key, 0.0))), 6)
+def _record_get(record: Any, key: str, default: Any = 0.0) -> Any:
+    if isinstance(record, dict):
+        return record.get(key, default)
+    return getattr(record, key, default)
+
+
+def _score(record: Any, key: str) -> float:
+    return round(clamp_score(float(_record_get(record, key, 0.0))), 6)
+
+
+def _stable_resilience_id(record: Any) -> str:
+    for key in (
+        "federation_resilience_id",
+        "federation_health_id",
+        "federation_observability_id",
+        "federation_id",
+        "system_id",
+        "id",
+    ):
+        value = _record_get(record, key, None)
+        if value is not None:
+            return str(value)
+    return ""
 
 
 def build_federation_resilience_sort_key(record: Any) -> tuple[float, float, float, float, float, float, float, float, str]:
-    rid = str(record.get("federation_resilience_id", record.get("federation_id", record.get("system_id", ""))))
+    rid = _stable_resilience_id(record)
     return (
         -_score(record, "federation_resilience_score"),
         -_score(record, "federation_recovery_readiness_score"),
