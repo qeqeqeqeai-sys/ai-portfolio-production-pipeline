@@ -10,6 +10,7 @@ from .audit_summary import build_operational_audit_summary
 from .supervisor_review import build_operationalization_supervisor_review
 from .replay_contract import assess_replay_contract, build_replay_plan_skeleton
 from .replay_supervisor_review import build_replay_supervisor_review
+from .replay_guardrails import build_replay_engine_guardrails
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -36,4 +37,5 @@ __all__ = [
     "assess_replay_contract",
     "build_replay_plan_skeleton",
     "build_replay_supervisor_review",
+    "build_replay_engine_guardrails",
 ]
