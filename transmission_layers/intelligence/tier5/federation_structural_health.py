@@ -11,6 +11,43 @@ from .federation_health_explanations import fixed_federation_health_explanations
 from .federation_health_signatures import federation_health_checksum
 
 
+def _read_field(record: Any, field: str, default: Any = None) -> Any:
+    if isinstance(record, dict):
+        return record.get(field, default)
+    return getattr(record, field, default)
+
+
+def _clamped_rounded_score(record: Any, field: str) -> float:
+    raw_value = _read_field(record, field, 0.0)
+    try:
+        numeric_value = float(raw_value)
+    except (TypeError, ValueError):
+        numeric_value = 0.0
+    return round(clamp_score(numeric_value), 6)
+
+
+def _stable_federation_sort_id(record: Any) -> str:
+    for field in ("federation_health_id", "federation_observability_id", "federation_id", "system_id", "id"):
+        value = _read_field(record, field, None)
+        if value is not None and str(value) != "":
+            return str(value)
+    return ""
+
+
+def build_federation_health_sort_key(record: Any) -> tuple[float, float, float, float, float, float, float, float, str]:
+    return (
+        -_clamped_rounded_score(record, "federation_structural_health_score"),
+        -_clamped_rounded_score(record, "diagnostic_readiness_score"),
+        _clamped_rounded_score(record, "health_degradation_score"),
+        -_clamped_rounded_score(record, "observability_alignment_score"),
+        -_clamped_rounded_score(record, "governance_alignment_score"),
+        -_clamped_rounded_score(record, "replay_health_score"),
+        -_clamped_rounded_score(record, "continuity_health_score"),
+        -_clamped_rounded_score(record, "propagation_health_score"),
+        _stable_federation_sort_id(record),
+    )
+
+
 def run_tier5f_federation_structural_health(*, federation_id: str, governance: dict[str, Any], persistence: dict[str, Any], temporal: dict[str, Any], observability: dict[str, Any]) -> dict[str, Any]:
     readiness = federation_diagnostic_readiness(governance, observability, persistence)
     alignment = federation_health_alignment(readiness)
