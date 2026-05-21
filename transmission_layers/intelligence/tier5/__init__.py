@@ -6,6 +6,7 @@ from .federation_temporal_evolution import run_tier5c_federation_temporal_evolut
 from .federation_governance import run_tier5d_federation_governance
 from .federation_observability import run_tier5e_federation_observability
 from .federation_structural_health import build_federation_health_sort_key, run_tier5f_federation_structural_health
+from .federation_resilience import build_federation_resilience_sort_key, run_tier5g_federation_resilience
 
 __all__ = [
     "run_tier5a_federation",
@@ -15,4 +16,6 @@ __all__ = [
     "run_tier5e_federation_observability",
     "build_federation_health_sort_key",
     "run_tier5f_federation_structural_health",
+    "build_federation_resilience_sort_key",
+    "run_tier5g_federation_resilience",
 ]
