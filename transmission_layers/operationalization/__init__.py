@@ -8,6 +8,13 @@ from .export_persistence import build_export_filename, persist_manifest_export_e
 from .export_verification import load_manifest_export_envelope, verify_manifest_export_envelope
 from .audit_summary import build_operational_audit_summary
 
+
+def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
+    from .cli_smoke import run_operationalization_cli_smoke as _run
+
+    return _run(export_dir, overwrite=overwrite)
+
+
 __all__ = [
     "stable_serialize",
     "stable_checksum",
@@ -21,4 +28,5 @@ __all__ = [
     "load_manifest_export_envelope",
     "verify_manifest_export_envelope",
     "build_operational_audit_summary",
+    "run_operationalization_cli_smoke",
 ]
