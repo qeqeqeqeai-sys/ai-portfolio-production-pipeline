@@ -32,6 +32,15 @@ from .phase_a4_narrative_saturation import (
     score_narrative_saturation,
 )
 
+
+from .phase_a5_certainty_fragility import (
+    build_certainty_fragility_evidence_summary,
+    build_certainty_fragility_subcomponent_contract,
+    build_certainty_fragility_thresholds,
+    build_phase_a5_certainty_fragility_report,
+    score_certainty_fragility,
+)
+
 __all__ = [
     "build_expectation_failure_score_contracts",
     "build_expectation_failure_evidence_schema",
@@ -53,4 +62,10 @@ __all__ = [
     "build_narrative_saturation_subcomponent_contract",
     "build_narrative_saturation_evidence_summary",
     "build_phase_a4_narrative_saturation_report",
+    "score_certainty_fragility",
+    "build_certainty_fragility_thresholds",
+    "build_certainty_fragility_subcomponent_contract",
+    "build_certainty_fragility_evidence_summary",
+    "build_phase_a5_certainty_fragility_report",
 ]
+
