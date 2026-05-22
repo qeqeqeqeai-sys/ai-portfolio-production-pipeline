@@ -18,6 +18,11 @@ from .replay_observability_closure import (
     build_replay_observability_summary,
     run_replay_observability_closure,
 )
+from .recovery_historical_closure import (
+    build_recovery_safety_diagnostics,
+    build_historical_reconstruction_summary,
+    run_recovery_historical_closure,
+)
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -50,4 +55,7 @@ __all__ = [
     "build_replay_integrity_diagnostics",
     "build_replay_observability_summary",
     "run_replay_observability_closure",
+    "build_recovery_safety_diagnostics",
+    "build_historical_reconstruction_summary",
+    "run_recovery_historical_closure",
 ]
