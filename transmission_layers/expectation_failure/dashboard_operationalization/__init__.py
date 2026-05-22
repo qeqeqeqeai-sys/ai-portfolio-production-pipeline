@@ -56,3 +56,19 @@ from .dashboard_o3_supabase_write_adapter import (
     build_dashboard_o3_dry_run_report,
     build_dashboard_o3_persistence_audit_report,
 )
+
+from .dashboard_o4_streamlit_view_model import (
+    build_dashboard_o4_view_model,
+    build_dashboard_o4_page_registry,
+    build_dashboard_o4_filter_options,
+    build_dashboard_o4_kpi_cards,
+    build_dashboard_o4_entity_table,
+    build_dashboard_o4_subsector_table,
+    build_dashboard_o4_alert_table,
+    build_dashboard_o4_benchmark_table,
+    build_dashboard_o4_replay_table,
+    build_dashboard_o4_evidence_table,
+    build_dashboard_o4_certification_panel,
+    validate_dashboard_o4_view_model,
+    build_dashboard_o4_ui_manifest,
+)
