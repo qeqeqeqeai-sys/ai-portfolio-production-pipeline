@@ -1,0 +1,12 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='860' viewBox='0 0 1400 860'>
+  <style>
+    .t{font-family:Arial,sans-serif;fill:#0f172a}.h{font-size:28px;font-weight:700}.s{font-size:18px;font-weight:600}.b{font-size:15px}
+  </style>
+  <rect width='1400' height='860' fill='#f8fafc'/>
+  <text x='50' y='60' class='t h'>P1B Master Architecture — Deterministic Institutional Expectation-Failure Intelligence Platform</text>
+  <rect x='60' y='110' width='1280' height='120' rx='10' fill='#dbeafe' stroke='#1d4ed8'/><text x='85' y='155' class='t s'>Input & Evidence Layer</text><text x='85' y='190' class='t b'>Curated datasets, certified fixtures, controlled demonstration inputs.</text>
+  <rect x='60' y='250' width='1280' height='170' rx='10' fill='#dcfce7' stroke='#15803d'/><text x='85' y='295' class='t s'>Deterministic Logic Layer</text><text x='85' y='330' class='t b'>O1–O10 operationalization chain, deterministic transforms, bounded interpretation outputs.</text>
+  <rect x='60' y='440' width='1280' height='160' rx='10' fill='#fef3c7' stroke='#b45309'/><text x='85' y='485' class='t s'>Governance & Certification Layer</text><text x='85' y='520' class='t b'>Replay controls, certification checkpoints, supervisor attestation evidence.</text>
+  <rect x='60' y='620' width='1280' height='150' rx='10' fill='#e9d5ff' stroke='#7e22ce'/><text x='85' y='665' class='t s'>Visibility & Communication Layer</text><text x='85' y='700' class='t b'>Dashboard views, institutional reports, walkthrough-ready communication assets.</text>
+  <text x='80' y='815' class='t b'>Exclusions: no trade execution • no autonomous investing • no target prices • no portfolio optimization • no autonomous trading agents.</text>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1100' height='520' viewBox='0 0 1100 520'>
+<style>.t{font-family:Arial,sans-serif;fill:#111827}.h{font-size:24px;font-weight:700}.b{font-size:14px}</style>
+<rect width='1100' height='520' fill='#f9fafb'/><text x='40' y='50' class='t h'>Replay & Certification Lifecycle</text>
+<circle cx='220' cy='240' r='85' fill='#dbeafe' stroke='#1d4ed8'/><text x='178' y='245' class='t b'>Prepare</text>
+<circle cx='430' cy='240' r='85' fill='#dcfce7' stroke='#15803d'/><text x='390' y='245' class='t b'>Execute</text>
+<circle cx='640' cy='240' r='85' fill='#fef9c3' stroke='#a16207'/><text x='600' y='245' class='t b'>Validate</text>
+<circle cx='850' cy='240' r='85' fill='#fae8ff' stroke='#a21caf'/><text x='810' y='245' class='t b'>Certify</text>
+<line x1='305' y1='240' x2='345' y2='240' stroke='#374151'/><line x1='515' y1='240' x2='555' y2='240' stroke='#374151'/><line x1='725' y1='240' x2='765' y2='240' stroke='#374151'/>
+<path d='M 860 320 C 700 430, 350 430, 210 320' fill='none' stroke='#374151'/><text x='470' y='455' class='t b'>Archive Evidence & Replay Readiness</text>
+</svg>

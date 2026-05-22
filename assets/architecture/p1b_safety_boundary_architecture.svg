@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='700' viewBox='0 0 1300 700'>
+<style>.t{font-family:Arial,sans-serif;fill:#111827}.h{font-size:24px;font-weight:700}.s{font-size:16px;font-weight:600}.b{font-size:14px}</style>
+<rect width='1300' height='700' fill='#f8fafc'/><text x='40' y='50' class='t h'>Safety Boundary Architecture</text>
+<rect x='60' y='90' width='720' height='530' rx='14' fill='#ecfeff' stroke='#0e7490' stroke-width='2'/><text x='85' y='125' class='t s'>Permitted Deterministic Platform Scope</text>
+<text x='90' y='165' class='t b'>• Certified O1–O10 operationalization</text><text x='90' y='195' class='t b'>• D1–D4 demonstration workflows</text><text x='90' y='225' class='t b'>• Replayability and certification evidence</text><text x='90' y='255' class='t b'>• Dashboard visibility for governance review</text>
+<rect x='820' y='90' width='420' height='530' rx='14' fill='#fef2f2' stroke='#b91c1c' stroke-width='2'/><text x='845' y='125' class='t s'>Explicitly Excluded Scope</text>
+<text x='850' y='165' class='t b'>✕ Trade execution</text><text x='850' y='195' class='t b'>✕ Autonomous investing</text><text x='850' y='225' class='t b'>✕ Target price generation</text><text x='850' y='255' class='t b'>✕ Portfolio optimization</text><text x='850' y='285' class='t b'>✕ Uncontrolled LLM reasoning</text><text x='850' y='315' class='t b'>✕ Adaptive control systems</text><text x='850' y='345' class='t b'>✕ Autonomous trading agents</text>
+<text x='60' y='660' class='t b'>Boundary principle: deterministic, explainable, governance-first, non-autonomous.</text>
+</svg>
