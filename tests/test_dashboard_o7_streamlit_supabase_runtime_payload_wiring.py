@@ -47,7 +47,8 @@ def test_fallback_mode_still_returns_fallback_payload():
     payload = _fallback_payload()
     cfg = build_streamlit_supabase_runtime_config(supabase_url=None, supabase_key=None)
     out = load_streamlit_dashboard_snapshot(runtime_config=cfg, fallback_payload=payload)
-    assert out["payload"] == payload
+    assert out["payload"]["dashboard_entity_facts"] == payload["dashboard_entity_facts"]
+    assert "runtime_diagnostics" in out["payload"]
     assert out["payload_source"] == "fallback_payload"
 
 

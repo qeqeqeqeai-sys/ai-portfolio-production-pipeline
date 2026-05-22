@@ -119,6 +119,12 @@ def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: M
     ])
 
 
+def _attach_runtime_diagnostics(payload: Mapping[str, Any], diagnostics: Mapping[str, Any]) -> OrderedDict:
+    payload_with_diagnostics = OrderedDict(deepcopy(dict(payload or {})))
+    payload_with_diagnostics["runtime_diagnostics"] = OrderedDict(deepcopy(dict(diagnostics or {})))
+    return payload_with_diagnostics
+
+
 def build_dashboard_payload_from_supabase_snapshot(snapshot: Mapping[str, Any], fallback_payload: Mapping[str, Any] | None = None) -> OrderedDict:
     snap = deepcopy(dict(snapshot or {}))
     rows_by_section = {section: _as_section_rows(snap, section) for section in _O4_REQUIRED_SECTIONS}
@@ -163,7 +169,7 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             client_resolved=False,
         )
         return OrderedDict([
-            ("mode", mode), ("snapshot", None), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("mode", mode), ("snapshot", None), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),
             ("status", "ok"), ("normalization_status", "not_applicable"), ("error", None),
             ("runtime_diagnostics", diagnostics),
         ])
@@ -189,7 +195,7 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             client_resolved=False,
         )
         return OrderedDict([
-            ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),
             ("status", "ok"), ("normalization_status", "snapshot_read_failed"), ("error", error_text),
             ("runtime_diagnostics", diagnostics),
         ])
@@ -205,7 +211,7 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             client_resolved=client_resolved,
         )
         return OrderedDict([
-            ("mode", mode), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("mode", mode), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),
             ("status", "ok"), ("normalization_status", "snapshot_degraded"), ("error", None),
             ("runtime_diagnostics", diagnostics),
         ])
@@ -222,7 +228,7 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             client_resolved=client_resolved,
         )
         return OrderedDict([
-            ("mode", mode), ("snapshot", snapshot), ("payload", normalized_payload), ("payload_source", "supabase_snapshot"),
+            ("mode", mode), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(normalized_payload, diagnostics)), ("payload_source", "supabase_snapshot"),
             ("status", "ok"), ("normalization_status", "ok"), ("error", None),
             ("runtime_diagnostics", diagnostics),
         ])
@@ -238,7 +244,7 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             client_resolved=client_resolved,
         )
         return OrderedDict([
-            ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),
             ("status", "ok"), ("normalization_status", "failed"), ("error", error_text),
             ("runtime_diagnostics", diagnostics),
         ])
