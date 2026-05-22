@@ -76,6 +76,13 @@ __all__ = [
     "verify_dashboard_column_contracts",
     "run_dashboard_o8_deployment_smoke_test",
     "build_dashboard_o8_deployment_report_payload",
+    "build_dashboard_o9_acceptance_scope",
+    "evaluate_dashboard_real_data_presence",
+    "evaluate_dashboard_section_population",
+    "evaluate_dashboard_degraded_sections",
+    "evaluate_dashboard_o8_verification_visibility",
+    "run_dashboard_o9_real_data_load_acceptance",
+    "build_dashboard_o9_acceptance_report_payload",
 ]
 
 
@@ -155,4 +162,14 @@ from .dashboard_o8_supabase_deployment_verification import (
     verify_dashboard_column_contracts,
     run_dashboard_o8_deployment_smoke_test,
     build_dashboard_o8_deployment_report_payload,
+)
+
+from .dashboard_o9_real_data_load_acceptance import (
+    build_dashboard_o9_acceptance_scope,
+    evaluate_dashboard_real_data_presence,
+    evaluate_dashboard_section_population,
+    evaluate_dashboard_degraded_sections,
+    evaluate_dashboard_o8_verification_visibility,
+    run_dashboard_o9_real_data_load_acceptance,
+    build_dashboard_o9_acceptance_report_payload,
 )
