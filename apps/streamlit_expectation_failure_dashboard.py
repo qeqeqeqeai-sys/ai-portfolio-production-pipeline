@@ -1,4 +1,4 @@
-"""Dashboard O4 read-only Streamlit shell."""
+"""Dashboard O7 read-only Streamlit shell with Supabase runtime boundary wiring."""
 
 from __future__ import annotations
 
@@ -16,6 +16,10 @@ import streamlit as st
 from transmission_layers.expectation_failure.dashboard_operationalization.dashboard_o4_streamlit_view_model import (
     build_dashboard_o4_view_model,
     validate_dashboard_o4_view_model,
+)
+from transmission_layers.expectation_failure.dashboard_operationalization.dashboard_o7_streamlit_supabase_runtime import (
+    build_streamlit_supabase_runtime_config,
+    load_streamlit_dashboard_snapshot,
 )
 
 
@@ -35,35 +39,43 @@ def _sample_payload() -> dict:
     }
 
 
+@st.cache_data(ttl=120)
+def _load_runtime_snapshot_cached(runtime_config: dict, fallback_payload: dict):
+    return load_streamlit_dashboard_snapshot(runtime_config=runtime_config, fallback_payload=fallback_payload)
+
+
 def main() -> None:
     st.set_page_config(page_title="Expectation Fragility Dashboard", layout="wide")
     st.title("Expectation Fragility Dashboard (Read-Only)")
 
-    payload = _sample_payload()
+    sample_payload = _sample_payload()
+    runtime_config = build_streamlit_supabase_runtime_config()
+    runtime_snapshot = _load_runtime_snapshot_cached(deepcopy(runtime_config), deepcopy(sample_payload))
+
+    mode = runtime_snapshot["mode"]
+    mode_label = {
+        "read_only_supabase_mode": "Read-only Supabase mode",
+        "fallback_demo_mode": "Fallback/demo mode",
+        "degraded_data_loading_mode": "Degraded data-loading mode",
+    }.get(mode, "Fallback/demo mode")
+    st.caption(f"Runtime mode: {mode_label} | refresh=manual/rerun only | cache_ttl={runtime_config['cache_ttl_seconds']}s")
+
+    payload = runtime_snapshot["payload"]
     view_model = build_dashboard_o4_view_model(deepcopy(payload))
     validation = validate_dashboard_o4_view_model(view_model)
-
-    st.caption("Read-only deterministic visibility shell. No database writes, no recommendations, no predictive modelling.")
 
     kpi_cols = st.columns(4)
     for idx, (k, v) in enumerate(view_model["kpi_cards"].items()):
         kpi_cols[idx % 4].metric(k, v)
 
     tabs = st.tabs([p["page_title"] for p in view_model["page_registry"]])
-    with tabs[0]:
-        st.json(view_model["executive_overview"])
-    with tabs[1]:
-        st.dataframe(view_model["entity_table"], use_container_width=True)
-    with tabs[2]:
-        st.dataframe(view_model["subsector_table"], use_container_width=True)
-    with tabs[3]:
-        st.dataframe(view_model["alert_table"], use_container_width=True)
-    with tabs[4]:
-        st.dataframe(view_model["benchmark_table"], use_container_width=True)
-    with tabs[5]:
-        st.dataframe(view_model["replay_table"], use_container_width=True)
-    with tabs[6]:
-        st.dataframe(view_model["evidence_table"], use_container_width=True)
+    with tabs[0]: st.json(view_model["executive_overview"])
+    with tabs[1]: st.dataframe(view_model["entity_table"], use_container_width=True)
+    with tabs[2]: st.dataframe(view_model["subsector_table"], use_container_width=True)
+    with tabs[3]: st.dataframe(view_model["alert_table"], use_container_width=True)
+    with tabs[4]: st.dataframe(view_model["benchmark_table"], use_container_width=True)
+    with tabs[5]: st.dataframe(view_model["replay_table"], use_container_width=True)
+    with tabs[6]: st.dataframe(view_model["evidence_table"], use_container_width=True)
     with tabs[7]:
         st.subheader("Certification and Export Manifest")
         st.json(view_model["certification_panel"])
