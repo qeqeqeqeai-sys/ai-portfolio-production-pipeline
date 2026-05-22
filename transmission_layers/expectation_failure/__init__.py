@@ -98,3 +98,18 @@ from .phase_a7_ai_expectation_failure import (
     build_phase_a7_ai_expectation_failure_report,
     score_ai_expectation_failure,
 )
+from .phase_b1_expectation_failure_heatmap import (
+    build_expectation_failure_heatmap,
+    build_fragility_cluster_summary,
+    build_heatmap_evidence_summary,
+    build_phase_b1_heatmap_report,
+    build_relative_fragility_ranking,
+)
+
+__all__.extend([
+    "build_expectation_failure_heatmap",
+    "build_relative_fragility_ranking",
+    "build_fragility_cluster_summary",
+    "build_heatmap_evidence_summary",
+    "build_phase_b1_heatmap_report",
+])
