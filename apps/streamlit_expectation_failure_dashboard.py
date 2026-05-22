@@ -22,6 +22,11 @@ from transmission_layers.expectation_failure.dashboard_operationalization.dashbo
     load_streamlit_dashboard_snapshot,
 )
 
+APP_ENTRYPOINT = "apps/streamlit_expectation_failure_dashboard.py"
+APP_VERSION = "O7 diagnostics rendering fix active"
+DIAGNOSTICS_SCHEMA_VERSION = "o7-runtime-diagnostics-v1"
+RUNTIME_MODULE_VERSION = "dashboard_o7_streamlit_supabase_runtime.v1"
+
 
 def _sample_payload() -> dict:
     sample_path = Path("artifacts/dashboard_o1_sample_payload.json")
@@ -50,7 +55,14 @@ def main() -> None:
 
     sample_payload = _sample_payload()
     runtime_config = build_streamlit_supabase_runtime_config()
-    runtime_snapshot = _load_runtime_snapshot_cached(deepcopy(runtime_config), deepcopy(sample_payload))
+    bypass_cache_reload = st.sidebar.checkbox("Bypass cache / reload runtime snapshot", value=False)
+    if bypass_cache_reload:
+        runtime_snapshot = load_streamlit_dashboard_snapshot(
+            runtime_config=deepcopy(runtime_config),
+            fallback_payload=deepcopy(sample_payload),
+        )
+    else:
+        runtime_snapshot = _load_runtime_snapshot_cached(deepcopy(runtime_config), deepcopy(sample_payload))
 
     mode = runtime_snapshot["mode"]
     mode_label = {
@@ -59,6 +71,9 @@ def main() -> None:
         "degraded_data_loading_mode": "Degraded data-loading mode",
     }.get(mode, "Fallback/demo mode")
     st.caption(f"Runtime mode: {mode_label} | refresh=manual/rerun only | cache_ttl={runtime_config['cache_ttl_seconds']}s")
+    st.caption(
+        f"App build: {APP_VERSION} | entrypoint={APP_ENTRYPOINT} | diagnostics_schema_version={DIAGNOSTICS_SCHEMA_VERSION} | runtime_module_version={RUNTIME_MODULE_VERSION}"
+    )
 
 
     diagnostics = runtime_snapshot.get("runtime_diagnostics")
@@ -72,6 +87,7 @@ def main() -> None:
         st.write(f"credentials_present: {diagnostics.get('credentials_present')}")
         st.json({"snapshot_section_statuses": diagnostics.get("snapshot_section_statuses", {})})
         st.write(f"error_message_short: {diagnostics.get('error_message_short')}")
+        st.json(runtime_diagnostics := diagnostics)
     payload = runtime_snapshot["payload"]
     view_model = build_dashboard_o4_view_model(deepcopy(payload))
     validation = validate_dashboard_o4_view_model(view_model)
