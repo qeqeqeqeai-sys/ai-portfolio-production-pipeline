@@ -23,6 +23,10 @@ from .recovery_historical_closure import (
     build_historical_reconstruction_summary,
     run_recovery_historical_closure,
 )
+from .operational_certification_closure import (
+    build_operational_certification_gates,
+    run_operational_certification_closure,
+)
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -58,4 +62,6 @@ __all__ = [
     "build_recovery_safety_diagnostics",
     "build_historical_reconstruction_summary",
     "run_recovery_historical_closure",
+    "build_operational_certification_gates",
+    "run_operational_certification_closure",
 ]
