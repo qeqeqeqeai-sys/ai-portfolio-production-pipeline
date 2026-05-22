@@ -162,3 +162,31 @@ __all__.extend([
     "build_b3_evidence_chain",
     "build_phase_b3_benchmark_relative_report",
 ])
+
+from .phase_b4_historical_fragility_replay import (
+    build_b4_evidence_chain,
+    build_entity_replay_interpretation,
+    build_fragility_change_delta,
+    build_fragility_change_label,
+    build_historical_deterioration_interpretation,
+    build_historical_improvement_interpretation,
+    build_historical_snapshot_summary,
+    build_historical_stability_interpretation,
+    build_phase_b4_historical_replay_report,
+    build_subsector_replay_interpretation,
+    build_universe_replay_interpretation,
+)
+
+__all__.extend([
+    "build_historical_snapshot_summary",
+    "build_fragility_change_delta",
+    "build_fragility_change_label",
+    "build_historical_deterioration_interpretation",
+    "build_historical_improvement_interpretation",
+    "build_historical_stability_interpretation",
+    "build_entity_replay_interpretation",
+    "build_subsector_replay_interpretation",
+    "build_universe_replay_interpretation",
+    "build_b4_evidence_chain",
+    "build_phase_b4_historical_replay_report",
+])
