@@ -87,6 +87,17 @@ __all__ = [
     "build_dashboard_o10_gate_inventory",
     "run_dashboard_o10_closeout_certification",
     "build_dashboard_o10_closeout_report_payload",
+    "build_d1_sample_entities",
+    "build_d1_sample_subsectors",
+    "build_d1_sample_alerts",
+    "build_d1_sample_replay_metadata",
+    "build_d1_sample_evidence_chains",
+    "build_d1_sample_benchmarks",
+    "build_d1_sample_certification_reports",
+    "build_d1_seed_payload",
+    "build_d1_seed_manifest",
+    "run_d1_controlled_seed",
+    "build_d1_seed_report_payload",
 ]
 
 
@@ -183,4 +194,19 @@ from .dashboard_o10_real_data_operationalization_closeout import (
     build_dashboard_o10_gate_inventory,
     run_dashboard_o10_closeout_certification,
     build_dashboard_o10_closeout_report_payload,
+)
+
+
+from .dashboard_d1_sample_data_seed import (
+    build_d1_sample_entities,
+    build_d1_sample_subsectors,
+    build_d1_sample_alerts,
+    build_d1_sample_replay_metadata,
+    build_d1_sample_evidence_chains,
+    build_d1_sample_benchmarks,
+    build_d1_sample_certification_reports,
+    build_d1_seed_payload,
+    build_d1_seed_manifest,
+    run_d1_controlled_seed,
+    build_d1_seed_report_payload,
 )
