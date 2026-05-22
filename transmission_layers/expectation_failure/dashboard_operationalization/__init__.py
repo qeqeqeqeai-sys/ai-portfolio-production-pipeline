@@ -70,6 +70,12 @@ __all__ = [
     "load_streamlit_dashboard_snapshot",
     "resolve_streamlit_supabase_mode",
     "build_streamlit_supabase_runtime_config",
+    "build_dashboard_o8_verification_scope",
+    "verify_dashboard_supabase_credentials",
+    "verify_dashboard_table_reachability",
+    "verify_dashboard_column_contracts",
+    "run_dashboard_o8_deployment_smoke_test",
+    "build_dashboard_o8_deployment_report_payload",
 ]
 
 
@@ -140,4 +146,13 @@ from .dashboard_o7_streamlit_supabase_runtime import (
     resolve_streamlit_supabase_mode,
     load_streamlit_dashboard_snapshot,
     build_dashboard_o7_runtime_report_payload,
+)
+
+from .dashboard_o8_supabase_deployment_verification import (
+    build_dashboard_o8_verification_scope,
+    verify_dashboard_supabase_credentials,
+    verify_dashboard_table_reachability,
+    verify_dashboard_column_contracts,
+    run_dashboard_o8_deployment_smoke_test,
+    build_dashboard_o8_deployment_report_payload,
 )
