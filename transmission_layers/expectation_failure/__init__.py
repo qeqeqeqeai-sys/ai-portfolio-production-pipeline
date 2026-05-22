@@ -1,4 +1,4 @@
-"""Expectation Failure deterministic contracts and Phase A2 valuation stretch module."""
+"""Expectation Failure deterministic contracts and Phase A2/A3 scoring modules."""
 
 from .phase_a1_contracts import (
     build_expectation_failure_evidence_schema,
@@ -16,6 +16,14 @@ from .phase_a2_valuation_stretch import (
     score_valuation_stretch,
 )
 
+from .phase_a3_fundamental_support import (
+    build_fundamental_support_evidence_summary,
+    build_fundamental_support_subcomponent_contract,
+    build_fundamental_support_thresholds,
+    build_phase_a3_fundamental_support_report,
+    score_fundamental_support,
+)
+
 __all__ = [
     "build_expectation_failure_score_contracts",
     "build_expectation_failure_evidence_schema",
@@ -27,4 +35,9 @@ __all__ = [
     "build_valuation_stretch_subcomponent_contract",
     "build_valuation_stretch_evidence_summary",
     "build_phase_a2_valuation_stretch_report",
+    "score_fundamental_support",
+    "build_fundamental_support_thresholds",
+    "build_fundamental_support_subcomponent_contract",
+    "build_fundamental_support_evidence_summary",
+    "build_phase_a3_fundamental_support_report",
 ]
