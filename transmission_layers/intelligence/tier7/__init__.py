@@ -59,4 +59,13 @@ __all__ = [
     "ANOMALY_ATTRIBUTION_CLASSES",
     "ANOMALY_PRECEDENCE",
     "attribute_strategic_anomaly",
+    "COHERENCE_CLASSES",
+    "COHERENCE_PRECEDENCE",
+    "assess_strategic_coherence",
 ]
+
+from .strategic_coherence import (
+    COHERENCE_CLASSES,
+    COHERENCE_PRECEDENCE,
+    assess_strategic_coherence,
+)
