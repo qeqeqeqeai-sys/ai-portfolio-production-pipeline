@@ -12,6 +12,17 @@ MODULE_VERSION = "1.0.0"
 DEFAULT_CACHE_TTL_SECONDS = 120
 
 
+_O4_REQUIRED_SECTIONS = (
+    "entity_facts",
+    "subsector_facts",
+    "alert_facts",
+    "replay_facts",
+    "benchmark_facts",
+    "evidence_facts",
+    "certification_metadata",
+)
+
+
 def _safe_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -47,14 +58,55 @@ def _resolve_client(runtime_config: Mapping[str, Any], *, client: Any | None = N
     return client_factory(runtime_config["supabase_url"], runtime_config["supabase_key"])
 
 
+def _section_status(snapshot: Mapping[str, Any], section: str) -> str:
+    part = snapshot.get(section)
+    if isinstance(part, Mapping):
+        return str(part.get("status", "degraded"))
+    return "degraded"
+
+
 def resolve_streamlit_supabase_mode(runtime_config: Mapping[str, Any], *, snapshot: Mapping[str, Any] | None = None) -> str:
     if not runtime_config.get("credentials_present"):
         return "fallback_demo_mode"
     if snapshot is None:
         return "read_only_supabase_mode"
-    sections = ["entity_facts", "subsector_facts", "alert_facts", "benchmark_facts", "replay_facts", "evidence_facts", "certification_metadata"]
-    degraded = any((snapshot.get(k) or {}).get("status") == "degraded" for k in sections)
+    degraded = any(_section_status(snapshot, section) != "ok" for section in _O4_REQUIRED_SECTIONS)
     return "degraded_data_loading_mode" if degraded else "read_only_supabase_mode"
+
+
+def _as_section_rows(snapshot: Mapping[str, Any], section: str) -> list[dict[str, Any]]:
+    part = snapshot.get(section)
+    rows = part.get("rows", []) if isinstance(part, Mapping) else []
+    return [dict(row) for row in rows if isinstance(row, Mapping)]
+
+
+def build_dashboard_payload_from_supabase_snapshot(snapshot: Mapping[str, Any], fallback_payload: Mapping[str, Any] | None = None) -> OrderedDict:
+    snap = deepcopy(dict(snapshot or {}))
+    rows_by_section = {section: _as_section_rows(snap, section) for section in _O4_REQUIRED_SECTIONS}
+    if any(_section_status(snap, section) != "ok" for section in _O4_REQUIRED_SECTIONS):
+        raise ValueError("snapshot_sections_degraded_or_unavailable")
+
+    report_row = rows_by_section["certification_metadata"][0] if rows_by_section["certification_metadata"] else {}
+    export_manifest_checksum = report_row.get("export_manifest_checksum")
+    report_metadata = OrderedDict([
+        ("run_id", report_row.get("run_id")),
+        ("run_date_sgt", report_row.get("run_date_sgt")),
+        ("certification_status", report_row.get("certification_status")),
+        ("report_type", report_row.get("report_type")),
+        ("export_manifest_checksum", export_manifest_checksum),
+    ])
+    export_manifest = OrderedDict([("checksum", export_manifest_checksum)])
+
+    return OrderedDict([
+        ("dashboard_entity_facts", rows_by_section["entity_facts"]),
+        ("dashboard_subsector_facts", rows_by_section["subsector_facts"]),
+        ("dashboard_alert_facts", rows_by_section["alert_facts"]),
+        ("dashboard_replay_facts", rows_by_section["replay_facts"]),
+        ("dashboard_benchmark_facts", rows_by_section["benchmark_facts"]),
+        ("dashboard_evidence_facts", rows_by_section["evidence_facts"]),
+        ("dashboard_report_metadata", report_metadata),
+        ("dashboard_export_manifest", export_manifest),
+    ])
 
 
 def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fallback_payload: Mapping[str, Any], client: Any | None = None, client_factory: Any | None = None) -> OrderedDict:
@@ -62,8 +114,12 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
     payload = deepcopy(dict(fallback_payload))
     mode = resolve_streamlit_supabase_mode(config)
     if mode == "fallback_demo_mode":
-        return OrderedDict([("mode", mode), ("snapshot", None), ("payload", payload), ("status", "ok")])
+        return OrderedDict([
+            ("mode", mode), ("snapshot", None), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("status", "ok"), ("normalization_status", "not_applicable"), ("error", None),
+        ])
 
+    snapshot: Mapping[str, Any]
     try:
         from .dashboard_o6_supabase_read_adapter import build_dashboard_supabase_snapshot
 
@@ -72,9 +128,28 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
         mode = resolve_streamlit_supabase_mode(config, snapshot=snapshot)
     except Exception as exc:
         snapshot = OrderedDict([("error", f"{type(exc).__name__}: {str(exc)[:200]}")])
-        mode = "degraded_data_loading_mode"
+        return OrderedDict([
+            ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("status", "ok"), ("normalization_status", "snapshot_read_failed"), ("error", snapshot.get("error")),
+        ])
 
-    return OrderedDict([("mode", mode), ("snapshot", snapshot), ("payload", payload), ("status", "ok")])
+    if mode != "read_only_supabase_mode":
+        return OrderedDict([
+            ("mode", mode), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("status", "ok"), ("normalization_status", "snapshot_degraded"), ("error", None),
+        ])
+
+    try:
+        normalized_payload = build_dashboard_payload_from_supabase_snapshot(snapshot, fallback_payload=payload)
+        return OrderedDict([
+            ("mode", mode), ("snapshot", snapshot), ("payload", normalized_payload), ("payload_source", "supabase_snapshot"),
+            ("status", "ok"), ("normalization_status", "ok"), ("error", None),
+        ])
+    except Exception as exc:
+        return OrderedDict([
+            ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
+            ("status", "ok"), ("normalization_status", "failed"), ("error", f"{type(exc).__name__}: {str(exc)[:200]}"),
+        ])
 
 
 def build_dashboard_o7_runtime_report_payload() -> OrderedDict:
@@ -93,6 +168,7 @@ def build_dashboard_o7_runtime_report_payload() -> OrderedDict:
 __all__ = [
     "build_streamlit_supabase_runtime_config",
     "resolve_streamlit_supabase_mode",
+    "build_dashboard_payload_from_supabase_snapshot",
     "load_streamlit_dashboard_snapshot",
     "build_dashboard_o7_runtime_report_payload",
 ]

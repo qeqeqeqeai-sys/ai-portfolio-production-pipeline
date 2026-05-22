@@ -67,6 +67,7 @@ __all__ = [
     "build_dashboard_read_column_inventory",
     "build_dashboard_read_table_inventory",
     "build_dashboard_o7_runtime_report_payload",
+    "build_dashboard_payload_from_supabase_snapshot",
     "load_streamlit_dashboard_snapshot",
     "resolve_streamlit_supabase_mode",
     "build_streamlit_supabase_runtime_config",
@@ -208,6 +209,7 @@ from .dashboard_o6_supabase_read_adapter import (
 from .dashboard_o7_streamlit_supabase_runtime import (
     build_streamlit_supabase_runtime_config,
     resolve_streamlit_supabase_mode,
+    build_dashboard_payload_from_supabase_snapshot,
     load_streamlit_dashboard_snapshot,
     build_dashboard_o7_runtime_report_payload,
 )
