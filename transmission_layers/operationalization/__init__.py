@@ -13,6 +13,11 @@ from .replay_supervisor_review import build_replay_supervisor_review
 from .replay_guardrails import build_replay_engine_guardrails
 from .replay_preflight import build_replay_engine_preflight
 from .replay_dry_run import execute_replay_dry_run
+from .replay_observability_closure import (
+    build_replay_integrity_diagnostics,
+    build_replay_observability_summary,
+    run_replay_observability_closure,
+)
 
 
 def run_operationalization_cli_smoke(export_dir, *, overwrite=False):
@@ -42,4 +47,7 @@ __all__ = [
     "build_replay_engine_guardrails",
     "build_replay_engine_preflight",
     "execute_replay_dry_run",
+    "build_replay_integrity_diagnostics",
+    "build_replay_observability_summary",
+    "run_replay_observability_closure",
 ]
