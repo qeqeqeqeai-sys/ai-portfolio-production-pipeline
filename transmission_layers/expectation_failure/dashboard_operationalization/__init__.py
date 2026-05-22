@@ -98,6 +98,12 @@ __all__ = [
     "build_d1_seed_manifest",
     "run_d1_controlled_seed",
     "build_d1_seed_report_payload",
+    "build_d1_guardrail_inventory",
+    "build_d1_guardrail_contract",
+    "validate_d1_seed_payload_against_guardrails",
+    "build_d1_guardrail_manifest",
+    "build_d1_guardrail_certification",
+    "build_d1_guardrail_report_payload",
 ]
 
 
@@ -210,3 +216,14 @@ from .dashboard_d1_sample_data_seed import (
     run_d1_controlled_seed,
     build_d1_seed_report_payload,
 )
+
+
+from .dashboard_d1_guardrail_contracts import (
+    build_d1_guardrail_inventory,
+    build_d1_guardrail_contract,
+    validate_d1_seed_payload_against_guardrails,
+    build_d1_guardrail_manifest,
+    build_d1_guardrail_certification,
+    build_d1_guardrail_report_payload,
+)
+
