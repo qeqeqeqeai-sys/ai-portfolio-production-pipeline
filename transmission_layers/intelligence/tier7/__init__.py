@@ -31,6 +31,12 @@ from .strategic_regime_persistence import (
     assess_strategic_regime_persistence,
 )
 
+from .strategic_anomaly_attribution import (
+    ANOMALY_ATTRIBUTION_CLASSES,
+    ANOMALY_PRECEDENCE,
+    attribute_strategic_anomaly,
+)
+
 __all__ = [
     "STRATEGIC_STATES",
     "STATE_PRECEDENCE",
@@ -50,4 +56,7 @@ __all__ = [
     "REGIME_PERSISTENCE_PRECEDENCE",
     "REGIME_BAND_ORDERING",
     "REGIME_PERSISTENCE_CLASSES",
+    "ANOMALY_ATTRIBUTION_CLASSES",
+    "ANOMALY_PRECEDENCE",
+    "attribute_strategic_anomaly",
 ]
