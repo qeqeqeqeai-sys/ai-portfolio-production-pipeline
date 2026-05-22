@@ -22,4 +22,22 @@ __all__ = [
     "build_dashboard_report_metadata",
     "build_dashboard_export_manifest",
     "build_dashboard_o1_export_payload",
+    "build_dashboard_o2_table_contracts",
+    "build_dashboard_o2_unique_key_contracts",
+    "build_dashboard_o2_column_contracts",
+    "build_dashboard_o2_upsert_payload",
+    "validate_dashboard_o2_payload",
+    "build_dashboard_o2_persistence_manifest",
+    "build_dashboard_o2_contract_report",
 ]
+
+from .dashboard_o2_supabase_contracts import (
+    build_dashboard_o2_column_contracts,
+    build_dashboard_o2_contract_report,
+    build_dashboard_o2_persistence_manifest,
+    build_dashboard_o2_table_contracts,
+    build_dashboard_o2_unique_key_contracts,
+    build_dashboard_o2_upsert_payload,
+    validate_dashboard_o2_payload,
+)
+
