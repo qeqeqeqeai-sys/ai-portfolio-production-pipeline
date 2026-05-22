@@ -24,6 +24,14 @@ from .phase_a3_fundamental_support import (
     score_fundamental_support,
 )
 
+from .phase_a4_narrative_saturation import (
+    build_narrative_saturation_evidence_summary,
+    build_narrative_saturation_subcomponent_contract,
+    build_narrative_saturation_thresholds,
+    build_phase_a4_narrative_saturation_report,
+    score_narrative_saturation,
+)
+
 __all__ = [
     "build_expectation_failure_score_contracts",
     "build_expectation_failure_evidence_schema",
@@ -40,4 +48,9 @@ __all__ = [
     "build_fundamental_support_subcomponent_contract",
     "build_fundamental_support_evidence_summary",
     "build_phase_a3_fundamental_support_report",
+    "score_narrative_saturation",
+    "build_narrative_saturation_thresholds",
+    "build_narrative_saturation_subcomponent_contract",
+    "build_narrative_saturation_evidence_summary",
+    "build_phase_a4_narrative_saturation_report",
 ]
