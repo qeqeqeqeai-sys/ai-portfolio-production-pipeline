@@ -6,11 +6,6 @@ from collections import OrderedDict
 from copy import deepcopy
 from typing import Any, Mapping
 
-from .dashboard_o6_supabase_read_adapter import (
-    build_dashboard_read_column_inventory,
-    build_dashboard_read_table_inventory,
-)
-
 SCHEMA_VERSION = "dashboard_o8_supabase_deployment_verification_v1"
 MODULE_VERSION = "1.0.0"
 _SAFE_MAX_SAMPLE_LIMIT = 5
@@ -25,6 +20,11 @@ def _clamp_sample_limit(sample_limit: int) -> int:
 
 
 def build_dashboard_o8_verification_scope() -> OrderedDict:
+    from .dashboard_o6_supabase_read_adapter import (
+        build_dashboard_read_column_inventory,
+        build_dashboard_read_table_inventory,
+    )
+
     tables = build_dashboard_read_table_inventory()
     columns = build_dashboard_read_column_inventory()
     return OrderedDict([
