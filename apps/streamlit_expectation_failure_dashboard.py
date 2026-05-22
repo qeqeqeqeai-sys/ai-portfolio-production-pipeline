@@ -24,7 +24,8 @@ from transmission_layers.expectation_failure.dashboard_operationalization.dashbo
 
 APP_ENTRYPOINT = "apps/streamlit_expectation_failure_dashboard.py"
 APP_VERSION = "O7 diagnostics rendering fix active"
-DIAGNOSTICS_SCHEMA_VERSION = "o7-runtime-diagnostics-v1"
+DIAGNOSTICS_SCHEMA_VERSION = "o7-runtime-diagnostics-v2"
+RUNTIME_CACHE_SCHEMA_VERSION = "o7-runtime-diagnostics-v2"
 RUNTIME_MODULE_VERSION = "dashboard_o7_streamlit_supabase_runtime.v1"
 
 
@@ -45,8 +46,67 @@ def _sample_payload() -> dict:
 
 
 @st.cache_data(ttl=120)
-def _load_runtime_snapshot_cached(runtime_config: dict, fallback_payload: dict):
+def _load_runtime_snapshot_cached(runtime_config: dict, fallback_payload: dict, cache_schema_version: str):
+    _ = cache_schema_version
     return load_streamlit_dashboard_snapshot(runtime_config=runtime_config, fallback_payload=fallback_payload)
+
+
+def _synthesize_runtime_diagnostics(runtime_snapshot: dict | None) -> tuple[dict, str]:
+    required_defaults = {
+        "runtime_mode": None,
+        "payload_source": None,
+        "normalization_status": None,
+        "credentials_present": False,
+        "client_resolved": False,
+        "snapshot_loaded": False,
+        "degraded_sections": [],
+        "snapshot_section_statuses": {},
+        "error_type": None,
+        "error_message_short": None,
+        "expected_tables": [],
+    }
+    if not runtime_snapshot:
+        diagnostics = dict(required_defaults)
+        diagnostics["diagnostics_source"] = "missing_runtime_snapshot"
+        return diagnostics, "missing_runtime_snapshot"
+
+    root_diagnostics = runtime_snapshot.get("runtime_diagnostics")
+    if root_diagnostics:
+        diagnostics = dict(root_diagnostics)
+        source = "root_runtime_diagnostics"
+    else:
+        payload_diagnostics = runtime_snapshot.get("payload", {}).get("runtime_diagnostics")
+        if payload_diagnostics:
+            diagnostics = dict(payload_diagnostics)
+            source = "payload_runtime_diagnostics"
+        else:
+            payload = runtime_snapshot.get("payload") or {}
+            diagnostics = {
+                "runtime_mode": runtime_snapshot.get("mode"),
+                "payload_source": runtime_snapshot.get("payload_source"),
+                "normalization_status": runtime_snapshot.get("normalization_status"),
+                "error_type": runtime_snapshot.get("status"),
+                "error_message_short": runtime_snapshot.get("error"),
+                "snapshot_section_statuses": {},
+                "degraded_sections": [],
+                "expected_tables": sorted([k for k,v in payload.items() if isinstance(v, list)]),
+            }
+            source = "synthesized_from_runtime_snapshot"
+
+    populated = dict(required_defaults)
+    populated.update(diagnostics)
+    populated["diagnostics_source"] = source
+    if not populated.get("expected_tables"):
+        payload = runtime_snapshot.get("payload") if isinstance(runtime_snapshot, dict) else {}
+        if isinstance(payload, dict):
+            populated["expected_tables"] = sorted([k for k, v in payload.items() if isinstance(v, list)])
+    return populated, source
+
+
+def _load_runtime_snapshot(runtime_config: dict, fallback_payload: dict, bypass_runtime_cache: bool):
+    if bypass_runtime_cache:
+        return load_streamlit_dashboard_snapshot(runtime_config=runtime_config, fallback_payload=fallback_payload)
+    return _load_runtime_snapshot_cached(runtime_config, fallback_payload, RUNTIME_CACHE_SCHEMA_VERSION)
 
 
 def main() -> None:
@@ -55,14 +115,12 @@ def main() -> None:
 
     sample_payload = _sample_payload()
     runtime_config = build_streamlit_supabase_runtime_config()
-    bypass_cache_reload = st.sidebar.checkbox("Bypass cache / reload runtime snapshot", value=False)
-    if bypass_cache_reload:
-        runtime_snapshot = load_streamlit_dashboard_snapshot(
-            runtime_config=deepcopy(runtime_config),
-            fallback_payload=deepcopy(sample_payload),
-        )
-    else:
-        runtime_snapshot = _load_runtime_snapshot_cached(deepcopy(runtime_config), deepcopy(sample_payload))
+    bypass_cache_reload = st.sidebar.checkbox("Bypass runtime cache", value=False)
+    runtime_snapshot = _load_runtime_snapshot(
+        runtime_config=deepcopy(runtime_config),
+        fallback_payload=deepcopy(sample_payload),
+        bypass_runtime_cache=bypass_cache_reload,
+    )
 
     mode = runtime_snapshot["mode"]
     mode_label = {
@@ -76,9 +134,7 @@ def main() -> None:
     )
 
 
-    diagnostics = runtime_snapshot.get("runtime_diagnostics")
-    if not diagnostics:
-        diagnostics = runtime_snapshot.get("payload", {}).get("runtime_diagnostics", {})
+    diagnostics, diagnostics_source = _synthesize_runtime_diagnostics(runtime_snapshot)
     with st.expander("Runtime Diagnostics"):
         st.write(f"runtime_mode: {diagnostics.get('runtime_mode')}")
         st.write(f"payload_source: {diagnostics.get('payload_source')}")
@@ -87,6 +143,7 @@ def main() -> None:
         st.write(f"credentials_present: {diagnostics.get('credentials_present')}")
         st.json({"snapshot_section_statuses": diagnostics.get("snapshot_section_statuses", {})})
         st.write(f"error_message_short: {diagnostics.get('error_message_short')}")
+        st.write(f"diagnostics_source: {diagnostics_source}")
         st.json(runtime_diagnostics := diagnostics)
     payload = runtime_snapshot["payload"]
     view_model = build_dashboard_o4_view_model(deepcopy(payload))
