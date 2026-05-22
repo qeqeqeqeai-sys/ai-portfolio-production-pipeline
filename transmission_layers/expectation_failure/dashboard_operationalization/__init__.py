@@ -55,6 +55,17 @@ __all__ = [
     "build_dashboard_o5_boundary_certification",
     "build_dashboard_o5_test_coverage_summary",
     "build_dashboard_o5_closeout_report",
+    "build_dashboard_o6_read_adapter_report_payload",
+    "build_dashboard_supabase_snapshot",
+    "load_dashboard_certification_metadata",
+    "load_dashboard_evidence_facts",
+    "load_dashboard_replay_facts",
+    "load_dashboard_benchmark_facts",
+    "load_dashboard_alert_facts",
+    "load_dashboard_subsector_facts",
+    "load_dashboard_entity_facts",
+    "build_dashboard_read_column_inventory",
+    "build_dashboard_read_table_inventory",
 ]
 
 
@@ -103,4 +114,19 @@ from .dashboard_o5_operationalization_certification import (
     build_dashboard_o5_boundary_certification,
     build_dashboard_o5_test_coverage_summary,
     build_dashboard_o5_closeout_report,
+)
+
+
+from .dashboard_o6_supabase_read_adapter import (
+    build_dashboard_read_table_inventory,
+    build_dashboard_read_column_inventory,
+    load_dashboard_entity_facts,
+    load_dashboard_subsector_facts,
+    load_dashboard_alert_facts,
+    load_dashboard_benchmark_facts,
+    load_dashboard_replay_facts,
+    load_dashboard_evidence_facts,
+    load_dashboard_certification_metadata,
+    build_dashboard_supabase_snapshot,
+    build_dashboard_o6_read_adapter_report_payload,
 )
