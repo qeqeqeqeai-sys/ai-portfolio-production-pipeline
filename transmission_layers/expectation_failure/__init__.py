@@ -138,3 +138,27 @@ __all__.extend([
     "build_b2_evidence_chain",
     "build_phase_b2_asymmetry_report",
 ])
+
+from .phase_b3_benchmark_relative_fragility import (
+    build_b3_evidence_chain,
+    build_benchmark_context_summary,
+    build_benchmark_relative_fragility_label,
+    build_benchmark_relative_resilience_interpretation,
+    build_peer_relative_fragility_interpretation,
+    build_phase_b3_benchmark_relative_report,
+    build_relative_fragility_delta,
+    build_subsector_relative_fragility_interpretation,
+    build_universe_relative_fragility_interpretation,
+)
+
+__all__.extend([
+    "build_benchmark_context_summary",
+    "build_relative_fragility_delta",
+    "build_benchmark_relative_fragility_label",
+    "build_peer_relative_fragility_interpretation",
+    "build_subsector_relative_fragility_interpretation",
+    "build_universe_relative_fragility_interpretation",
+    "build_benchmark_relative_resilience_interpretation",
+    "build_b3_evidence_chain",
+    "build_phase_b3_benchmark_relative_report",
+])
