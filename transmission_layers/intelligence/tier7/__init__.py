@@ -12,6 +12,11 @@ from .strategic_state_transition import (
     TRANSITION_PRECEDENCE,
     assess_strategic_state_transition,
 )
+from .strategic_drift_diagnostics import (
+    DRIFT_CLASSES,
+    DRIFT_PRECEDENCE_ORDER,
+    diagnose_strategic_drift,
+)
 
 __all__ = [
     "STRATEGIC_STATES",
@@ -22,4 +27,7 @@ __all__ = [
     "SEVERITY_RANKS",
     "TRANSITION_PRECEDENCE",
     "assess_strategic_state_transition",
+    "DRIFT_CLASSES",
+    "DRIFT_PRECEDENCE_ORDER",
+    "diagnose_strategic_drift",
 ]
