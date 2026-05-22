@@ -67,5 +67,19 @@ __all__ = [
     "build_certainty_fragility_subcomponent_contract",
     "build_certainty_fragility_evidence_summary",
     "build_phase_a5_certainty_fragility_report",
+    "score_structural_weakness",
+    "build_structural_weakness_thresholds",
+    "build_structural_weakness_subcomponent_contract",
+    "build_structural_weakness_evidence_summary",
+    "build_phase_a6_structural_weakness_report",
 ]
 
+
+
+from .phase_a6_structural_weakness import (
+    build_phase_a6_structural_weakness_report,
+    build_structural_weakness_evidence_summary,
+    build_structural_weakness_subcomponent_contract,
+    build_structural_weakness_thresholds,
+    score_structural_weakness,
+)
