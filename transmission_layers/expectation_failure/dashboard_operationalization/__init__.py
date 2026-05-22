@@ -130,6 +130,16 @@ __all__ = [
     "run_d3_supervisor_playback",
     "build_d3_acceptance_payload",
     "build_d3_playback_report_payload",
+    "build_d4_closeout_inventory",
+    "build_d4_certification_gates",
+    "build_d4_demo_readiness_manifest",
+    "certify_d4_operationalization_chain",
+    "certify_d4_sample_data_chain",
+    "certify_d4_visibility_chain",
+    "certify_d4_playback_chain",
+    "certify_d4_safety_boundaries",
+    "run_d4_demo_environment_closeout",
+    "build_d4_closeout_report_payload",
 ]
 
 
@@ -283,4 +293,18 @@ from .dashboard_d3_supervisor_playback import (
     run_d3_supervisor_playback,
     build_d3_acceptance_payload,
     build_d3_playback_report_payload,
+)
+
+
+from .dashboard_d4_demo_closeout import (
+    build_d4_closeout_inventory,
+    build_d4_certification_gates,
+    build_d4_demo_readiness_manifest,
+    certify_d4_operationalization_chain,
+    certify_d4_sample_data_chain,
+    certify_d4_visibility_chain,
+    certify_d4_playback_chain,
+    certify_d4_safety_boundaries,
+    run_d4_demo_environment_closeout,
+    build_d4_closeout_report_payload,
 )
