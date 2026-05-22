@@ -275,3 +275,27 @@ __all__.extend([
     "build_expectation_failure_subsystem_summary",
     "build_phase_b7_system_certification_report",
 ])
+
+from .dashboard_operationalization import (
+    build_dashboard_alert_facts,
+    build_dashboard_benchmark_facts,
+    build_dashboard_entity_facts,
+    build_dashboard_evidence_facts,
+    build_dashboard_export_manifest,
+    build_dashboard_o1_export_payload,
+    build_dashboard_replay_facts,
+    build_dashboard_report_metadata,
+    build_dashboard_subsector_facts,
+)
+
+__all__.extend([
+    "build_dashboard_entity_facts",
+    "build_dashboard_subsector_facts",
+    "build_dashboard_alert_facts",
+    "build_dashboard_replay_facts",
+    "build_dashboard_benchmark_facts",
+    "build_dashboard_evidence_facts",
+    "build_dashboard_report_metadata",
+    "build_dashboard_export_manifest",
+    "build_dashboard_o1_export_payload",
+])
