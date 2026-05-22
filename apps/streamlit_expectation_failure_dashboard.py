@@ -61,7 +61,9 @@ def main() -> None:
     st.caption(f"Runtime mode: {mode_label} | refresh=manual/rerun only | cache_ttl={runtime_config['cache_ttl_seconds']}s")
 
 
-    diagnostics = runtime_snapshot.get("runtime_diagnostics", {})
+    diagnostics = runtime_snapshot.get("runtime_diagnostics")
+    if not diagnostics:
+        diagnostics = runtime_snapshot.get("payload", {}).get("runtime_diagnostics", {})
     with st.expander("Runtime Diagnostics"):
         st.write(f"runtime_mode: {diagnostics.get('runtime_mode')}")
         st.write(f"payload_source: {diagnostics.get('payload_source')}")
