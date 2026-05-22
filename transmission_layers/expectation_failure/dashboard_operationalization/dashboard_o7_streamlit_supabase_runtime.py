@@ -23,6 +23,18 @@ _O4_REQUIRED_SECTIONS = (
 )
 
 
+_EXPECTED_TABLES = (
+    "dashboard_entity_facts",
+    "dashboard_subsector_facts",
+    "dashboard_alert_facts",
+    "dashboard_replay_facts",
+    "dashboard_benchmark_facts",
+    "dashboard_evidence_facts",
+    "dashboard_certification_reports",
+    "dashboard_run_manifests",
+)
+
+
 def _safe_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -80,6 +92,33 @@ def _as_section_rows(snapshot: Mapping[str, Any], section: str) -> list[dict[str
     return [dict(row) for row in rows if isinstance(row, Mapping)]
 
 
+def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: Mapping[str, Any] | None, payload_source: str, normalization_status: str, error: str | None, runtime_mode: str, client_resolved: bool) -> OrderedDict:
+    section_statuses = OrderedDict((section, _section_status(snapshot or {}, section)) for section in _O4_REQUIRED_SECTIONS)
+    degraded_sections = [section for section, status in section_statuses.items() if status != "ok"]
+    error_type = None
+    error_message_short = None
+    if error:
+        if ":" in error:
+            error_type, msg = error.split(":", 1)
+            error_type = error_type.strip() or None
+            error_message_short = msg.strip()[:200] or None
+        else:
+            error_message_short = str(error).strip()[:200] or None
+    return OrderedDict([
+        ("credentials_present", bool(runtime_config.get("credentials_present"))),
+        ("client_resolved", bool(client_resolved)),
+        ("snapshot_loaded", snapshot is not None),
+        ("snapshot_section_statuses", section_statuses),
+        ("degraded_sections", degraded_sections),
+        ("normalization_status", normalization_status),
+        ("payload_source", payload_source),
+        ("error_type", error_type),
+        ("error_message_short", error_message_short),
+        ("expected_tables", list(_EXPECTED_TABLES)),
+        ("runtime_mode", runtime_mode),
+    ])
+
+
 def build_dashboard_payload_from_supabase_snapshot(snapshot: Mapping[str, Any], fallback_payload: Mapping[str, Any] | None = None) -> OrderedDict:
     snap = deepcopy(dict(snapshot or {}))
     rows_by_section = {section: _as_section_rows(snap, section) for section in _O4_REQUIRED_SECTIONS}
@@ -114,9 +153,19 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
     payload = deepcopy(dict(fallback_payload))
     mode = resolve_streamlit_supabase_mode(config)
     if mode == "fallback_demo_mode":
+        diagnostics = _build_runtime_diagnostics(
+            runtime_config=config,
+            snapshot=None,
+            payload_source="fallback_payload",
+            normalization_status="not_applicable",
+            error=None,
+            runtime_mode=mode,
+            client_resolved=False,
+        )
         return OrderedDict([
             ("mode", mode), ("snapshot", None), ("payload", payload), ("payload_source", "fallback_payload"),
             ("status", "ok"), ("normalization_status", "not_applicable"), ("error", None),
+            ("runtime_diagnostics", diagnostics),
         ])
 
     snapshot: Mapping[str, Any]
@@ -124,31 +173,74 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
         from .dashboard_o6_supabase_read_adapter import build_dashboard_supabase_snapshot
 
         supabase_client = _resolve_client(config, client=client, client_factory=client_factory)
+        client_resolved = supabase_client is not None
         snapshot = build_dashboard_supabase_snapshot(supabase_client, run_id=config.get("run_id"), as_of_date=config.get("as_of_date"))
         mode = resolve_streamlit_supabase_mode(config, snapshot=snapshot)
     except Exception as exc:
         snapshot = OrderedDict([("error", f"{type(exc).__name__}: {str(exc)[:200]}")])
+        error_text = snapshot.get("error")
+        diagnostics = _build_runtime_diagnostics(
+            runtime_config=config,
+            snapshot=snapshot,
+            payload_source="fallback_payload",
+            normalization_status="snapshot_read_failed",
+            error=error_text,
+            runtime_mode="degraded_data_loading_mode",
+            client_resolved=False,
+        )
         return OrderedDict([
             ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
-            ("status", "ok"), ("normalization_status", "snapshot_read_failed"), ("error", snapshot.get("error")),
+            ("status", "ok"), ("normalization_status", "snapshot_read_failed"), ("error", error_text),
+            ("runtime_diagnostics", diagnostics),
         ])
 
     if mode != "read_only_supabase_mode":
+        diagnostics = _build_runtime_diagnostics(
+            runtime_config=config,
+            snapshot=snapshot,
+            payload_source="fallback_payload",
+            normalization_status="snapshot_degraded",
+            error=None,
+            runtime_mode=mode,
+            client_resolved=client_resolved,
+        )
         return OrderedDict([
             ("mode", mode), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
             ("status", "ok"), ("normalization_status", "snapshot_degraded"), ("error", None),
+            ("runtime_diagnostics", diagnostics),
         ])
 
     try:
         normalized_payload = build_dashboard_payload_from_supabase_snapshot(snapshot, fallback_payload=payload)
+        diagnostics = _build_runtime_diagnostics(
+            runtime_config=config,
+            snapshot=snapshot,
+            payload_source="supabase_snapshot",
+            normalization_status="ok",
+            error=None,
+            runtime_mode=mode,
+            client_resolved=client_resolved,
+        )
         return OrderedDict([
             ("mode", mode), ("snapshot", snapshot), ("payload", normalized_payload), ("payload_source", "supabase_snapshot"),
             ("status", "ok"), ("normalization_status", "ok"), ("error", None),
+            ("runtime_diagnostics", diagnostics),
         ])
     except Exception as exc:
+        error_text = f"{type(exc).__name__}: {str(exc)[:200]}"
+        diagnostics = _build_runtime_diagnostics(
+            runtime_config=config,
+            snapshot=snapshot,
+            payload_source="fallback_payload",
+            normalization_status="failed",
+            error=error_text,
+            runtime_mode="degraded_data_loading_mode",
+            client_resolved=client_resolved,
+        )
         return OrderedDict([
             ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", payload), ("payload_source", "fallback_payload"),
-            ("status", "ok"), ("normalization_status", "failed"), ("error", f"{type(exc).__name__}: {str(exc)[:200]}"),
+            ("status", "ok"), ("normalization_status", "failed"), ("error", error_text),
+            ("runtime_diagnostics", diagnostics),
         ])
 
 
