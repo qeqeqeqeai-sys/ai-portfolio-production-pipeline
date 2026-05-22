@@ -104,6 +104,20 @@ __all__ = [
     "build_d1_guardrail_manifest",
     "build_d1_guardrail_certification",
     "build_d1_guardrail_report_payload",
+    "build_d2_visibility_inventory",
+    "build_d2_visibility_requirements",
+    "certify_d2_entity_visibility",
+    "certify_d2_subsector_visibility",
+    "certify_d2_alert_visibility",
+    "certify_d2_replay_visibility",
+    "certify_d2_evidence_chain_visibility",
+    "certify_d2_benchmark_visibility",
+    "certify_d2_report_visibility",
+    "certify_d2_sample_flag_visibility",
+    "certify_d2_empty_degraded_visibility",
+    "run_d2_dashboard_visibility_certification",
+    "build_d2_visibility_manifest",
+    "build_d2_visibility_report_payload",
 ]
 
 
@@ -227,3 +241,19 @@ from .dashboard_d1_guardrail_contracts import (
     build_d1_guardrail_report_payload,
 )
 
+from .dashboard_d2_visibility_certification import (
+    build_d2_visibility_inventory,
+    build_d2_visibility_requirements,
+    certify_d2_entity_visibility,
+    certify_d2_subsector_visibility,
+    certify_d2_alert_visibility,
+    certify_d2_replay_visibility,
+    certify_d2_evidence_chain_visibility,
+    certify_d2_benchmark_visibility,
+    certify_d2_report_visibility,
+    certify_d2_sample_flag_visibility,
+    certify_d2_empty_degraded_visibility,
+    run_d2_dashboard_visibility_certification,
+    build_d2_visibility_manifest,
+    build_d2_visibility_report_payload,
+)
