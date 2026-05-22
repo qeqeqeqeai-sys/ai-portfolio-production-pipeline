@@ -60,6 +60,16 @@ def main() -> None:
     }.get(mode, "Fallback/demo mode")
     st.caption(f"Runtime mode: {mode_label} | refresh=manual/rerun only | cache_ttl={runtime_config['cache_ttl_seconds']}s")
 
+
+    diagnostics = runtime_snapshot.get("runtime_diagnostics", {})
+    with st.expander("Runtime Diagnostics"):
+        st.write(f"runtime_mode: {diagnostics.get('runtime_mode')}")
+        st.write(f"payload_source: {diagnostics.get('payload_source')}")
+        st.write(f"normalization_status: {diagnostics.get('normalization_status')}")
+        st.write(f"degraded_sections: {diagnostics.get('degraded_sections')}")
+        st.write(f"credentials_present: {diagnostics.get('credentials_present')}")
+        st.json({"snapshot_section_statuses": diagnostics.get("snapshot_section_statuses", {})})
+        st.write(f"error_message_short: {diagnostics.get('error_message_short')}")
     payload = runtime_snapshot["payload"]
     view_model = build_dashboard_o4_view_model(deepcopy(payload))
     validation = validate_dashboard_o4_view_model(view_model)
