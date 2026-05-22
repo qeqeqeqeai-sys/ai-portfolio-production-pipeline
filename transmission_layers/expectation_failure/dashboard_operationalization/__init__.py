@@ -118,6 +118,18 @@ __all__ = [
     "run_d2_dashboard_visibility_certification",
     "build_d2_visibility_manifest",
     "build_d2_visibility_report_payload",
+    "build_d3_playback_inventory",
+    "build_d3_supervisor_runbook",
+    "build_d3_demo_step_sequence",
+    "build_d3_acceptance_gates",
+    "build_d3_playback_manifest",
+    "build_d3_visibility_walkthrough",
+    "build_d3_read_only_boundary_checks",
+    "build_d3_degraded_state_walkthrough",
+    "build_d3_empty_state_walkthrough",
+    "run_d3_supervisor_playback",
+    "build_d3_acceptance_payload",
+    "build_d3_playback_report_payload",
 ]
 
 
@@ -256,4 +268,19 @@ from .dashboard_d2_visibility_certification import (
     run_d2_dashboard_visibility_certification,
     build_d2_visibility_manifest,
     build_d2_visibility_report_payload,
+)
+
+from .dashboard_d3_supervisor_playback import (
+    build_d3_playback_inventory,
+    build_d3_supervisor_runbook,
+    build_d3_demo_step_sequence,
+    build_d3_acceptance_gates,
+    build_d3_playback_manifest,
+    build_d3_visibility_walkthrough,
+    build_d3_read_only_boundary_checks,
+    build_d3_degraded_state_walkthrough,
+    build_d3_empty_state_walkthrough,
+    run_d3_supervisor_playback,
+    build_d3_acceptance_payload,
+    build_d3_playback_report_payload,
 )
