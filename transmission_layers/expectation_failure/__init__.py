@@ -216,3 +216,35 @@ __all__.extend([
     "build_b5_evidence_chain",
     "build_phase_b5_alert_interpretation_report",
 ])
+
+from .phase_b6_institutional_reporting import (
+    build_alert_briefing_section,
+    build_asymmetry_briefing_section,
+    build_b6_report_context,
+    build_benchmark_relative_briefing_section,
+    build_entity_briefing_cards,
+    build_evidence_appendix,
+    build_executive_fragility_summary,
+    build_heatmap_briefing_section,
+    build_historical_replay_briefing_section,
+    build_key_fragility_findings,
+    build_limitations_and_disclosures,
+    build_phase_b6_institutional_report,
+    build_subsector_briefing_cards,
+)
+
+__all__.extend([
+    "build_b6_report_context",
+    "build_executive_fragility_summary",
+    "build_key_fragility_findings",
+    "build_heatmap_briefing_section",
+    "build_asymmetry_briefing_section",
+    "build_benchmark_relative_briefing_section",
+    "build_historical_replay_briefing_section",
+    "build_alert_briefing_section",
+    "build_entity_briefing_cards",
+    "build_subsector_briefing_cards",
+    "build_evidence_appendix",
+    "build_limitations_and_disclosures",
+    "build_phase_b6_institutional_report",
+])
