@@ -62,10 +62,20 @@ __all__ = [
     "COHERENCE_CLASSES",
     "COHERENCE_PRECEDENCE",
     "assess_strategic_coherence",
+    "STABILITY_RESILIENCE_CLASSES",
+    "STABILITY_RESILIENCE_PRECEDENCE",
+    "assess_strategic_stability_resilience",
 ]
 
 from .strategic_coherence import (
     COHERENCE_CLASSES,
     COHERENCE_PRECEDENCE,
     assess_strategic_coherence,
+)
+
+
+from .strategic_stability_resilience import (
+    STABILITY_RESILIENCE_CLASSES,
+    STABILITY_RESILIENCE_PRECEDENCE,
+    assess_strategic_stability_resilience,
 )
