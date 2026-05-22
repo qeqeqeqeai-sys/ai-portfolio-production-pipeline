@@ -72,6 +72,12 @@ __all__ = [
     "build_structural_weakness_subcomponent_contract",
     "build_structural_weakness_evidence_summary",
     "build_phase_a6_structural_weakness_report",
+    "score_ai_expectation_failure",
+    "build_ai_expectation_failure_thresholds",
+    "build_ai_expectation_failure_component_contract",
+    "build_ai_expectation_failure_interaction_rules",
+    "build_ai_expectation_failure_evidence_summary",
+    "build_phase_a7_ai_expectation_failure_report",
 ]
 
 
@@ -82,4 +88,13 @@ from .phase_a6_structural_weakness import (
     build_structural_weakness_subcomponent_contract,
     build_structural_weakness_thresholds,
     score_structural_weakness,
+)
+
+from .phase_a7_ai_expectation_failure import (
+    build_ai_expectation_failure_component_contract,
+    build_ai_expectation_failure_evidence_summary,
+    build_ai_expectation_failure_interaction_rules,
+    build_ai_expectation_failure_thresholds,
+    build_phase_a7_ai_expectation_failure_report,
+    score_ai_expectation_failure,
 )
