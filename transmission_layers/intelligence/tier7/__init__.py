@@ -24,6 +24,13 @@ from .strategic_continuity import (
     assess_strategic_continuity,
 )
 
+from .strategic_regime_persistence import (
+    REGIME_BAND_ORDERING,
+    REGIME_PERSISTENCE_CLASSES,
+    REGIME_PERSISTENCE_PRECEDENCE,
+    assess_strategic_regime_persistence,
+)
+
 __all__ = [
     "STRATEGIC_STATES",
     "STATE_PRECEDENCE",
@@ -39,4 +46,8 @@ __all__ = [
     "CONTINUITY_CLASSES",
     "CONTINUITY_PRECEDENCE_ORDER",
     "assess_strategic_continuity",
+    "assess_strategic_regime_persistence",
+    "REGIME_PERSISTENCE_PRECEDENCE",
+    "REGIME_BAND_ORDERING",
+    "REGIME_PERSISTENCE_CLASSES",
 ]
