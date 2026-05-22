@@ -7,8 +7,6 @@ from copy import deepcopy
 from typing import Any, Mapping
 import os
 
-from .dashboard_o6_supabase_read_adapter import build_dashboard_supabase_snapshot
-
 SCHEMA_VERSION = "dashboard_o7_streamlit_supabase_runtime_v1"
 MODULE_VERSION = "1.0.0"
 DEFAULT_CACHE_TTL_SECONDS = 120
@@ -67,6 +65,8 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
         return OrderedDict([("mode", mode), ("snapshot", None), ("payload", payload), ("status", "ok")])
 
     try:
+        from .dashboard_o6_supabase_read_adapter import build_dashboard_supabase_snapshot
+
         supabase_client = _resolve_client(config, client=client, client_factory=client_factory)
         snapshot = build_dashboard_supabase_snapshot(supabase_client, run_id=config.get("run_id"), as_of_date=config.get("as_of_date"))
         mode = resolve_streamlit_supabase_mode(config, snapshot=snapshot)
