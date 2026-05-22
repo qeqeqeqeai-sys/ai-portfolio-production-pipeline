@@ -1,0 +1,13 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='380' viewBox='0 0 1600 380'>
+<style>.t{font-family:Arial,sans-serif;fill:#111827}.h{font-size:26px;font-weight:700}.b{font-size:14px}</style>
+<rect width='1600' height='380' fill='#f9fafb'/><text x='40' y='50' class='t h'>O1–O10 Operationalization Flow (Certified Deterministic Chain)</text>
+<g fill='#e0f2fe' stroke='#0369a1'>
+<rect x='40' y='100' width='140' height='70' rx='8'/><rect x='190' y='100' width='140' height='70' rx='8'/><rect x='340' y='100' width='140' height='70' rx='8'/><rect x='490' y='100' width='140' height='70' rx='8'/><rect x='640' y='100' width='140' height='70' rx='8'/><rect x='790' y='100' width='140' height='70' rx='8'/><rect x='940' y='100' width='140' height='70' rx='8'/><rect x='1090' y='100' width='140' height='70' rx='8'/><rect x='1240' y='100' width='140' height='70' rx='8'/><rect x='1390' y='100' width='140' height='70' rx='8'/>
+</g>
+<g class='t b'>
+<text x='95' y='140'>O1</text><text x='245' y='140'>O2</text><text x='395' y='140'>O3</text><text x='545' y='140'>O4</text><text x='695' y='140'>O5</text><text x='845' y='140'>O6</text><text x='995' y='140'>O7</text><text x='1145' y='140'>O8</text><text x='1295' y='140'>O9</text><text x='1445' y='140'>O10</text>
+</g>
+<g stroke='#374151'><line x1='180' y1='135' x2='190' y2='135'/><line x1='330' y1='135' x2='340' y2='135'/><line x1='480' y1='135' x2='490' y2='135'/><line x1='630' y1='135' x2='640' y2='135'/><line x1='780' y1='135' x2='790' y2='135'/><line x1='930' y1='135' x2='940' y2='135'/><line x1='1080' y1='135' x2='1090' y2='135'/><line x1='1230' y1='135' x2='1240' y2='135'/><line x1='1380' y1='135' x2='1390' y2='135'/></g>
+<text x='40' y='250' class='t b'>Governance: deterministic handoff checkpoints, replay-compatible stage outputs, certification traceability.</text>
+<text x='40' y='285' class='t b'>Exclusions: no adaptive control, no uncontrolled reasoning, no autonomous execution.</text>
+</svg>
