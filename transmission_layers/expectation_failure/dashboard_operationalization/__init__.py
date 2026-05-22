@@ -29,6 +29,12 @@ __all__ = [
     "validate_dashboard_o2_payload",
     "build_dashboard_o2_persistence_manifest",
     "build_dashboard_o2_contract_report",
+    "build_dashboard_o3_write_plan",
+    "validate_dashboard_o3_write_plan",
+    "execute_dashboard_o3_write_plan",
+    "build_dashboard_o3_write_result_manifest",
+    "build_dashboard_o3_dry_run_report",
+    "build_dashboard_o3_persistence_audit_report",
 ]
 
 from .dashboard_o2_supabase_contracts import (
@@ -41,3 +47,12 @@ from .dashboard_o2_supabase_contracts import (
     validate_dashboard_o2_payload,
 )
 
+
+from .dashboard_o3_supabase_write_adapter import (
+    build_dashboard_o3_write_plan,
+    validate_dashboard_o3_write_plan,
+    execute_dashboard_o3_write_plan,
+    build_dashboard_o3_write_result_manifest,
+    build_dashboard_o3_dry_run_report,
+    build_dashboard_o3_persistence_audit_report,
+)
