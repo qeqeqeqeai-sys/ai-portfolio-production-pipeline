@@ -83,6 +83,10 @@ __all__ = [
     "evaluate_dashboard_o8_verification_visibility",
     "run_dashboard_o9_real_data_load_acceptance",
     "build_dashboard_o9_acceptance_report_payload",
+    "build_dashboard_o10_closeout_scope",
+    "build_dashboard_o10_gate_inventory",
+    "run_dashboard_o10_closeout_certification",
+    "build_dashboard_o10_closeout_report_payload",
 ]
 
 
@@ -172,4 +176,11 @@ from .dashboard_o9_real_data_load_acceptance import (
     evaluate_dashboard_o8_verification_visibility,
     run_dashboard_o9_real_data_load_acceptance,
     build_dashboard_o9_acceptance_report_payload,
+)
+
+from .dashboard_o10_real_data_operationalization_closeout import (
+    build_dashboard_o10_closeout_scope,
+    build_dashboard_o10_gate_inventory,
+    run_dashboard_o10_closeout_certification,
+    build_dashboard_o10_closeout_report_payload,
 )
