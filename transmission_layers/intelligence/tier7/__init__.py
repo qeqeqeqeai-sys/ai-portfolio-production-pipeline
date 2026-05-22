@@ -65,6 +65,9 @@ __all__ = [
     "STABILITY_RESILIENCE_CLASSES",
     "STABILITY_RESILIENCE_PRECEDENCE",
     "assess_strategic_stability_resilience",
+    "CAUSALITY_REPLAY_CLASSES",
+    "CAUSALITY_REPLAY_PRECEDENCE",
+    "replay_strategic_causality",
 ]
 
 from .strategic_coherence import (
@@ -78,4 +81,10 @@ from .strategic_stability_resilience import (
     STABILITY_RESILIENCE_CLASSES,
     STABILITY_RESILIENCE_PRECEDENCE,
     assess_strategic_stability_resilience,
+)
+
+from .strategic_causality_replay import (
+    CAUSALITY_REPLAY_CLASSES,
+    CAUSALITY_REPLAY_PRECEDENCE,
+    replay_strategic_causality,
 )
