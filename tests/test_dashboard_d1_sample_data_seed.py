@@ -25,7 +25,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.dashbo
 def _all_rows(payload):
     keys = [
         "dashboard_entity_facts", "dashboard_subsector_facts", "dashboard_alert_facts", "dashboard_replay_facts",
-        "dashboard_benchmark_facts", "dashboard_evidence_facts", "dashboard_report_metadata", "dashboard_export_manifest",
+        "dashboard_benchmark_facts", "dashboard_evidence_facts", "dashboard_certification_reports", "dashboard_run_manifests",
     ]
     rows = []
     for key in keys:
@@ -47,7 +47,7 @@ def test_deterministic_output_checksum_and_ordering():
     assert stable_checksum(a) == stable_checksum(b)
     assert list(build_d1_seed_manifest(a)["table_counts"].keys()) == [
         "dashboard_entity_facts", "dashboard_subsector_facts", "dashboard_alert_facts", "dashboard_replay_facts",
-        "dashboard_benchmark_facts", "dashboard_evidence_facts", "dashboard_report_metadata",
+        "dashboard_benchmark_facts", "dashboard_evidence_facts", "dashboard_certification_reports",
     ]
 
 

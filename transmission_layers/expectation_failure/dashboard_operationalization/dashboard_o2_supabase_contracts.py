@@ -19,8 +19,8 @@ TABLE_CONFIG = (
     ("expectation_failure_dashboard_replay_facts", "dashboard_replay_facts", ("run_id", "replay_date_sgt", "entity_id", "replay_sequence")),
     ("expectation_failure_dashboard_benchmark_facts", "dashboard_benchmark_facts", ("run_id", "entity_id", "benchmark_id")),
     ("expectation_failure_dashboard_evidence_facts", "dashboard_evidence_facts", ("run_id", "entity_id", "evidence_id")),
-    ("expectation_failure_dashboard_report_metadata", "dashboard_report_metadata", ("run_id", "report_id")),
-    ("expectation_failure_dashboard_export_manifest", "dashboard_export_manifest", ("run_id", "checksum")),
+    ("expectation_failure_dashboard_certification_reports", "dashboard_certification_reports", ("run_id", "report_id")),
+    ("expectation_failure_dashboard_run_manifests", "dashboard_run_manifests", ("run_id", "checksum")),
 )
 
 FORBIDDEN_TERMS = (
@@ -117,7 +117,7 @@ def validate_dashboard_o2_payload(payload: Mapping[str, Any]) -> OrderedDict:
             if not isinstance(row, Mapping):
                 errors.append(f"row {idx} in {source_key} is not dict")
                 continue
-            if source_key != "dashboard_export_manifest" and not _is_flat_dict(row):
+            if source_key != "dashboard_run_manifests" and not _is_flat_dict(row):
                 errors.append(f"row {idx} in {source_key} is not flat")
             for col in required_cols:
                 if col not in row:
