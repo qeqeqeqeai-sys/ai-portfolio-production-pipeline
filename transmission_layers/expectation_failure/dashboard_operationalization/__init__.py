@@ -13,6 +13,13 @@ from .dashboard_o1_export_schema import (
 )
 
 __all__ = [
+    "build_o1_operational_visibility_report",
+    "certify_o1_operational_visibility",
+    "build_o1_dashboard_view_model",
+    "build_o1_governance_boundary_summary",
+    "build_o1_replay_lineage_summary",
+    "build_o1_operational_status",
+    "build_o1_layer_inventory",
     "build_dashboard_entity_facts",
     "build_dashboard_subsector_facts",
     "build_dashboard_alert_facts",
@@ -320,4 +327,15 @@ from .dashboard_d4_demo_closeout import (
     certify_d4_safety_boundaries,
     run_d4_demo_environment_closeout,
     build_d4_closeout_report_payload,
+)
+
+
+from .o1_operational_visibility import (
+    build_o1_layer_inventory,
+    build_o1_operational_status,
+    build_o1_replay_lineage_summary,
+    build_o1_governance_boundary_summary,
+    build_o1_dashboard_view_model,
+    certify_o1_operational_visibility,
+    build_o1_operational_visibility_report,
 )
