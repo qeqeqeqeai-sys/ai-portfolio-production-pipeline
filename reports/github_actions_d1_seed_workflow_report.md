@@ -13,6 +13,7 @@ Provide deployment automation support for explicitly controlled execution of the
 ## Manual-Trigger-Only Design
 - Trigger mode is `workflow_dispatch` only.
 - No cron or schedule trigger is configured.
+- No `push` trigger is configured.
 - Execution is explicit and human-initiated.
 
 ## Secrets Usage
@@ -21,6 +22,12 @@ Provide deployment automation support for explicitly controlled execution of the
   - `SUPABASE_ANON_KEY`
 - Includes pre-execution validation step that fails safely when either secret is missing.
 - Workflow avoids printing secret values.
+
+## Secret Mapping Fix
+- Root cause: the validation step checked `SUPABASE_URL` and `SUPABASE_ANON_KEY` shell variables, but secrets were previously mapped only on the execute step, so validation could fail even when repository secrets existed.
+- Fix: mapped `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `PYTHONPATH` at the job-level `env`, so both validation and execution steps receive the same environment.
+- Why mapping is required: GitHub Actions repository secrets are not implicitly exposed as shell environment variables; each job/step must explicitly map `secrets.*` into `env`.
+- No-secret-leakage guarantee: validation output reports only presence status (`present` / `missing`) and never echoes secret values.
 
 ## Deterministic / O3-Controlled Persistence
 - Workflow delegates all write behavior to the existing deterministic D1 runner.
@@ -38,9 +45,3 @@ After successful run with valid credentials and reachable tables:
 - `runtime_mode=read_only_supabase_mode`
 - `payload_source=supabase_snapshot`
 - `normalization_status=normalized`
-
-## GitHub Actions Import-Path Fix
-- Root cause: GitHub Actions Python runtime did not always include repository root on `sys.path`, causing `ModuleNotFoundError` for local package imports like `transmission_layers`.
-- CI fix: the execute step now sets `PYTHONPATH: ${{ github.workspace }}` so repository-local packages resolve deterministically in GitHub-hosted runners.
-- Local/direct-run fix: `scripts/run_d1_dashboard_sample_seed.py` now inserts the repo root into `sys.path` using deterministic `PROJECT_ROOT = Path(__file__).resolve().parents[1]` bootstrap logic before importing project modules.
-- Persistence behavior unchanged: this adjustment only affects Python module resolution and does not change seed payload generation, O3 controlled-write adapter behavior, execution gating, or write scope.

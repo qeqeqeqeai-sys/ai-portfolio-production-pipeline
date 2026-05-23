@@ -17,6 +17,11 @@ def test_workflow_dispatch_present():
     assert 'workflow_dispatch:' in text
 
 
+def test_no_push_trigger():
+    text = _workflow_text().lower()
+    assert '\npush:' not in text
+
+
 def test_installs_requirements_txt():
     text = _workflow_text()
     assert 'pip install -r requirements.txt' in text
@@ -27,10 +32,19 @@ def test_executes_d1_seed_with_execute_flag():
     assert 'python scripts/run_d1_dashboard_sample_seed.py --execute' in text
 
 
-def test_references_required_supabase_secrets():
+def test_job_level_env_maps_required_values():
     text = _workflow_text()
-    assert 'secrets.SUPABASE_URL' in text
-    assert 'secrets.SUPABASE_ANON_KEY' in text
+    assert 'SUPABASE_URL: ${{ secrets.SUPABASE_URL }}' in text
+    assert 'SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}' in text
+    assert 'PYTHONPATH: ${{ github.workspace }}' in text
+
+
+def test_validation_step_checks_both_secrets_and_only_reports_presence():
+    text = _workflow_text()
+    assert 'SUPABASE_URL: missing' in text
+    assert 'SUPABASE_URL: present' in text
+    assert 'SUPABASE_ANON_KEY: missing' in text
+    assert 'SUPABASE_ANON_KEY: present' in text
 
 
 def test_no_cron_or_schedule_trigger():
