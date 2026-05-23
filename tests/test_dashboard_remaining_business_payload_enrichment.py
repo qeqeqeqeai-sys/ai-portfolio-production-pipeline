@@ -52,8 +52,8 @@ def test_new_fields_are_bounded_and_controlled() -> None:
         assert 0 <= int(row["entity_fragility_score"]) <= 100
 
     for row in payload["dashboard_evidence_facts"]:
-        assert isinstance(row["source_value"], str)
-        assert row["source_value"]
+        assert isinstance(row["source_value"], (int, float))
+        assert 0 <= float(row["source_value"]) <= 1
 
 
 def test_no_random_datetime_now_or_uuid_usage_in_seed_module() -> None:
