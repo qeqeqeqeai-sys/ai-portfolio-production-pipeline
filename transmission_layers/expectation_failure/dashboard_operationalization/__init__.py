@@ -186,6 +186,14 @@ __all__ = [
     "build_o5_finding_generation_payload",
     "certify_o5_semantic_finding_generation",
     "build_o5_semantic_finding_generation_report",
+    "build_o6_finding_export_inventory",
+    "build_o6_finding_records",
+    "build_o6_narrative_records",
+    "build_o6_evidence_map_records",
+    "build_o6_supervisor_panel_records",
+    "build_o6_dashboard_export_bundle",
+    "certify_o6_finding_persistence_export_contract",
+    "build_o6_finding_persistence_export_contract_report",
 ]
 
 
@@ -420,4 +428,16 @@ from .o3_real_market_semantic_inputs import (
     build_o3_dashboard_view_model,
     certify_o3_real_market_semantic_inputs,
     build_o3_real_market_semantic_inputs_report,
+)
+
+
+from .o6_finding_persistence_export_contract import (
+    build_o6_finding_export_inventory,
+    build_o6_finding_records,
+    build_o6_narrative_records,
+    build_o6_evidence_map_records,
+    build_o6_supervisor_panel_records,
+    build_o6_dashboard_export_bundle,
+    certify_o6_finding_persistence_export_contract,
+    build_o6_finding_persistence_export_contract_report,
 )
