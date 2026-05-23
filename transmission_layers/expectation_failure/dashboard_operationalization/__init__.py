@@ -161,6 +161,14 @@ __all__ = [
     "build_o2_dashboard_view_model",
     "certify_o2_replay_operationalization",
     "build_o2_replay_operationalization_report",
+    "build_o3_real_market_semantic_inputs_report",
+    "certify_o3_real_market_semantic_inputs",
+    "build_o3_dashboard_view_model",
+    "build_o3_semantic_category_summary",
+    "build_o3_market_evidence_cards",
+    "build_o3_expectation_fragility_inputs",
+    "build_o3_semantic_evidence_records",
+    "build_o3_market_observation_inventory",
 ]
 
 
@@ -360,4 +368,16 @@ from .o2_replay_operationalization import (
     build_o2_dashboard_view_model,
     certify_o2_replay_operationalization,
     build_o2_replay_operationalization_report,
+)
+
+
+from .o3_real_market_semantic_inputs import (
+    build_o3_market_observation_inventory,
+    build_o3_semantic_evidence_records,
+    build_o3_expectation_fragility_inputs,
+    build_o3_market_evidence_cards,
+    build_o3_semantic_category_summary,
+    build_o3_dashboard_view_model,
+    certify_o3_real_market_semantic_inputs,
+    build_o3_real_market_semantic_inputs_report,
 )
