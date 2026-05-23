@@ -7,7 +7,7 @@ from copy import deepcopy
 from typing import Any, Mapping
 
 SCHEMA_VERSION = "dashboard_o6_supabase_read_adapter_v1"
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 
 _ALLOWED_TABLES = (
     "dashboard_entity_facts",
@@ -41,6 +41,36 @@ def _clamp_limit(limit: int, max_limit: int) -> int:
     return min(bounded, max_limit)
 
 
+def _safe_error(exc: Exception, *, max_len: int = 200) -> str:
+    text = f"{type(exc).__name__}: {str(exc)}"
+    for marker in ("sk-", "sbp_", "eyJ", "supabase.co", "apikey", "api_key", "token", "secret", "password"):
+        text = text.replace(marker, "[REDACTED]")
+    return text[:max_len]
+
+
+def _infer_section_status(exc: Exception) -> str:
+    msg = str(exc).lower()
+    if any(x in msg for x in ("permission", "rls", "not authorized", "forbidden", "401", "403")):
+        return "permission_denied"
+    if any(x in msg for x in ("does not exist", "not found", "undefined table", "42p01")):
+        return "missing"
+    if any(x in msg for x in ("column", "schema", "42703", "invalid input syntax")):
+        return "schema_mismatch"
+    return "query_failed"
+
+
+def _filter_applied(run_id: str | None, as_of_date: str | None, entity_id: str | None) -> str:
+    if run_id is not None and as_of_date is not None:
+        return "run_id/as_of_date"
+    if run_id is not None:
+        return "run_id"
+    if as_of_date is not None:
+        return "as_of_date"
+    if entity_id is not None:
+        return "entity_id"
+    return "none"
+
+
 def _load_rows(client: Any, *, logical_table: str, run_id: str | None = None, as_of_date: str | None = None, entity_id: str | None = None, limit: int = 500) -> OrderedDict:
     safe_limit = _clamp_limit(limit, _MAX_LIMITS["default"])
     columns = tuple(_TABLE_COLUMNS[logical_table])
@@ -64,9 +94,11 @@ def _load_rows(client: Any, *, logical_table: str, run_id: str | None = None, as
         result = query.execute()
         data = list(getattr(result, "data", []) or [])
         normalized = [OrderedDict((col, row.get(col)) for col in columns) for row in data if isinstance(row, Mapping)]
-        return OrderedDict([("table", logical_table), ("rows", normalized), ("row_count", len(normalized)), ("status", "ok"), ("error", None), ("applied_limit", safe_limit)])
+        status = "ok" if normalized else "empty"
+        return OrderedDict([("table", logical_table), ("rows", normalized), ("row_count", len(normalized)), ("status", status), ("error", None), ("applied_limit", safe_limit)])
     except Exception as exc:
-        degraded["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+        degraded["status"] = _infer_section_status(exc)
+        degraded["error"] = _safe_error(exc)
         return degraded
 
 
@@ -107,6 +139,15 @@ def load_dashboard_certification_metadata(client, *, run_id=None, limit=100):
 
 
 def build_dashboard_supabase_snapshot(client, *, run_id=None, as_of_date=None):
+    section_filter_map = {
+        "entity_facts": _filter_applied(run_id, as_of_date, None),
+        "subsector_facts": _filter_applied(run_id, as_of_date, None),
+        "alert_facts": _filter_applied(run_id, as_of_date, None),
+        "benchmark_facts": _filter_applied(run_id, as_of_date, None),
+        "replay_facts": _filter_applied(run_id, None, None),
+        "evidence_facts": _filter_applied(run_id, None, None),
+        "certification_metadata": _filter_applied(run_id, None, None),
+    }
     return OrderedDict([
         ("schema_version", SCHEMA_VERSION),
         ("module_version", MODULE_VERSION),
@@ -119,6 +160,7 @@ def build_dashboard_supabase_snapshot(client, *, run_id=None, as_of_date=None):
         ("replay_facts", load_dashboard_replay_facts(client, run_id=run_id)),
         ("evidence_facts", load_dashboard_evidence_facts(client, run_id=run_id)),
         ("certification_metadata", load_dashboard_certification_metadata(client, run_id=run_id)),
+        ("section_filter_map", section_filter_map),
         ("invariant_flags", OrderedDict([("deterministic_only", True), ("injected_client_only", True), ("read_only", True), ("no_writes", True), ("bounded_queries", True), ("degraded_mode", True), ("immutable_input_safe", True), ("additive_only", True)])),
     ])
 
