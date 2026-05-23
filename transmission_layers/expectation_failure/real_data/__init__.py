@@ -39,6 +39,16 @@ from .t3_fragility_evolution_curves import (
     validate_fragility_curve_inputs,
 )
 
+
+from .t4_regime_transition_detection import (
+    build_regime_transition_checksum_chain,
+    build_regime_transition_records,
+    build_regime_transition_summary,
+    build_t4_regime_transition_report,
+    certify_regime_transition_detection,
+    validate_regime_transition_inputs,
+)
+
 from .t2_structural_delta_intelligence import (
     build_structural_delta_checksum_chain,
     build_structural_delta_records,
@@ -90,4 +100,11 @@ __all__ = [
     "build_fragility_curve_checksum_chain",
     "certify_fragility_evolution_curves",
     "build_t3_fragility_evolution_report",
+
+    "validate_regime_transition_inputs",
+    "build_regime_transition_records",
+    "build_regime_transition_summary",
+    "build_regime_transition_checksum_chain",
+    "certify_regime_transition_detection",
+    "build_t4_regime_transition_report",
 ]
