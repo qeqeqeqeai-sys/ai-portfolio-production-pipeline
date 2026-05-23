@@ -194,6 +194,14 @@ __all__ = [
     "build_o6_dashboard_export_bundle",
     "certify_o6_finding_persistence_export_contract",
     "build_o6_finding_persistence_export_contract_report",
+    "build_o7_persistence_table_contract",
+    "build_o7_write_batch_plan",
+    "build_o7_persistence_audit_manifest",
+    "validate_o7_persistence_bundle",
+    "persist_o7_dashboard_export_bundle",
+    "build_o7_persistence_result_summary",
+    "certify_o7_dashboard_persistence_adapter",
+    "build_o7_dashboard_persistence_adapter_report",
 ]
 
 
@@ -440,4 +448,16 @@ from .o6_finding_persistence_export_contract import (
     build_o6_dashboard_export_bundle,
     certify_o6_finding_persistence_export_contract,
     build_o6_finding_persistence_export_contract_report,
+)
+
+
+from .o7_dashboard_persistence_adapter import (
+    build_o7_persistence_table_contract,
+    build_o7_write_batch_plan,
+    build_o7_persistence_audit_manifest,
+    validate_o7_persistence_bundle,
+    persist_o7_dashboard_export_bundle,
+    build_o7_persistence_result_summary,
+    certify_o7_dashboard_persistence_adapter,
+    build_o7_dashboard_persistence_adapter_report,
 )
