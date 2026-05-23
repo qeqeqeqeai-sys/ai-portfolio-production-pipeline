@@ -44,7 +44,7 @@ class _MockTable:
         return self
 
     def execute(self):
-        if self.fail and self.table_name == "expectation_failure_dashboard_alert_facts":
+        if self.fail and self.table_name == "dashboard_alert_facts":
             raise RuntimeError("forced failure")
         return {"ok": True}
 

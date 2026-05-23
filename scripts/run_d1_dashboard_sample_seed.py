@@ -130,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     result = run_d1_controlled_seed(confirm_execute=execute, dry_run=dry_run, supabase_client=client)
 
     table_counts = _table_counts_from_write_plan(result.get("write_plan", {}))
+    print("target_tables_and_counts=")
     print("planned_table_row_counts=")
     for table_name, row_count in table_counts.items():
         print(f"- {table_name}: {row_count}")
@@ -148,6 +149,9 @@ def main(argv: list[str] | None = None) -> int:
         print("write_result_statuses=")
         for table_name, status in table_write_statuses.items():
             print(f"- {table_name}: {status}")
+
+    if execute and any(status == "failed" for status in table_write_statuses.values()):
+        return 1
 
     verification_status = "not_requested"
     if args.verify_readback:
