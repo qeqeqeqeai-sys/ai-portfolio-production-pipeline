@@ -597,3 +597,27 @@ __all__.extend([
     "build_p3a_resilience_certification",
     "build_p3a_resilience_report",
 ])
+
+from .path3b_structural_asymmetry_engine import (
+    build_p3b_asymmetry_certification,
+    build_p3b_asymmetry_explainability_summary,
+    build_p3b_asymmetry_report,
+    build_p3b_asymmetry_signal_registry,
+    build_p3b_downside_asymmetry_summary,
+    build_p3b_fragility_resilience_balance,
+    build_p3b_upside_resilience_summary,
+    classify_p3b_structural_asymmetry_state,
+    run_p3b_structural_asymmetry_engine,
+)
+
+__all__.extend([
+    "build_p3b_asymmetry_signal_registry",
+    "build_p3b_fragility_resilience_balance",
+    "build_p3b_downside_asymmetry_summary",
+    "build_p3b_upside_resilience_summary",
+    "classify_p3b_structural_asymmetry_state",
+    "build_p3b_asymmetry_explainability_summary",
+    "run_p3b_structural_asymmetry_engine",
+    "build_p3b_asymmetry_certification",
+    "build_p3b_asymmetry_report",
+])
