@@ -49,6 +49,15 @@ from .t4_regime_transition_detection import (
     validate_regime_transition_inputs,
 )
 
+from .t5_historical_explainability import (
+    build_historical_explanation_checksum_chain,
+    build_historical_explanation_records,
+    build_historical_explanation_summary,
+    build_t5_historical_explainability_report,
+    certify_historical_explainability,
+    validate_historical_explainability_inputs,
+)
+
 from .t2_structural_delta_intelligence import (
     build_structural_delta_checksum_chain,
     build_structural_delta_records,
@@ -107,4 +116,10 @@ __all__ = [
     "build_regime_transition_checksum_chain",
     "certify_regime_transition_detection",
     "build_t4_regime_transition_report",
+    "validate_historical_explainability_inputs",
+    "build_historical_explanation_records",
+    "build_historical_explanation_summary",
+    "build_historical_explanation_checksum_chain",
+    "certify_historical_explainability",
+    "build_t5_historical_explainability_report",
 ]
