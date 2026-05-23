@@ -869,3 +869,25 @@ __all__.extend([
     "certify_path5c_propagation_persistence_evolution",
     "build_path5c_propagation_persistence_evolution_report",
 ])
+
+from .path5d_propagation_regime_classification import (
+    build_path5d_propagation_regime_classification_report,
+    build_path5d_propagation_regime_scores,
+    build_path5d_regime_explainability,
+    build_path5d_regime_inputs,
+    build_path5d_regime_transition_summary,
+    build_path5d_structural_state_labels,
+    certify_path5d_propagation_regime_classification,
+    classify_path5d_propagation_regime,
+)
+
+__all__.extend([
+    "build_path5d_regime_inputs",
+    "build_path5d_propagation_regime_scores",
+    "classify_path5d_propagation_regime",
+    "build_path5d_structural_state_labels",
+    "build_path5d_regime_transition_summary",
+    "build_path5d_regime_explainability",
+    "certify_path5d_propagation_regime_classification",
+    "build_path5d_propagation_regime_classification_report",
+])
