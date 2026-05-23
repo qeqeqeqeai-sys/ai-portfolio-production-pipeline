@@ -77,6 +77,10 @@ __all__ = [
     "verify_dashboard_column_contracts",
     "run_dashboard_o8_deployment_smoke_test",
     "build_dashboard_o8_deployment_report_payload",
+    "build_dashboard_expected_table_inventory",
+    "build_dashboard_expected_column_inventory",
+    "build_dashboard_schema_deployment_manifest",
+    "build_dashboard_schema_verification_report_payload",
     "build_dashboard_o9_acceptance_scope",
     "evaluate_dashboard_real_data_presence",
     "evaluate_dashboard_section_population",
@@ -221,6 +225,13 @@ from .dashboard_o8_supabase_deployment_verification import (
     verify_dashboard_column_contracts,
     run_dashboard_o8_deployment_smoke_test,
     build_dashboard_o8_deployment_report_payload,
+)
+
+from .dashboard_schema_verification import (
+    build_dashboard_expected_table_inventory,
+    build_dashboard_expected_column_inventory,
+    build_dashboard_schema_deployment_manifest,
+    build_dashboard_schema_verification_report_payload,
 )
 
 from .dashboard_o9_real_data_load_acceptance import (
