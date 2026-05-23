@@ -152,6 +152,15 @@ __all__ = [
     "certify_d4_safety_boundaries",
     "run_d4_demo_environment_closeout",
     "build_d4_closeout_report_payload",
+    "build_o2_replay_timeline",
+    "build_o2_structural_evolution_summary",
+    "build_o2_regime_transition_history",
+    "build_o2_pressure_evolution_diagnostics",
+    "build_o2_snapshot_comparison_cards",
+    "build_o2_replay_certification_cards",
+    "build_o2_dashboard_view_model",
+    "certify_o2_replay_operationalization",
+    "build_o2_replay_operationalization_report",
 ]
 
 
@@ -338,4 +347,17 @@ from .o1_operational_visibility import (
     build_o1_dashboard_view_model,
     certify_o1_operational_visibility,
     build_o1_operational_visibility_report,
+)
+
+
+from .o2_replay_operationalization import (
+    build_o2_replay_timeline,
+    build_o2_structural_evolution_summary,
+    build_o2_regime_transition_history,
+    build_o2_pressure_evolution_diagnostics,
+    build_o2_snapshot_comparison_cards,
+    build_o2_replay_certification_cards,
+    build_o2_dashboard_view_model,
+    certify_o2_replay_operationalization,
+    build_o2_replay_operationalization_report,
 )
