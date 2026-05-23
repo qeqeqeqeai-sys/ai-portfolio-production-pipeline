@@ -327,3 +327,33 @@ __all__.extend([
     "DEGRADED_COHORT_REGISTRY",
     "BLOCKED_COHORT_REGISTRY",
 ])
+
+from .path2b_relative_fragility_scoring import (
+    BLOCKED_RELATIVE_FRAGILITY,
+    CERTIFIED_RELATIVE_FRAGILITY,
+    DEGRADED_RELATIVE_FRAGILITY,
+    build_cohort_relative_baselines,
+    build_path2b_relative_fragility_report,
+    build_relative_deterioration_velocity_comparison,
+    build_relative_fragility_driver_summary,
+    build_relative_fragility_input_contract,
+    build_relative_fragility_score,
+    build_relative_persistence_weakness_comparison,
+    certify_relative_fragility_scoring,
+    compare_peer_fragility_distribution,
+)
+
+__all__.extend([
+    "build_relative_fragility_input_contract",
+    "build_cohort_relative_baselines",
+    "compare_peer_fragility_distribution",
+    "build_relative_fragility_score",
+    "build_relative_deterioration_velocity_comparison",
+    "build_relative_persistence_weakness_comparison",
+    "build_relative_fragility_driver_summary",
+    "certify_relative_fragility_scoring",
+    "build_path2b_relative_fragility_report",
+    "CERTIFIED_RELATIVE_FRAGILITY",
+    "DEGRADED_RELATIVE_FRAGILITY",
+    "BLOCKED_RELATIVE_FRAGILITY",
+])
