@@ -721,3 +721,29 @@ __all__.extend([
     "build_p3f_regime_certification",
     "build_p3f_regime_report",
 ])
+
+from .path3g_structural_explainability_narrative import (
+    build_path3g_bounded_grammar_registry,
+    build_path3g_dashboard_explanation,
+    build_path3g_explanation_registry,
+    build_path3g_interpretation_blocks,
+    build_path3g_narrative_manifest,
+    build_path3g_report,
+    build_path3g_structural_narrative,
+    build_path3g_supervisor_report,
+    certify_path3g_structural_explainability,
+    evaluate_path3g_explanation_triggers,
+)
+
+__all__.extend([
+    "build_path3g_explanation_registry",
+    "build_path3g_bounded_grammar_registry",
+    "evaluate_path3g_explanation_triggers",
+    "build_path3g_interpretation_blocks",
+    "build_path3g_structural_narrative",
+    "build_path3g_dashboard_explanation",
+    "build_path3g_supervisor_report",
+    "certify_path3g_structural_explainability",
+    "build_path3g_narrative_manifest",
+    "build_path3g_report",
+])
