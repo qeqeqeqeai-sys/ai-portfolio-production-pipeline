@@ -645,3 +645,29 @@ __all__.extend([
     "build_p3c_benchmark_asymmetry_certification",
     "build_p3c_benchmark_asymmetry_report",
 ])
+
+from .path3d_structural_persistence_acceleration import (
+    build_p3d_acceleration_summary,
+    build_p3d_asymmetry_persistence_summary,
+    build_p3d_exhaustion_summary,
+    build_p3d_persistence_certification,
+    build_p3d_persistence_explainability_summary,
+    build_p3d_persistence_report,
+    build_p3d_persistence_signal_registry,
+    build_p3d_stabilization_summary,
+    classify_p3d_persistence_acceleration_state,
+    run_p3d_structural_persistence_acceleration_layer,
+)
+
+__all__.extend([
+    "build_p3d_persistence_signal_registry",
+    "build_p3d_asymmetry_persistence_summary",
+    "build_p3d_acceleration_summary",
+    "build_p3d_stabilization_summary",
+    "build_p3d_exhaustion_summary",
+    "classify_p3d_persistence_acceleration_state",
+    "build_p3d_persistence_explainability_summary",
+    "run_p3d_structural_persistence_acceleration_layer",
+    "build_p3d_persistence_certification",
+    "build_p3d_persistence_report",
+])
