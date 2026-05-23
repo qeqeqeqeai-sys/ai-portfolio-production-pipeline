@@ -786,6 +786,8 @@ __all__.extend([
     "CERTIFIED_TRANSMISSION_GRAPH",
     "DEGRADED_TRANSMISSION_GRAPH",
     "BLOCKED_TRANSMISSION_GRAPH",
+])
+
 from .path3h_supervisor_certification_closeout import (
     APPROVED_PATH3_CLOSEOUT,
     BLOCKED_PATH3_CLOSEOUT,
