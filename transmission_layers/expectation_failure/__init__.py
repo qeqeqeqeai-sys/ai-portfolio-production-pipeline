@@ -671,3 +671,29 @@ __all__.extend([
     "build_p3d_persistence_certification",
     "build_p3d_persistence_report",
 ])
+
+from .path3e_structural_imbalance_concentration import (
+    build_p3e_imbalance_signal_registry,
+    build_p3e_concentration_summary,
+    build_p3e_breadth_collapse_summary,
+    build_p3e_participation_summary,
+    build_p3e_cluster_imbalance_summary,
+    classify_p3e_structural_imbalance_state,
+    build_p3e_imbalance_explainability_summary,
+    run_p3e_structural_imbalance_concentration_intelligence,
+    build_p3e_imbalance_certification,
+    build_p3e_imbalance_report,
+)
+
+__all__.extend([
+    "build_p3e_imbalance_signal_registry",
+    "build_p3e_concentration_summary",
+    "build_p3e_breadth_collapse_summary",
+    "build_p3e_participation_summary",
+    "build_p3e_cluster_imbalance_summary",
+    "classify_p3e_structural_imbalance_state",
+    "build_p3e_imbalance_explainability_summary",
+    "run_p3e_structural_imbalance_concentration_intelligence",
+    "build_p3e_imbalance_certification",
+    "build_p3e_imbalance_report",
+])
