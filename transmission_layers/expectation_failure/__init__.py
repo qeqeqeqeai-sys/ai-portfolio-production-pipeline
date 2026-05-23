@@ -891,3 +891,23 @@ __all__.extend([
     "certify_path5d_propagation_regime_classification",
     "build_path5d_propagation_regime_classification_report",
 ])
+
+from .path5e_propagation_supervisor_closeout import (
+    build_path5e_governance_boundary_review,
+    build_path5e_propagation_supervisor_closeout_report,
+    build_path5e_supervisor_findings,
+    build_path5e_supervisor_synthesis,
+    build_path5e_transmission_input_inventory,
+    build_path5e_transmission_state_closeout,
+    certify_path5e_transmission_state_closeout,
+)
+
+__all__.extend([
+    "build_path5e_transmission_input_inventory",
+    "build_path5e_supervisor_synthesis",
+    "build_path5e_transmission_state_closeout",
+    "build_path5e_supervisor_findings",
+    "build_path5e_governance_boundary_review",
+    "certify_path5e_transmission_state_closeout",
+    "build_path5e_propagation_supervisor_closeout_report",
+])
