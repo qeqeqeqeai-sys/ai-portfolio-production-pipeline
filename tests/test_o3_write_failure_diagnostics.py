@@ -46,7 +46,7 @@ def _payload():
         "dashboard_entity_facts": [{"run_id": "r1", "entity_id": "e1", "entity_name": "A"}],
         "dashboard_subsector_facts": [{"run_id": "r1", "subsector": "AI"}],
         "dashboard_alert_facts": [{"run_id": "r1", "entity_id": "e1", "alert_state": "watch"}],
-        "dashboard_replay_facts": [{"run_id": "r1", "replay_date_sgt": "2026-01-01", "entity_id": "e1", "replay_sequence": "1"}],
+        "dashboard_replay_facts": [{"run_id": "r1", "replay_date_sgt": "2026-01-01", "entity_id": "e1", "replay_sequence": 1}],
         "dashboard_benchmark_facts": [{"run_id": "r1", "entity_id": "e1", "benchmark_id": "b1"}],
         "dashboard_evidence_facts": [{"run_id": "r1", "entity_id": "e1", "evidence_id": "ev1"}],
         "dashboard_certification_reports": [{"run_id": "r1", "report_id": "rp1"}],
