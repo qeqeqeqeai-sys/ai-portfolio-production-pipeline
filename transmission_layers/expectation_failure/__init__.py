@@ -567,7 +567,6 @@ __all__.extend([
     "certify_path2_deterministic_replay",
     "certify_path2_checksum_lineage",
     "certify_path2_explainability_interpretation",
-    "certify_path2_architectural_boundaries",
     "validate_path2_final_forbidden_capabilities",
     "certify_path2_additive_integration",
     "run_path2_supervisor_closeout",
@@ -748,6 +747,45 @@ __all__.extend([
     "build_path3g_report",
 ])
 
+
+from .path5a_structural_transmission_graph import (
+    BLOCKED_TRANSMISSION_GRAPH,
+    CERTIFIED_TRANSMISSION_GRAPH,
+    DEGRADED_TRANSMISSION_GRAPH,
+    build_path5a_dashboard_graph_summary,
+    build_path5a_edge_taxonomy,
+    build_path5a_graph_lineage,
+    build_path5a_node_taxonomy,
+    build_path5a_relationship_registry,
+    build_path5a_report,
+    build_path5a_structural_edges,
+    build_path5a_structural_nodes,
+    build_path5a_supervisor_report,
+    build_path5a_topology_manifest,
+    build_path5a_topology_metrics,
+    build_path5a_transmission_graph,
+    certify_path5a_transmission_graph,
+    run_path5a_structural_transmission_graph,
+)
+
+__all__.extend([
+    "build_path5a_node_taxonomy",
+    "build_path5a_edge_taxonomy",
+    "build_path5a_relationship_registry",
+    "build_path5a_structural_nodes",
+    "build_path5a_structural_edges",
+    "build_path5a_transmission_graph",
+    "build_path5a_topology_metrics",
+    "build_path5a_graph_lineage",
+    "build_path5a_topology_manifest",
+    "certify_path5a_transmission_graph",
+    "build_path5a_dashboard_graph_summary",
+    "build_path5a_supervisor_report",
+    "build_path5a_report",
+    "run_path5a_structural_transmission_graph",
+    "CERTIFIED_TRANSMISSION_GRAPH",
+    "DEGRADED_TRANSMISSION_GRAPH",
+    "BLOCKED_TRANSMISSION_GRAPH",
 from .path3h_supervisor_certification_closeout import (
     APPROVED_PATH3_CLOSEOUT,
     BLOCKED_PATH3_CLOSEOUT,
