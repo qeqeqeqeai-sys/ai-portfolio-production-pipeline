@@ -130,6 +130,13 @@ __all__ = [
     "run_d2_dashboard_visibility_certification",
     "build_d2_visibility_manifest",
     "build_d2_visibility_report_payload",
+    "build_d2_dashboard_table_inventory",
+    "build_d2_dashboard_column_contract",
+    "build_d2_dashboard_index_contract",
+    "build_d2_dashboard_constraint_contract",
+    "build_d2_dashboard_supabase_schema_contract",
+    "certify_d2_dashboard_supabase_schema",
+    "build_d2_dashboard_supabase_schema_report",
     "build_d3_playback_inventory",
     "build_d3_supervisor_runbook",
     "build_d3_demo_step_sequence",
@@ -491,4 +498,14 @@ from .o9_dashboard_operationalization_closeout import (
     build_o9_dashboard_operationalization_closeout_payload,
     certify_o9_dashboard_operationalization_closeout,
     build_o9_dashboard_operationalization_closeout_report,
+)
+
+from .d2_dashboard_supabase_schema import (
+    build_d2_dashboard_table_inventory,
+    build_d2_dashboard_column_contract,
+    build_d2_dashboard_index_contract,
+    build_d2_dashboard_constraint_contract,
+    build_d2_dashboard_supabase_schema_contract,
+    certify_d2_dashboard_supabase_schema,
+    build_d2_dashboard_supabase_schema_report,
 )
