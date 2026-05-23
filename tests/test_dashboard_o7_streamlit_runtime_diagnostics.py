@@ -51,8 +51,8 @@ def test_client_creation_failure_diagnostics():
     out = load_streamlit_dashboard_snapshot(runtime_config=build_streamlit_supabase_runtime_config(supabase_url="u", supabase_key="k"), fallback_payload=_fallback_payload(), client_factory=bad_factory)
     d = out["runtime_diagnostics"]
     assert out["mode"] == "degraded_data_loading_mode"
-    assert d["error_type"] == "RuntimeError"
-    assert "cannot create" in (d["error_message_short"] or "")
+    assert d["client_error_type"] == "RuntimeError"
+    assert "cannot create" in (d["client_error_message_short"] or "")
 
 
 def test_degraded_snapshot_diagnostics():

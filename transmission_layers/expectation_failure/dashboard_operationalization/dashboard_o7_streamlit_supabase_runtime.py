@@ -57,17 +57,98 @@ def build_streamlit_supabase_runtime_config(*, supabase_url: str | None = None, 
     return cfg
 
 
-def _resolve_client(runtime_config: Mapping[str, Any], *, client: Any | None = None, client_factory: Any | None = None):
-    if client is not None:
-        return client
-    if not runtime_config.get("credentials_present"):
+def _redact_and_truncate_error(value: Any, *, max_len: int = 200) -> str | None:
+    if value is None:
         return None
-    if client_factory is None:
+    txt = str(value).strip()
+    if not txt:
+        return None
+    redacted = txt
+    for token in ("supabase_key", "SUPABASE_KEY", "SUPABASE_ANON_KEY", "apikey", "api_key", "token", "secret", "password"):
+        redacted = redacted.replace(token, "[REDACTED]")
+    for marker in ("sk-", "sbp_", "eyJ"):
+        if marker in redacted:
+            redacted = redacted.replace(marker, "[REDACTED]-")
+    return redacted[:max_len]
+
+
+def resolve_streamlit_supabase_client(runtime_config: Mapping[str, Any], *, client: Any | None = None, client_factory: Any | None = None) -> OrderedDict:
+    credentials_present = bool(runtime_config.get("credentials_present"))
+    if client is not None:
+        return OrderedDict([
+            ("client", client),
+            ("client_resolved", True),
+            ("client_error_type", None),
+            ("client_error_message_short", None),
+            ("client_factory_source", "injected_client"),
+            ("supabase_package_available", False),
+            ("credentials_present", credentials_present),
+        ])
+
+    package_available = False
+    resolved_factory = client_factory
+    factory_source = "injected_factory" if client_factory is not None else "unavailable"
+    if resolved_factory is None and credentials_present:
         try:
-            from supabase import create_client as client_factory  # type: ignore
-        except Exception:
-            return None
-    return client_factory(runtime_config["supabase_url"], runtime_config["supabase_key"])
+            from supabase import create_client as package_factory  # type: ignore
+
+            resolved_factory = package_factory
+            package_available = True
+            factory_source = "supabase_package"
+        except Exception as exc:
+            return OrderedDict([
+                ("client", None),
+                ("client_resolved", False),
+                ("client_error_type", type(exc).__name__),
+                ("client_error_message_short", _redact_and_truncate_error(str(exc))),
+                ("client_factory_source", "unavailable"),
+                ("supabase_package_available", False),
+                ("credentials_present", credentials_present),
+            ])
+
+    if not credentials_present:
+        return OrderedDict([
+            ("client", None),
+            ("client_resolved", False),
+            ("client_error_type", "CredentialsMissing"),
+            ("client_error_message_short", "Supabase runtime credentials are missing."),
+            ("client_factory_source", "unavailable" if client_factory is None else "injected_factory"),
+            ("supabase_package_available", package_available),
+            ("credentials_present", credentials_present),
+        ])
+
+    if resolved_factory is None:
+        return OrderedDict([
+            ("client", None),
+            ("client_resolved", False),
+            ("client_error_type", "ClientFactoryUnavailable"),
+            ("client_error_message_short", "No Supabase client factory is available."),
+            ("client_factory_source", factory_source),
+            ("supabase_package_available", package_available),
+            ("credentials_present", credentials_present),
+        ])
+
+    try:
+        resolved_client = resolved_factory(runtime_config.get("supabase_url"), runtime_config.get("supabase_key"))
+        return OrderedDict([
+            ("client", resolved_client),
+            ("client_resolved", resolved_client is not None),
+            ("client_error_type", None if resolved_client is not None else "ClientFactoryReturnedNone"),
+            ("client_error_message_short", None if resolved_client is not None else "Supabase client factory returned None."),
+            ("client_factory_source", factory_source),
+            ("supabase_package_available", package_available),
+            ("credentials_present", credentials_present),
+        ])
+    except Exception as exc:
+        return OrderedDict([
+            ("client", None),
+            ("client_resolved", False),
+            ("client_error_type", type(exc).__name__),
+            ("client_error_message_short", _redact_and_truncate_error(str(exc))),
+            ("client_factory_source", factory_source),
+            ("supabase_package_available", package_available),
+            ("credentials_present", credentials_present),
+        ])
 
 
 def _section_status(snapshot: Mapping[str, Any], section: str) -> str:
@@ -92,7 +173,7 @@ def _as_section_rows(snapshot: Mapping[str, Any], section: str) -> list[dict[str
     return [dict(row) for row in rows if isinstance(row, Mapping)]
 
 
-def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: Mapping[str, Any] | None, payload_source: str, normalization_status: str, error: str | None, runtime_mode: str, client_resolved: bool) -> OrderedDict:
+def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: Mapping[str, Any] | None, payload_source: str, normalization_status: str, error: str | None, runtime_mode: str, client_resolved: bool, client_error_type: str | None = None, client_error_message_short: str | None = None, client_factory_source: str = "unavailable", supabase_package_available: bool = False) -> OrderedDict:
     section_statuses = OrderedDict((section, _section_status(snapshot or {}, section)) for section in _O4_REQUIRED_SECTIONS)
     degraded_sections = [section for section, status in section_statuses.items() if status != "ok"]
     error_type = None
@@ -107,13 +188,17 @@ def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: M
     return OrderedDict([
         ("credentials_present", bool(runtime_config.get("credentials_present"))),
         ("client_resolved", bool(client_resolved)),
-        ("snapshot_loaded", snapshot is not None),
+        ("snapshot_loaded", snapshot is not None and bool(client_resolved)),
         ("snapshot_section_statuses", section_statuses),
         ("degraded_sections", degraded_sections),
         ("normalization_status", normalization_status),
         ("payload_source", payload_source),
         ("error_type", error_type),
         ("error_message_short", error_message_short),
+        ("client_error_type", client_error_type),
+        ("client_error_message_short", client_error_message_short),
+        ("client_factory_source", client_factory_source),
+        ("supabase_package_available", bool(supabase_package_available)),
         ("expected_tables", list(_EXPECTED_TABLES)),
         ("runtime_mode", runtime_mode),
     ])
@@ -178,8 +263,28 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
     try:
         from .dashboard_o6_supabase_read_adapter import build_dashboard_supabase_snapshot
 
-        supabase_client = _resolve_client(config, client=client, client_factory=client_factory)
-        client_resolved = supabase_client is not None
+        client_resolution = resolve_streamlit_supabase_client(config, client=client, client_factory=client_factory)
+        client_resolved = bool(client_resolution["client_resolved"])
+        if not client_resolved:
+            diagnostics = _build_runtime_diagnostics(
+                runtime_config=config,
+                snapshot=None,
+                payload_source="fallback_payload",
+                normalization_status="client_unresolved",
+                error=None,
+                runtime_mode="degraded_data_loading_mode",
+                client_resolved=False,
+                client_error_type=client_resolution.get("client_error_type"),
+                client_error_message_short=client_resolution.get("client_error_message_short"),
+                client_factory_source=str(client_resolution.get("client_factory_source", "unavailable")),
+                supabase_package_available=bool(client_resolution.get("supabase_package_available", False)),
+            )
+            return OrderedDict([
+                ("mode", "degraded_data_loading_mode"), ("snapshot", None), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),
+                ("status", "ok"), ("normalization_status", "client_unresolved"), ("error", None),
+                ("runtime_diagnostics", diagnostics),
+            ])
+        supabase_client = client_resolution["client"]
         snapshot = build_dashboard_supabase_snapshot(supabase_client, run_id=config.get("run_id"), as_of_date=config.get("as_of_date"))
         mode = resolve_streamlit_supabase_mode(config, snapshot=snapshot)
     except Exception as exc:

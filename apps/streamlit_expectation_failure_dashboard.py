@@ -64,6 +64,10 @@ def _synthesize_runtime_diagnostics(runtime_snapshot: dict | None) -> tuple[dict
         "error_type": None,
         "error_message_short": None,
         "expected_tables": [],
+        "client_error_type": None,
+        "client_error_message_short": None,
+        "client_factory_source": "unavailable",
+        "supabase_package_available": False,
     }
     if not runtime_snapshot:
         diagnostics = dict(required_defaults)
@@ -141,6 +145,11 @@ def main() -> None:
         st.write(f"normalization_status: {diagnostics.get('normalization_status')}")
         st.write(f"degraded_sections: {diagnostics.get('degraded_sections')}")
         st.write(f"credentials_present: {diagnostics.get('credentials_present')}")
+        st.write(f"client_resolved: {diagnostics.get('client_resolved')}")
+        st.write(f"client_factory_source: {diagnostics.get('client_factory_source')}")
+        st.write(f"supabase_package_available: {diagnostics.get('supabase_package_available')}")
+        st.write(f"client_error_type: {diagnostics.get('client_error_type')}")
+        st.write(f"client_error_message_short: {diagnostics.get('client_error_message_short')}")
         st.json({"snapshot_section_statuses": diagnostics.get("snapshot_section_statuses", {})})
         st.write(f"error_message_short: {diagnostics.get('error_message_short')}")
         st.write(f"diagnostics_source: {diagnostics_source}")
