@@ -177,6 +177,15 @@ __all__ = [
     "build_o4_dashboard_integration_payload",
     "certify_o4_real_market_semantic_dashboard_integration",
     "build_o4_real_market_semantic_dashboard_integration_report",
+    "build_o5_finding_inventory",
+    "build_o5_semantic_findings",
+    "build_o5_dashboard_insight_narratives",
+    "build_o5_executive_finding_summary",
+    "build_o5_finding_evidence_map",
+    "build_o5_supervisor_interpretation_panel",
+    "build_o5_finding_generation_payload",
+    "certify_o5_semantic_finding_generation",
+    "build_o5_semantic_finding_generation_report",
 ]
 
 
@@ -257,6 +266,18 @@ from .dashboard_o8_supabase_deployment_verification import (
     verify_dashboard_column_contracts,
     run_dashboard_o8_deployment_smoke_test,
     build_dashboard_o8_deployment_report_payload,
+)
+
+from .o5_semantic_finding_generation import (
+    build_o5_finding_inventory,
+    build_o5_semantic_findings,
+    build_o5_dashboard_insight_narratives,
+    build_o5_executive_finding_summary,
+    build_o5_finding_evidence_map,
+    build_o5_supervisor_interpretation_panel,
+    build_o5_finding_generation_payload,
+    certify_o5_semantic_finding_generation,
+    build_o5_semantic_finding_generation_report,
 )
 
 from .dashboard_schema_verification import (
