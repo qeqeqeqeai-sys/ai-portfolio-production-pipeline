@@ -483,3 +483,29 @@ __all__.extend([
     "certify_cross_sectional_explainability",
     "build_path2f_cross_sectional_explainability_report",
 ])
+
+from .path2g_structural_concentration_breadth import (
+    build_concentration_breadth_input_contract,
+    build_cohort_fragility_distribution,
+    calculate_top_fragility_share,
+    interpret_fragility_concentration,
+    calculate_elevated_fragility_breadth,
+    interpret_cohort_participation_deterioration,
+    classify_concentration_breadth_regime,
+    build_structural_breadth_explanation,
+    certify_concentration_breadth_intelligence,
+    build_path2g_structural_concentration_breadth_report,
+)
+
+__all__.extend([
+    "build_concentration_breadth_input_contract",
+    "build_cohort_fragility_distribution",
+    "calculate_top_fragility_share",
+    "interpret_fragility_concentration",
+    "calculate_elevated_fragility_breadth",
+    "interpret_cohort_participation_deterioration",
+    "classify_concentration_breadth_regime",
+    "build_structural_breadth_explanation",
+    "certify_concentration_breadth_intelligence",
+    "build_path2g_structural_concentration_breadth_report",
+])
