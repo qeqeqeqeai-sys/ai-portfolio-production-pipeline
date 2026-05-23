@@ -31,6 +31,9 @@ INVARIANT_FLAGS = OrderedDict([
     ("immutable_input_safe", True),
 ])
 
+MAX_ERROR_MESSAGE_LENGTH = 200
+SENSITIVE_SUBSTRINGS = ("apikey", "api_key", "authorization", "bearer", "token", "secret", "password", "supabase_")
+
 
 def _stable_checksum(payload: Any) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
@@ -46,6 +49,75 @@ def _contains_forbidden_language(value: Any) -> bool:
     if isinstance(value, list):
         return any(_contains_forbidden_language(v) for v in value)
     return False
+
+
+def _sanitize_and_truncate_error_message(message: str, *, limit: int = MAX_ERROR_MESSAGE_LENGTH) -> str:
+    sanitized = message
+    for marker in SENSITIVE_SUBSTRINGS:
+        sanitized = sanitized.replace(marker, "[redacted]")
+        sanitized = sanitized.replace(marker.upper(), "[REDACTED]")
+    return sanitized[:limit]
+
+
+def _classify_error_type(message: str) -> str:
+    low = message.lower()
+    if any(k in low for k in ("row-level security", "rls", "permission denied", "not authorized", "forbidden", "401", "403")):
+        return "rls_or_policy_failure"
+    if any(k in low for k in ("not null", "null value", "missing required")):
+        return "not_null_constraint"
+    if any(k in low for k in ("duplicate key", "unique constraint", "primary key", "conflict")):
+        return "primary_key_or_unique_conflict"
+    if any(k in low for k in ("invalid input syntax", "invalid type", "datatype mismatch", "cannot cast", "type")):
+        return "invalid_data_type"
+    if any(k in low for k in ("column", "does not exist", "unknown column", "schema cache")):
+        return "column_mismatch"
+    if any(k in low for k in ("upsert", "insert", "supabase")):
+        return "supabase_insert_upsert_api_error"
+    return "unknown_write_error"
+
+
+def _extract_row_count_from_response(response: Any, attempted: int) -> int | None:
+    data = getattr(response, "data", None)
+    if isinstance(data, list):
+        return len(data)
+    if isinstance(data, Mapping):
+        return 1
+    if isinstance(response, Mapping):
+        payload = response.get("data")
+        if isinstance(payload, list):
+            return len(payload)
+        if isinstance(payload, Mapping):
+            return 1
+    return attempted
+
+
+def _build_table_diagnostics(step: Mapping[str, Any], *, status: str, attempted_row_count: int, inserted_count: int | None = None, error: Exception | None = None) -> OrderedDict:
+    rows = list(step.get("rows", []))
+    payload_keys = sorted({k for r in rows if isinstance(r, Mapping) for k in r.keys()})
+    expected_cols = list(step.get("schema_expected_columns", []))
+    expected_required = list(step.get("schema_required_columns", []))
+    missing_required = sorted([k for k in expected_required if k not in payload_keys])
+    extra_cols = sorted([k for k in payload_keys if expected_cols and k not in expected_cols])
+    error_type = None
+    error_short = None
+    if error is not None:
+        raw = f"{type(error).__name__}: {str(error)}"
+        error_short = _sanitize_and_truncate_error_message(raw)
+        error_type = _classify_error_type(raw)
+    return OrderedDict([
+        ("table_name", step["table_name"]),
+        ("status", status),
+        ("planned_row_count", int(step.get("row_count", 0))),
+        ("attempted_row_count", int(attempted_row_count)),
+        ("inserted_or_affected_row_count", inserted_count),
+        ("error_type", error_type),
+        ("error_message_short", error_short),
+        ("missing_payload_columns", missing_required),
+        ("extra_payload_columns", extra_cols),
+        ("schema_expected_columns", expected_cols),
+        ("payload_sample_keys", payload_keys[:12]),
+        ("on_conflict", step.get("on_conflict")),
+    ])
 
 
 def build_dashboard_o3_write_plan(o2_upsert_payload: Mapping[str, Any], *, execution_mode: str = "dry_run", dry_run: bool = True) -> OrderedDict:
@@ -67,6 +139,7 @@ def build_dashboard_o3_write_plan(o2_upsert_payload: Mapping[str, Any], *, execu
             ("invariant_flags", deepcopy(INVARIANT_FLAGS)),
         ])
 
+    contract_index = {c["table_name"]: c for c in normalized_o2.get("table_contracts", [])}
     write_steps = []
     for idx, batch in enumerate(normalized_o2.get("upsert_batches", []), start=1):
         step = OrderedDict([
@@ -79,6 +152,8 @@ def build_dashboard_o3_write_plan(o2_upsert_payload: Mapping[str, Any], *, execu
             ("row_count", int(batch.get("row_count", 0))),
             ("deterministic_sort_key", list(batch.get("deterministic_sort_key", []))),
             ("persistence_mode", batch.get("persistence_mode", "upsert")),
+            ("schema_expected_columns", list(contract_index.get(batch["table_name"], {}).get("columns", []))),
+            ("schema_required_columns", list(contract_index.get(batch["table_name"], {}).get("required_columns", []))),
             ("execution_mode", execution_mode),
             ("dry_run", bool(dry_run)),
         ])
@@ -166,32 +241,15 @@ def execute_dashboard_o3_write_plan(write_plan: Mapping[str, Any], supabase_clie
 
     for step in plan.get("write_steps", []):
         if dry_run or mode == "dry_run":
-            table_results.append(OrderedDict([
-                ("table_name", step["table_name"]),
-                ("status", "simulated"),
-                ("row_count", step["row_count"]),
-                ("on_conflict", step["on_conflict"]),
-                ("error", None),
-            ]))
+            table_results.append(_build_table_diagnostics(step, status="skipped", attempted_row_count=0, inserted_count=0))
             continue
 
         try:
-            supabase_client.table(step["table_name"]).upsert(step["rows"], on_conflict=step["on_conflict"]).execute()
-            table_results.append(OrderedDict([
-                ("table_name", step["table_name"]),
-                ("status", "success"),
-                ("row_count", step["row_count"]),
-                ("on_conflict", step["on_conflict"]),
-                ("error", None),
-            ]))
+            response = supabase_client.table(step["table_name"]).upsert(step["rows"], on_conflict=step["on_conflict"]).execute()
+            inserted = _extract_row_count_from_response(response, int(step.get("row_count", 0)))
+            table_results.append(_build_table_diagnostics(step, status="success", attempted_row_count=int(step.get("row_count", 0)), inserted_count=inserted))
         except Exception as exc:  # bounded adapter-level exception capture
-            table_results.append(OrderedDict([
-                ("table_name", step["table_name"]),
-                ("status", "failed"),
-                ("row_count", step["row_count"]),
-                ("on_conflict", step["on_conflict"]),
-                ("error", f"{type(exc).__name__}: {str(exc)[:200]}"),
-            ]))
+            table_results.append(_build_table_diagnostics(step, status="failed", attempted_row_count=int(step.get("row_count", 0)), inserted_count=0, error=exc))
 
     status = "completed"
     checksum = _stable_checksum(OrderedDict([("results", table_results), ("write_plan_checksum", plan.get("write_plan_checksum", ""))]))

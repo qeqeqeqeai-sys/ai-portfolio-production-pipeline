@@ -73,6 +73,23 @@ def _table_write_statuses(execution_result: Mapping[str, Any]) -> OrderedDict:
     return table_statuses
 
 
+def _table_write_statuses_detailed(execution_result: Mapping[str, Any]) -> list[OrderedDict]:
+    rows: list[OrderedDict] = []
+    for result in execution_result.get("table_results", []):
+        rows.append(OrderedDict([
+            ("table", str(result.get("table_name"))),
+            ("status", str(result.get("status") or "unknown")),
+            ("attempted_row_count", int(result.get("attempted_row_count", 0))),
+            ("inserted_or_affected_row_count", result.get("inserted_or_affected_row_count")),
+            ("error_type", result.get("error_type")),
+            ("error_message_short", result.get("error_message_short")),
+            ("missing_payload_columns", list(result.get("missing_payload_columns", []))),
+            ("extra_payload_columns", list(result.get("extra_payload_columns", []))),
+            ("payload_sample_keys", list(result.get("payload_sample_keys", []))),
+        ]))
+    return rows
+
+
 def _infer_readback_status(exc: Exception) -> str:
     msg = str(exc).lower()
     if any(x in msg for x in ("permission", "rls", "not authorized", "forbidden", "401", "403")):
@@ -110,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true", help="Simulate D1 controlled seed only (default behavior).")
     parser.add_argument("--execute", action="store_true", help="Execute controlled sample-data writes through O3 adapter.")
     parser.add_argument("--verify-readback", action="store_true", help="Read-only post-seed count verification for expected physical dashboard tables.")
+    parser.add_argument("--strict-write-verification", action="store_true", help="Fail execution if any table status is not success.")
     args = parser.parse_args(argv)
 
     execute = bool(args.execute)
@@ -150,7 +168,15 @@ def main(argv: list[str] | None = None) -> int:
         for table_name, status in table_write_statuses.items():
             print(f"- {table_name}: {status}")
 
+    detailed_statuses = _table_write_statuses_detailed(execution_result)
+    if detailed_statuses:
+        print("write_result_statuses_detailed=")
+        for item in detailed_statuses:
+            print(f"- table={item['table']}, status={item['status']}, attempted_row_count={item['attempted_row_count']}, inserted_or_affected_row_count={item['inserted_or_affected_row_count']}, error_type={item['error_type']}, error_message_short={item['error_message_short']}, missing_payload_columns={item['missing_payload_columns']}, extra_payload_columns={item['extra_payload_columns']}, payload_sample_keys={item['payload_sample_keys']}")
+
     if execute and any(status == "failed" for status in table_write_statuses.values()):
+        return 1
+    if execute and args.strict_write_verification and any(status != "success" for status in table_write_statuses.values()):
         return 1
 
     verification_status = "not_requested"
