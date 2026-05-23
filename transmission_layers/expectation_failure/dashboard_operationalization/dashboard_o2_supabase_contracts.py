@@ -13,19 +13,36 @@ MODULE_VERSION = "1.0.0"
 PERSISTENCE_MODE = "upsert_contract_only"
 
 TABLE_CONFIG = (
-    ("expectation_failure_dashboard_entity_facts", "dashboard_entity_facts", ("run_id", "entity_id")),
-    ("expectation_failure_dashboard_subsector_facts", "dashboard_subsector_facts", ("run_id", "subsector")),
-    ("expectation_failure_dashboard_alert_facts", "dashboard_alert_facts", ("run_id", "entity_id", "alert_state")),
-    ("expectation_failure_dashboard_replay_facts", "dashboard_replay_facts", ("run_id", "replay_date_sgt", "entity_id", "replay_sequence")),
-    ("expectation_failure_dashboard_benchmark_facts", "dashboard_benchmark_facts", ("run_id", "entity_id", "benchmark_id")),
-    ("expectation_failure_dashboard_evidence_facts", "dashboard_evidence_facts", ("run_id", "entity_id", "evidence_id")),
-    ("expectation_failure_dashboard_certification_reports", "dashboard_certification_reports", ("run_id", "report_id")),
-    ("expectation_failure_dashboard_run_manifests", "dashboard_run_manifests", ("run_id", "checksum")),
+    ("dashboard_entity_facts", "dashboard_entity_facts", ("run_id", "entity_id")),
+    ("dashboard_subsector_facts", "dashboard_subsector_facts", ("run_id", "subsector")),
+    ("dashboard_alert_facts", "dashboard_alert_facts", ("run_id", "entity_id", "alert_state")),
+    ("dashboard_replay_facts", "dashboard_replay_facts", ("run_id", "replay_date_sgt", "entity_id", "replay_sequence")),
+    ("dashboard_benchmark_facts", "dashboard_benchmark_facts", ("run_id", "entity_id", "benchmark_id")),
+    ("dashboard_evidence_facts", "dashboard_evidence_facts", ("run_id", "entity_id", "evidence_id")),
+    ("dashboard_certification_reports", "dashboard_certification_reports", ("run_id", "report_id")),
+    ("dashboard_run_manifests", "dashboard_run_manifests", ("run_id", "checksum")),
 )
 
 FORBIDDEN_TERMS = (
     "buy", "sell", "short", "target price", "portfolio allocation", "backtesting", "predictive", "recommendation", "trade"
 )
+
+SOURCE_KEY_ALIASES = {
+    "dashboard_certification_reports": ("dashboard_report_metadata",),
+    "dashboard_run_manifests": ("dashboard_export_manifest",),
+}
+
+
+def _resolve_rows(materialized: Mapping[str, Any], source_key: str) -> list[Mapping[str, Any]]:
+    rows = materialized.get(source_key)
+    if rows is None:
+        for alias in SOURCE_KEY_ALIASES.get(source_key, ()): 
+            if alias in materialized:
+                rows = materialized.get(alias)
+                break
+    if isinstance(rows, Mapping):
+        return [rows]
+    return list(rows or [])
 
 
 def _stable_checksum(payload: Any) -> str:
@@ -65,10 +82,7 @@ def build_dashboard_o2_column_contracts(payload: Mapping[str, Any]) -> OrderedDi
     materialized = deepcopy(dict(payload))
     column_contracts: MutableMapping[str, list[str]] = OrderedDict()
     for table_name, source_key, unique_key in TABLE_CONFIG:
-        rows = materialized.get(source_key)
-        if isinstance(rows, Mapping):
-            rows = [rows]
-        rows = list(rows or [])
+        rows = _resolve_rows(materialized, source_key)
         columns: list[str] = []
         if rows:
             first = rows[0]
@@ -93,18 +107,11 @@ def validate_dashboard_o2_payload(payload: Mapping[str, Any]) -> OrderedDict:
         source_key = contract["source_payload_key"]
         unique_key = contract["primary_unique_key"]
 
-        if source_key not in materialized:
+        if source_key not in materialized and not any(alias in materialized for alias in SOURCE_KEY_ALIASES.get(source_key, ())):
             errors.append(f"missing payload group: {source_key}")
             continue
 
-        group = materialized[source_key]
-        if isinstance(group, Mapping):
-            rows = [group]
-        elif isinstance(group, list):
-            rows = group
-        else:
-            errors.append(f"invalid payload group type for {source_key}")
-            continue
+        rows = _resolve_rows(materialized, source_key)
 
         required_cols = unique_key
         table_cols = column_contracts[table_name]
@@ -185,11 +192,7 @@ def build_dashboard_o2_upsert_payload(payload: Mapping[str, Any]) -> OrderedDict
     upsert_batches = []
     for contract in table_contracts:
         source_key = contract["source_payload_key"]
-        group = materialized.get(source_key, [])
-        if isinstance(group, Mapping):
-            rows = [group]
-        else:
-            rows = list(group or [])
+        rows = _resolve_rows(materialized, source_key)
         ordered = sorted(rows, key=lambda r: tuple(r.get(k) for k in contract["deterministic_sort_key"])) if rows else []
         upsert_batches.append(OrderedDict([
             ("table_name", contract["table_name"]),
