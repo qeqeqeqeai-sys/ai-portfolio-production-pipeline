@@ -202,6 +202,7 @@ __all__ = [
     "build_o7_persistence_result_summary",
     "certify_o7_dashboard_persistence_adapter",
     "build_o7_dashboard_persistence_adapter_report",
+    "build_o8_readback_table_contract",
 ]
 
 
@@ -460,4 +461,15 @@ from .o7_dashboard_persistence_adapter import (
     build_o7_persistence_result_summary,
     certify_o7_dashboard_persistence_adapter,
     build_o7_dashboard_persistence_adapter_report,
+)
+
+from .o8_dashboard_persistence_readback_verification import (
+    build_o8_readback_table_contract,
+    build_o8_readback_query_plan,
+    read_o8_persisted_dashboard_records,
+    verify_o8_persisted_dashboard_records,
+    build_o8_readback_verification_summary,
+    build_o8_persistence_reconciliation_report_payload,
+    certify_o8_dashboard_persistence_readback_verification,
+    build_o8_dashboard_persistence_readback_verification_report,
 )
