@@ -6,9 +6,6 @@ on:
 jobs:
   run-d1-dashboard-seed:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,4 +29,8 @@ jobs:
           fi
 
       - name: Execute deterministic D1 dashboard sample seed
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: python scripts/run_d1_dashboard_sample_seed.py --execute
