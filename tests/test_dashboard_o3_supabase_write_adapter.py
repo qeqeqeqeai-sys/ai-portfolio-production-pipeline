@@ -87,7 +87,7 @@ def test_dry_run_default_and_no_client_calls():
     out = execute_dashboard_o3_write_plan(plan, supabase_client=client)
     assert plan["dry_run"] is True
     assert out["execution_status"] == "completed"
-    assert all(r["status"] == "simulated" for r in out["table_results"])
+    assert all(r["status"] == "skipped" for r in out["table_results"])
     assert client.calls == []
 
 
@@ -109,6 +109,9 @@ def test_bounded_exception_validation_and_invalid_plan_failures():
     plan = build_dashboard_o3_write_plan(_o2_payload(), execution_mode="execute", dry_run=False)
     out = execute_dashboard_o3_write_plan(plan, supabase_client=_MockClient(fail=True))
     assert any(r["status"] == "failed" for r in out["table_results"])
+    failed = [r for r in out["table_results"] if r["status"] == "failed"][0]
+    assert failed["error_type"]
+    assert failed["error_message_short"]
 
     invalid = deepcopy(plan)
     invalid.pop("write_steps")
