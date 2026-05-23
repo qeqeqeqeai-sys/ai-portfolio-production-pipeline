@@ -299,3 +299,31 @@ __all__.extend([
     "build_dashboard_export_manifest",
     "build_dashboard_o1_export_payload",
 ])
+
+from .path2a_cohort_registry_foundation import (
+    BLOCKED_COHORT_REGISTRY,
+    CERTIFIED_COHORT_REGISTRY,
+    DEGRADED_COHORT_REGISTRY,
+    build_benchmark_mapping_registry,
+    build_cohort_explainability_metadata,
+    build_cohort_manifest,
+    build_cohort_registry_contracts,
+    build_path2a_cohort_registry_report,
+    certify_cohort_registry,
+    resolve_cohort_membership,
+    validate_cohort_integrity,
+)
+
+__all__.extend([
+    "build_cohort_registry_contracts",
+    "build_cohort_manifest",
+    "resolve_cohort_membership",
+    "build_benchmark_mapping_registry",
+    "validate_cohort_integrity",
+    "build_cohort_explainability_metadata",
+    "certify_cohort_registry",
+    "build_path2a_cohort_registry_report",
+    "CERTIFIED_COHORT_REGISTRY",
+    "DEGRADED_COHORT_REGISTRY",
+    "BLOCKED_COHORT_REGISTRY",
+])
