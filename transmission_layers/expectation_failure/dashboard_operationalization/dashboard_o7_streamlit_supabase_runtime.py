@@ -8,7 +8,7 @@ from typing import Any, Mapping
 import os
 
 SCHEMA_VERSION = "dashboard_o7_streamlit_supabase_runtime_v1"
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 DEFAULT_CACHE_TTL_SECONDS = 120
 
 
@@ -81,7 +81,7 @@ def resolve_streamlit_supabase_client(runtime_config: Mapping[str, Any], *, clie
             ("client_error_type", None),
             ("client_error_message_short", None),
             ("client_factory_source", "injected_client"),
-            ("supabase_package_available", False),
+            ("supabase_package_available", True),
             ("credentials_present", credentials_present),
         ])
 
@@ -158,6 +158,63 @@ def _section_status(snapshot: Mapping[str, Any], section: str) -> str:
     return "degraded"
 
 
+def _build_section_read_diagnostics(snapshot: Mapping[str, Any] | None) -> list[OrderedDict]:
+    section_to_table = OrderedDict([
+        ("entity_facts", "dashboard_entity_facts"),
+        ("subsector_facts", "dashboard_subsector_facts"),
+        ("alert_facts", "dashboard_alert_facts"),
+        ("replay_facts", "dashboard_replay_facts"),
+        ("benchmark_facts", "dashboard_benchmark_facts"),
+        ("evidence_facts", "dashboard_evidence_facts"),
+        ("certification_metadata", "dashboard_certification_reports"),
+    ])
+    out=[]
+    snap = snapshot or {}
+    col_inventory = snap.get("column_inventory") if isinstance(snap, Mapping) else {}
+    filter_map = snap.get("section_filter_map") if isinstance(snap, Mapping) else {}
+    for section, table in section_to_table.items():
+        part = snap.get(section) if isinstance(snap, Mapping) else None
+        status = _section_status(snap, section)
+        rows = part.get("rows", []) if isinstance(part, Mapping) else []
+        row_count = part.get("row_count") if isinstance(part, Mapping) else None
+        row_count = len(rows) if row_count is None and isinstance(rows, list) else row_count
+        required = list((col_inventory or {}).get(table, []))
+        sample_keys = sorted(list(rows[0].keys()))[:30] if rows and isinstance(rows[0], Mapping) else []
+        missing_columns = [c for c in required if c not in sample_keys] if sample_keys else ([] if status in {"empty","missing","permission_denied","query_failed"} else required)
+        required_present = None if status in {"missing","permission_denied","query_failed"} else (len(missing_columns)==0)
+        error = part.get("error") if isinstance(part, Mapping) else None
+        error_type = None
+        error_message_short = None
+        if error:
+            if ":" in str(error):
+                error_type, msg = str(error).split(":",1)
+                error_type=error_type.strip()
+                error_message_short=msg.strip()[:200]
+            else:
+                error_message_short=str(error)[:200]
+        out.append(OrderedDict([("table_name", table), ("section_name", section), ("status", status), ("row_count", row_count), ("required_columns_present", required_present), ("missing_columns", missing_columns), ("error_type", error_type), ("error_message_short", _redact_and_truncate_error(error_message_short)), ("filter_applied", (filter_map or {}).get(section, "none")), ("sample_row_keys", sample_keys)]))
+    return out
+
+
+def _health_interpretation(section_read_diagnostics: list[Mapping[str, Any]]) -> str:
+    statuses=[str(x.get("status")) for x in section_read_diagnostics]
+    if statuses and all(s=="ok" for s in statuses):
+        return "supabase_snapshot_healthy"
+    if statuses and all(s=="empty" for s in statuses):
+        return "tables_exist_but_empty_or_filters_exclude_rows"
+    if any(s=="missing" for s in statuses):
+        return "dashboard_tables_missing"
+    if any(s=="permission_denied" for s in statuses):
+        return "rls_or_permission_denied"
+    if any(s=="schema_mismatch" for s in statuses):
+        return "dashboard_schema_mismatch"
+    if any(s=="query_failed" for s in statuses):
+        return "supabase_query_failed"
+    if any(s!="ok" for s in statuses):
+        return "mixed_section_degradation"
+    return "mixed_section_degradation"
+
+
 def resolve_streamlit_supabase_mode(runtime_config: Mapping[str, Any], *, snapshot: Mapping[str, Any] | None = None) -> str:
     if not runtime_config.get("credentials_present"):
         return "fallback_demo_mode"
@@ -185,6 +242,13 @@ def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: M
             error_message_short = msg.strip()[:200] or None
         else:
             error_message_short = str(error).strip()[:200] or None
+    section_read_diagnostics = _build_section_read_diagnostics(snapshot)
+    missing_tables = [x["table_name"] for x in section_read_diagnostics if x["status"] == "missing"]
+    empty_sections = [x["section_name"] for x in section_read_diagnostics if x["status"] == "empty"]
+    permission_denied_tables = [x["table_name"] for x in section_read_diagnostics if x["status"] == "permission_denied"]
+    schema_mismatch_tables = [x["table_name"] for x in section_read_diagnostics if x["status"] == "schema_mismatch"]
+    query_failed_tables = [x["table_name"] for x in section_read_diagnostics if x["status"] == "query_failed"]
+    health_interpretation = _health_interpretation(section_read_diagnostics)
     return OrderedDict([
         ("credentials_present", bool(runtime_config.get("credentials_present"))),
         ("client_resolved", bool(client_resolved)),
@@ -201,6 +265,13 @@ def _build_runtime_diagnostics(*, runtime_config: Mapping[str, Any], snapshot: M
         ("supabase_package_available", bool(supabase_package_available)),
         ("expected_tables", list(_EXPECTED_TABLES)),
         ("runtime_mode", runtime_mode),
+        ("section_read_diagnostics", section_read_diagnostics),
+        ("empty_sections", empty_sections),
+        ("missing_tables", missing_tables),
+        ("permission_denied_tables", permission_denied_tables),
+        ("schema_mismatch_tables", schema_mismatch_tables),
+        ("query_failed_tables", query_failed_tables),
+        ("health_interpretation", health_interpretation),
     ])
 
 
@@ -285,6 +356,8 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
                 ("runtime_diagnostics", diagnostics),
             ])
         supabase_client = client_resolution["client"]
+        resolved_factory_source = str(client_resolution.get("client_factory_source", "unavailable"))
+        resolved_package_available = bool(client_resolution.get("supabase_package_available", False))
         snapshot = build_dashboard_supabase_snapshot(supabase_client, run_id=config.get("run_id"), as_of_date=config.get("as_of_date"))
         mode = resolve_streamlit_supabase_mode(config, snapshot=snapshot)
     except Exception as exc:
@@ -314,6 +387,8 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             error=None,
             runtime_mode=mode,
             client_resolved=client_resolved,
+            client_factory_source=resolved_factory_source,
+            supabase_package_available=resolved_package_available,
         )
         return OrderedDict([
             ("mode", mode), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),
@@ -331,6 +406,8 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             error=None,
             runtime_mode=mode,
             client_resolved=client_resolved,
+            client_factory_source=resolved_factory_source,
+            supabase_package_available=resolved_package_available,
         )
         return OrderedDict([
             ("mode", mode), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(normalized_payload, diagnostics)), ("payload_source", "supabase_snapshot"),
@@ -347,6 +424,8 @@ def load_streamlit_dashboard_snapshot(*, runtime_config: Mapping[str, Any], fall
             error=error_text,
             runtime_mode="degraded_data_loading_mode",
             client_resolved=client_resolved,
+            client_factory_source=resolved_factory_source,
+            supabase_package_available=resolved_package_available,
         )
         return OrderedDict([
             ("mode", "degraded_data_loading_mode"), ("snapshot", snapshot), ("payload", _attach_runtime_diagnostics(payload, diagnostics)), ("payload_source", "fallback_payload"),

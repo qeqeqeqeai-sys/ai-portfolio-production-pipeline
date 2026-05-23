@@ -68,6 +68,13 @@ def _synthesize_runtime_diagnostics(runtime_snapshot: dict | None) -> tuple[dict
         "client_error_message_short": None,
         "client_factory_source": "unavailable",
         "supabase_package_available": False,
+        "section_read_diagnostics": [],
+        "empty_sections": [],
+        "missing_tables": [],
+        "permission_denied_tables": [],
+        "schema_mismatch_tables": [],
+        "query_failed_tables": [],
+        "health_interpretation": None,
     }
     if not runtime_snapshot:
         diagnostics = dict(required_defaults)
@@ -151,6 +158,13 @@ def main() -> None:
         st.write(f"client_error_type: {diagnostics.get('client_error_type')}")
         st.write(f"client_error_message_short: {diagnostics.get('client_error_message_short')}")
         st.json({"snapshot_section_statuses": diagnostics.get("snapshot_section_statuses", {})})
+        st.json({"section_read_diagnostics": diagnostics.get("section_read_diagnostics", [])})
+        st.write(f"missing_tables: {diagnostics.get('missing_tables')}")
+        st.write(f"empty_sections: {diagnostics.get('empty_sections')}")
+        st.write(f"permission_denied_tables: {diagnostics.get('permission_denied_tables')}")
+        st.write(f"schema_mismatch_tables: {diagnostics.get('schema_mismatch_tables')}")
+        st.write(f"query_failed_tables: {diagnostics.get('query_failed_tables')}")
+        st.write(f"health_interpretation: {diagnostics.get('health_interpretation')}")
         st.write(f"error_message_short: {diagnostics.get('error_message_short')}")
         st.write(f"diagnostics_source: {diagnostics_source}")
         st.json(runtime_diagnostics := diagnostics)
