@@ -509,3 +509,35 @@ __all__.extend([
     "certify_concentration_breadth_intelligence",
     "build_path2g_structural_concentration_breadth_report",
 ])
+
+from .path2h_relative_fragility_certification import (
+    BLOCKED_RELATIVE_FRAGILITY_STACK,
+    CERTIFIED_RELATIVE_FRAGILITY_STACK,
+    DEGRADED_RELATIVE_FRAGILITY_STACK,
+    build_path2h_relative_fragility_certification_report,
+    build_relative_fragility_certification_input_contract,
+    build_relative_intelligence_inventory,
+    certify_path2_architectural_boundaries,
+    certify_path2_concentration_breadth_integrity,
+    certify_path2_determinism,
+    certify_path2_explainability_integrity,
+    certify_path2_replay_checksum_integrity,
+    certify_relative_fragility_stack,
+    validate_path2_forbidden_capabilities,
+)
+
+__all__.extend([
+    "build_relative_fragility_certification_input_contract",
+    "build_relative_intelligence_inventory",
+    "certify_path2_determinism",
+    "certify_path2_replay_checksum_integrity",
+    "certify_path2_explainability_integrity",
+    "certify_path2_concentration_breadth_integrity",
+    "certify_path2_architectural_boundaries",
+    "validate_path2_forbidden_capabilities",
+    "certify_relative_fragility_stack",
+    "build_path2h_relative_fragility_certification_report",
+    "CERTIFIED_RELATIVE_FRAGILITY_STACK",
+    "DEGRADED_RELATIVE_FRAGILITY_STACK",
+    "BLOCKED_RELATIVE_FRAGILITY_STACK",
+])
