@@ -91,3 +91,23 @@ Expected post-seed diagnostics:
 - `missing_columns=[]`
 - Dashboard tables return non-empty rows.
 - `health_interpretation` no longer reports `tables_exist_but_empty_or_filters_exclude_rows`.
+
+## GitHub Actions Controlled D1 Sample-Data Seeding
+Workflow name:
+- `Controlled D1 Dashboard Sample-Data Seeding`
+
+Required repository secrets:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+Manual trigger steps:
+1. Open **Actions** in GitHub.
+2. Select workflow: **Controlled D1 Dashboard Sample-Data Seeding**.
+3. Click **Run workflow** (manual trigger only).
+4. Confirm logs include warning line:
+   - `Executing deterministic controlled sample-data seed`
+
+Expected post-seed diagnostics:
+- `runtime_mode=read_only_supabase_mode`
+- `payload_source=supabase_snapshot`
+- `normalization_status=normalized`

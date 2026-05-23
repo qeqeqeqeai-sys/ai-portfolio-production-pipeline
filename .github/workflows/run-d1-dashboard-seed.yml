@@ -1,0 +1,35 @@
+name: Controlled D1 Dashboard Sample-Data Seeding
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-d1-dashboard-seed:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Safety gate
+        run: echo "Executing deterministic controlled sample-data seed"
+
+      - name: Validate required Supabase secrets
+        run: |
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "Missing required Supabase repository secrets: SUPABASE_URL and/or SUPABASE_ANON_KEY"
+            exit 1
+          fi
+
+      - name: Execute deterministic D1 dashboard sample seed
+        run: python scripts/run_d1_dashboard_sample_seed.py --execute
