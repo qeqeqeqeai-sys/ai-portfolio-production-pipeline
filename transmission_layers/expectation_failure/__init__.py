@@ -621,3 +621,27 @@ __all__.extend([
     "build_p3b_asymmetry_certification",
     "build_p3b_asymmetry_report",
 ])
+
+from .path3c_benchmark_relative_asymmetry import (
+    build_p3c_benchmark_asymmetry_certification,
+    build_p3c_benchmark_asymmetry_explainability_summary,
+    build_p3c_benchmark_asymmetry_registry,
+    build_p3c_benchmark_asymmetry_report,
+    build_p3c_benchmark_divergence_summary,
+    build_p3c_relative_asymmetry_spread,
+    build_p3c_resilience_divergence_summary,
+    classify_p3c_benchmark_relative_asymmetry_state,
+    run_p3c_benchmark_relative_asymmetry_intelligence,
+)
+
+__all__.extend([
+    "build_p3c_benchmark_asymmetry_registry",
+    "build_p3c_relative_asymmetry_spread",
+    "build_p3c_benchmark_divergence_summary",
+    "build_p3c_resilience_divergence_summary",
+    "classify_p3c_benchmark_relative_asymmetry_state",
+    "build_p3c_benchmark_asymmetry_explainability_summary",
+    "run_p3c_benchmark_relative_asymmetry_intelligence",
+    "build_p3c_benchmark_asymmetry_certification",
+    "build_p3c_benchmark_asymmetry_report",
+])
