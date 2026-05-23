@@ -8,6 +8,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization import
 )
 
 MIGRATION_PATH = Path("database/migrations/20260523_create_dashboard_operationalization_tables.sql")
+EXPANSION_MIGRATION_PATH = Path("supabase/migrations/20260523_expand_dashboard_operationalization_schema.sql")
 
 
 def test_migration_file_exists():
@@ -15,12 +16,14 @@ def test_migration_file_exists():
 
 
 def test_expected_tables_and_columns_in_migration():
-    sql = MIGRATION_PATH.read_text(encoding="utf-8").lower()
+    base_sql = MIGRATION_PATH.read_text(encoding="utf-8").lower()
+    expansion_sql = EXPANSION_MIGRATION_PATH.read_text(encoding="utf-8").lower()
+    combined_sql = f"{base_sql}\n{expansion_sql}"
     expected_columns = build_dashboard_expected_column_inventory()
     for table_name, columns in expected_columns.items():
-        assert f"create table if not exists public.{table_name}" in sql
+        assert f"create table if not exists public.{table_name}" in base_sql
         for column in columns:
-            assert f"{column.lower()}" in sql
+            assert f"{column.lower()}" in combined_sql
 
 
 def test_migration_safety_guards():
@@ -63,4 +66,4 @@ def test_schema_manifest_is_deterministic_and_additive_api_exported():
     assert build_dashboard_expected_table_inventory() == list(build_dashboard_expected_column_inventory().keys())
 
     payload = build_dashboard_schema_verification_report_payload()
-    assert payload["final_decision"] == "APPROVED_FOR_DASHBOARD_SCHEMA_DEPLOYMENT_ARTIFACTS"
+    assert payload["final_decision"] == "APPROVED_FOR_DASHBOARD_SCHEMA_EXPANSION_ALIGNMENT"
