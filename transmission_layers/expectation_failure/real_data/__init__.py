@@ -122,4 +122,20 @@ __all__ = [
     "build_historical_explanation_checksum_chain",
     "certify_historical_explainability",
     "build_t5_historical_explainability_report",
+    "validate_temporal_evolution_closeout_inputs",
+    "build_temporal_evolution_gate_inventory",
+    "build_temporal_evolution_lineage_summary",
+    "build_temporal_evolution_closeout_manifest",
+    "certify_temporal_evolution_closeout",
+    "build_t6_temporal_evolution_closeout_report",
 ]
+
+
+from .t6_temporal_evolution_certification_closeout import (
+    build_t6_temporal_evolution_closeout_report,
+    build_temporal_evolution_closeout_manifest,
+    build_temporal_evolution_gate_inventory,
+    build_temporal_evolution_lineage_summary,
+    certify_temporal_evolution_closeout,
+    validate_temporal_evolution_closeout_inputs,
+)
