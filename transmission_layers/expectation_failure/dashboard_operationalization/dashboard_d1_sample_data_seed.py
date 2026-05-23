@@ -19,40 +19,42 @@ RUN_ID = "D1-RUN-20260101-0001"
 REPLAY_BATCH_ID = "D1-REPLAY-20260101-0001"
 SEVERITY_LABELS = ("low", "medium", "high")
 SAMPLE_SCHEMA_VERSION = "dashboard_schema_deployment_v1"
+MODULE_VERSION_LITERAL = "d1_payload_enrichment_v1"
+EVIDENCE_SOURCE_METRIC = "institutional_evidence_linkage_score"
 
 
 def build_d1_sample_entities() -> list[OrderedDict]:
     return [
-        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("entity_name", "Institutional Platform Node A"), ("ticker", "D1TICKA"), ("subsector", "AI Infrastructure"), ("expectation_failure_score", 68), ("risk_label", "medium"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
-        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-002"), ("entity_name", "Institutional Platform Node B"), ("ticker", "D1TICKB"), ("subsector", "Semiconductor Supply"), ("expectation_failure_score", 42), ("risk_label", "low"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
+        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("entity_name", "Institutional Platform Node A"), ("ticker", "D1TICKA"), ("subsector", "AI Infrastructure"), ("expectation_failure_score", 68), ("composite_score", 70), ("risk_label", "medium"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
+        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-002"), ("entity_name", "Institutional Platform Node B"), ("ticker", "D1TICKB"), ("subsector", "Semiconductor Supply"), ("expectation_failure_score", 42), ("composite_score", 44), ("risk_label", "low"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
     ]
 
 
 def build_d1_sample_subsectors() -> list[OrderedDict]:
     return [
-        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("subsector_id", "D1-SUBSECTOR-001"), ("subsector", "AI Infrastructure"), ("entity_count", 1), ("subsector_score", 61), ("risk_label", "medium"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
-        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("subsector_id", "D1-SUBSECTOR-002"), ("subsector", "Semiconductor Supply"), ("entity_count", 1), ("subsector_score", 47), ("risk_label", "low"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
+        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("subsector_id", "D1-SUBSECTOR-001"), ("subsector", "AI Infrastructure"), ("entity_count", 1), ("subsector_score", 61), ("avg_composite_score", 70), ("risk_label", "medium"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
+        OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("subsector_id", "D1-SUBSECTOR-002"), ("subsector", "Semiconductor Supply"), ("entity_count", 1), ("subsector_score", 47), ("avg_composite_score", 44), ("risk_label", "low"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)]),
     ]
 
 
 def build_d1_sample_alerts() -> list[OrderedDict]:
-    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("alert_state", "D1-ALERT-001"), ("severity", "high"), ("alert_score", 72), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
+    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("alert_state", "D1-ALERT-001"), ("subsector", "AI Infrastructure"), ("severity", "high"), ("alert_score", 72), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
 
 
 def build_d1_sample_replay_metadata() -> list[OrderedDict]:
-    return [OrderedDict([("run_id", RUN_ID), ("replay_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("replay_sequence", 1), ("replay_batch_id", REPLAY_BATCH_ID), ("replay_score", 66), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
+    return [OrderedDict([("run_id", RUN_ID), ("replay_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("subsector", "AI Infrastructure"), ("replay_sequence", 1), ("replay_batch_id", REPLAY_BATCH_ID), ("replay_score", 66), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
 
 
 def build_d1_sample_evidence_chains() -> list[OrderedDict]:
-    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("evidence_id", "D1-EVIDENCE-001"), ("evidence_type", "filing_linkage"), ("confidence_score", 85), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
+    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("evidence_id", "D1-EVIDENCE-001"), ("evidence_type", "filing_linkage"), ("source_metric", EVIDENCE_SOURCE_METRIC), ("confidence_score", 85), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
 
 
 def build_d1_sample_benchmarks() -> list[OrderedDict]:
-    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("benchmark_id", "D1-BENCHMARK-001"), ("benchmark_score", 59), ("benchmark_label", "institutional_reference"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
+    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("entity_id", "D1-ENTITY-001"), ("ticker", "D1TICKA"), ("benchmark_id", "D1-BENCHMARK-001"), ("subsector", "AI Infrastructure"), ("benchmark_score", 59), ("benchmark_label", "institutional_reference"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
 
 
 def build_d1_sample_certification_reports() -> list[OrderedDict]:
-    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("report_id", "D1-REPORT-001"), ("report_type", "sample_data_seed"), ("certification_status", "certified_deterministic_seed"), ("certification_state", "supervisor_review_required"), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
+    return [OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("report_id", "D1-REPORT-001"), ("report_type", "sample_data_seed"), ("certification_status", "certified_deterministic_seed"), ("certification_state", "supervisor_review_required"), ("export_manifest_checksum", stable_checksum(OrderedDict([("run_id", RUN_ID), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("fixed_timestamp", FIXED_TIMESTAMP)]))), ("as_of_sgt", FIXED_TIMESTAMP), ("sample_data_flag", True)])]
 
 
 def build_d1_seed_payload() -> OrderedDict:
@@ -67,7 +69,7 @@ def build_d1_seed_payload() -> OrderedDict:
         ("dashboard_evidence_facts", build_d1_sample_evidence_chains()),
         ("dashboard_certification_reports", build_d1_sample_certification_reports()),
     ])
-    payload["dashboard_run_manifests"] = [OrderedDict([("run_id", RUN_ID), ("checksum", stable_checksum(payload)), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("schema_version", SAMPLE_SCHEMA_VERSION), ("sample_data_flag", True)])]
+    payload["dashboard_run_manifests"] = [OrderedDict([("run_id", RUN_ID), ("checksum", stable_checksum(payload)), ("run_date_sgt", FIXED_RUN_DATE_SGT), ("schema_version", SAMPLE_SCHEMA_VERSION), ("module_version", MODULE_VERSION_LITERAL), ("sample_data_flag", True)])]
     return payload
 
 
