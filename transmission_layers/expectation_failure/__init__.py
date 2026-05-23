@@ -845,3 +845,27 @@ __all__.extend([
     "certify_path5b_fragility_propagation",
     "build_path5b_fragility_propagation_report",
 ])
+
+from .path5c_propagation_persistence_evolution import (
+    build_path5c_carrier_persistence,
+    build_path5c_corridor_evolution,
+    build_path5c_evolution_explainability,
+    build_path5c_propagation_persistence,
+    build_path5c_propagation_persistence_evolution_report,
+    build_path5c_propagation_rotation,
+    build_path5c_replay_window_index,
+    build_path5c_structural_pressure_evolution,
+    certify_path5c_propagation_persistence_evolution,
+)
+
+__all__.extend([
+    "build_path5c_replay_window_index",
+    "build_path5c_propagation_persistence",
+    "build_path5c_structural_pressure_evolution",
+    "build_path5c_carrier_persistence",
+    "build_path5c_corridor_evolution",
+    "build_path5c_propagation_rotation",
+    "build_path5c_evolution_explainability",
+    "certify_path5c_propagation_persistence_evolution",
+    "build_path5c_propagation_persistence_evolution_report",
+])
