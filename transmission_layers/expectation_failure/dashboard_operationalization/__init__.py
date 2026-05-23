@@ -233,6 +233,14 @@ __all__ = [
     "build_o9_dashboard_operationalization_closeout_payload",
     "certify_o9_dashboard_operationalization_closeout",
     "build_o9_dashboard_operationalization_closeout_report",
+    "build_d5_execution_layer_inventory",
+    "build_d5_real_execution_lineage_summary",
+    "build_d5_real_execution_invariant_review",
+    "build_d5_schema_persistence_readback_review",
+    "build_d5_real_execution_checksum_manifest",
+    "build_d5_real_dashboard_execution_closeout_payload",
+    "certify_d5_real_dashboard_execution_closeout",
+    "build_d5_real_dashboard_execution_closeout_report",
 ]
 
 
@@ -545,4 +553,16 @@ from .d4_real_persistence_readback_verification import (
     build_d4_dashboard_verification_handoff,
     certify_d4_real_persistence_readback_verification,
     build_d4_real_persistence_readback_verification_report,
+)
+
+
+from .d5_real_dashboard_execution_closeout import (
+    build_d5_execution_layer_inventory,
+    build_d5_real_execution_lineage_summary,
+    build_d5_real_execution_invariant_review,
+    build_d5_schema_persistence_readback_review,
+    build_d5_real_execution_checksum_manifest,
+    build_d5_real_dashboard_execution_closeout_payload,
+    certify_d5_real_dashboard_execution_closeout,
+    build_d5_real_dashboard_execution_closeout_report,
 )
