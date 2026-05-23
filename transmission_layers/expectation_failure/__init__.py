@@ -567,7 +567,6 @@ __all__.extend([
     "certify_path2_deterministic_replay",
     "certify_path2_checksum_lineage",
     "certify_path2_explainability_interpretation",
-    "certify_path2_architectural_boundaries",
     "validate_path2_final_forbidden_capabilities",
     "certify_path2_additive_integration",
     "run_path2_supervisor_closeout",
