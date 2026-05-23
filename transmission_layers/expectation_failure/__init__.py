@@ -451,3 +451,35 @@ __all__.extend([
     "DEGRADED_RELATIVE_EVOLUTION",
     "BLOCKED_RELATIVE_EVOLUTION",
 ])
+
+from .path2f_cross_sectional_explainability import (
+    CERTIFIED_CROSS_SECTIONAL_EXPLAINABILITY,
+    DEGRADED_CROSS_SECTIONAL_EXPLAINABILITY,
+    BLOCKED_CROSS_SECTIONAL_EXPLAINABILITY,
+    build_cross_sectional_explainability_input_contract,
+    build_peer_relative_explanation,
+    build_percentile_ranking_explanation,
+    build_benchmark_divergence_explanation_packet,
+    build_relative_evolution_explanation_packet,
+    build_driver_attribution_hierarchy,
+    build_structural_evidence_summary,
+    validate_explainability_consistency,
+    certify_cross_sectional_explainability,
+    build_path2f_cross_sectional_explainability_report,
+)
+
+__all__.extend([
+    "CERTIFIED_CROSS_SECTIONAL_EXPLAINABILITY",
+    "DEGRADED_CROSS_SECTIONAL_EXPLAINABILITY",
+    "BLOCKED_CROSS_SECTIONAL_EXPLAINABILITY",
+    "build_cross_sectional_explainability_input_contract",
+    "build_peer_relative_explanation",
+    "build_percentile_ranking_explanation",
+    "build_benchmark_divergence_explanation_packet",
+    "build_relative_evolution_explanation_packet",
+    "build_driver_attribution_hierarchy",
+    "build_structural_evidence_summary",
+    "validate_explainability_consistency",
+    "certify_cross_sectional_explainability",
+    "build_path2f_cross_sectional_explainability_report",
+])
