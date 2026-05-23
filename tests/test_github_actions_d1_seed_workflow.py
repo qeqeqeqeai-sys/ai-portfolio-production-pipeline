@@ -29,13 +29,14 @@ def test_installs_requirements_txt():
 
 def test_executes_d1_seed_with_execute_flag():
     text = _workflow_text()
-    assert 'python scripts/run_d1_dashboard_sample_seed.py --execute' in text
+    assert 'python scripts/run_d1_dashboard_sample_seed.py --execute --verify-readback' in text
 
 
 def test_job_level_env_maps_required_values():
     text = _workflow_text()
     assert 'SUPABASE_URL: ${{ secrets.SUPABASE_URL }}' in text
     assert 'SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}' in text
+    assert 'SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' in text
     assert 'PYTHONPATH: ${{ github.workspace }}' in text
 
 
@@ -43,8 +44,9 @@ def test_validation_step_checks_both_secrets_and_only_reports_presence():
     text = _workflow_text()
     assert 'SUPABASE_URL: missing' in text
     assert 'SUPABASE_URL: present' in text
-    assert 'SUPABASE_ANON_KEY: missing' in text
-    assert 'SUPABASE_ANON_KEY: present' in text
+    assert 'SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY: missing' in text
+    assert 'credential_source: service_role_key' in text
+    assert 'credential_source: anon_key' in text
 
 
 def test_no_cron_or_schedule_trigger():

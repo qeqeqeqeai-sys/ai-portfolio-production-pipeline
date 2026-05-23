@@ -9,6 +9,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - name: Checkout repository
@@ -35,11 +36,13 @@ jobs:
             echo "SUPABASE_URL: present"
           fi
 
-          if [ -z "${SUPABASE_ANON_KEY}" ]; then
-            echo "SUPABASE_ANON_KEY: missing"
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ] && [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY: missing"
             missing=1
+          elif [ -n "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "credential_source: service_role_key"
           else
-            echo "SUPABASE_ANON_KEY: present"
+            echo "credential_source: anon_key"
           fi
 
           if [ "$missing" -ne 0 ]; then
@@ -48,4 +51,4 @@ jobs:
           fi
 
       - name: Execute deterministic D1 dashboard sample seed
-        run: python scripts/run_d1_dashboard_sample_seed.py --execute
+        run: python scripts/run_d1_dashboard_sample_seed.py --execute --verify-readback
