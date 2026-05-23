@@ -38,3 +38,9 @@ After successful run with valid credentials and reachable tables:
 - `runtime_mode=read_only_supabase_mode`
 - `payload_source=supabase_snapshot`
 - `normalization_status=normalized`
+
+## GitHub Actions Import-Path Fix
+- Root cause: GitHub Actions Python runtime did not always include repository root on `sys.path`, causing `ModuleNotFoundError` for local package imports like `transmission_layers`.
+- CI fix: the execute step now sets `PYTHONPATH: ${{ github.workspace }}` so repository-local packages resolve deterministically in GitHub-hosted runners.
+- Local/direct-run fix: `scripts/run_d1_dashboard_sample_seed.py` now inserts the repo root into `sys.path` using deterministic `PROJECT_ROOT = Path(__file__).resolve().parents[1]` bootstrap logic before importing project modules.
+- Persistence behavior unchanged: this adjustment only affects Python module resolution and does not change seed payload generation, O3 controlled-write adapter behavior, execution gating, or write scope.
