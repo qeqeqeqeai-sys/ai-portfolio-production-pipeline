@@ -385,3 +385,37 @@ __all__.extend([
     "certify_percentile_ranking_engine",
     "build_path2c_percentile_ranking_report",
 ])
+
+from .path2d_benchmark_divergence_intelligence import (
+    BLOCKED_BENCHMARK_DIVERGENCE,
+    CERTIFIED_BENCHMARK_DIVERGENCE,
+    DEGRADED_BENCHMARK_DIVERGENCE,
+    assign_benchmark_divergence_tier,
+    build_benchmark_divergence_explanation,
+    build_benchmark_divergence_input_contract,
+    build_benchmark_divergence_score,
+    build_path2d_benchmark_divergence_report,
+    calculate_fragility_divergence,
+    calculate_percentile_divergence,
+    calculate_persistence_divergence,
+    calculate_velocity_divergence,
+    certify_benchmark_divergence_intelligence,
+    resolve_benchmark_alignment,
+)
+
+__all__.extend([
+    "build_benchmark_divergence_input_contract",
+    "resolve_benchmark_alignment",
+    "calculate_fragility_divergence",
+    "calculate_persistence_divergence",
+    "calculate_velocity_divergence",
+    "calculate_percentile_divergence",
+    "build_benchmark_divergence_score",
+    "assign_benchmark_divergence_tier",
+    "build_benchmark_divergence_explanation",
+    "certify_benchmark_divergence_intelligence",
+    "build_path2d_benchmark_divergence_report",
+    "CERTIFIED_BENCHMARK_DIVERGENCE",
+    "DEGRADED_BENCHMARK_DIVERGENCE",
+    "BLOCKED_BENCHMARK_DIVERGENCE",
+])
