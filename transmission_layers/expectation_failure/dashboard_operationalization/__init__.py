@@ -203,6 +203,14 @@ __all__ = [
     "certify_o7_dashboard_persistence_adapter",
     "build_o7_dashboard_persistence_adapter_report",
     "build_o8_readback_table_contract",
+    "build_o9_operationalization_layer_inventory",
+    "build_o9_end_to_end_lineage_summary",
+    "build_o9_end_to_end_invariant_review",
+    "build_o9_governance_boundary_review",
+    "build_o9_replay_checksum_manifest",
+    "build_o9_dashboard_operationalization_closeout_payload",
+    "certify_o9_dashboard_operationalization_closeout",
+    "build_o9_dashboard_operationalization_closeout_report",
 ]
 
 
@@ -472,4 +480,15 @@ from .o8_dashboard_persistence_readback_verification import (
     build_o8_persistence_reconciliation_report_payload,
     certify_o8_dashboard_persistence_readback_verification,
     build_o8_dashboard_persistence_readback_verification_report,
+)
+
+from .o9_dashboard_operationalization_closeout import (
+    build_o9_operationalization_layer_inventory,
+    build_o9_end_to_end_lineage_summary,
+    build_o9_end_to_end_invariant_review,
+    build_o9_governance_boundary_review,
+    build_o9_replay_checksum_manifest,
+    build_o9_dashboard_operationalization_closeout_payload,
+    certify_o9_dashboard_operationalization_closeout,
+    build_o9_dashboard_operationalization_closeout_report,
 )
