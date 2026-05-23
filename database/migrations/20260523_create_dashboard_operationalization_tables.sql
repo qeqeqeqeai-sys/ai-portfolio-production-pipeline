@@ -165,13 +165,33 @@ ALTER TABLE public.dashboard_evidence_facts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dashboard_certification_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dashboard_run_manifests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS dashboard_entity_facts_read_policy ON public.dashboard_entity_facts FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_subsector_facts_read_policy ON public.dashboard_subsector_facts FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_alert_facts_read_policy ON public.dashboard_alert_facts FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_replay_facts_read_policy ON public.dashboard_replay_facts FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_benchmark_facts_read_policy ON public.dashboard_benchmark_facts FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_evidence_facts_read_policy ON public.dashboard_evidence_facts FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_certification_reports_read_policy ON public.dashboard_certification_reports FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY IF NOT EXISTS dashboard_run_manifests_read_policy ON public.dashboard_run_manifests FOR SELECT TO anon, authenticated USING (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_entity_facts' AND policyname = 'dashboard_entity_facts_read_policy') THEN
+        CREATE POLICY dashboard_entity_facts_read_policy ON public.dashboard_entity_facts FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_subsector_facts' AND policyname = 'dashboard_subsector_facts_read_policy') THEN
+        CREATE POLICY dashboard_subsector_facts_read_policy ON public.dashboard_subsector_facts FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_alert_facts' AND policyname = 'dashboard_alert_facts_read_policy') THEN
+        CREATE POLICY dashboard_alert_facts_read_policy ON public.dashboard_alert_facts FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_replay_facts' AND policyname = 'dashboard_replay_facts_read_policy') THEN
+        CREATE POLICY dashboard_replay_facts_read_policy ON public.dashboard_replay_facts FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_benchmark_facts' AND policyname = 'dashboard_benchmark_facts_read_policy') THEN
+        CREATE POLICY dashboard_benchmark_facts_read_policy ON public.dashboard_benchmark_facts FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_evidence_facts' AND policyname = 'dashboard_evidence_facts_read_policy') THEN
+        CREATE POLICY dashboard_evidence_facts_read_policy ON public.dashboard_evidence_facts FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_certification_reports' AND policyname = 'dashboard_certification_reports_read_policy') THEN
+        CREATE POLICY dashboard_certification_reports_read_policy ON public.dashboard_certification_reports FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'dashboard_run_manifests' AND policyname = 'dashboard_run_manifests_read_policy') THEN
+        CREATE POLICY dashboard_run_manifests_read_policy ON public.dashboard_run_manifests FOR SELECT TO anon, authenticated USING (true);
+    END IF;
+END
+$$;
 
 COMMIT;
