@@ -169,6 +169,14 @@ __all__ = [
     "build_o3_expectation_fragility_inputs",
     "build_o3_semantic_evidence_records",
     "build_o3_market_observation_inventory",
+    "build_o4_semantic_dashboard_inventory",
+    "build_o4_dashboard_kpi_panels",
+    "build_o4_semantic_alert_panels",
+    "build_o4_expectation_fragility_sections",
+    "build_o4_market_context_sections",
+    "build_o4_dashboard_integration_payload",
+    "certify_o4_real_market_semantic_dashboard_integration",
+    "build_o4_real_market_semantic_dashboard_integration_report",
 ]
 
 
@@ -273,6 +281,17 @@ from .dashboard_o10_real_data_operationalization_closeout import (
     build_dashboard_o10_gate_inventory,
     run_dashboard_o10_closeout_certification,
     build_dashboard_o10_closeout_report_payload,
+)
+
+from .o4_real_market_semantic_dashboard_integration import (
+    build_o4_semantic_dashboard_inventory,
+    build_o4_dashboard_kpi_panels,
+    build_o4_semantic_alert_panels,
+    build_o4_expectation_fragility_sections,
+    build_o4_market_context_sections,
+    build_o4_dashboard_integration_payload,
+    certify_o4_real_market_semantic_dashboard_integration,
+    build_o4_real_market_semantic_dashboard_integration_report,
 )
 
 
