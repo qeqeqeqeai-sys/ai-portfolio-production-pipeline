@@ -6,6 +6,10 @@ on:
 jobs:
   run-d1-dashboard-seed:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,14 +27,25 @@ jobs:
 
       - name: Validate required Supabase secrets
         run: |
-          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
-            echo "Missing required Supabase repository secrets: SUPABASE_URL and/or SUPABASE_ANON_KEY"
+          missing=0
+          if [ -z "${SUPABASE_URL}" ]; then
+            echo "SUPABASE_URL: missing"
+            missing=1
+          else
+            echo "SUPABASE_URL: present"
+          fi
+
+          if [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "SUPABASE_ANON_KEY: missing"
+            missing=1
+          else
+            echo "SUPABASE_ANON_KEY: present"
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Missing required Supabase repository secrets."
             exit 1
           fi
 
       - name: Execute deterministic D1 dashboard sample seed
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: python scripts/run_d1_dashboard_sample_seed.py --execute
