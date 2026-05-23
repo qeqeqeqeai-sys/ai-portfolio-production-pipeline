@@ -59,3 +59,15 @@ Use P2 artifacts to deliver consistent 5-minute and 10-minute demonstrations, ar
 
 ## Safety and Boundary Notes
 All demonstrations should preserve bounded-system framing and explicitly reaffirm non-autonomous scope, non-predictive scope, and non-execution scope.
+
+## Local Streamlit Runtime Setup (Supabase)
+1. Install dependencies:
+   - `pip install -r requirements.txt`
+2. Run the Streamlit dashboard:
+   - `streamlit run apps/streamlit_expectation_failure_dashboard.py`
+3. Configure Supabase credentials before launch:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY` or `SUPABASE_KEY`
+4. Verify runtime diagnostics before validating real-data rendering:
+   - `supabase_package_available=True`
+   - `client_resolved=True`
