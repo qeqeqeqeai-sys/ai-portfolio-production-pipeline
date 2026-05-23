@@ -71,3 +71,23 @@ All demonstrations should preserve bounded-system framing and explicitly reaffir
 4. Verify runtime diagnostics before validating real-data rendering:
    - `supabase_package_available=True`
    - `client_resolved=True`
+
+## D1 Dashboard Sample Seed Execution (Controlled O3 Path)
+Use the deterministic seed runner to populate empty dashboard tables with certified sample rows through the existing O3 controlled write adapter.
+
+**Warning:** This flow writes controlled sample data only when execution is explicitly confirmed.
+
+Dry-run (default safe mode):
+- `python scripts/run_d1_dashboard_sample_seed.py --dry-run`
+
+Execute controlled writes:
+- `python scripts/run_d1_dashboard_sample_seed.py --execute`
+
+Expected post-seed diagnostics:
+- `credentials_present=true`
+- `client_resolved=true`
+- `tables_exist=true`
+- `required_columns_present=true`
+- `missing_columns=[]`
+- Dashboard tables return non-empty rows.
+- `health_interpretation` no longer reports `tables_exist_but_empty_or_filters_exclude_rows`.
