@@ -217,6 +217,14 @@ __all__ = [
     "certify_o7_dashboard_persistence_adapter",
     "build_o7_dashboard_persistence_adapter_report",
     "build_o8_readback_table_contract",
+    "build_d4_real_persistence_readback_verification_report",
+    "certify_d4_real_persistence_readback_verification",
+    "build_d4_dashboard_verification_handoff",
+    "build_d4_readback_execution_summary",
+    "verify_d4_dashboard_persistence",
+    "execute_d4_dashboard_readback",
+    "validate_d4_readback_execution_request",
+    "build_d4_readback_execution_plan",
     "build_o9_operationalization_layer_inventory",
     "build_o9_end_to_end_lineage_summary",
     "build_o9_end_to_end_invariant_review",
@@ -525,4 +533,16 @@ from .d3_controlled_dashboard_persistence_execution import (
     build_d3_persistence_verification_handoff,
     certify_d3_controlled_dashboard_persistence_execution,
     build_d3_controlled_dashboard_persistence_execution_report,
+)
+
+
+from .d4_real_persistence_readback_verification import (
+    build_d4_readback_execution_plan,
+    validate_d4_readback_execution_request,
+    execute_d4_dashboard_readback,
+    verify_d4_dashboard_persistence,
+    build_d4_readback_execution_summary,
+    build_d4_dashboard_verification_handoff,
+    certify_d4_real_persistence_readback_verification,
+    build_d4_real_persistence_readback_verification_report,
 )
