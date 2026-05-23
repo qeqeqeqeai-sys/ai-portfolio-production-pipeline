@@ -12,14 +12,14 @@ SCHEMA_VERSION = "dashboard_schema_deployment_v1"
 MODULE_VERSION = "1.0.0"
 
 _EXPECTED_COLUMNS = OrderedDict([
-    ("dashboard_entity_facts", ["run_id", "run_date_sgt", "entity_id", "entity_name", "ticker", "subsector", "composite_score", "relative_fragility_band", "alert_state", "benchmark_relative_label", "evidence_quality_flag", "certification_status", "replay_checksum"]),
-    ("dashboard_subsector_facts", ["run_id", "run_date_sgt", "subsector", "entity_count", "avg_composite_score", "fragile_entity_count", "alert_entity_count", "subsector_fragility_band", "evidence_quality_summary", "replay_checksum"]),
-    ("dashboard_alert_facts", ["run_id", "run_date_sgt", "entity_id", "ticker", "subsector", "alert_state", "alert_severity_band", "active_alert_flag", "dominant_alert_driver", "evidence_quality_flag", "replay_checksum"]),
-    ("dashboard_replay_facts", ["run_id", "replay_date_sgt", "entity_id", "ticker", "subsector", "composite_score", "fragility_band", "alert_state", "deterioration_label", "replay_sequence", "replay_checksum"]),
-    ("dashboard_benchmark_facts", ["run_id", "run_date_sgt", "entity_id", "ticker", "subsector", "benchmark_id", "entity_fragility_score", "benchmark_fragility_score", "relative_gap", "relative_gap_band", "benchmark_relative_label", "outlier_flag", "replay_checksum"]),
-    ("dashboard_evidence_facts", ["run_id", "run_date_sgt", "entity_id", "ticker", "evidence_id", "evidence_type", "source_metric", "source_value", "normalized_score", "quality_flag", "evidence_chain_position", "template_id", "replay_checksum"]),
-    ("dashboard_certification_reports", ["run_id", "run_date_sgt", "certification_status", "report_type", "export_manifest_checksum"]),
-    ("dashboard_run_manifests", ["run_id", "checksum", "run_date_sgt", "schema_version", "module_version"]),
+    ("dashboard_entity_facts", ["run_id", "run_date_sgt", "entity_id", "entity_name", "ticker", "subsector", "composite_score", "valuation_stretch_score", "fundamental_support_score", "narrative_saturation_score", "certainty_fragility_score", "structural_weakness_score", "relative_fragility_rank", "relative_fragility_band", "asymmetry_label", "benchmark_relative_label", "alert_state", "dominant_driver", "evidence_quality_flag", "certification_status", "replay_checksum", "expectation_failure_score", "risk_label", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_subsector_facts", ["run_id", "run_date_sgt", "subsector", "entity_count", "avg_composite_score", "max_composite_score", "fragile_entity_count", "alert_entity_count", "dominant_subsector_driver", "subsector_fragility_band", "cluster_label", "evidence_quality_summary", "replay_checksum", "subsector_id", "subsector_score", "risk_label", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_alert_facts", ["run_id", "run_date_sgt", "entity_id", "ticker", "subsector", "alert_state", "alert_severity_band", "deterioration_label", "active_alert_flag", "dominant_alert_driver", "alert_explanation_template_id", "evidence_quality_flag", "replay_checksum", "severity", "alert_score", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_replay_facts", ["run_id", "replay_date_sgt", "entity_id", "ticker", "subsector", "composite_score", "alert_state", "fragility_band", "deterioration_label", "benchmark_relative_label", "replay_sequence", "replay_checksum", "replay_score", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_benchmark_facts", ["run_id", "run_date_sgt", "entity_id", "ticker", "subsector", "benchmark_id", "entity_fragility_score", "benchmark_fragility_score", "relative_gap", "relative_gap_band", "benchmark_relative_label", "outlier_flag", "replay_checksum", "benchmark_score", "benchmark_label", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_evidence_facts", ["run_id", "run_date_sgt", "entity_id", "ticker", "evidence_id", "evidence_type", "source_metric", "source_value", "normalized_score", "quality_flag", "evidence_chain_position", "template_id", "replay_checksum", "confidence_score", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_certification_reports", ["run_id", "run_date_sgt", "report_id", "report_type", "certification_status", "certification_state", "schema_version", "module_version", "entity_fact_count", "subsector_fact_count", "alert_fact_count", "replay_fact_count", "benchmark_fact_count", "evidence_fact_count", "export_manifest_checksum", "generated_at_sgt", "as_of_sgt", "sample_data_flag"]),
+    ("dashboard_run_manifests", ["run_id", "checksum", "run_date_sgt", "schema_version", "module_version", "export_groups", "record_counts", "deterministic_sort_keys", "invariant_flags", "sample_data_flag"]),
 ])
 
 
@@ -73,7 +73,7 @@ def build_dashboard_schema_verification_report_payload() -> OrderedDict:
             "no uncontrolled writes",
             "read-only dashboard boundary preserved",
         ]),
-        ("final_decision", "APPROVED_FOR_DASHBOARD_SCHEMA_DEPLOYMENT_ARTIFACTS"),
+        ("final_decision", "APPROVED_FOR_DASHBOARD_SCHEMA_EXPANSION_ALIGNMENT"),
     ])
 
 
