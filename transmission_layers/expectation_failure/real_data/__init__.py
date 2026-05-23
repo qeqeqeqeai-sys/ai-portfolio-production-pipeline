@@ -11,6 +11,16 @@ from .b3_snapshot_assembler import assemble_b3_certified_snapshot_from_b2_candid
 from .b3_snapshot_assembly_certification import decide_b3_snapshot_assembly
 from .b3_snapshot_assembly_validation import validate_b3_candidate_for_assembly
 from .b3_snapshot_input_mapper import map_b2_candidate_to_b1_snapshot_inputs
+from .b4_snapshot_persistence_certification import certify_b4_snapshot_persistence_readiness
+from .b4_snapshot_persistence_contract import B4_APPROVED_TABLE_NAMES, B4_FORBIDDEN_CAPABILITY_CONTRACT, resolve_b4_table_names
+from .b4_snapshot_persistence_orchestrator import orchestrate_b4_snapshot_persistence
+from .b4_snapshot_persistence_validator import validate_b4_snapshot_persistence_input
+from .b4_supabase_snapshot_repository import (
+    build_snapshot_audit_record,
+    build_snapshot_fragility_record,
+    build_snapshot_persistence_record,
+    persist_certified_market_snapshot,
+)
 
 __all__ = [
     "FIXED_ENTITY_ORDER",
@@ -26,4 +36,14 @@ __all__ = [
     "validate_b3_candidate_for_assembly",
     "decide_b3_snapshot_assembly",
     "assemble_b3_certified_snapshot_from_b2_candidate",
+    "B4_APPROVED_TABLE_NAMES",
+    "B4_FORBIDDEN_CAPABILITY_CONTRACT",
+    "resolve_b4_table_names",
+    "validate_b4_snapshot_persistence_input",
+    "build_snapshot_persistence_record",
+    "build_snapshot_audit_record",
+    "build_snapshot_fragility_record",
+    "persist_certified_market_snapshot",
+    "orchestrate_b4_snapshot_persistence",
+    "certify_b4_snapshot_persistence_readiness",
 ]
