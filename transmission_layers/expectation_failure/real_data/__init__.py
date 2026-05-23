@@ -30,6 +30,15 @@ from .t1_temporal_snapshot_sequencing import (
     validate_temporal_snapshot_inputs,
 )
 
+from .t3_fragility_evolution_curves import (
+    build_fragility_curve_checksum_chain,
+    build_fragility_curve_summary,
+    build_fragility_evolution_curves,
+    build_t3_fragility_evolution_report,
+    certify_fragility_evolution_curves,
+    validate_fragility_curve_inputs,
+)
+
 from .t2_structural_delta_intelligence import (
     build_structural_delta_checksum_chain,
     build_structural_delta_records,
@@ -75,4 +84,10 @@ __all__ = [
     "build_structural_delta_checksum_chain",
     "certify_structural_delta_intelligence",
     "build_t2_structural_delta_report",
+    "validate_fragility_curve_inputs",
+    "build_fragility_evolution_curves",
+    "build_fragility_curve_summary",
+    "build_fragility_curve_checksum_chain",
+    "certify_fragility_evolution_curves",
+    "build_t3_fragility_evolution_report",
 ]
