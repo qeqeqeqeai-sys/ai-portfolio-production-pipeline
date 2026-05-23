@@ -573,3 +573,27 @@ __all__.extend([
     "run_path2_supervisor_closeout",
     "build_path2i_supervisor_final_closeout_report",
 ])
+
+from .path3a_structural_resilience_foundation import (
+    build_p3a_breadth_stability_summary,
+    build_p3a_relative_integrity_summary,
+    build_p3a_resilience_certification,
+    build_p3a_resilience_explainability_summary,
+    build_p3a_resilience_report,
+    build_p3a_resilience_signal_registry,
+    build_p3a_stability_persistence_summary,
+    classify_p3a_resilience_state,
+    run_p3a_structural_resilience_foundation,
+)
+
+__all__.extend([
+    "build_p3a_resilience_signal_registry",
+    "build_p3a_stability_persistence_summary",
+    "build_p3a_relative_integrity_summary",
+    "build_p3a_breadth_stability_summary",
+    "classify_p3a_resilience_state",
+    "build_p3a_resilience_explainability_summary",
+    "run_p3a_structural_resilience_foundation",
+    "build_p3a_resilience_certification",
+    "build_p3a_resilience_report",
+])
