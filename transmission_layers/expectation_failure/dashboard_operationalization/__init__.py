@@ -149,6 +149,13 @@ __all__ = [
     "run_d3_supervisor_playback",
     "build_d3_acceptance_payload",
     "build_d3_playback_report_payload",
+    "build_d3_persistence_execution_plan",
+    "validate_d3_persistence_execution_request",
+    "execute_d3_dashboard_persistence",
+    "build_d3_persistence_execution_summary",
+    "build_d3_persistence_verification_handoff",
+    "certify_d3_controlled_dashboard_persistence_execution",
+    "build_d3_controlled_dashboard_persistence_execution_report",
     "build_d4_closeout_inventory",
     "build_d4_certification_gates",
     "build_d4_demo_readiness_manifest",
@@ -508,4 +515,14 @@ from .d2_dashboard_supabase_schema import (
     build_d2_dashboard_supabase_schema_contract,
     certify_d2_dashboard_supabase_schema,
     build_d2_dashboard_supabase_schema_report,
+)
+
+from .d3_controlled_dashboard_persistence_execution import (
+    build_d3_persistence_execution_plan,
+    validate_d3_persistence_execution_request,
+    execute_d3_dashboard_persistence,
+    build_d3_persistence_execution_summary,
+    build_d3_persistence_verification_handoff,
+    certify_d3_controlled_dashboard_persistence_execution,
+    build_d3_controlled_dashboard_persistence_execution_report,
 )
