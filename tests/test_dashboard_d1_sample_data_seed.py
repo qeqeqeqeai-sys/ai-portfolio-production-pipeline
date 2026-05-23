@@ -94,6 +94,7 @@ def test_manifest_counts_replay_consistency_and_report_payload():
     manifest = build_d1_seed_manifest(payload)
     assert manifest["total_records"] == sum(manifest["table_counts"].values())
     replay = build_d1_sample_replay_metadata()
-    assert replay[0]["replay_sequence"] == "D1-REPLAY-20260101-0001"
+    assert replay[0]["replay_sequence"] == 1
+    assert replay[0]["replay_batch_id"] == "D1-REPLAY-20260101-0001"
     report = build_d1_seed_report_payload()
     assert report["fixed_timestamp"] == FIXED_TIMESTAMP
