@@ -57,3 +57,16 @@ def test_no_secret_leakage_statements() -> None:
     assert "print(key" not in text
     assert "SUPABASE_ANON_KEY=" not in text
     assert "SUPABASE_KEY=" not in text
+
+
+def test_verify_readback_and_safe_diagnostics_present() -> None:
+    text = _script_text()
+    assert "--verify-readback" in text
+    assert "supabase_project_host=" in text
+    assert "credential_source=" in text
+
+
+def test_service_role_preferred_for_backend_seed() -> None:
+    text = _script_text()
+    assert "SUPABASE_SERVICE_ROLE_KEY" in text
+    assert "service_role_key" in text

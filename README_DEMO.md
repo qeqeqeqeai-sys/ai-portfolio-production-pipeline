@@ -67,7 +67,7 @@ All demonstrations should preserve bounded-system framing and explicitly reaffir
    - `streamlit run apps/streamlit_expectation_failure_dashboard.py`
 3. Configure Supabase credentials before launch:
    - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY` or `SUPABASE_KEY`
+   - `SUPABASE_ANON_KEY` (recommended for Streamlit read-only runtime)
 4. Verify runtime diagnostics before validating real-data rendering:
    - `supabase_package_available=True`
    - `client_resolved=True`
@@ -87,13 +87,14 @@ Execute controlled writes + read-only post-seed verification:
 - `python scripts/run_d1_dashboard_sample_seed.py --execute --verify-readback`
 
 Expected post-seed diagnostics:
-- `credentials_present=true`
-- `client_resolved=true`
-- `tables_exist=true`
-- `required_columns_present=true`
-- `missing_columns=[]`
-- Dashboard tables return non-empty rows.
-- `health_interpretation` no longer reports `tables_exist_but_empty_or_filters_exclude_rows`.
+- `supabase_project_host=<project-ref>.supabase.co`
+- `credential_source=service_role_key|anon_key|supabase_key`
+- `execution_status=completed` (or failure surfaced clearly)
+- `planned_table_row_counts` emitted per canonical table
+- `write_result_statuses` emitted when O3 returns table statuses
+- `readback_table_results` emitted per canonical table with `row_count` and status
+- `verification_status=verified_non_empty|verified_empty|verification_failed`
+- `--execute --verify-readback` exits non-zero unless verification is `verified_non_empty`.
 
 ## GitHub Actions Controlled D1 Sample-Data Seeding
 Workflow name:
@@ -102,6 +103,7 @@ Workflow name:
 Required repository secrets:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (optional, preferred for backend controlled writes)
 
 Manual trigger steps:
 1. Open **Actions** in GitHub.
