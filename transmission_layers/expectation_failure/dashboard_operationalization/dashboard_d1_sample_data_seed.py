@@ -63,9 +63,9 @@ def build_d1_seed_payload() -> OrderedDict:
         ("dashboard_replay_facts", build_d1_sample_replay_metadata()),
         ("dashboard_benchmark_facts", build_d1_sample_benchmarks()),
         ("dashboard_evidence_facts", build_d1_sample_evidence_chains()),
-        ("dashboard_report_metadata", build_d1_sample_certification_reports()),
+        ("dashboard_certification_reports", build_d1_sample_certification_reports()),
     ])
-    payload["dashboard_export_manifest"] = [OrderedDict([("run_id", RUN_ID), ("checksum", stable_checksum(payload)), ("sample_data_flag", True)])]
+    payload["dashboard_run_manifests"] = [OrderedDict([("run_id", RUN_ID), ("checksum", stable_checksum(payload)), ("sample_data_flag", True)])]
     return payload
 
 

@@ -83,6 +83,9 @@ Dry-run (default safe mode):
 Execute controlled writes:
 - `python scripts/run_d1_dashboard_sample_seed.py --execute`
 
+Execute controlled writes + read-only post-seed verification:
+- `python scripts/run_d1_dashboard_sample_seed.py --execute --verify-readback`
+
 Expected post-seed diagnostics:
 - `credentials_present=true`
 - `client_resolved=true`
@@ -111,3 +114,14 @@ Expected post-seed diagnostics:
 - `runtime_mode=read_only_supabase_mode`
 - `payload_source=supabase_snapshot`
 - `normalization_status=normalized`
+
+
+## Canonical Physical Dashboard Tables
+- `dashboard_entity_facts`
+- `dashboard_subsector_facts`
+- `dashboard_alert_facts`
+- `dashboard_replay_facts`
+- `dashboard_benchmark_facts`
+- `dashboard_evidence_facts`
+- `dashboard_certification_reports`
+- `dashboard_run_manifests`

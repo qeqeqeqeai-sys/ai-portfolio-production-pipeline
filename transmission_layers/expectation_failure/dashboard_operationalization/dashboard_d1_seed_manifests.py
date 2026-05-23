@@ -29,7 +29,7 @@ def build_d1_seed_manifest(seed_payload: Mapping[str, Any]) -> OrderedDict:
         ("dashboard_replay_facts", len(materialized.get("dashboard_replay_facts", []))),
         ("dashboard_benchmark_facts", len(materialized.get("dashboard_benchmark_facts", []))),
         ("dashboard_evidence_facts", len(materialized.get("dashboard_evidence_facts", []))),
-        ("dashboard_report_metadata", len(materialized.get("dashboard_report_metadata", []))),
+        ("dashboard_certification_reports", len(materialized.get("dashboard_certification_reports", []))),
     ])
     manifest = OrderedDict([
         ("schema_version", SCHEMA_VERSION),
