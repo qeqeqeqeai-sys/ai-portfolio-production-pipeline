@@ -30,6 +30,15 @@ from .t1_temporal_snapshot_sequencing import (
     validate_temporal_snapshot_inputs,
 )
 
+from .t2_structural_delta_intelligence import (
+    build_structural_delta_checksum_chain,
+    build_structural_delta_records,
+    build_structural_delta_summary,
+    build_t2_structural_delta_report,
+    certify_structural_delta_intelligence,
+    validate_structural_delta_inputs,
+)
+
 __all__ = [
     "FIXED_ENTITY_ORDER",
     "FIXED_BENCHMARK_ORDER",
@@ -60,4 +69,10 @@ __all__ = [
     "build_temporal_checksum_chain",
     "certify_temporal_snapshot_sequence",
     "build_t1_temporal_sequencing_report",
+    "validate_structural_delta_inputs",
+    "build_structural_delta_records",
+    "build_structural_delta_summary",
+    "build_structural_delta_checksum_chain",
+    "certify_structural_delta_intelligence",
+    "build_t2_structural_delta_report",
 ]
