@@ -823,3 +823,25 @@ __all__.extend([
     "certify_path3h_path3_closeout",
     "build_path3h_report",
 ])
+
+from .path5b_fragility_propagation_intelligence import (
+    build_path5b_fragility_concentration,
+    build_path5b_fragility_propagation_report,
+    build_path5b_pathway_dominance,
+    build_path5b_propagation_explainability,
+    build_path5b_propagation_foundation,
+    build_path5b_resilience_corridors,
+    build_path5b_structural_pressure_carriers,
+    certify_path5b_fragility_propagation,
+)
+
+__all__.extend([
+    "build_path5b_propagation_foundation",
+    "build_path5b_structural_pressure_carriers",
+    "build_path5b_fragility_concentration",
+    "build_path5b_resilience_corridors",
+    "build_path5b_pathway_dominance",
+    "build_path5b_propagation_explainability",
+    "certify_path5b_fragility_propagation",
+    "build_path5b_fragility_propagation_report",
+])
