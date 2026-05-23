@@ -541,3 +541,35 @@ __all__.extend([
     "DEGRADED_RELATIVE_FRAGILITY_STACK",
     "BLOCKED_RELATIVE_FRAGILITY_STACK",
 ])
+
+from .path2i_supervisor_final_closeout import (
+    APPROVED_PATH2_CLOSEOUT,
+    BLOCKED_PATH2_CLOSEOUT,
+    DEGRADED_PATH2_CLOSEOUT,
+    build_path2_closeout_input_contract,
+    build_path2_layer_inventory,
+    build_path2i_supervisor_final_closeout_report,
+    certify_path2_additive_integration,
+    certify_path2_architectural_boundaries,
+    certify_path2_checksum_lineage,
+    certify_path2_deterministic_replay,
+    certify_path2_explainability_interpretation,
+    run_path2_supervisor_closeout,
+    validate_path2_final_forbidden_capabilities,
+)
+
+__all__.extend([
+    "APPROVED_PATH2_CLOSEOUT",
+    "DEGRADED_PATH2_CLOSEOUT",
+    "BLOCKED_PATH2_CLOSEOUT",
+    "build_path2_closeout_input_contract",
+    "build_path2_layer_inventory",
+    "certify_path2_deterministic_replay",
+    "certify_path2_checksum_lineage",
+    "certify_path2_explainability_interpretation",
+    "certify_path2_architectural_boundaries",
+    "validate_path2_final_forbidden_capabilities",
+    "certify_path2_additive_integration",
+    "run_path2_supervisor_closeout",
+    "build_path2i_supervisor_final_closeout_report",
+])
