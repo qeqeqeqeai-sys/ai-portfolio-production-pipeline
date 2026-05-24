@@ -1,7 +1,9 @@
+import json
 from transmission_layers.expectation_failure.expectation_intelligence.d8_b4_governed_replay_persistence_execution import (
     build_d8_b4_execution_audit_manifest,
     build_d8_b4_execution_report_payload,
     build_d8_b4_post_execution_readback,
+    build_d8_b4_governance_diagnostics,
     build_d8_b4_persistence_execution_plan,
     execute_d8_b4_governed_replay_persistence,
     validate_d8_b4_execution_governance,
@@ -115,3 +117,46 @@ def test_partial_approvals_block():
     blockers = out["governance"]["blocking_reasons"]
     assert "missing_duplicate_prevention_approval" in blockers
     assert "missing_checksum_lineage_approval" in blockers
+
+
+def test_blocked_governance_diagnostics_shape_and_json_serializable():
+    c = C()
+    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    diag = build_d8_b4_governance_diagnostics(result=out)
+    assert diag["status"] == "REPLAY_PERSISTENCE_GOVERNANCE_BLOCKED"
+    assert diag["governance_status"] == "GOVERNANCE_BLOCKED"
+    assert isinstance(diag["blocking_reasons"], list)
+    assert "missing_non_dry_run_approval" in diag["blocking_reasons"]
+    assert "missing_append_only_persistence_approval" in diag["blocking_reasons"]
+    assert "missing_duplicate_prevention_approval" in diag["blocking_reasons"]
+    assert "missing_checksum_lineage_approval" in diag["blocking_reasons"]
+    for key in [
+        "dry_run",
+        "injected_client_present",
+        "approval_flag_present",
+        "append_only_confirmed",
+        "duplicate_prevention_confirmed",
+        "checksum_lineage_confirmed",
+        "approved_tables_present",
+        "execution_status",
+        "recommendation",
+    ]:
+        assert key in diag
+    json.loads(json.dumps(diag))
+
+
+def test_all_approvals_with_injected_client_passes_governance():
+    g = validate_d8_b4_execution_governance(
+        dry_run=False,
+        client=C(),
+        approval_flags={
+            "approved_for_execution": True,
+            "approved_by_governance": True,
+            "approve_non_dry_run": "true",
+            "approve_append_only_persistence": "true",
+            "approve_duplicate_prevention": "true",
+            "approve_checksum_lineage": "true",
+        },
+    )
+    assert g["status"] == "GOVERNANCE_OK"
+    assert g["injected_client_present"] is True

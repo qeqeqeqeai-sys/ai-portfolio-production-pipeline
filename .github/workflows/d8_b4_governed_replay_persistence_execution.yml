@@ -40,22 +40,46 @@ jobs:
         run: |
           PYTHONPATH=. python - <<'PY'
           from pathlib import Path
+          import json
           from transmission_layers.expectation_failure.dashboard_operationalization.dashboard_o7_streamlit_supabase_runtime import resolve_streamlit_supabase_client
           from transmission_layers.expectation_failure.expectation_intelligence.d8_b4_governed_replay_persistence_execution import execute_d8_b4_governed_replay_persistence
           cfg = {"credentials_present": True, "supabase_url": "${SUPABASE_URL}", "supabase_key": "${SUPABASE_KEY}"}
           client = resolve_streamlit_supabase_client(cfg).get("client")
           out = execute_d8_b4_governed_replay_persistence(client=client, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "${{ github.event.inputs.approve_non_dry_run }}", "approve_append_only_persistence": "${{ github.event.inputs.approve_append_only_persistence }}", "approve_duplicate_prevention": "${{ github.event.inputs.approve_duplicate_prevention }}", "approve_checksum_lineage": "${{ github.event.inputs.approve_checksum_lineage }}"})
-          Path("reports/d8_b4_execution_audit.json").write_text(str(out.get("audit_manifest")), encoding="utf-8")
-          Path("reports/d8_b4_post_readback.json").write_text(str(out.get("readback")), encoding="utf-8")
-          if out.get("governance", {}).get("status") != "GOVERNANCE_OK":
+          Path("reports").mkdir(parents=True, exist_ok=True)
+          if out.get("audit_manifest") is not None:
+            Path("reports/d8_b4_execution_audit.json").write_text(json.dumps(out.get("audit_manifest"), indent=2), encoding="utf-8")
+          if out.get("readback") is not None:
+            Path("reports/d8_b4_post_readback.json").write_text(json.dumps(out.get("readback"), indent=2), encoding="utf-8")
+          governance = out.get("governance", {})
+          plan = out.get("plan", {})
+          diagnostics = {
+            "status": out.get("status"),
+            "governance_status": governance.get("status") or governance.get("governance_status"),
+            "blocking_reasons": governance.get("blocking_reasons", []),
+            "dry_run": governance.get("dry_run"),
+            "injected_client_present": governance.get("injected_client_present"),
+            "approval_flag_present": governance.get("approval_flag_present"),
+            "append_only_confirmed": governance.get("append_only_confirmed"),
+            "duplicate_prevention_confirmed": governance.get("duplicate_prevention_confirmed"),
+            "checksum_lineage_confirmed": governance.get("checksum_lineage_confirmed"),
+            "approved_tables_present": governance.get("approved_tables_present"),
+            "execution_status": plan.get("execution_status"),
+            "recommendation": out.get("report_payload", {}).get("recommendation") or out.get("status"),
+          }
+          Path("reports/d8_b4_governance_diagnostics.json").write_text(json.dumps(diagnostics, indent=2), encoding="utf-8")
+          if governance.get("status") != "GOVERNANCE_OK":
+            print(json.dumps(diagnostics, indent=2))
             raise SystemExit("governance violation")
           if out.get("audit_manifest", {}).get("append_only_confirmed") is not True:
             raise SystemExit("duplicate-policy/append-only violation")
           PY
       - name: Upload audit artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: d8-b4-governed-replay-persistence-artifacts
           path: |
+            reports/d8_b4_governance_diagnostics.json
             reports/d8_b4_execution_audit.json
             reports/d8_b4_post_readback.json
