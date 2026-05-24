@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative, build_d17_confidence_attribution_inventory, build_d17_constraint_weight_summary, build_d17_lineage_trace_compression, build_d17_historical_confidence_overlays, build_d17_operator_drilldown_payload, build_d17_dashboard_payload, certify_d17_confidence_lineage_enrichment
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -18,6 +18,7 @@ D7_RENDER_SECTION_ORDER = (
     "e6_expectation_executive_summary",
     "d15_historical_operational_intelligence",
     "d16_historical_findings_operator_narrative",
+    "d17_historical_confidence_lineage",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -658,6 +659,13 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     d16_summary = build_d16_operator_narrative_summary(historical_finding_inventory=d16_inventory, recurring_finding_clusters=d16_clusters, regime_linked_finding_narratives=d16_regime_narratives, d15_dashboard_enrichment_payload=d15_dashboard_enrichment)
     d16_dashboard_payload = build_d16_dashboard_payload(historical_finding_inventory=d16_inventory, recurring_finding_clusters=d16_clusters, regime_linked_finding_narratives=d16_regime_narratives, operator_narrative_summary=d16_summary)
     d16_certification = certify_d16_historical_findings_narrative(historical_finding_inventory=d16_inventory, recurring_finding_clusters=d16_clusters, regime_linked_finding_narratives=d16_regime_narratives, operator_narrative_summary=d16_summary, dashboard_payload=d16_dashboard_payload)
+    d17_inventory = build_d17_confidence_attribution_inventory(d16_dashboard_payload=d16_dashboard_payload, d15_dashboard_enrichment_payload=d15_dashboard_enrichment, d12_report_payload=d8_b1_payload.get("d12_report_payload"), d13_report_payload=d8_b1_payload.get("d13_report_payload"))
+    d17_constraints = build_d17_constraint_weight_summary(confidence_attribution_inventory=d17_inventory, d12_report_payload=d8_b1_payload.get("d12_report_payload"))
+    d17_lineage = build_d17_lineage_trace_compression(d16_dashboard_payload=d16_dashboard_payload, d11_report_payload=d8_b1_payload.get("d11_report_payload"), d14_report_payload=d8_b1_payload.get("d14_report_payload"))
+    d17_overlays = build_d17_historical_confidence_overlays(confidence_attribution_inventory=d17_inventory, constraint_weight_summary=d17_constraints, lineage_trace_compression=d17_lineage)
+    d17_drilldowns = build_d17_operator_drilldown_payload(confidence_attribution_inventory=d17_inventory, lineage_trace_compression=d17_lineage, d16_dashboard_payload=d16_dashboard_payload)
+    d17_dashboard_payload = build_d17_dashboard_payload(confidence_attribution_inventory=d17_inventory, constraint_weight_summary=d17_constraints, lineage_trace_compression=d17_lineage, historical_confidence_overlays=d17_overlays, operator_drilldown_payload=d17_drilldowns)
+    d17_certification = certify_d17_confidence_lineage_enrichment(d16_dashboard_payload=d16_dashboard_payload, historical_confidence_overlays=d17_overlays, lineage_trace_compression=d17_lineage, dashboard_payload=d17_dashboard_payload)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -711,6 +719,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d15_dashboard_enrichment_certification", d15_certification),
         ("d16_historical_findings_operator_narrative", d16_dashboard_payload),
         ("d16_historical_findings_narrative_certification", d16_certification),
+        ("d17_historical_confidence_lineage", d17_dashboard_payload),
+        ("d17_confidence_lineage_certification", d17_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -936,6 +946,7 @@ def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]
         ("e6_expectation_executive_summary", e6_plan),
         ("d15_historical_operational_intelligence", build_d15_historical_operational_intelligence_render_plan(view_model)),
         ("d16_historical_findings_operator_narrative", build_d16_historical_findings_operator_narrative_render_plan(view_model)),
+        ("d17_historical_confidence_lineage", build_d17_historical_confidence_lineage_render_plan(view_model)),
         ("overview_metrics", OrderedDict([
             ("dominant_fragility_theme", _render_value(supervisor.get("dominant_fragility_theme"))),
             ("expectation_pressure_state", _render_value(supervisor.get("expectation_pressure_concentration"))),
@@ -1057,6 +1068,47 @@ def render_d16_historical_findings_operator_narrative(view_model: Mapping[str, A
             st.caption("Unavailable")
     st.markdown(f"**Operator narrative summary:** {primary.get('Operator narrative summary')}")
     with st.expander("D16 Governance / Lineage Details"):
+        st.json(plan.get("governance_debug_details", {}))
+
+
+def build_d17_historical_confidence_lineage_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    payload = view_model.get("d17_historical_confidence_lineage") if isinstance(view_model, Mapping) else {}
+    cert = view_model.get("d17_confidence_lineage_certification") if isinstance(view_model, Mapping) else {}
+    payload = payload if isinstance(payload, Mapping) else {}
+    cert = cert if isinstance(cert, Mapping) else {}
+    if not payload:
+        return OrderedDict([("available", False), ("message", "D17 historical confidence/lineage enrichment is unavailable for this run."), ("primary_sections", OrderedDict()), ("governance_debug_details", OrderedDict())])
+    return OrderedDict([("available", True), ("message", ""), ("primary_sections", OrderedDict([
+        ("Historical Finding Confidence Overview", _as_list(payload.get("Historical Finding Confidence"))),
+        ("Confidence-Limiting Constraints", payload.get("Confidence-Limiting Constraints") if isinstance(payload.get("Confidence-Limiting Constraints"), Mapping) else {}),
+        ("Structural Fragility Drivers", _as_list(payload.get("Structural Fragility Drivers"))),
+        ("Replay Sufficiency Summary", _as_list(payload.get("Replay Sufficiency Summary"))),
+        ("Regime Stability Summary", _as_list(payload.get("Regime Stability Summary"))),
+        ("Operator Drilldowns", payload.get("Lineage Drilldowns") if isinstance(payload.get("Lineage Drilldowns"), Mapping) else {}),
+        ("Compressed Lineage References", payload.get("Compressed Lineage References") if isinstance(payload.get("Compressed Lineage References"), Mapping) else {}),
+    ])), ("governance_debug_details", OrderedDict([("certification", deepcopy(cert)), ("governance_lineage_details", deepcopy(payload.get("governance_lineage_details") or {}))]))])
+
+
+def render_d17_historical_confidence_lineage(view_model: Mapping[str, Any], *, st: Any) -> None:
+    plan = build_d17_historical_confidence_lineage_render_plan(view_model)
+    st.markdown("### D17 Historical Confidence Attribution & Lineage Compression")
+    if not plan.get("available"):
+        st.caption(plan.get("message") or "D17 historical confidence/lineage unavailable.")
+        return
+    primary = plan.get("primary_sections", {})
+    for section in ("Historical Finding Confidence Overview", "Confidence-Limiting Constraints", "Structural Fragility Drivers", "Replay Sufficiency Summary", "Regime Stability Summary"):
+        st.markdown(f"**{section}:**")
+        value = primary.get(section)
+        if isinstance(value, list):
+            for item in value:
+                st.markdown(f"- {_render_value(item)}")
+        elif isinstance(value, Mapping):
+            st.json(value)
+    st.markdown("**Operator Drilldowns:**")
+    st.json(primary.get("Operator Drilldowns") or {})
+    st.markdown("**Compressed Lineage References:**")
+    st.json(primary.get("Compressed Lineage References") or {})
+    with st.expander("D17 Governance / Lineage Details"):
         st.json(plan.get("governance_debug_details", {}))
 
 
@@ -1204,6 +1256,8 @@ __all__ = [
     "render_d15_historical_operational_intelligence",
     "build_d16_historical_findings_operator_narrative_render_plan",
     "render_d16_historical_findings_operator_narrative",
+    "build_d17_historical_confidence_lineage_render_plan",
+    "render_d17_historical_confidence_lineage",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",

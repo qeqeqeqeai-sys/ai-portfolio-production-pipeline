@@ -265,6 +265,15 @@ __all__ = [
     "certify_d16_historical_findings_narrative",
     "build_d16_report_payload",
     "build_d16_report_markdown",
+    "build_d17_confidence_attribution_inventory",
+    "build_d17_constraint_weight_summary",
+    "build_d17_lineage_trace_compression",
+    "build_d17_historical_confidence_overlays",
+    "build_d17_operator_drilldown_payload",
+    "build_d17_dashboard_payload",
+    "certify_d17_confidence_lineage_enrichment",
+    "build_d17_report_payload",
+    "build_d17_report_markdown",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -417,4 +426,16 @@ from .d16_historical_findings_replay_operator_narrative import (
     certify_d16_historical_findings_narrative,
     build_d16_report_payload,
     build_d16_report_markdown,
+)
+
+from .d17_historical_confidence_attribution_lineage_compression import (
+    build_d17_confidence_attribution_inventory,
+    build_d17_constraint_weight_summary,
+    build_d17_lineage_trace_compression,
+    build_d17_historical_confidence_overlays,
+    build_d17_operator_drilldown_payload,
+    build_d17_dashboard_payload,
+    certify_d17_confidence_lineage_enrichment,
+    build_d17_report_payload,
+    build_d17_report_markdown,
 )
