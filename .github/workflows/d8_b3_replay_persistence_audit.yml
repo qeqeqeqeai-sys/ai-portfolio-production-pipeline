@@ -1,0 +1,21 @@
+name: D8.B3 Replay Persistence Audit
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run preview only"
+        required: false
+        default: "true"
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pytest -q tests/test_d8_b3_replay_persistence_activation_audit.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d8-b3-replay-persistence-audit
+          path: reports/d8_b3_replay_persistence_activation_audit_report.md
