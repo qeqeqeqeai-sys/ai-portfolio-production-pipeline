@@ -203,6 +203,15 @@ __all__ = [
     "build_d8c_certification_report_payload",
     "build_d8c_certification_report_markdown",
 
+    "build_d9_persisted_evidence_inventory",
+    "validate_d9_finding_generation_eligibility",
+    "build_d9_operational_findings",
+    "build_d9_expectation_intelligence_summary",
+    "certify_d9_finding_generation",
+    "build_d9_dashboard_operational_cards",
+    "build_d9_report_payload",
+    "build_d9_report_markdown",
+
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -261,4 +270,16 @@ from .d8_c_persisted_replay_readback_dashboard_certification import (
     certify_d8c_dashboard_consumption,
     build_d8c_certification_report_payload,
     build_d8c_certification_report_markdown,
+)
+
+
+from .d9_persisted_evidence_finding_generation import (
+    build_d9_persisted_evidence_inventory,
+    validate_d9_finding_generation_eligibility,
+    build_d9_operational_findings,
+    build_d9_expectation_intelligence_summary,
+    certify_d9_finding_generation,
+    build_d9_dashboard_operational_cards,
+    build_d9_report_payload,
+    build_d9_report_markdown,
 )
