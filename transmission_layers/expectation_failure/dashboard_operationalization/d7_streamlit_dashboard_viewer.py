@@ -12,6 +12,15 @@ from typing import Any, Mapping
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.2.0"
+D7_RENDER_SECTION_ORDER = (
+    "intelligence_overview",
+    "supervisor_interpretation",
+    "key_finding_cards",
+    "narrative_sections",
+    "evidence_highlights",
+    "operational_integrity_overview",
+    "governance_debug_archive",
+)
 
 D7_PHYSICAL_COLUMNS_BY_TABLE = {
     "dashboard_finding_records": [
@@ -609,6 +618,153 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     return payload
 
 
+def _render_value(value: Any, *, fallback: str = "N/A") -> str:
+    text = str(value or "").strip()
+    return text if text else fallback
+
+
+def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    supervisor = view_model.get("supervisor_summary") if isinstance(view_model.get("supervisor_summary"), Mapping) else {}
+    integrity = view_model.get("integrity_overview") if isinstance(view_model.get("integrity_overview"), Mapping) else {}
+    return OrderedDict([
+        ("section_order", list(D7_RENDER_SECTION_ORDER)),
+        ("overview_metrics", OrderedDict([
+            ("dominant_fragility_theme", _render_value(supervisor.get("dominant_fragility_theme"))),
+            ("expectation_pressure_state", _render_value(supervisor.get("expectation_pressure_concentration"))),
+            ("operational_usefulness", _render_value(supervisor.get("operational_usefulness"))),
+            ("governance_status", _render_value(supervisor.get("governance_status"))),
+            ("confidence_caveat_summary", _render_value(supervisor.get("confidence_caveat_summary"))),
+        ])),
+        ("integrity_metrics", OrderedDict([
+            ("persistence", _render_value(integrity.get("persistence"))),
+            ("readback_verification", _render_value(integrity.get("readback_verification"))),
+            ("checksum_continuity", _render_value(integrity.get("checksum_continuity"))),
+            ("governance_status", _render_value(integrity.get("governance_status"))),
+            ("operational_usefulness", _render_value(integrity.get("operational_usefulness"))),
+        ])),
+    ])
+
+
+def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
+    plan = build_d7_render_plan(view_model)
+    metrics = plan["overview_metrics"]
+    st.markdown("### Intelligence Overview")
+    with st.container():
+        st.caption("Institutional state snapshot across fragility, expectation pressure, governance, and confidence caveats.")
+        cols = st.columns(5)
+        cols[0].metric("Dominant Fragility Theme", metrics["dominant_fragility_theme"])
+        cols[1].metric("Expectation Pressure", metrics["expectation_pressure_state"])
+        cols[2].metric("Operational Usefulness", metrics["operational_usefulness"])
+        cols[3].metric("Governance Status", metrics["governance_status"])
+        cols[4].metric("Confidence Caveat", metrics["confidence_caveat_summary"])
+
+
+def render_d7_supervisor_interpretation(supervisor_summary: Mapping[str, Any], *, st: Any) -> None:
+    summary = supervisor_summary if isinstance(supervisor_summary, Mapping) else {}
+    st.markdown("### Supervisor Interpretation")
+    with st.container():
+        st.markdown(f"**Current SEFI Belief:** {_render_value(summary.get('current_belief'))}")
+        st.markdown(f"**Dominant Fragility Themes:** {_render_value(summary.get('dominant_fragility_theme'))}")
+        st.markdown(f"**Expectation Pressure Concentration:** {_render_value(summary.get('expectation_pressure_concentration'))}")
+        st.markdown(f"**Operational Usefulness:** {_render_value(summary.get('operational_usefulness'))}")
+        st.markdown(f"**Current Limitations:** {_render_value(summary.get('current_limitations'))}")
+        st.caption(f"Confidence caveat: {_render_value(summary.get('confidence_caveat_summary'))}")
+
+
+def render_d7_finding_cards(intelligence_cards: list[Mapping[str, Any]], *, st: Any) -> None:
+    st.markdown("### Key Finding Cards")
+    cards = list(intelligence_cards or [])
+    if not cards:
+        st.caption("No intelligence finding cards currently available.")
+        return
+    for card in cards:
+        with st.container():
+            title = _render_value(card.get("finding_title"), fallback="Untitled Finding")
+            st.markdown(f"#### {title}")
+            cols = st.columns(3)
+            cols[0].markdown(f"**Type:** {_render_value(card.get('finding_type'))}")
+            cols[1].markdown(f"**Severity:** {_render_value(card.get('severity'))}")
+            cols[2].markdown(f"**Confidence:** {_render_value(card.get('confidence'))}")
+            st.markdown(f"**Summary:** {_render_value(card.get('summary'))}")
+            st.markdown(f"**Expectation-Fragility Interpretation:** {_render_value(card.get('expectation_fragility_interpretation'))}")
+            st.markdown(f"**Why This Matters:** {_render_value(card.get('why_this_matters'))}")
+            evidence = list(card.get("evidence_highlights") or [])
+            if evidence:
+                st.markdown("**Evidence Highlights:**")
+                for item in evidence:
+                    st.markdown(f"- {_render_value(item)}")
+            contradiction = _render_value(card.get("contradiction_or_divergence"), fallback="")
+            if contradiction:
+                st.caption(f"Contradiction/divergence: {contradiction}")
+            with st.expander("Evidence & Debug Context"):
+                st.json(OrderedDict([
+                    ("internal_id", card.get("internal_id")),
+                    ("checksum_ref", card.get("checksum_ref")),
+                    ("raw_payload", card.get("raw_payload")),
+                ]))
+            st.divider()
+
+
+def render_d7_narrative_sections(narrative_sections: Mapping[str, Any], *, st: Any) -> None:
+    st.markdown("### Narrative Sections")
+    sections = narrative_sections if isinstance(narrative_sections, Mapping) else {}
+    if not sections:
+        st.caption("No narrative sections currently available.")
+        return
+    for title in ("Expectation Pressure", "Market Context", "Semantic Pressure", "Contradictions", "Supervisor Interpretation"):
+        section = sections.get(title) if isinstance(sections.get(title), Mapping) else {}
+        with st.container():
+            st.markdown(f"#### {title}")
+            st.markdown(_render_value(section.get("narrative_text"), fallback="No narrative text available."))
+            linked = list(section.get("linked_findings") or [])
+            evidence = list(section.get("supporting_evidence") or [])
+            caveats = list(section.get("caveats") or [])
+            if linked:
+                st.caption(f"Linked findings: {', '.join(str(x) for x in linked)}")
+            if evidence:
+                for item in evidence:
+                    st.markdown(f"- {item}")
+            if caveats:
+                st.caption(f"Caveats: {'; '.join(str(x) for x in caveats)}")
+
+
+def render_d7_evidence_highlights(evidence_highlights: list[Mapping[str, Any]], *, st: Any) -> None:
+    st.markdown("### Evidence Highlights")
+    items = list(evidence_highlights or [])
+    if not items:
+        st.caption("No evidence highlights currently available.")
+        return
+    for item in items:
+        with st.container():
+            st.markdown(f"- **Summary:** {_render_value(item.get('evidence_summary'))}")
+            st.caption(f"Linked finding: {_render_value(item.get('linked_finding'))}")
+            st.caption(f"Semantic drivers: {_render_value(item.get('semantic_drivers'))}")
+            st.caption(f"KPI/evidence references: {_render_value(item.get('kpi_or_evidence_refs'))}")
+            caveat = _render_value(item.get("caveat_or_confidence"), fallback="")
+            if caveat:
+                st.caption(f"Caveat/confidence: {caveat}")
+
+
+def render_d7_integrity_overview(integrity_overview: Mapping[str, Any], *, st: Any) -> None:
+    metrics = build_d7_render_plan({"integrity_overview": integrity_overview}).get("integrity_metrics", {})
+    st.markdown("### Operational Integrity Overview")
+    cols = st.columns(5)
+    cols[0].metric("Persistence", metrics.get("persistence"))
+    cols[1].metric("Readback Verification", metrics.get("readback_verification"))
+    cols[2].metric("Checksum Continuity", metrics.get("checksum_continuity"))
+    cols[3].metric("Governance Status", metrics.get("governance_status"))
+    cols[4].metric("Operational Usefulness", metrics.get("operational_usefulness"))
+
+
+def render_d7_debug_archive(debug_payload_sections: Mapping[str, Any], *, st: Any) -> None:
+    st.markdown("### Expandable Governance / Debug Archive")
+    sections = debug_payload_sections if isinstance(debug_payload_sections, Mapping) else {}
+    for key, value in sections.items():
+        label = key.replace("_", " ").title()
+        with st.expander(label):
+            st.json(value)
+
+
 __all__ = [
     "load_d7_dashboard_findings",
     "load_d7_dashboard_narratives",
@@ -623,4 +779,13 @@ __all__ = [
     "build_d7_supervisor_summary",
     "build_d7_integrity_overview",
     "build_d7_debug_payload_sections",
+    "D7_RENDER_SECTION_ORDER",
+    "build_d7_render_plan",
+    "render_d7_intelligence_overview",
+    "render_d7_supervisor_interpretation",
+    "render_d7_finding_cards",
+    "render_d7_narrative_sections",
+    "render_d7_evidence_highlights",
+    "render_d7_integrity_overview",
+    "render_d7_debug_archive",
 ]

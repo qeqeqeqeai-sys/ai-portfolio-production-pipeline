@@ -1,17 +1,44 @@
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
+    D7_RENDER_SECTION_ORDER,
     D7_PHYSICAL_COLUMNS_BY_TABLE,
     build_d7_dashboard_view_model,
+    build_d7_render_plan,
     build_d7_debug_payload_sections,
     build_d7_evidence_highlights,
     build_d7_intelligence_cards,
     build_d7_narrative_sections,
     build_d7_runtime_diagnostics,
     build_d7_supervisor_summary,
+    render_d7_debug_archive,
+    render_d7_evidence_highlights,
+    render_d7_finding_cards,
+    render_d7_intelligence_overview,
+    render_d7_integrity_overview,
+    render_d7_narrative_sections,
+    render_d7_supervisor_interpretation,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
     load_d7_dashboard_narratives,
     load_d7_dashboard_operational_integrity,
 )
+class _Ctx:
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc, tb): return False
+
+class FakeStreamlit:
+    def __init__(self):
+        self.metrics = []
+        self.markdowns = []
+        self.captions = []
+        self.json_calls = []
+    def markdown(self, text): self.markdowns.append(str(text))
+    def caption(self, text): self.captions.append(str(text))
+    def metric(self, label, value): self.metrics.append((label, value))
+    def json(self, data): self.json_calls.append(data)
+    def divider(self): return None
+    def container(self): return _Ctx()
+    def expander(self, _): return _Ctx()
+    def columns(self, n): return [self for _ in range(n)]
 
 
 class _Resp:
@@ -277,6 +304,61 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
     )
     assert vm["integrity"]["normalized"]["persistence_status"] == "EXECUTED"
     assert vm["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"] == "A-exec"
+
+
+def test_d7_renderer_helper_api_presence_and_ordering_constant():
+    assert D7_RENDER_SECTION_ORDER == (
+        "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "governance_debug_archive"
+    )
+    assert callable(render_d7_intelligence_overview)
+    assert callable(render_d7_supervisor_interpretation)
+    assert callable(render_d7_finding_cards)
+    assert callable(render_d7_narrative_sections)
+    assert callable(render_d7_evidence_highlights)
+    assert callable(render_d7_integrity_overview)
+    assert callable(render_d7_debug_archive)
+
+
+def test_d7_render_plan_deterministic_contract_and_no_debug_leakage_in_primary_fields():
+    client = _build_client()
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    plan = build_d7_render_plan(vm)
+    assert plan["section_order"] == list(D7_RENDER_SECTION_ORDER)
+    assert "checksum" not in "".join(plan["overview_metrics"].keys()).lower()
+    assert "raw_payload_json" not in str(plan)
+
+
+def test_d7_renderer_tolerates_missing_sections_and_empty_lists():
+    st = FakeStreamlit()
+    render_d7_intelligence_overview({}, st=st)
+    render_d7_supervisor_interpretation({}, st=st)
+    render_d7_finding_cards([], st=st)
+    render_d7_narrative_sections({}, st=st)
+    render_d7_evidence_highlights([], st=st)
+    render_d7_integrity_overview({}, st=st)
+    render_d7_debug_archive({}, st=st)
+    assert any("No intelligence finding cards" in x for x in st.captions)
+    assert any("No narrative sections" in x for x in st.captions)
+    assert any("No evidence highlights" in x for x in st.captions)
+
+
+def test_d7_primary_render_sections_do_not_emit_raw_payload_or_internal_ids():
+    st = FakeStreamlit()
+    card = {
+        "finding_title": "Test", "finding_type": "credit", "severity": "high", "confidence": "high",
+        "summary": "sum", "expectation_fragility_interpretation": "interp", "why_this_matters": "matters",
+        "evidence_highlights": ["e1"], "internal_id": "i1", "checksum_ref": "c1", "raw_payload": {"k": "v"},
+    }
+    render_d7_finding_cards([card], st=st)
+    combined = " ".join(st.markdowns + st.captions)
+    assert "internal_id" not in combined
+    assert "raw_payload" not in combined
+    assert len(st.json_calls) >= 1
 
 
 def test_d7_derives_full_checksum_continuity_from_d6_replay_record():
