@@ -1,6 +1,7 @@
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
     D7_RENDER_SECTION_ORDER,
     D7_PHYSICAL_COLUMNS_BY_TABLE,
+    build_e6_executive_summary_render_plan,
     build_d7_dashboard_view_model,
     build_d7_render_plan,
     build_d7_debug_payload_sections,
@@ -14,6 +15,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_finding_cards,
     render_d7_intelligence_overview,
     render_d7_integrity_overview,
+    render_e6_expectation_executive_summary,
     render_d7_narrative_sections,
     render_d7_supervisor_interpretation,
     load_d7_dashboard_evidence_maps,
@@ -308,8 +310,9 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
 
 def test_d7_renderer_helper_api_presence_and_ordering_constant():
     assert D7_RENDER_SECTION_ORDER == (
-        "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "governance_debug_archive"
+        "e6_expectation_executive_summary", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "governance_debug_archive"
     )
+    assert callable(render_e6_expectation_executive_summary)
     assert callable(render_d7_intelligence_overview)
     assert callable(render_d7_supervisor_interpretation)
     assert callable(render_d7_finding_cards)
@@ -335,6 +338,7 @@ def test_d7_render_plan_deterministic_contract_and_no_debug_leakage_in_primary_f
 
 def test_d7_renderer_tolerates_missing_sections_and_empty_lists():
     st = FakeStreamlit()
+    render_e6_expectation_executive_summary({}, st=st)
     render_d7_intelligence_overview({}, st=st)
     render_d7_supervisor_interpretation({}, st=st)
     render_d7_finding_cards([], st=st)
@@ -345,6 +349,43 @@ def test_d7_renderer_tolerates_missing_sections_and_empty_lists():
     assert any("No intelligence finding cards" in x for x in st.captions)
     assert any("No narrative sections" in x for x in st.captions)
     assert any("No evidence highlights" in x for x in st.captions)
+    assert any("E5 supervisor closeout is unavailable" in x for x in st.captions)
+
+
+def test_e6_render_plan_deterministic_and_field_extraction():
+    client = _build_client()
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    p1 = build_e6_executive_summary_render_plan(vm)
+    p2 = build_e6_executive_summary_render_plan(vm)
+    assert p1 == p2
+    assert p1["available"] is True
+    assert "dominant_expectation_regime" in p1["panels"]["executive_summary"]
+    assert "e5_operational_status" in p1["panels"]["operational_usefulness"]
+    assert "most_important_contradictions" in p1["panels"]["contradiction_priority"]
+    assert "strongest_supporting_evidence_refs" in p1["panels"]["strongest_evidence"]
+    assert "persistent_themes" in p1["panels"]["temporal_semantic_change"]
+    assert "confidence_constraints" in p1["panels"]["caveat_inventory"]
+
+
+def test_e6_debug_only_contains_raw_e5_payload_and_primary_plan_excludes_debug_tokens():
+    client = _build_client()
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    plan = build_e6_executive_summary_render_plan(vm)
+    primary_text = str(plan["panels"])
+    assert "raw_e5_envelope" not in primary_text
+    assert "governance_flags" not in primary_text
+    assert "checksum" not in primary_text.lower()
+    assert "raw_e5_envelope" in plan["debug"]
 
 
 def test_d7_primary_render_sections_do_not_emit_raw_payload_or_internal_ids():

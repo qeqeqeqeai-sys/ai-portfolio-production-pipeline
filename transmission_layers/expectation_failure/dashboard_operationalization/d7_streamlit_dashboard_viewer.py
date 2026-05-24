@@ -13,8 +13,9 @@ from typing import Any, Mapping
 from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
-D7_MODULE_VERSION = "1.2.0"
+D7_MODULE_VERSION = "1.3.0"
 D7_RENDER_SECTION_ORDER = (
+    "e6_expectation_executive_summary",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -642,11 +643,147 @@ def _render_value(value: Any, *, fallback: str = "N/A") -> str:
     return text if text else fallback
 
 
+def _extract_e5_closeout(view_model: Mapping[str, Any]) -> Mapping[str, Any]:
+    payload = view_model.get("e5_expectation_supervisor_closeout") if isinstance(view_model.get("e5_expectation_supervisor_closeout"), Mapping) else {}
+    return payload if isinstance(payload, Mapping) else {}
+
+
+def _to_bullets(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if value is None:
+        return []
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def _status_label(status: Any) -> str:
+    token = str(status or "").strip().upper()
+    mapping = {
+        "OPERATIONALLY_USABLE": "Operationally Usable",
+        "DEGRADED_OPERATIONAL_INTELLIGENCE": "Degraded Operational Intelligence",
+        "LIMITED_INTERPRETABILITY": "Limited Interpretability",
+        "BLOCKED_EXPECTATION_INTELLIGENCE": "Blocked Expectation Intelligence",
+    }
+    return mapping.get(token, _render_value(status, fallback="Unavailable"))
+
+
+def build_e6_executive_summary_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    e5 = _extract_e5_closeout(view_model)
+    if not e5:
+        return OrderedDict([("available", False), ("message", "E5 supervisor closeout is unavailable for this run."), ("panels", OrderedDict()), ("debug", OrderedDict())])
+    dominant_regime = _nested_get(e5, ("composite_regime_synthesis", "dominant_expectation_regime"))
+    confidence_band = _nested_get(e5, ("composite_regime_synthesis", "regime_confidence_band"))
+    operational_status = _nested_get(e5, ("e5_operational_status", "e5_operational_status"))
+    readiness_score = _nested_get(e5, ("e5_operational_status", "operational_readiness_score"))
+    panels = OrderedDict([
+        ("executive_summary", OrderedDict([
+            ("dominant_expectation_regime", _render_value(dominant_regime, fallback="Unavailable")),
+            ("regime_confidence_band", _render_value(confidence_band, fallback="Unavailable")),
+            ("operational_usefulness_status", _status_label(operational_status)),
+            ("operational_readiness_score", _render_value(readiness_score, fallback="Unavailable")),
+            ("strongest_supporting_evidence_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "strongest_supporting_evidence_summary")), fallback="Unavailable")),
+            ("key_contradiction_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "key_contradiction_summary")), fallback="Unavailable")),
+            ("temporal_semantic_change_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "temporal_semantic_change_summary")), fallback="Unavailable")),
+            ("caveat_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "caveat_summary")), fallback="Unavailable")),
+            ("supervisor_closeout_interpretation", _render_value(_nested_get(e5, ("supervisor_closeout", "supervisor_closeout_interpretation")), fallback="Unavailable")),
+        ])),
+        ("dominant_regime", OrderedDict([
+            ("dominant_expectation_regime", _render_value(dominant_regime, fallback="Unavailable")),
+            ("supporting_regimes", _to_bullets(_nested_get(e5, ("composite_regime_synthesis", "supporting_regimes")))),
+            ("regime_confidence_band", _render_value(confidence_band, fallback="Unavailable")),
+            ("regime_interpretation", _render_value(_nested_get(e5, ("composite_regime_synthesis", "regime_interpretation")), fallback="Unavailable")),
+            ("supporting_signal_refs", _to_bullets(_nested_get(e5, ("composite_regime_synthesis", "supporting_signal_refs")))),
+            ("caveats", _to_bullets(_nested_get(e5, ("composite_regime_synthesis", "caveats")))),
+        ])),
+        ("operational_usefulness", OrderedDict([
+            ("e5_operational_status", _status_label(operational_status)),
+            ("operational_readiness_score", _render_value(readiness_score, fallback="Unavailable")),
+            ("operational_readiness_interpretation", _render_value(_nested_get(e5, ("e5_operational_status", "operational_readiness_interpretation")), fallback="Unavailable")),
+            ("degrading_or_blocking_factors", _to_bullets(_nested_get(e5, ("e5_operational_status", "degrading_or_blocking_factors")))),
+        ])),
+        ("contradiction_priority", OrderedDict([
+            ("most_important_contradictions", _to_bullets(_nested_get(e5, ("contradiction_priority_synthesis", "most_important_contradictions")))),
+            ("unresolved_contradiction_clusters", _to_bullets(_nested_get(e5, ("contradiction_priority_synthesis", "unresolved_contradiction_clusters")))),
+            ("contradiction_significance_summary", _render_value(_nested_get(e5, ("contradiction_priority_synthesis", "contradiction_significance_summary")), fallback="Unavailable")),
+            ("affected_themes_or_findings", _to_bullets(_nested_get(e5, ("contradiction_priority_synthesis", "affected_themes_or_findings")))),
+        ])),
+        ("strongest_evidence", OrderedDict([
+            ("strongest_supporting_evidence_refs", _to_bullets(_nested_get(e5, ("evidence_support_synthesis", "strongest_supporting_evidence_refs")))),
+            ("weakest_supporting_areas", _to_bullets(_nested_get(e5, ("evidence_support_synthesis", "weakest_supporting_areas")))),
+            ("evidence_support_interpretation", _render_value(_nested_get(e5, ("evidence_support_synthesis", "evidence_support_interpretation")), fallback="Unavailable")),
+            ("caveats", _to_bullets(_nested_get(e5, ("evidence_support_synthesis", "caveats")))),
+        ])),
+        ("temporal_semantic_change", OrderedDict([
+            ("persistent_themes", _to_bullets(_nested_get(e5, ("temporal_semantic_synthesis", "persistent_themes")))),
+            ("emerging_themes", _to_bullets(_nested_get(e5, ("temporal_semantic_synthesis", "emerging_themes")))),
+            ("fading_themes", _to_bullets(_nested_get(e5, ("temporal_semantic_synthesis", "fading_themes")))),
+            ("semantic_drift_assessment", _render_value(_nested_get(e5, ("temporal_semantic_synthesis", "semantic_drift_assessment")), fallback="Unavailable")),
+            ("expectation_framing_assessment", _render_value(_nested_get(e5, ("temporal_semantic_synthesis", "expectation_framing_assessment")), fallback="Unavailable")),
+            ("temporal_semantic_interpretation", _render_value(_nested_get(e5, ("temporal_semantic_synthesis", "temporal_semantic_interpretation")), fallback="Unavailable")),
+        ])),
+        ("caveat_inventory", OrderedDict([
+            ("confidence_constraints", _to_bullets(_nested_get(e5, ("caveat_inventory", "confidence_constraints")))),
+            ("operational_limitations", _to_bullets(_nested_get(e5, ("caveat_inventory", "operational_limitations")))),
+            ("consolidated_caveats", _to_bullets(_nested_get(e5, ("caveat_inventory", "consolidated_caveats")))),
+            ("caveat_severity", _render_value(_nested_get(e5, ("caveat_inventory", "caveat_severity")), fallback="Unavailable")),
+        ])),
+    ])
+    debug = OrderedDict([
+        ("raw_e5_envelope", deepcopy(e5)),
+        ("checksum", e5.get("checksum")),
+        ("governance_flags", deepcopy(e5.get("governance_flags") or {})),
+        ("supporting_refs", deepcopy(e5.get("supporting_refs") or [])),
+        ("full_synthesis_payloads", OrderedDict((k, deepcopy(e5.get(k))) for k in sorted(e5.keys()) if k not in {"checksum", "governance_flags", "supporting_refs"})),
+    ])
+    return OrderedDict([("available", True), ("message", ""), ("panels", panels), ("debug", debug)])
+
+
+def render_e6_expectation_executive_summary(view_model: Mapping[str, Any], *, st: Any) -> None:
+    plan = build_e6_executive_summary_render_plan(view_model)
+    st.markdown("### E6 Expectation Intelligence Executive Summary")
+    if not plan.get("available"):
+        st.caption(plan.get("message") or "E5 supervisor closeout is unavailable for this run.")
+        return
+    panels = plan.get("panels", {})
+    summary = panels.get("executive_summary", {})
+    with st.container():
+        cols = st.columns(4)
+        cols[0].metric("Dominant Regime", summary.get("dominant_expectation_regime"))
+        cols[1].metric("Confidence Band", summary.get("regime_confidence_band"))
+        cols[2].metric("Operational Status", summary.get("operational_usefulness_status"))
+        cols[3].metric("Readiness Score", summary.get("operational_readiness_score"))
+        st.markdown(f"**Strongest Supporting Evidence:** {summary.get('strongest_supporting_evidence_summary')}")
+        st.markdown(f"**Key Contradiction:** {summary.get('key_contradiction_summary')}")
+        st.markdown(f"**Temporal-Semantic Change:** {summary.get('temporal_semantic_change_summary')}")
+        st.markdown(f"**Caveat Summary:** {summary.get('caveat_summary')}")
+        st.caption(f"Supervisor interpretation: {summary.get('supervisor_closeout_interpretation')}")
+    for panel_key, panel_title in [("dominant_regime", "Dominant Expectation Regime"), ("operational_usefulness", "Operational Usefulness Certification"), ("contradiction_priority", "Contradiction Priority"), ("strongest_evidence", "Strongest Evidence & Weak Areas"), ("temporal_semantic_change", "Temporal-Semantic Change"), ("caveat_inventory", "Caveat Inventory")]:
+        panel = panels.get(panel_key, {})
+        with st.container():
+            st.markdown(f"#### {panel_title}")
+            for key, value in panel.items():
+                label = key.replace("_", " ").capitalize()
+                if isinstance(value, list):
+                    st.markdown(f"**{label}:**")
+                    if value:
+                        for item in value:
+                            st.markdown(f"- {item}")
+                    else:
+                        st.caption("Unavailable")
+                else:
+                    st.markdown(f"**{label}:** {value}")
+    with st.expander("E5 Debug Envelope"):
+        st.json(plan.get("debug", {}))
+
+
 def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
     supervisor = view_model.get("supervisor_summary") if isinstance(view_model.get("supervisor_summary"), Mapping) else {}
     integrity = view_model.get("integrity_overview") if isinstance(view_model.get("integrity_overview"), Mapping) else {}
+    e6_plan = build_e6_executive_summary_render_plan(view_model)
     return OrderedDict([
         ("section_order", list(D7_RENDER_SECTION_ORDER)),
+        ("e6_expectation_executive_summary", e6_plan),
         ("overview_metrics", OrderedDict([
             ("dominant_fragility_theme", _render_value(supervisor.get("dominant_fragility_theme"))),
             ("expectation_pressure_state", _render_value(supervisor.get("expectation_pressure_concentration"))),
@@ -785,6 +922,8 @@ def render_d7_debug_archive(debug_payload_sections: Mapping[str, Any], *, st: An
 
 
 __all__ = [
+    "build_e6_executive_summary_render_plan",
+    "render_e6_expectation_executive_summary",
     "load_d7_dashboard_findings",
     "load_d7_dashboard_narratives",
     "load_d7_dashboard_evidence_maps",
