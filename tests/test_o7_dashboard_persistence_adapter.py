@@ -129,10 +129,42 @@ def test_injected_client_success_and_failure_encoding_and_reference_preservation
     rec = finding_batch["records"][0]
     assert rec["record_id"]
     assert rec["finding_id"] == "F1"
-    assert rec["supporting_evidence_refs"] == ["E1"]
+    assert "supporting_evidence_refs" not in rec
+    assert rec["payload"]["supporting_evidence_refs"] == ["E1"]
     assert rec["lineage_refs"] == {"k": "v"}
     assert rec["source_payload_checksum"]
     assert rec["export_checksum"]
+
+
+def test_serializer_strips_unknown_top_level_fields_and_preserves_payload():
+    bundle = build_o6_dashboard_export_bundle(_o5_payload())
+    plan = build_o7_write_batch_plan(bundle)
+    cols_by_table = {
+        "dashboard_finding_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","finding_id","finding_type","finding_title","finding_severity","finding_direction","confidence_label"},
+        "dashboard_narrative_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","narrative_section","related_finding_ids"},
+        "dashboard_evidence_map_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","finding_id","evidence_ref"},
+        "dashboard_supervisor_panel_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","panel_name","panel_status"},
+        "dashboard_export_manifests": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","manifest_id","manifest_checksum"},
+        "dashboard_governance_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","governance_status","forbidden_capabilities"},
+        "dashboard_replay_metadata_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","replay_id","replay_checksum"},
+        "dashboard_persistence_audit_records": {"record_id","record_type","source_payload_checksum","export_checksum","payload","lineage_refs","evidence_refs","governance_notes","replay_metadata","audit_id","batch_id","target_table","write_status"},
+    }
+    for batch in plan["batches"]:
+        allowed = cols_by_table[batch["target_table"]]
+        for rec in batch["records"]:
+            assert set(rec.keys()).issubset(allowed)
+            assert "payload" in rec
+
+
+def test_fake_client_receives_schema_compatible_records_only():
+    bundle = build_o6_dashboard_export_bundle(_o5_payload())
+    plan = build_o7_write_batch_plan(bundle)
+    client = FakeClient()
+    persist_o7_dashboard_export_bundle(bundle, client=client, dry_run=False)
+    for table, _, _ in client.calls:
+        batch = next(b for b in plan["batches"] if b["target_table"] == table)
+        for rec in batch["records"]:
+            assert "payload" in rec
 
 
 def test_governance_and_forbidden_capabilities_report_smoke():

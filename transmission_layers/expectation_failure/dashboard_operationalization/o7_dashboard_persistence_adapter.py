@@ -7,6 +7,7 @@ from copy import deepcopy
 import hashlib
 import json
 from typing import Any, Mapping
+from .d2_dashboard_supabase_schema import build_d2_dashboard_column_contract
 
 CERTIFIED = "CERTIFIED_PERSISTENCE_ADAPTER_READY"
 DEGRADED = "DEGRADED_PERSISTENCE_ADAPTER_READY"
@@ -56,6 +57,30 @@ def _sorted_records(records: list[Mapping[str, Any]]) -> list[OrderedDict[str, A
     return normalized
 
 
+def _jsonb_safe(value: Any) -> Any:
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, Mapping):
+        return OrderedDict((str(k), _jsonb_safe(v)) for k, v in sorted(value.items(), key=lambda kv: str(kv[0])))
+    if isinstance(value, (list, tuple, set)):
+        return [_jsonb_safe(v) for v in value]
+    return str(value)
+
+
+def serialize_o7_record_for_table(table_name: str, record: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    cols = set(build_d2_dashboard_column_contract().get(table_name, []))
+    src = OrderedDict(sorted(dict(record).items()))
+    physical = OrderedDict((k, _jsonb_safe(v)) for k, v in src.items() if k in cols and k not in {"payload", "created_at", "updated_at"})
+    moved_keys = [k for k in src.keys() if k not in cols]
+    payload = OrderedDict((k, _jsonb_safe(src[k])) for k in moved_keys)
+    existing_payload = src.get("payload")
+    if isinstance(existing_payload, Mapping):
+        for k, v in OrderedDict(sorted(dict(existing_payload).items())).items():
+            payload.setdefault(str(k), _jsonb_safe(v))
+    physical["payload"] = payload
+    return physical
+
+
 def build_o7_persistence_table_contract() -> OrderedDict[str, Any]:
     tables: list[OrderedDict[str, Any]] = []
     for table_name, _, record_type, req, unique, checksums, note in _TABLE_SPECS:
@@ -95,24 +120,41 @@ def _extract_records(bundle: Mapping[str, Any], bundle_checksum: str) -> Ordered
                 norm.setdefault("record_id", f"O7EM-{bundle_checksum[:16].upper()}")
                 norm.setdefault("source_payload_checksum", str(bundle.get("o6_checksum") or ""))
                 norm.setdefault("export_checksum", _stable_checksum(norm))
-            recs.append(norm)
+            recs.append(serialize_o7_record_for_table(table_name, norm))
         out[table_name] = _sorted_records(recs)
     return out
+
+
+def _record_serialization_diagnostics(table_name: str, records: list[Mapping[str, Any]]) -> OrderedDict[str, Any]:
+    cols = set(build_d2_dashboard_column_contract().get(table_name, []))
+    original = sorted({k for r in records if isinstance(r, Mapping) for k in r.keys()})
+    serialized_records = [serialize_o7_record_for_table(table_name, r) for r in records if isinstance(r, Mapping)]
+    serialized = sorted({k for r in serialized_records for k in r.keys()})
+    moved = sorted([k for k in original if k not in cols])
+    return OrderedDict([
+        ("original_record_keys", original),
+        ("serialized_record_keys", serialized),
+        ("moved_to_payload_keys", moved),
+    ])
 
 
 def build_o7_persistence_audit_manifest(bundle: Mapping[str, Any] | None) -> OrderedDict[str, Any]:
     src = dict(_stable_copy(bundle or {}))
     o6_checksum = str(src.get("o6_checksum") or "")
+    record_id = f"O7PA-{_stable_checksum(src)[:16].upper()}"
     manifest = OrderedDict([
-        ("record_id", f"O7PA-{_stable_checksum(src)[:16].upper()}"),
+        ("record_id", record_id),
         ("record_type", "persistence_audit_record"),
-        ("o6_checksum", o6_checksum),
+        ("audit_id", record_id),
+        ("batch_id", f"O7B-AUD-{o6_checksum[:8].upper()}" if o6_checksum else "O7B-AUD-UNKNOWN"),
+        ("target_table", "dashboard_persistence_audit_records"),
+        ("write_status", "PLANNED"),
         ("source_payload_checksum", o6_checksum),
         ("approved_tables", [s[0] for s in _TABLE_SPECS[:-1]]),
         ("forbidden_capability_inventory", OrderedDict((k, True) for k in FORBIDDEN_CAPABILITIES)),
     ])
     manifest["export_checksum"] = _stable_checksum(manifest)
-    return manifest
+    return serialize_o7_record_for_table("dashboard_persistence_audit_records", manifest)
 
 
 def build_o7_write_batch_plan(bundle: Mapping[str, Any] | None) -> OrderedDict[str, Any]:
@@ -136,6 +178,7 @@ def build_o7_write_batch_plan(bundle: Mapping[str, Any] | None) -> OrderedDict[s
             ("records", records),
             ("write_mode", tc["write_mode"]),
         ])
+        batch_core.update(_record_serialization_diagnostics(table, records))
         batch_core["batch_checksum"] = _stable_checksum(batch_core)
         batches.append(batch_core)
     plan = OrderedDict([

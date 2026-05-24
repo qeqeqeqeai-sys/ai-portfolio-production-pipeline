@@ -168,6 +168,9 @@ def execute_d3_dashboard_persistence(payload: Mapping[str, Any] | None, client: 
                 ("error_type", err_type),
                 ("error_message_short", err_msg),
                 ("batch_checksum", str(batch.get("batch_checksum") or "")),
+                ("original_record_keys", sorted({k for r in records if isinstance(r, Mapping) for k in r.keys()})),
+                ("serialized_record_keys", sorted({k for r in records if isinstance(r, Mapping) for k in r.keys()})),
+                ("moved_to_payload_keys", sorted({k for r in records if isinstance(r, Mapping) for k in (r.get("payload", {}) or {}).keys() if isinstance(r.get("payload", {}), Mapping)})),
             ])
             result["result_checksum"] = _stable_checksum(result)
             table_results.append(result)
