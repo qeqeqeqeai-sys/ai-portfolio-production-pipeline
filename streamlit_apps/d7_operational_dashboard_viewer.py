@@ -28,6 +28,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_supervisor_interpretation,
     render_d15_historical_operational_intelligence,
     render_d16_historical_findings_operator_narrative,
+    render_d17_historical_confidence_lineage,
     render_e6_expectation_executive_summary,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
@@ -106,6 +107,7 @@ def main() -> None:
     render_e6_expectation_executive_summary(vm, st=st)
     render_d15_historical_operational_intelligence(vm, st=st)
     render_d16_historical_findings_operator_narrative(vm, st=st)
+    render_d17_historical_confidence_lineage(vm, st=st)
     render_d7_intelligence_overview(vm, st=st)
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
