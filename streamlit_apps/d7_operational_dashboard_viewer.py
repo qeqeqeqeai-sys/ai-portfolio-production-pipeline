@@ -91,7 +91,7 @@ def main() -> None:
         st.success(f"Loaded {int(findings_payload.get('row_count') or 0)} findings from Supabase")
 
     intelligence_cards = build_d7_intelligence_cards(vm.get("findings", []), vm.get("evidence_maps", []))
-    narrative_sections = build_d7_narrative_sections(vm.get("narratives", []), vm.get("findings", []), vm.get("evidence_maps", []))
+    narrative_sections = build_d7_narrative_sections(vm.get("narratives", []))
     evidence_highlights = build_d7_evidence_highlights(vm.get("evidence_maps", []), vm.get("findings", []))
     supervisor_summary = build_d7_supervisor_summary(vm)
     integrity_overview = vm.get("integrity_overview", {})
