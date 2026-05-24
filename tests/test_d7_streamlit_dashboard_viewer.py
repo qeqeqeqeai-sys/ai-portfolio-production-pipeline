@@ -4,6 +4,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     build_e6_executive_summary_render_plan,
     build_d7_dashboard_view_model,
     build_d7_render_plan,
+    build_d15_historical_operational_intelligence_render_plan,
     build_d7_debug_payload_sections,
     build_d7_evidence_highlights,
     build_d7_intelligence_cards,
@@ -16,6 +17,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_intelligence_overview,
     render_d7_integrity_overview,
     render_d8_2_replay_evidence_density_summary,
+    render_d15_historical_operational_intelligence,
     render_e6_expectation_executive_summary,
     render_d7_narrative_sections,
     render_d7_supervisor_interpretation,
@@ -229,6 +231,50 @@ def test_d8_2_summary_renderer_keeps_raw_ids_outside_primary_surface():
     assert "internal-run-1" not in primary_text
     assert st.json_calls
 
+
+def test_d15_operational_intelligence_sections_render_when_payload_exists():
+    st = FakeStreamlit()
+    vm = {
+        "d15_historical_backfill_execution_enrichment": {
+            "historical_replay_depth": "SUFFICIENT",
+            "historical_expectation_regime": "STABLE",
+            "regime_evolution_timeline_cards": ["W1 stable", "W2 stable"],
+            "strongest_recurring_constraints": ["constraint_a"],
+            "strongest_historical_patterns": ["pattern_a"],
+            "historical_continuity_status": "CONTINUOUS",
+            "supervisory_operational_summary": "Operational continuity preserved.",
+            "supervisory_risk_band": "LOW",
+            "operational_recommendation": "Continue controlled read-only monitoring.",
+            "governance_debug_details": {"audit_visibility": "secondary"},
+            "payload_checksum": "chk-d15",
+        },
+        "d15_historical_execution_timeline": [{"phase": "D11"}],
+        "d15_dashboard_enrichment_certification": {"certification_status": "CERTIFIED_DASHBOARD_ENRICHMENT"},
+    }
+    render_d15_historical_operational_intelligence(vm, st=st)
+    joined = " ".join(st.markdowns + st.captions + [label for label, _ in st.metrics])
+    assert "Historical Replay Depth" in joined
+    assert "Historical Expectation Regime" in joined
+    assert "Operational Recommendation" in joined
+    assert st.json_calls
+
+
+def test_d15_operational_intelligence_handles_missing_or_degraded_payload():
+    st = FakeStreamlit()
+    render_d15_historical_operational_intelligence({}, st=st)
+    assert any("unavailable" in text.lower() for text in st.captions)
+
+
+def test_d15_governance_debug_details_are_secondary_and_collapsible():
+    plan = build_d15_historical_operational_intelligence_render_plan({
+        "d15_historical_backfill_execution_enrichment": {"historical_replay_depth": "SUFFICIENT", "governance_debug_details": {"audit": "visible"}, "payload_checksum": "abc"},
+        "d15_historical_execution_timeline": [],
+        "d15_dashboard_enrichment_certification": {"certification_status": "CERTIFIED_DASHBOARD_ENRICHMENT"},
+    })
+    assert plan["available"] is True
+    assert "governance_debug_details" in plan
+    assert "primary_sections" in plan
+
 def test_d7_ignores_stale_planned_when_newer_executed_exists():
     client = _build_client()
     client.tables["dashboard_persistence_audit_records"] = [
@@ -331,9 +377,10 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
 
 def test_d7_renderer_helper_api_presence_and_ordering_constant():
     assert D7_RENDER_SECTION_ORDER == (
-        "e6_expectation_executive_summary", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
+        "e6_expectation_executive_summary", "d15_historical_operational_intelligence", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
     )
     assert callable(render_e6_expectation_executive_summary)
+    assert callable(render_d15_historical_operational_intelligence)
     assert callable(render_d7_intelligence_overview)
     assert callable(render_d7_supervisor_interpretation)
     assert callable(render_d7_finding_cards)
