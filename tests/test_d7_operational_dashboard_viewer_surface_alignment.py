@@ -10,6 +10,7 @@ def test_d7_operational_dashboard_viewer_is_intelligence_first():
     assert "render_d7_narrative_sections" in source
     assert "render_d7_evidence_highlights" in source
     assert "render_d7_integrity_overview" in source
+    assert "render_d8_2_replay_evidence_density_summary" in source
     assert "render_d7_debug_archive" in source
 
     assert "st.dataframe(" not in source
@@ -93,6 +94,7 @@ def test_d7_operational_dashboard_viewer_main_smoke_catches_signature_mismatches
     monkeypatch.setattr(app, "render_d7_narrative_sections", lambda sections, *, st: None)
     monkeypatch.setattr(app, "render_d7_evidence_highlights", lambda highlights, *, st: None)
     monkeypatch.setattr(app, "render_d7_integrity_overview", lambda overview, *, st: None)
+    monkeypatch.setattr(app, "render_d8_2_replay_evidence_density_summary", lambda model, *, st: None)
     def _render_debug(archive, *, st):
         calls["debug_archive"] = archive
 
@@ -125,6 +127,7 @@ def test_d7_operational_dashboard_viewer_imported_helpers_match_runtime_contract
         "render_d7_intelligence_overview": "(view_model, st)",
         "render_d7_narrative_sections": "(narrative_sections, st)",
         "render_d7_supervisor_interpretation": "(supervisor_summary, st)",
+        "render_d8_2_replay_evidence_density_summary": "(view_model, st)",
         "render_e6_expectation_executive_summary": "(view_model, st)",
         "load_d7_dashboard_evidence_maps": "(client, limit)",
         "load_d7_dashboard_findings": "(client, limit)",
@@ -188,7 +191,48 @@ def test_d7_operational_dashboard_calls_d8_1_renderer(monkeypatch):
     monkeypatch.setattr(app, "render_d7_evidence_highlights", lambda highlights, *, st: None)
     monkeypatch.setattr(app, "render_d7_integrity_overview", lambda overview, *, st: None)
     monkeypatch.setattr(app, "render_d7_debug_archive", lambda archive, *, st: None)
+    monkeypatch.setattr(app, "render_d8_2_replay_evidence_density_summary", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d8_1_operational_insight_cards", lambda model, *, st: calls.__setitem__("d8_1", calls["d8_1"] + 1))
 
     app.main()
     assert calls["d8_1"] == 1
+
+
+def test_d7_operational_dashboard_calls_d8_2_renderer(monkeypatch):
+    import streamlit_apps.d7_operational_dashboard_viewer as app
+    calls = {"d8_2": 0}
+    class _Ctx:
+        def __enter__(self): return self
+        def __exit__(self, exc_type, exc, tb): return False
+    class _FakeSt:
+        secrets = {}
+        def cache_data(self, ttl=0): return lambda fn: fn
+        def set_page_config(self, **kwargs): return None
+        def title(self, *_args, **_kwargs): return None
+        def warning(self, *_args, **_kwargs): return None
+        def info(self, *_args, **_kwargs): return None
+        def success(self, *_args, **_kwargs): return None
+        def tabs(self, labels): return [_Ctx() for _ in labels]
+    vm = {"findings": [], "narratives": [], "evidence_maps": [], "integrity_overview": {}, "runtime_sections": {"findings_payload": {"row_count": 0}, "narratives_payload": {"row_count": 0}, "evidence_payload": {"row_count": 0}, "integrity_payload": {"manifests": {"row_count": 0}, "audits": {"row_count": 0}, "replay": {"row_count": 0}}}}
+    monkeypatch.setattr(app, "st", _FakeSt())
+    monkeypatch.setattr(app, "build_streamlit_supabase_runtime_config", lambda **kwargs: {})
+    monkeypatch.setattr(app, "resolve_streamlit_supabase_client", lambda _cfg: {"client": None, "client_resolved": False})
+    monkeypatch.setattr(app, "_load_view_model_cached", lambda _client: vm)
+    monkeypatch.setattr(app, "build_d7_runtime_diagnostics", lambda **kwargs: {})
+    monkeypatch.setattr(app, "build_d7_intelligence_cards", lambda findings, evidence_maps: [])
+    monkeypatch.setattr(app, "build_d7_evidence_highlights", lambda evidence_maps, findings: [])
+    monkeypatch.setattr(app, "build_d7_supervisor_summary", lambda model: {})
+    monkeypatch.setattr(app, "build_d7_narrative_sections", lambda narratives: [])
+    monkeypatch.setattr(app, "build_d7_debug_payload_sections", lambda model: {})
+    monkeypatch.setattr(app, "render_e6_expectation_executive_summary", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
+    monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
+    monkeypatch.setattr(app, "render_d8_1_operational_insight_cards", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_d7_narrative_sections", lambda sections, *, st: None)
+    monkeypatch.setattr(app, "render_d7_evidence_highlights", lambda highlights, *, st: None)
+    monkeypatch.setattr(app, "render_d7_integrity_overview", lambda overview, *, st: None)
+    monkeypatch.setattr(app, "render_d7_debug_archive", lambda archive, *, st: None)
+    monkeypatch.setattr(app, "render_d8_2_replay_evidence_density_summary", lambda model, *, st: calls.__setitem__("d8_2", calls["d8_2"] + 1))
+    app.main()
+    assert calls["d8_2"] == 1

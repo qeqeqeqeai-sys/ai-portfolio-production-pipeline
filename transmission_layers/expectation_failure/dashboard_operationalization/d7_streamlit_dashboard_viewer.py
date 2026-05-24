@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -22,6 +22,7 @@ D7_RENDER_SECTION_ORDER = (
     "narrative_sections",
     "evidence_highlights",
     "operational_integrity_overview",
+    "replay_evidence_density_summary",
     "governance_debug_archive",
 )
 
@@ -524,6 +525,7 @@ def build_d7_debug_payload_sections(view_model: Mapping[str, Any]) -> OrderedDic
         ("raw_replay_metadata", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "replay", "rows")) or [])),
         ("export_manifests", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "manifests", "rows")) or [])),
         ("audit_rows", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "audits", "rows")) or [])),
+        ("raw_d8_2_payload", deepcopy(view_model.get("d8_2_replay_density_expansion") or {})),
         ("internal_ids", OrderedDict([("latest_run", _nested_get(view_model, ("overview", "latest_operational_run")))])),
         ("raw_payload_json", deepcopy(view_model.get("runtime_sections", {}))),
     ])
@@ -598,6 +600,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     e5_payload = build_e5_expectation_intelligence_envelope(e1_payload=e1_payload, e2_payload=e2_payload, e3_payload=e3_payload, e4_payload=e4_payload, d7_context=OrderedDict([("findings", findings), ("narratives", narratives), ("evidence_maps", evidence_maps)]), governance_metadata=OrderedDict([("read_only_surface", True)]))
     d8_payload = build_d8_evidence_priority_inventory(findings, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
     d8_dashboard = build_d8_dashboard_view_model(d8_payload)
+    d8_2_payload = build_d8_2_payload(historical_runs_payloads or [], findings, narratives, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
+    d8_2_dashboard = build_d8_2_dashboard_view_model(d8_2_payload)
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
@@ -633,6 +637,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("e5_expectation_supervisor_closeout", e5_payload),
         ("d8_evidence_prioritization", d8_payload),
         ("d8_dashboard", d8_dashboard),
+        ("d8_2_replay_density_expansion", d8_2_payload),
+        ("d8_2_dashboard", d8_2_dashboard),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -819,6 +825,36 @@ def render_d8_1_operational_insight_cards(view_model: Mapping[str, Any], *, st: 
         st.json(card_model.get("debug", {}))
 
 
+def render_d8_2_replay_evidence_density_summary(view_model: Mapping[str, Any], *, st: Any) -> None:
+    st.markdown("### D8.2 Replay & Evidence Density")
+    dashboard = view_model.get("d8_2_dashboard") if isinstance(view_model, Mapping) else {}
+    dashboard = dashboard if isinstance(dashboard, Mapping) else {}
+    if not dashboard:
+        st.caption("D8.2 replay/evidence density summaries are unavailable.")
+        return
+
+    semantic = dashboard.get("semantic_persistence_summary") if isinstance(dashboard.get("semantic_persistence_summary"), Mapping) else {}
+    density = dashboard.get("evidence_density_indicators") if isinstance(dashboard.get("evidence_density_indicators"), Mapping) else {}
+    replay = dashboard.get("replay_continuity_summary") if isinstance(dashboard.get("replay_continuity_summary"), Mapping) else {}
+    regime = dashboard.get("regime_transition_history") if isinstance(dashboard.get("regime_transition_history"), Mapping) else {}
+    contradiction = dashboard.get("persistent_contradiction_tracking") if isinstance(dashboard.get("persistent_contradiction_tracking"), Mapping) else {}
+    evolution = dashboard.get("thematic_evolution_summary") if isinstance(dashboard.get("thematic_evolution_summary"), Mapping) else {}
+
+    cols = st.columns(3)
+    cols[0].metric("Semantic Persistence", _render_value(semantic.get("persistence_status"), fallback="insufficient_history"))
+    cols[1].metric("Evidence Density", _render_value(density.get("evidence_density_classification"), fallback="sparse"))
+    cols[2].metric("Replay Continuity", _render_value(replay.get("continuity_status"), fallback="NO_HISTORY_AVAILABLE"))
+    st.markdown(f"**Regime Transitions:** {_render_value(regime.get('transition_count'), fallback='0')} observed.")
+    st.markdown(f"**Persistent Contradictions:** {_render_value(', '.join(str(x) for x in _as_list(contradiction.get('persistent_contradiction_themes'))), fallback='None observed')}")
+    st.markdown(f"**Theme Evolution:** {_render_value(evolution.get('evolution_interpretation'), fallback='No evolution summary available.')}")
+    st.markdown(f"**Replay-linked Evidence Lineage:** {_render_value(', '.join(str(x) for x in _as_list(density.get('replay_linked_evidence_refs'))), fallback='Unavailable')}")
+    with st.expander("D8.2 Debug/Archive Payload"):
+        st.json(OrderedDict([
+            ("d8_2_dashboard", deepcopy(dashboard)),
+            ("d8_2_raw_payload", deepcopy(view_model.get("d8_2_replay_density_expansion") if isinstance(view_model, Mapping) else {})),
+        ]))
+
+
 def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
     supervisor = view_model.get("supervisor_summary") if isinstance(view_model.get("supervisor_summary"), Mapping) else {}
     integrity = view_model.get("integrity_overview") if isinstance(view_model.get("integrity_overview"), Mapping) else {}
@@ -967,6 +1003,7 @@ __all__ = [
     "build_e6_executive_summary_render_plan",
     "render_e6_expectation_executive_summary",
     "render_d8_1_operational_insight_cards",
+    "render_d8_2_replay_evidence_density_summary",
     "load_d7_dashboard_findings",
     "load_d7_dashboard_narratives",
     "load_d7_dashboard_evidence_maps",

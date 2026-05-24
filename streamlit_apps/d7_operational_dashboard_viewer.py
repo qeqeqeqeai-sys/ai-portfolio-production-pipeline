@@ -21,6 +21,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_evidence_highlights,
     render_d7_finding_cards,
     render_d8_1_operational_insight_cards,
+    render_d8_2_replay_evidence_density_summary,
     render_d7_integrity_overview,
     render_d7_intelligence_overview,
     render_d7_narrative_sections,
@@ -103,12 +104,13 @@ def main() -> None:
     render_e6_expectation_executive_summary(vm, st=st)
     render_d7_intelligence_overview(vm, st=st)
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "Supervisor Interpretation",
         "Key Finding Cards",
         "Narrative Sections",
         "Evidence Highlights",
         "Operational Integrity",
+        "Replay & Evidence Density",
         "Governance / Debug Archive",
     ])
 
@@ -124,6 +126,8 @@ def main() -> None:
     with tab5:
         render_d7_integrity_overview(integrity_overview, st=st)
     with tab6:
+        render_d8_2_replay_evidence_density_summary(vm, st=st)
+    with tab7:
         render_d7_debug_archive(debug_archive, st=st)
 
 
