@@ -189,6 +189,8 @@ __all__ = [
     "build_d8_2_payload",
     "build_d8_5_operational_intelligence_density_verification",
     "assess_d8_5_supabase_backfill_readiness",
+    "build_d8_6_evidence_graph_enrichment_linkage_density",
+    "build_d8_6_dashboard_view_model",
 
 ]
 
@@ -222,5 +224,10 @@ from .d8_2_evidence_density_historical_replay_expansion import (
 from .d8_5_operational_intelligence_density_verification import (
     build_d8_5_operational_intelligence_density_verification,
     assess_d8_5_supabase_backfill_readiness,
+)
+
+from .d8_6_evidence_graph_enrichment_linkage_density import (
+    build_d8_6_evidence_graph_enrichment_linkage_density,
+    build_d8_6_dashboard_view_model,
 )
 

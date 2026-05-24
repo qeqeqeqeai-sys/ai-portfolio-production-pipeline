@@ -489,3 +489,16 @@ def test_d7_integrity_debug_separation_and_input_immutability():
     assert "checksum_chain" in debug and "raw_payload_json" in debug
     assert "what_sefi_currently_believes" in summary
     assert findings_payload["rows"][0]["finding_title"] == before
+
+
+def test_d7_d8_6_enrichment_surface_and_strongest_evidence_override():
+    client = _build_client()
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert "d8_6_evidence_graph_enrichment" in vm
+    assert "d8_6_dashboard" in vm
+    assert vm["d8_dashboard"]["strongest_supporting_evidence_panel"].get("evidence_ref")
