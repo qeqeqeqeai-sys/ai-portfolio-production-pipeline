@@ -1,5 +1,6 @@
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
     build_d7_dashboard_view_model,
+    build_d7_runtime_diagnostics,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
     load_d7_dashboard_narratives,
@@ -110,3 +111,51 @@ def test_d7_supabase_abstraction_boundary_read_only_usage():
     _ = load_d7_dashboard_findings(client)
     _ = load_d7_dashboard_operational_integrity(client)
     assert client.write_calls == []
+
+
+def test_d7_runtime_diagnostics_shape_and_counts():
+    client = _build_client()
+    findings = load_d7_dashboard_findings(client)
+    narratives = load_d7_dashboard_narratives(client)
+    evidence = load_d7_dashboard_evidence_maps(client)
+    integrity = load_d7_dashboard_operational_integrity(client)
+    out = build_d7_runtime_diagnostics(
+        runtime_config={
+            "supabase_url": "https://abc123.supabase.co",
+            "supabase_key": "eyJ...service_role...",
+            "credentials_present": True,
+            "supabase_url_source": "streamlit_secrets:SUPABASE_URL",
+            "github_actions_supabase_url": "https://abc123.supabase.co",
+        },
+        client_resolution={"client_resolved": True, "client_factory_source": "supabase_package"},
+        table_payloads={
+            "dashboard_finding_records": findings,
+            "dashboard_narrative_records": narratives,
+            "dashboard_evidence_map_records": evidence,
+            "dashboard_export_manifests": integrity["manifests"],
+            "dashboard_persistence_audit_records": integrity["audits"],
+            "dashboard_replay_metadata_records": integrity["replay"],
+        },
+    )
+    assert out["supabase_project_id_prefix"] == "abc123"
+    assert out["using_service_role_key"] is True
+    assert out["project_id_mismatch_vs_github_actions"] is False
+    assert out["table_diagnostics"]["dashboard_finding_records"]["row_count"] == 2
+    assert out["table_diagnostics"]["dashboard_finding_records"]["latest_created_at"] == "2026-05-24T01:00:00Z"
+
+
+def test_d7_runtime_diagnostics_no_secret_leakage_and_mismatch_detection():
+    out = build_d7_runtime_diagnostics(
+        runtime_config={
+            "supabase_url": "https://streamlitxyz.supabase.co",
+            "supabase_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.service_role.payload",
+            "credentials_present": True,
+            "github_actions_supabase_url": "https://gha123.supabase.co",
+        },
+        client_resolution={"client_resolved": False, "client_factory_source": "unavailable"},
+        table_payloads={"dashboard_finding_records": {"status": "empty", "row_count": 0, "rows": [], "error": None}},
+    )
+    text = str(out)
+    assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in text
+    assert out["project_id_mismatch_vs_github_actions"] is True
+    assert out["using_anon_key"] is False

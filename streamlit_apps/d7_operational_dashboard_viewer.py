@@ -11,6 +11,7 @@ import streamlit as st
 
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
     build_d7_dashboard_view_model,
+    build_d7_runtime_diagnostics,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
     load_d7_dashboard_narratives,
@@ -40,7 +41,11 @@ def main() -> None:
     st.set_page_config(page_title="D7 Operational Dashboard Viewer", layout="wide")
     st.title("SEFI D7 — Thin Operational Dashboard Viewer")
 
-    runtime_config = build_streamlit_supabase_runtime_config()
+    secret_url = st.secrets.get("SUPABASE_URL") if hasattr(st, "secrets") else None
+    secret_key = (
+        st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") if hasattr(st, "secrets") else None
+    ) or (st.secrets.get("SUPABASE_ANON_KEY") if hasattr(st, "secrets") else None) or (st.secrets.get("SUPABASE_KEY") if hasattr(st, "secrets") else None)
+    runtime_config = build_streamlit_supabase_runtime_config(supabase_url=secret_url, supabase_key=secret_key)
     client_resolution = resolve_streamlit_supabase_client(runtime_config)
     client = client_resolution.get("client")
 
@@ -58,6 +63,19 @@ def main() -> None:
         "dashboard_persistence_audit_records": int(integrity_payload.get("audits", {}).get("row_count") or 0),
         "dashboard_replay_metadata_records": int(integrity_payload.get("replay", {}).get("row_count") or 0),
     }
+    table_payloads = {
+        "dashboard_finding_records": findings_payload,
+        "dashboard_narrative_records": narratives_payload,
+        "dashboard_evidence_map_records": evidence_payload,
+        "dashboard_export_manifests": integrity_payload.get("manifests", {}),
+        "dashboard_persistence_audit_records": integrity_payload.get("audits", {}),
+        "dashboard_replay_metadata_records": integrity_payload.get("replay", {}),
+    }
+    runtime_diagnostics = build_d7_runtime_diagnostics(
+        runtime_config=runtime_config,
+        client_resolution=client_resolution,
+        table_payloads=table_payloads,
+    )
     total_rows = sum(table_row_counts.values())
 
     if not client_resolution.get("client_resolved"):
@@ -69,6 +87,8 @@ def main() -> None:
 
     with st.expander("Supabase table row counts", expanded=False):
         st.json(table_row_counts)
+    with st.expander("D7 runtime diagnostics", expanded=False):
+        st.json(runtime_diagnostics)
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Latest Run", overview.get("latest_operational_run") or "n/a")

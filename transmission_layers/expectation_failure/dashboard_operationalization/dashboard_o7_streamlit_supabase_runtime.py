@@ -43,11 +43,18 @@ def _safe_text(value: Any) -> str | None:
 
 
 def build_streamlit_supabase_runtime_config(*, supabase_url: str | None = None, supabase_key: str | None = None, run_id: str | None = None, as_of_date: str | None = None, cache_ttl_seconds: int = DEFAULT_CACHE_TTL_SECONDS) -> OrderedDict:
+    runtime_url = _safe_text(supabase_url)
+    runtime_key = _safe_text(supabase_key)
+    url_source = "arg" if runtime_url else ("env:SUPABASE_URL" if _safe_text(os.getenv("SUPABASE_URL")) else "missing")
+    key_source = "arg" if runtime_key else ("env:SUPABASE_ANON_KEY" if _safe_text(os.getenv("SUPABASE_ANON_KEY")) else ("env:SUPABASE_KEY" if _safe_text(os.getenv("SUPABASE_KEY")) else "missing"))
     cfg = OrderedDict([
-        ("supabase_url", _safe_text(supabase_url) or _safe_text(os.getenv("SUPABASE_URL"))),
-        ("supabase_key", _safe_text(supabase_key) or _safe_text(os.getenv("SUPABASE_ANON_KEY")) or _safe_text(os.getenv("SUPABASE_KEY"))),
+        ("supabase_url", runtime_url or _safe_text(os.getenv("SUPABASE_URL"))),
+        ("supabase_key", runtime_key or _safe_text(os.getenv("SUPABASE_ANON_KEY")) or _safe_text(os.getenv("SUPABASE_KEY"))),
         ("run_id", _safe_text(run_id)),
         ("as_of_date", _safe_text(as_of_date)),
+        ("supabase_url_source", url_source),
+        ("supabase_key_source", key_source),
+        ("github_actions_supabase_url", _safe_text(os.getenv("GITHUB_ACTIONS_SUPABASE_URL"))),
     ])
     ttl = int(cache_ttl_seconds) if isinstance(cache_ttl_seconds, int) else DEFAULT_CACHE_TTL_SECONDS
     cfg["cache_ttl_seconds"] = 30 if ttl < 30 else min(ttl, 3600)
