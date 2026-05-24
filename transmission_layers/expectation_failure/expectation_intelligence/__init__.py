@@ -389,3 +389,12 @@ from .d14_governance_integrated_historical_evolution_orchestration import (
     build_d14_report_payload,
     build_d14_report_markdown,
 )
+
+from .d15_historical_backfill_execution_dashboard_enrichment import (
+    build_d15_backfill_execution_inventory,
+    build_d15_historical_execution_timeline,
+    build_d15_dashboard_enrichment_payload,
+    certify_d15_dashboard_enrichment,
+    build_d15_report_payload,
+    build_d15_report_markdown,
+)
