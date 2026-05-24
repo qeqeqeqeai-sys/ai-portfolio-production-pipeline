@@ -75,6 +75,22 @@ from .e1_expectation_intelligence import (
     classify_e1_expectation_pressure_state,
 )
 
+
+from .e7_expectation_closeout_certification import (
+    build_e7_expectation_capability_inventory,
+    validate_e7_required_capabilities,
+    certify_e7_api_exports,
+    certify_e7_d7_integration_surface,
+    certify_e7_determinism_replay_readiness,
+    build_e7_governance_boundary_inventory,
+    certify_e7_governance_boundaries,
+    certify_e7_dashboard_consumption_readiness,
+    build_e7_readiness_gate_decision,
+    certify_e7_expectation_intelligence_readiness,
+    build_e7_expectation_closeout_payload,
+    build_e7_expectation_closeout_report,
+)
+
 __all__ = [
     "build_e1_expectation_pressure_profile",
     "classify_e1_expectation_pressure_state",
@@ -137,4 +153,17 @@ __all__ = [
     "build_e5_caveat_consolidation",
     "certify_e5_expectation_operational_usefulness",
     "build_e5_supervisor_closeout",
+
+    "build_e7_expectation_capability_inventory",
+    "validate_e7_required_capabilities",
+    "certify_e7_api_exports",
+    "certify_e7_d7_integration_surface",
+    "certify_e7_determinism_replay_readiness",
+    "build_e7_governance_boundary_inventory",
+    "certify_e7_governance_boundaries",
+    "certify_e7_dashboard_consumption_readiness",
+    "build_e7_readiness_gate_decision",
+    "certify_e7_expectation_intelligence_readiness",
+    "build_e7_expectation_closeout_payload",
+    "build_e7_expectation_closeout_report",
 ]

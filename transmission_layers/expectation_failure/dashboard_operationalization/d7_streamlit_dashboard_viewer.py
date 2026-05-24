@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -629,6 +629,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("e3_temporal_expectation_memory", e3_payload),
         ("e4_semantic_theme_memory", e4_payload),
         ("e5_expectation_supervisor_closeout", e5_payload),
+        ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
     payload["integrity_overview"] = build_d7_integrity_overview(payload)
