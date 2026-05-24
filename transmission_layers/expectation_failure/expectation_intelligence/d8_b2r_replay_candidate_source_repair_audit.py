@@ -3,6 +3,13 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Any, Mapping
 
+from .d8_b2r2_supabase_runtime_connectivity import (
+    audit_supabase_read_only_connectivity,
+    audit_supabase_runtime_credentials,
+    build_d8_b2r2_connectivity_report_payload,
+    compare_dashboard_vs_operator_runtime_credentials,
+)
+
 from transmission_layers.expectation_failure.dashboard_operationalization.dashboard_o7_streamlit_supabase_runtime import (
     resolve_streamlit_supabase_client,
 )
@@ -119,8 +126,29 @@ def audit_replay_candidate_sources(*, client: Any, findings: list[Mapping[str, A
     ])
 
 
-def build_d8_b2r_source_repair_report_payload(*, client_audit: Mapping[str, Any], source_audit: Mapping[str, Any]) -> OrderedDict[str, Any]:
-    if not client_audit.get("client_resolved"):
+def build_d8_b2r_source_repair_report_payload(*, client_audit: Mapping[str, Any], source_audit: Mapping[str, Any], runtime_connectivity: Mapping[str, Any] | None = None) -> OrderedDict[str, Any]:
+    runtime = dict(runtime_connectivity or {})
+    if runtime:
+        rec = runtime.get("recommendation")
+        if rec == "BLOCKED_MISSING_CREDENTIALS":
+            status = "SOURCE_BLOCKED_CREDENTIALS_MISSING"
+            recommendation = rec
+        elif rec == "BLOCKED_PARTIAL_CREDENTIALS":
+            status = "SOURCE_BLOCKED_CREDENTIALS_PARTIAL"
+            recommendation = rec
+        elif rec == "BLOCKED_CLIENT_CONSTRUCTION":
+            status = "SOURCE_BLOCKED_CLIENT_UNRESOLVED"
+            recommendation = rec
+        elif rec == "BLOCKED_READ_ONLY_CONNECTIVITY":
+            status = "SOURCE_BLOCKED_READ_ONLY_CONNECTIVITY"
+            recommendation = rec
+        elif rec == "READY_FOR_D8_B2R_RERUN":
+            status = "SOURCE_READY"
+            recommendation = rec
+        else:
+            status = "SOURCE_BLOCKED_CLIENT_UNRESOLVED"
+            recommendation = "BLOCKED_CLIENT_CONFIGURATION"
+    elif not client_audit.get("client_resolved"):
         status = "SOURCE_BLOCKED_CLIENT_UNRESOLVED"
         recommendation = "BLOCKED_CLIENT_CONFIGURATION"
     elif not source_audit.get("accessible_tables"):
@@ -144,3 +172,16 @@ def build_d8_b2r_source_repair_report_payload(*, client_audit: Mapping[str, Any]
         ("client_audit", OrderedDict(client_audit)),
         ("source_audit", OrderedDict(source_audit)),
     ])
+
+
+def build_d8_b2r2_runtime_connectivity_bundle(*, runtime_config: Mapping[str, Any] | None = None, client: Any = None, client_factory: Any = None, dashboard_runtime: Mapping[str, Any] | None = None) -> OrderedDict[str, Any]:
+    credential_audit = audit_supabase_runtime_credentials(runtime_config=runtime_config)
+    connectivity_audit = audit_supabase_read_only_connectivity(
+        credential_audit=credential_audit, runtime_config=runtime_config, client=client, client_factory=client_factory
+    )
+    comparison = compare_dashboard_vs_operator_runtime_credentials(
+        dashboard_runtime=dict(dashboard_runtime or {}), operator_runtime=credential_audit
+    )
+    return build_d8_b2r2_connectivity_report_payload(
+        credential_audit=credential_audit, connectivity_audit=connectivity_audit, dashboard_operator_comparison=comparison
+    )

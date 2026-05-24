@@ -84,4 +84,4 @@ def test_no_fabricated_candidates():
 
 def test_d8_b2_dry_run_integration_status_client_unresolved():
     out = build_d8_b2_dry_run_source_diagnostics(runtime_config={"credentials_present": False}, client=None)
-    assert out["status"] == "SOURCE_BLOCKED_CLIENT_UNRESOLVED"
+    assert out["status"] == "SOURCE_BLOCKED_CREDENTIALS_MISSING"

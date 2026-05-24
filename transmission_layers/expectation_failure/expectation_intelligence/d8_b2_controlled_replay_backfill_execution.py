@@ -7,7 +7,12 @@ from datetime import datetime
 from typing import Any, Mapping
 
 from .d8_b1_controlled_replay_expansion import build_d8_b1_controlled_backfill_plan
-from .d8_b2r_replay_candidate_source_repair_audit import audit_supabase_client_resolution, audit_replay_candidate_sources, build_d8_b2r_source_repair_report_payload
+from .d8_b2r_replay_candidate_source_repair_audit import (
+    audit_replay_candidate_sources,
+    audit_supabase_client_resolution,
+    build_d8_b2r2_runtime_connectivity_bundle,
+    build_d8_b2r_source_repair_report_payload,
+)
 
 D8_B2_VERSION = "d8_b2_controlled_replay_backfill_execution_v1"
 
@@ -208,4 +213,5 @@ def build_d8_b2_dry_run_source_diagnostics(*, runtime_config: Mapping[str, Any] 
     client_audit = audit_supabase_client_resolution(runtime_config=runtime_config, client=client, client_factory=client_factory)
     resolved_client = client if client_audit.get("client_resolved") else None
     source_audit = audit_replay_candidate_sources(client=resolved_client, findings=findings, narratives=narratives, evidence_maps=evidence_maps)
-    return build_d8_b2r_source_repair_report_payload(client_audit=client_audit, source_audit=source_audit)
+    runtime_bundle = build_d8_b2r2_runtime_connectivity_bundle(runtime_config=runtime_config, client=client, client_factory=client_factory)
+    return build_d8_b2r_source_repair_report_payload(client_audit=client_audit, source_audit=source_audit, runtime_connectivity=runtime_bundle)
