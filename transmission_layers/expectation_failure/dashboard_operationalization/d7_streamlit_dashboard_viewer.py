@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.2.0"
@@ -509,6 +509,7 @@ def build_d7_supervisor_summary(view_model: Mapping[str, Any]) -> OrderedDict[st
         ("operational_usefulness", integrity_overview.get("operational_usefulness", "moderate")),
         ("current_limitations", ["Interpretation remains deterministic and bounded by persisted payload richness.", "No live fetches, runtime writes, or predictive expansion are used."]),
         ("e2_confidence_caveats", ((view_model.get("e2_evidence_interpretation") or {}).get("confidence_caveats") if isinstance(view_model.get("e2_evidence_interpretation"), Mapping) else [])),
+        ("e3_temporal_history_sufficiency", ((view_model.get("e3_temporal_expectation_memory") or {}).get("history_sufficiency") if isinstance(view_model.get("e3_temporal_expectation_memory"), Mapping) else "insufficient_history")),
         ("confidence_caveats", "Confidence labels are rendered exactly from persisted records; missing labels appear as unknown."),
         ("e1_dominant_expectation_regime", strategist.get("dominant_expectation_regime", "unknown")),
         ("e1_primary_fragility_drivers", strategist.get("primary_fragility_drivers", [])),
@@ -525,7 +526,7 @@ def build_d7_debug_payload_sections(view_model: Mapping[str, Any]) -> OrderedDic
         ("raw_payload_json", deepcopy(view_model.get("runtime_sections", {}))),
     ])
 
-def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narratives_payload: Mapping[str, Any], evidence_payload: Mapping[str, Any], integrity_payload: Mapping[str, Any]) -> OrderedDict[str, Any]:
+def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narratives_payload: Mapping[str, Any], evidence_payload: Mapping[str, Any], integrity_payload: Mapping[str, Any], historical_runs_payloads: list[Mapping[str, Any]] | None = None) -> OrderedDict[str, Any]:
     findings = _transform_findings(list(findings_payload.get("rows", [])))
     narratives = _transform_narratives(list(narratives_payload.get("rows", [])))
     evidence_maps = _transform_evidence(list(evidence_payload.get("rows", [])))
@@ -590,6 +591,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     intelligence_cards = build_d7_intelligence_cards(findings, evidence_maps)
     e1_payload = build_e1_expectation_intelligence_payload(findings, narratives, evidence_maps)
     e2_payload = build_e2_evidence_interpretation_payload(findings, narratives, evidence_maps, e1_payload)
+    e3_payload = build_e3_temporal_drift_report(historical_runs_payloads or [])
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
@@ -620,6 +622,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("evidence_highlights", evidence_highlights),
         ("e1_expectation_intelligence", e1_payload),
         ("e2_evidence_interpretation", e2_payload),
+        ("e3_temporal_expectation_memory", e3_payload),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
     payload["integrity_overview"] = build_d7_integrity_overview(payload)
