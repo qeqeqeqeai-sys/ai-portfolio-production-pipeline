@@ -1,3 +1,7 @@
+import os
+
+import pytest
+
 from transmission_layers.expectation_failure.expectation_intelligence.d8_b2r2_supabase_runtime_connectivity import (
     audit_supabase_read_only_connectivity,
     audit_supabase_runtime_credentials,
@@ -6,6 +10,24 @@ from transmission_layers.expectation_failure.expectation_intelligence.d8_b2r2_su
 )
 from transmission_layers.expectation_failure.expectation_intelligence.d8_b2r_replay_candidate_source_repair_audit import build_d8_b2r_source_repair_report_payload
 
+
+
+
+_ENV_KEYS = (
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_KEY",
+    "STREAMLIT_SUPABASE_URL",
+    "STREAMLIT_SUPABASE_KEY",
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_supabase_env(monkeypatch):
+    for key in _ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    yield
 
 class _Result:
     def __init__(self, data=None, count=None):
@@ -73,6 +95,22 @@ def test_credentials_alias_pair():
     audit = audit_supabase_runtime_credentials(env={"SUPABASE_URL": "https://x", "SUPABASE_KEY": "alias"})
     assert audit["status"] == "CREDENTIALS_READY"
 
+
+
+
+def test_credentials_streamlit_alias_pair_when_runtime_config_resolved():
+    audit = audit_supabase_runtime_credentials(
+        env={},
+        runtime_config={
+            "supabase_url": "https://streamlit-x",
+            "supabase_key": "streamlit-k",
+            "supabase_url_source": "streamlit:STREAMLIT_SUPABASE_URL",
+            "supabase_key_source": "streamlit:STREAMLIT_SUPABASE_KEY",
+        },
+    )
+    assert audit["status"] == "CREDENTIALS_READY"
+    assert audit["supabase_url_source"] == "streamlit:STREAMLIT_SUPABASE_URL"
+    assert audit["supabase_key_source"] == "streamlit:STREAMLIT_SUPABASE_KEY"
 
 def test_no_secret_leakage():
     audit = audit_supabase_runtime_credentials(env={"SUPABASE_URL": "https://x", "SUPABASE_KEY": "super-secret"})
