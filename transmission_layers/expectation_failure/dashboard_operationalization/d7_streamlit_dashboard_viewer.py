@@ -7,10 +7,19 @@ from copy import deepcopy
 from datetime import datetime
 import hashlib
 import json
+from urllib.parse import urlparse
 from typing import Any, Mapping
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.0.0"
+_D7_TABLES = (
+    "dashboard_finding_records",
+    "dashboard_narrative_records",
+    "dashboard_evidence_map_records",
+    "dashboard_export_manifests",
+    "dashboard_persistence_audit_records",
+    "dashboard_replay_metadata_records",
+)
 
 
 def _stable_checksum(payload: Any) -> str:
@@ -57,6 +66,71 @@ def load_d7_dashboard_operational_integrity(client: Any) -> OrderedDict[str, Any
     audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=["audit_id", "run_id", "created_at", "audit_status", "persisted_record_count", "target_table"], limit=200)
     replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=["replay_id", "run_id", "created_at", "replay_checksum", "continuity_status"], limit=100)
     return OrderedDict([("manifests", manifests), ("audits", audits), ("replay", replay)])
+
+
+def _safe_project_host(url: Any) -> tuple[str | None, str | None]:
+    raw = str(url or "").strip()
+    if not raw:
+        return None, None
+    parsed = urlparse(raw)
+    host = (parsed.hostname or "").strip().lower()
+    if not host:
+        return None, None
+    return host, (host.split(".")[0] if "." in host else None)
+
+
+def _classify_supabase_key(key: Any) -> str:
+    text = str(key or "").strip()
+    if not text:
+        return "missing"
+    if "service_role" in text:
+        return "service_role"
+    if "anon" in text:
+        return "anon"
+    return "unknown_non_empty"
+
+
+def build_d7_runtime_diagnostics(*, runtime_config: Mapping[str, Any], client_resolution: Mapping[str, Any], table_payloads: Mapping[str, Mapping[str, Any]]) -> OrderedDict[str, Any]:
+    host, project_id = _safe_project_host(runtime_config.get("supabase_url"))
+    key_kind = _classify_supabase_key(runtime_config.get("supabase_key"))
+    source = "env"
+    if runtime_config.get("supabase_url_source") or runtime_config.get("supabase_key_source"):
+        source = "streamlit_or_env"
+    table_diagnostics = OrderedDict()
+    for table in _D7_TABLES:
+        payload = table_payloads.get(table, {})
+        rows = list(payload.get("rows", [])) if isinstance(payload, Mapping) else []
+        sample_identifier = None
+        for field in ("record_id", "finding_id", "manifest_id", "audit_id", "replay_id", "run_id"):
+            if rows and rows[0].get(field):
+                sample_identifier = str(rows[0].get(field))
+                break
+        table_diagnostics[table] = OrderedDict([
+            ("status", payload.get("status")),
+            ("row_count", int(payload.get("row_count") or 0)),
+            ("latest_created_at", rows[0].get("created_at") if rows else None),
+            ("sample_record_id_preview", sample_identifier[:16] if sample_identifier else None),
+            ("error", payload.get("error")),
+        ])
+
+    gha_url = runtime_config.get("github_actions_supabase_url")
+    gha_host, gha_project = _safe_project_host(gha_url)
+    project_mismatch = bool(project_id and gha_project and project_id != gha_project)
+    return OrderedDict([
+        ("supabase_url_host", host),
+        ("supabase_project_id_prefix", project_id),
+        ("github_actions_supabase_url_host", gha_host),
+        ("github_actions_project_id_prefix", gha_project),
+        ("project_id_mismatch_vs_github_actions", project_mismatch),
+        ("key_classification", key_kind),
+        ("using_service_role_key", key_kind == "service_role"),
+        ("using_anon_key", key_kind == "anon"),
+        ("client_resolved", bool(client_resolution.get("client_resolved"))),
+        ("client_factory_source", client_resolution.get("client_factory_source")),
+        ("credentials_present", bool(runtime_config.get("credentials_present"))),
+        ("environment_source", source),
+        ("table_diagnostics", table_diagnostics),
+    ])
 
 
 def _latest_run_id(*sections: Mapping[str, Any]) -> str | None:
@@ -132,4 +206,5 @@ __all__ = [
     "load_d7_dashboard_evidence_maps",
     "load_d7_dashboard_operational_integrity",
     "build_d7_dashboard_view_model",
+    "build_d7_runtime_diagnostics",
 ]
