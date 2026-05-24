@@ -29,6 +29,22 @@ from .e3_temporal_expectation_memory import (
     normalize_e3_temporal_runs,
 )
 
+
+from .e4_semantic_theme_memory import (
+    extract_e4_semantic_theme_signals,
+    classify_e4_theme_category,
+    build_e4_theme_inventory,
+    build_e4_semantic_theme_memory,
+    build_e4_theme_memory_index,
+    build_e4_narrative_drift_profile,
+    classify_e4_narrative_drift_direction,
+    build_e4_semantic_contradiction_clusters,
+    build_e4_expectation_framing_drift,
+    build_e4_theme_evidence_support_profile,
+    build_e4_semantic_memory_supervisor_summary,
+    build_e4_semantic_narrative_drift_report,
+)
+
 from .e1_expectation_intelligence import (
     build_e1_contradiction_profile,
     build_e1_contradiction_summary,
@@ -85,4 +101,17 @@ __all__ = [
     "build_e3_exhaustion_risk_drift",
     "build_e3_temporal_supervisor_summary",
     "build_e3_temporal_drift_report",
+
+    "extract_e4_semantic_theme_signals",
+    "classify_e4_theme_category",
+    "build_e4_theme_inventory",
+    "build_e4_semantic_theme_memory",
+    "build_e4_theme_memory_index",
+    "build_e4_narrative_drift_profile",
+    "classify_e4_narrative_drift_direction",
+    "build_e4_semantic_contradiction_clusters",
+    "build_e4_expectation_framing_drift",
+    "build_e4_theme_evidence_support_profile",
+    "build_e4_semantic_memory_supervisor_summary",
+    "build_e4_semantic_narrative_drift_report",
 ]

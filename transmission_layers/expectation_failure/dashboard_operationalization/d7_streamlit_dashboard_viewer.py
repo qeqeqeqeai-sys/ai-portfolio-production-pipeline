@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.2.0"
@@ -592,6 +592,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     e1_payload = build_e1_expectation_intelligence_payload(findings, narratives, evidence_maps)
     e2_payload = build_e2_evidence_interpretation_payload(findings, narratives, evidence_maps, e1_payload)
     e3_payload = build_e3_temporal_drift_report(historical_runs_payloads or [])
+    e4_payload = build_e4_semantic_narrative_drift_report(historical_runs_payloads or [])
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
@@ -623,6 +624,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("e1_expectation_intelligence", e1_payload),
         ("e2_evidence_interpretation", e2_payload),
         ("e3_temporal_expectation_memory", e3_payload),
+        ("e4_semantic_theme_memory", e4_payload),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
     payload["integrity_overview"] = build_d7_integrity_overview(payload)
