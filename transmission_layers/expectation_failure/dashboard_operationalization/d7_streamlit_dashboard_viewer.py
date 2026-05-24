@@ -376,6 +376,139 @@ def _transform_evidence(rows: list[Mapping[str, Any]]) -> list[OrderedDict[str, 
         out.append(OrderedDict(r)|OrderedDict([("evidence_metadata", payload.get("evidence_metadata") or payload)]))
     return out
 
+
+def _as_list(value: Any) -> list[Any]:
+    return list(value) if isinstance(value, list) else []
+
+
+def _as_text(value: Any, default: str = "") -> str:
+    text = str(value).strip() if value is not None else ""
+    return text or default
+
+
+def _badge_for(label: str) -> str:
+    normalized = _as_text(label, "unknown").lower()
+    return {"high": "🔴 high", "medium": "🟠 medium", "low": "🟢 low", "unknown": "⚪ unknown"}.get(normalized, f"⚪ {normalized}")
+
+
+def build_d7_intelligence_cards(findings: list[Mapping[str, Any]], evidence_maps: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    evidence_by_finding: dict[str, list[str]] = {}
+    for evidence in evidence_maps:
+        finding_id = _as_text(evidence.get("finding_id"))
+        if not finding_id:
+            continue
+        payload = _payload_map(evidence)
+        summary = _as_text(payload.get("evidence_summary")) or _as_text(evidence.get("evidence_ref"))
+        if summary:
+            evidence_by_finding.setdefault(finding_id, []).append(summary)
+    cards: list[OrderedDict[str, Any]] = []
+    for finding in findings:
+        payload = _payload_map(finding)
+        finding_id = _as_text(finding.get("finding_id"))
+        severity = _as_text(finding.get("severity") or finding.get("finding_severity"), "unknown")
+        confidence = _as_text(finding.get("confidence") or finding.get("confidence_label") or payload.get("confidence"), "unknown")
+        contradiction = _as_text(payload.get("contradiction_or_divergence_notes") or payload.get("divergence_notes") or payload.get("contradiction_notes"))
+        cards.append(OrderedDict([
+            ("finding_title", _as_text(finding.get("finding_title"), f"Finding {finding_id or 'unlabeled'}")),
+            ("finding_type", _as_text(finding.get("finding_type"), "unspecified")),
+            ("severity_label", severity),
+            ("severity_badge", _badge_for(severity)),
+            ("confidence_label", confidence),
+            ("confidence_badge", _badge_for(confidence)),
+            ("finding_summary", _as_text(finding.get("finding_summary") or payload.get("finding_summary"), "No finding summary was present in the persisted payload.")),
+            ("expectation_fragility_interpretation", _as_text(payload.get("expectation_fragility_interpretation"), "No explicit expectation-fragility interpretation was present in the persisted payload.")),
+            ("why_this_matters", _as_text(payload.get("why_this_matters"), "Operationally relevant because this persisted finding contributes to expectation-fragility monitoring.")),
+            ("evidence_highlights", evidence_by_finding.get(finding_id, [])[:4]),
+            ("contradiction_or_divergence_notes", contradiction or "No explicit contradiction/divergence notes were present in the persisted payload."),
+        ]))
+    return cards
+
+
+def build_d7_narrative_sections(narratives: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    ordered_keys = ["expectation_pressure", "market_context", "semantic_pressure", "contradictions", "supervisor_interpretation"]
+    grouped: dict[str, list[Mapping[str, Any]]] = {k: [] for k in ordered_keys}
+    for row in narratives:
+        section = _as_text(row.get("narrative_section") or _payload_map(row).get("narrative_section"), "market_context").lower()
+        grouped[section if section in grouped else "market_context"].append(row)
+    out: list[OrderedDict[str, Any]] = []
+    for key in ordered_keys:
+        rows = grouped[key]
+        if not rows:
+            continue
+        text_parts: list[str] = []
+        linked_findings: list[str] = []
+        bullets: list[str] = []
+        caveats: list[str] = []
+        for row in rows:
+            payload = _payload_map(row)
+            text_parts.append(_as_text(row.get("narrative_text") or payload.get("narrative_text") or payload.get("finding_summary")))
+            linked_findings.extend([str(x) for x in _as_list(row.get("related_findings") or row.get("related_finding_ids") or payload.get("related_findings"))])
+            bullets.extend([str(x) for x in _as_list(payload.get("supporting_evidence_bullets"))])
+            caveat = _as_text(payload.get("caveat") or payload.get("limitations"))
+            if caveat:
+                caveats.append(caveat)
+        out.append(OrderedDict([
+            ("section_key", key),
+            ("section_title", key.replace("_", " ").title()),
+            ("narrative_text", "\n\n".join([x for x in text_parts if x]) or "No narrative text was present in this persisted section."),
+            ("linked_findings", sorted(set(linked_findings))),
+            ("supporting_evidence_bullets", bullets),
+            ("optional_caveats", caveats),
+        ]))
+    return out
+
+
+def build_d7_evidence_highlights(evidence_maps: list[Mapping[str, Any]], findings: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    title_by_id = {_as_text(f.get("finding_id")): _as_text(f.get("finding_title"), _as_text(f.get("finding_id"))) for f in findings}
+    out: list[OrderedDict[str, Any]] = []
+    for row in evidence_maps:
+        payload = _payload_map(row)
+        finding_id = _as_text(row.get("finding_id"))
+        out.append(OrderedDict([
+            ("linked_finding", title_by_id.get(finding_id) or finding_id or "unlinked"),
+            ("evidence_summary", _as_text(payload.get("evidence_summary") or row.get("evidence_ref"), "No evidence summary was present in the persisted payload.")),
+            ("semantic_drivers", _as_list(payload.get("semantic_drivers"))),
+            ("kpi_or_evidence_references", _as_list(payload.get("kpi_references") or payload.get("evidence_references") or ([row.get("evidence_ref")] if row.get("evidence_ref") else []))),
+            ("confidence_or_caveat", _as_text(payload.get("confidence") or payload.get("caveat"), "No explicit confidence/caveat was present in the persisted payload.")),
+        ]))
+    return out
+
+
+def build_d7_integrity_overview(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    normalized = _nested_get(view_model, ("integrity", "normalized")) if isinstance(view_model, Mapping) else {}
+    persistence = _as_text((normalized or {}).get("persistence_status"), "unknown")
+    readback = _as_text((normalized or {}).get("readback_status"), "unknown")
+    continuity = _as_text((normalized or {}).get("checksum_continuity"), "unknown")
+    governance = _as_text(_nested_get(view_model, ("supervisor_interpretation", "governance_status")), "READ_ONLY_BOUNDARY_PRESERVED")
+    usefulness = "high" if persistence in {"EXECUTED", "PERSISTED"} and continuity in {"yes", "partial"} else "limited"
+    return OrderedDict([("Persistence", persistence), ("Readback Verification", readback), ("Checksum Continuity", continuity), ("Governance Status", governance), ("Operational Usefulness", usefulness), ("operational_usefulness", usefulness)])
+
+
+def build_d7_supervisor_summary(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    cards = _as_list(view_model.get("intelligence_cards"))
+    integrity_overview = view_model.get("integrity_overview") if isinstance(view_model.get("integrity_overview"), Mapping) else {}
+    high_severity_count = sum(1 for card in cards if _as_text(card.get("severity_label")).lower() == "high")
+    themes = sorted({_as_text(card.get("finding_type"), "unspecified") for card in cards})
+    return OrderedDict([
+        ("what_sefi_currently_believes", f"{len(cards)} persisted findings are available for expectation-fragility review."),
+        ("dominant_fragility_themes", themes),
+        ("expectation_pressure_concentration", f"High-severity concentration: {high_severity_count}/{len(cards) if cards else 0} findings."),
+        ("operational_usefulness", integrity_overview.get("operational_usefulness", "moderate")),
+        ("current_limitations", ["Interpretation remains deterministic and bounded by persisted payload richness.", "No live fetches, runtime writes, or predictive expansion are used."]),
+        ("confidence_caveats", "Confidence labels are rendered exactly from persisted records; missing labels appear as unknown."),
+    ])
+
+
+def build_d7_debug_payload_sections(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    return OrderedDict([
+        ("checksum_chain", deepcopy(_nested_get(view_model, ("integrity", "normalized", "checksum_chain")) or {})),
+        ("raw_replay_metadata", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "replay", "rows")) or [])),
+        ("export_manifests", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "manifests", "rows")) or [])),
+        ("audit_rows", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "audits", "rows")) or [])),
+        ("internal_ids", OrderedDict([("latest_run", _nested_get(view_model, ("overview", "latest_operational_run")))])),
+        ("raw_payload_json", deepcopy(view_model.get("runtime_sections", {}))),
+    ])
+
 def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narratives_payload: Mapping[str, Any], evidence_payload: Mapping[str, Any], integrity_payload: Mapping[str, Any]) -> OrderedDict[str, Any]:
     findings = _transform_findings(list(findings_payload.get("rows", [])))
     narratives = _transform_narratives(list(narratives_payload.get("rows", [])))
@@ -438,6 +571,9 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("governance_status", "READ_ONLY_BOUNDARY_PRESERVED"),
     ])
 
+    intelligence_cards = build_d7_intelligence_cards(findings, evidence_maps)
+    narrative_sections = build_d7_narrative_sections(narratives)
+    evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
         ("schema_version", D7_SCHEMA_VERSION),
         ("module_version", D7_MODULE_VERSION),
@@ -461,8 +597,14 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
             ("integrity_payload", deepcopy(integrity_payload)),
         ])),
         ("supervisor_interpretation", interpretation),
+        ("intelligence_cards", intelligence_cards),
+        ("narrative_sections", narrative_sections),
+        ("evidence_highlights", evidence_highlights),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
+    payload["integrity_overview"] = build_d7_integrity_overview(payload)
+    payload["supervisor_summary"] = build_d7_supervisor_summary(payload)
+    payload["debug_payload_sections"] = build_d7_debug_payload_sections(payload)
     payload["view_model_checksum"] = _stable_checksum(payload)
     return payload
 
@@ -475,4 +617,10 @@ __all__ = [
     "build_d7_dashboard_view_model",
     "build_d7_runtime_diagnostics",
     "D7_PHYSICAL_COLUMNS_BY_TABLE",
+    "build_d7_intelligence_cards",
+    "build_d7_narrative_sections",
+    "build_d7_evidence_highlights",
+    "build_d7_supervisor_summary",
+    "build_d7_integrity_overview",
+    "build_d7_debug_payload_sections",
 ]
