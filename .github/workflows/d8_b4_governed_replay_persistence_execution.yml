@@ -41,10 +41,12 @@ jobs:
           PYTHONPATH=. python - <<'PY'
           from pathlib import Path
           import json
+          import os
           from transmission_layers.expectation_failure.dashboard_operationalization.dashboard_o7_streamlit_supabase_runtime import resolve_streamlit_supabase_client
           from transmission_layers.expectation_failure.expectation_intelligence.d8_b4_governed_replay_persistence_execution import execute_d8_b4_governed_replay_persistence
-          cfg = {"credentials_present": True, "supabase_url": "${SUPABASE_URL}", "supabase_key": "${SUPABASE_KEY}"}
-          client = resolve_streamlit_supabase_client(cfg).get("client")
+          cfg = {"credentials_present": True, "supabase_url": os.environ.get("SUPABASE_URL"), "supabase_key": os.environ.get("SUPABASE_KEY")}
+          client_resolution = resolve_streamlit_supabase_client(cfg)
+          client = client_resolution.get("client")
           out = execute_d8_b4_governed_replay_persistence(client=client, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "${{ github.event.inputs.approve_non_dry_run }}", "approve_append_only_persistence": "${{ github.event.inputs.approve_append_only_persistence }}", "approve_duplicate_prevention": "${{ github.event.inputs.approve_duplicate_prevention }}", "approve_checksum_lineage": "${{ github.event.inputs.approve_checksum_lineage }}"})
           Path("reports").mkdir(parents=True, exist_ok=True)
           if out.get("audit_manifest") is not None:
@@ -54,6 +56,13 @@ jobs:
           governance = out.get("governance", {})
           plan = out.get("plan", {})
           diagnostics = {
+            "supabase_url_present": bool(cfg.get("supabase_url")),
+            "supabase_key_present": bool(cfg.get("supabase_key")),
+            "resolved_client_present": client is not None,
+            "credential_status": "credentials_present" if bool(cfg.get("supabase_url") and cfg.get("supabase_key")) else "credentials_missing_or_partial",
+            "client_resolution_status": "CLIENT_RESOLVED" if client_resolution.get("client_resolved") else "CLIENT_UNRESOLVED",
+            "client_resolution_blocking_reasons": [],
+            "expected_secret_names": ["SUPABASE_URL", "SUPABASE_KEY"],
             "status": out.get("status"),
             "governance_status": governance.get("status") or governance.get("governance_status"),
             "blocking_reasons": governance.get("blocking_reasons", []),
@@ -67,6 +76,14 @@ jobs:
             "execution_status": plan.get("execution_status"),
             "recommendation": out.get("report_payload", {}).get("recommendation") or out.get("status"),
           }
+          if diagnostics["supabase_url_present"] is not True:
+            diagnostics["client_resolution_blocking_reasons"].append("missing_supabase_url_env")
+          if diagnostics["supabase_key_present"] is not True:
+            diagnostics["client_resolution_blocking_reasons"].append("missing_supabase_key_env")
+          if client_resolution.get("client_error_type"):
+            diagnostics["client_resolution_blocking_reasons"].append(f"client_error_type:{client_resolution.get('client_error_type')}")
+          if client_resolution.get("client_error_message_short"):
+            diagnostics["client_resolution_blocking_reasons"].append("client_error_message_present")
           Path("reports/d8_b4_governance_diagnostics.json").write_text(json.dumps(diagnostics, indent=2), encoding="utf-8")
           if governance.get("status") != "GOVERNANCE_OK":
             print(json.dumps(diagnostics, indent=2))

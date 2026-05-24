@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import json
 from transmission_layers.expectation_failure.expectation_intelligence.d8_b4_governed_replay_persistence_execution import (
     build_d8_b4_execution_audit_manifest,
@@ -160,3 +162,26 @@ def test_all_approvals_with_injected_client_passes_governance():
     )
     assert g["status"] == "GOVERNANCE_OK"
     assert g["injected_client_present"] is True
+
+
+def test_workflow_uses_env_for_supabase_credentials_not_literal_placeholders():
+    workflow = Path(".github/workflows/d8_b4_governed_replay_persistence_execution.yml").read_text(encoding="utf-8")
+    assert 'os.environ.get("SUPABASE_URL")' in workflow
+    assert 'os.environ.get("SUPABASE_KEY")' in workflow
+    assert '"${SUPABASE_URL}"' not in workflow
+    assert '"${SUPABASE_KEY}"' not in workflow
+
+
+def test_workflow_emits_sanitized_client_resolution_diagnostics_fields():
+    workflow = Path(".github/workflows/d8_b4_governed_replay_persistence_execution.yml").read_text(encoding="utf-8")
+    for field in [
+        "supabase_url_present",
+        "supabase_key_present",
+        "resolved_client_present",
+        "credential_status",
+        "client_resolution_status",
+        "client_resolution_blocking_reasons",
+        "expected_secret_names",
+    ]:
+        assert f'"{field}"' in workflow
+    assert '"expected_secret_names": ["SUPABASE_URL", "SUPABASE_KEY"]' in workflow
