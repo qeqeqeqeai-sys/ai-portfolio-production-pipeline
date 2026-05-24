@@ -45,26 +45,26 @@ def _safe_rows(client: Any, *, table: str, columns: list[str], limit: int = 500,
 
 def load_d7_dashboard_findings(client: Any, *, limit: int = 500) -> OrderedDict[str, Any]:
     return _safe_rows(client, table="dashboard_finding_records", columns=[
-        "finding_id", "run_id", "created_at", "finding_title", "finding_type", "severity", "direction", "confidence", "finding_summary", "evidence_refs", "lineage_refs",
+        "record_id", "finding_id", "created_at", "finding_title", "finding_type", "severity", "direction", "confidence", "finding_summary", "evidence_refs", "lineage_refs", "source_payload_checksum", "export_checksum", "payload", "replay_metadata",
     ], limit=limit, order_by="created_at", desc=True)
 
 
 def load_d7_dashboard_narratives(client: Any, *, limit: int = 200) -> OrderedDict[str, Any]:
     return _safe_rows(client, table="dashboard_narrative_records", columns=[
-        "record_id", "run_id", "created_at", "narrative_section", "narrative_text", "related_findings",
+        "record_id", "created_at", "narrative_section", "narrative_text", "related_findings", "source_payload_checksum", "export_checksum", "payload", "replay_metadata",
     ], limit=limit, order_by="created_at", desc=True)
 
 
 def load_d7_dashboard_evidence_maps(client: Any, *, limit: int = 500) -> OrderedDict[str, Any]:
     return _safe_rows(client, table="dashboard_evidence_map_records", columns=[
-        "record_id", "run_id", "created_at", "finding_id", "evidence_ref", "evidence_metadata",
+        "record_id", "created_at", "finding_id", "evidence_ref", "evidence_metadata", "source_payload_checksum", "export_checksum", "payload", "replay_metadata",
     ], limit=limit, order_by="created_at", desc=True)
 
 
 def load_d7_dashboard_operational_integrity(client: Any) -> OrderedDict[str, Any]:
-    manifests = _safe_rows(client, table="dashboard_export_manifests", columns=["manifest_id", "run_id", "created_at", "export_manifest_checksum", "record_counts"], limit=100)
-    audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=["audit_id", "run_id", "created_at", "audit_status", "persisted_record_count", "target_table"], limit=200)
-    replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=["replay_id", "run_id", "created_at", "replay_checksum", "continuity_status"], limit=100)
+    manifests = _safe_rows(client, table="dashboard_export_manifests", columns=["record_id", "manifest_id", "created_at", "export_manifest_checksum", "record_counts", "source_payload_checksum", "export_checksum", "payload", "replay_metadata"], limit=100)
+    audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=["record_id", "audit_id", "created_at", "audit_status", "persisted_record_count", "target_table", "source_payload_checksum", "export_checksum", "payload", "replay_metadata"], limit=200)
+    replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=["record_id", "replay_id", "created_at", "replay_checksum", "continuity_status", "source_payload_checksum", "export_checksum", "payload", "replay_metadata"], limit=100)
     return OrderedDict([("manifests", manifests), ("audits", audits), ("replay", replay)])
 
 
@@ -101,7 +101,7 @@ def build_d7_runtime_diagnostics(*, runtime_config: Mapping[str, Any], client_re
         payload = table_payloads.get(table, {})
         rows = list(payload.get("rows", [])) if isinstance(payload, Mapping) else []
         sample_identifier = None
-        for field in ("record_id", "finding_id", "manifest_id", "audit_id", "replay_id", "run_id"):
+        for field in ("record_id", "finding_id", "manifest_id", "audit_id", "replay_id"):
             if rows and rows[0].get(field):
                 sample_identifier = str(rows[0].get(field))
                 break
@@ -110,6 +110,7 @@ def build_d7_runtime_diagnostics(*, runtime_config: Mapping[str, Any], client_re
             ("row_count", int(payload.get("row_count") or 0)),
             ("latest_created_at", rows[0].get("created_at") if rows else None),
             ("sample_record_id_preview", sample_identifier[:16] if sample_identifier else None),
+            ("derived_run_or_replay_preview", (str(derived_id)[:16] if (derived_id := _derived_run_or_replay_id(rows[0])) else None) if rows else None),
             ("error", payload.get("error")),
         ])
 
@@ -133,14 +134,27 @@ def build_d7_runtime_diagnostics(*, runtime_config: Mapping[str, Any], client_re
     ])
 
 
+def _derived_run_or_replay_id(row: Mapping[str, Any]) -> str | None:
+    replay_metadata = row.get("replay_metadata") if isinstance(row.get("replay_metadata"), Mapping) else {}
+    payload = row.get("payload") if isinstance(row.get("payload"), Mapping) else {}
+    for source in (replay_metadata, payload):
+        value = source.get("replay_id") or source.get("run_id")
+        if value:
+            return str(value)
+    checksum = row.get("source_payload_checksum") or row.get("export_checksum")
+    if checksum:
+        return str(checksum)[:12]
+    return None
+
+
 def _latest_run_id(*sections: Mapping[str, Any]) -> str | None:
     runs = []
-    for s in sections:
-        for row in s.get("rows", []):
-            run_id = row.get("run_id")
-            created_at = row.get("created_at") or ""
-            if run_id:
-                runs.append((str(created_at), str(run_id)))
+    for section in sections:
+        for row in section.get("rows", []):
+            created_at = str(row.get("created_at") or "")
+            run_like_id = _derived_run_or_replay_id(row)
+            if run_like_id:
+                runs.append((created_at, run_like_id))
     return sorted(runs, reverse=True)[0][1] if runs else None
 
 
@@ -152,7 +166,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     audits = list(integrity_payload.get("audits", {}).get("rows", []))
     replay = list(integrity_payload.get("replay", {}).get("rows", []))
 
-    latest_run = _latest_run_id(findings_payload, narratives_payload, evidence_payload, integrity_payload.get("manifests", {}), integrity_payload.get("replay", {}))
+    latest_run = _latest_run_id(findings_payload, narratives_payload, evidence_payload, integrity_payload.get("manifests", {}), integrity_payload.get("audits", {}), integrity_payload.get("replay", {}))
     latest_manifest = manifests[0] if manifests else {}
     latest_replay = replay[0] if replay else {}
     latest_audit = audits[0] if audits else {}

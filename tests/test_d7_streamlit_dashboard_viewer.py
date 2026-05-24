@@ -47,23 +47,23 @@ class FakeReadOnlyClient:
 def _build_client():
     return FakeReadOnlyClient({
         "dashboard_finding_records": [
-            {"finding_id": "F2", "run_id": "run-2", "created_at": "2026-05-24T01:00:00Z", "finding_title": "Elevated spread", "finding_type": "credit", "severity": "high", "direction": "worsening", "confidence": 0.86, "finding_summary": "spread widening", "evidence_refs": ["EV2"], "lineage_refs": ["O5"]},
-            {"finding_id": "F1", "run_id": "run-1", "created_at": "2026-05-23T01:00:00Z", "finding_title": "Valuation stretch", "finding_type": "valuation", "severity": "medium", "direction": "worsening", "confidence": 0.74, "finding_summary": "percentile elevated", "evidence_refs": ["EV1"], "lineage_refs": ["O5"]},
+            {"record_id": "FR2", "finding_id": "F2", "created_at": "2026-05-24T01:00:00Z", "finding_title": "Elevated spread", "finding_type": "credit", "severity": "high", "direction": "worsening", "confidence": 0.86, "finding_summary": "spread widening", "evidence_refs": ["EV2"], "lineage_refs": ["O5"], "source_payload_checksum": "abcdef1234567890", "payload": {"replay_id": "replay-2"}, "replay_metadata": {}},
+            {"record_id": "FR1", "finding_id": "F1", "created_at": "2026-05-23T01:00:00Z", "finding_title": "Valuation stretch", "finding_type": "valuation", "severity": "medium", "direction": "worsening", "confidence": 0.74, "finding_summary": "percentile elevated", "evidence_refs": ["EV1"], "lineage_refs": ["O5"], "source_payload_checksum": "9999ef1234567890", "payload": {}, "replay_metadata": {}},
         ],
         "dashboard_narrative_records": [
-            {"record_id": "N1", "run_id": "run-2", "created_at": "2026-05-24T01:00:00Z", "narrative_section": "expectation_fragility", "narrative_text": "Fragility concentrated in AI semis.", "related_findings": ["F2"]}
+            {"record_id": "N1", "created_at": "2026-05-24T01:00:00Z", "narrative_section": "expectation_fragility", "narrative_text": "Fragility concentrated in AI semis.", "related_findings": ["F2"], "payload": {}, "replay_metadata": {"replay_id": "replay-2"}}
         ],
         "dashboard_evidence_map_records": [
-            {"record_id": "E1", "run_id": "run-2", "created_at": "2026-05-24T01:00:00Z", "finding_id": "F2", "evidence_ref": "EV2", "evidence_metadata": {"metric": "credit_spread"}}
+            {"record_id": "E1", "created_at": "2026-05-24T01:00:00Z", "finding_id": "F2", "evidence_ref": "EV2", "evidence_metadata": {"metric": "credit_spread"}, "payload": {}, "replay_metadata": {}}
         ],
         "dashboard_export_manifests": [
-            {"manifest_id": "M1", "run_id": "run-2", "created_at": "2026-05-24T01:00:00Z", "export_manifest_checksum": "chk-export", "record_counts": {"findings": 2}}
+            {"record_id": "MREC1", "manifest_id": "M1", "created_at": "2026-05-24T01:00:00Z", "export_manifest_checksum": "chk-export", "record_counts": {"findings": 2}, "payload": {}, "replay_metadata": {}}
         ],
         "dashboard_persistence_audit_records": [
-            {"audit_id": "A1", "run_id": "run-2", "created_at": "2026-05-24T01:00:00Z", "audit_status": "EXECUTED", "persisted_record_count": 4, "target_table": "dashboard_finding_records"}
+            {"record_id": "A1", "audit_id": "A1", "created_at": "2026-05-24T01:00:00Z", "audit_status": "EXECUTED", "persisted_record_count": 4, "target_table": "dashboard_finding_records", "payload": {}, "replay_metadata": {}}
         ],
         "dashboard_replay_metadata_records": [
-            {"replay_id": "R1", "run_id": "run-2", "created_at": "2026-05-24T01:00:00Z", "replay_checksum": "chk-replay", "continuity_status": "VERIFIED"}
+            {"record_id": "R1", "replay_id": "R1", "created_at": "2026-05-24T01:00:00Z", "replay_checksum": "chk-replay", "continuity_status": "VERIFIED", "payload": {}, "replay_metadata": {}}
         ],
     })
 
@@ -88,7 +88,7 @@ def test_d7_view_model_deterministic_shape_and_ordering():
 
     assert vm1["view_model_checksum"] != ""
     assert vm1["findings"][0]["finding_id"] == "F2"
-    assert vm1["overview"]["latest_operational_run"] == "run-2"
+    assert vm1["overview"]["latest_operational_run"] == "replay-2"
     assert vm1["schema_version"] == vm2["schema_version"]
     assert vm1["invariant_flags"]["read_only"] is True
 
@@ -159,3 +159,35 @@ def test_d7_runtime_diagnostics_no_secret_leakage_and_mismatch_detection():
     assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in text
     assert out["project_id_mismatch_vs_github_actions"] is True
     assert out["using_anon_key"] is False
+
+
+def test_d7_payloads_do_not_require_run_id_field():
+    client = _build_client()
+    findings = load_d7_dashboard_findings(client)
+    assert "run_id" not in findings["rows"][0]
+
+
+def test_latest_run_fallback_to_checksum_prefix_when_no_replay_metadata_or_payload_replay_id():
+    findings_payload = {
+        "rows": [
+            {"record_id": "FR9", "created_at": "2026-05-24T10:00:00Z", "source_payload_checksum": "1234567890abcdef"}
+        ]
+    }
+    vm = build_d7_dashboard_view_model(
+        findings_payload=findings_payload,
+        narratives_payload={"rows": []},
+        evidence_payload={"rows": []},
+        integrity_payload={"manifests": {"rows": []}, "audits": {"rows": []}, "replay": {"rows": []}},
+    )
+    assert vm["overview"]["latest_operational_run"] == "1234567890ab"
+
+
+def test_d7_runtime_diagnostics_includes_derived_preview_without_run_id():
+    client = _build_client()
+    findings = load_d7_dashboard_findings(client)
+    out = build_d7_runtime_diagnostics(
+        runtime_config={"supabase_url": "https://abc123.supabase.co", "supabase_key": "anon", "credentials_present": True},
+        client_resolution={"client_resolved": True, "client_factory_source": "supabase_package"},
+        table_payloads={"dashboard_finding_records": findings},
+    )
+    assert out["table_diagnostics"]["dashboard_finding_records"]["derived_run_or_replay_preview"] == "replay-2"
