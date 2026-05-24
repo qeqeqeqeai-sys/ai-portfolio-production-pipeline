@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -553,6 +553,8 @@ def build_d7_debug_payload_sections(view_model: Mapping[str, Any]) -> OrderedDic
         ("export_manifests", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "manifests", "rows")) or [])),
         ("audit_rows", deepcopy(_nested_get(view_model, ("runtime_sections", "integrity_payload", "audits", "rows")) or [])),
         ("raw_d8_2_payload", deepcopy(view_model.get("d8_2_replay_density_expansion") or {})),
+        ("raw_d8_5_density_payload", deepcopy(view_model.get("d8_5_operational_intelligence_density_verification") or {})),
+        ("raw_d8_5_backfill_payload", deepcopy(view_model.get("d8_5_supabase_backfill_readiness") or {})),
         ("internal_ids", OrderedDict([("latest_run", _nested_get(view_model, ("overview", "latest_operational_run")))])),
         ("raw_payload_json", deepcopy(view_model.get("runtime_sections", {}))),
     ])
@@ -631,6 +633,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     d8_dashboard = build_d8_dashboard_view_model(d8_payload)
     d8_2_payload = build_d8_2_payload(effective_history, findings, narratives, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
     d8_2_dashboard = build_d8_2_dashboard_view_model(d8_2_payload)
+    d8_5_density = build_d8_5_operational_intelligence_density_verification(findings=findings, evidence_maps=evidence_maps, replay_metadata_rows=replay, historical_runs_payloads=effective_history, d8_payload=d8_payload, d8_2_payload=d8_2_payload, e2_payload=e2_payload)
+    d8_5_backfill = assess_d8_5_supabase_backfill_readiness(density_verification=d8_5_density, findings=findings, historical_runs_payloads=effective_history, replay_metadata_rows=replay, evidence_maps=evidence_maps, e2_payload=e2_payload, d8_2_payload=d8_2_payload)
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
@@ -668,6 +672,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d8_dashboard", d8_dashboard),
         ("d8_2_replay_density_expansion", d8_2_payload),
         ("d8_2_dashboard", d8_2_dashboard),
+        ("d8_5_operational_intelligence_density_verification", d8_5_density),
+        ("d8_5_supabase_backfill_readiness", d8_5_backfill),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
