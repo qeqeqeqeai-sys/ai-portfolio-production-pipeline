@@ -240,6 +240,14 @@ __all__ = [
     "build_d12_dashboard_expectation_cards",
     "build_d12_report_payload",
     "build_d12_report_markdown",
+    "build_d13_expectation_synthesis_snapshot",
+    "compare_d13_expectation_snapshots",
+    "classify_d13_regime_evolution",
+    "build_d13_regime_evolution_narrative",
+    "certify_d13_regime_evolution",
+    "build_d13_dashboard_regime_evolution_cards",
+    "build_d13_report_payload",
+    "build_d13_report_markdown",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -348,4 +356,15 @@ from .d12_historical_expectation_intelligence_synthesis import (
     build_d12_dashboard_expectation_cards,
     build_d12_report_payload,
     build_d12_report_markdown,
+)
+
+from .d13_historical_expectation_delta_regime_evolution import (
+    build_d13_expectation_synthesis_snapshot,
+    compare_d13_expectation_snapshots,
+    classify_d13_regime_evolution,
+    build_d13_regime_evolution_narrative,
+    certify_d13_regime_evolution,
+    build_d13_dashboard_regime_evolution_cards,
+    build_d13_report_payload,
+    build_d13_report_markdown,
 )
