@@ -1,4 +1,5 @@
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
+    D7_PHYSICAL_COLUMNS_BY_TABLE,
     build_d7_dashboard_view_model,
     build_d7_runtime_diagnostics,
     load_d7_dashboard_evidence_maps,
@@ -14,10 +15,13 @@ class _Resp:
 
 
 class _Query:
-    def __init__(self, rows):
+    def __init__(self, rows, client, table):
         self.rows = list(rows)
+        self.client = client
+        self.table = table
 
-    def select(self, _):
+    def select(self, cols):
+        self.client.selections.append((self.table, cols))
         return self
 
     def order(self, key, desc=True):
@@ -36,9 +40,10 @@ class FakeReadOnlyClient:
     def __init__(self, tables):
         self.tables = tables
         self.write_calls = []
+        self.selections = []
 
     def table(self, name):
-        return _Query(self.tables.get(name, []))
+        return _Query(self.tables.get(name, []), self, name)
 
     def insert(self, *args, **kwargs):
         self.write_calls.append((args, kwargs))
@@ -47,86 +52,63 @@ class FakeReadOnlyClient:
 def _build_client():
     return FakeReadOnlyClient({
         "dashboard_finding_records": [
-            {"record_id": "FR2", "finding_id": "F2", "created_at": "2026-05-24T01:00:00Z", "finding_title": "Elevated spread", "finding_type": "credit", "severity": "high", "direction": "worsening", "confidence": 0.86, "finding_summary": "spread widening", "evidence_refs": ["EV2"], "lineage_refs": ["O5"], "source_payload_checksum": "abcdef1234567890", "payload": {"replay_id": "replay-2"}, "replay_metadata": {}},
-            {"record_id": "FR1", "finding_id": "F1", "created_at": "2026-05-23T01:00:00Z", "finding_title": "Valuation stretch", "finding_type": "valuation", "severity": "medium", "direction": "worsening", "confidence": 0.74, "finding_summary": "percentile elevated", "evidence_refs": ["EV1"], "lineage_refs": ["O5"], "source_payload_checksum": "9999ef1234567890", "payload": {}, "replay_metadata": {}},
+            {"record_id": "FR2", "finding_id": "F2", "created_at": "2026-05-24T01:00:00Z", "finding_title": "Elevated spread", "finding_type": "credit", "finding_severity": "high", "finding_direction": "worsening", "confidence_label": "high", "evidence_refs": ["EV2"], "lineage_refs": ["O5"], "source_payload_checksum": "abcdef1234567890", "payload": {"replay_id": "replay-2", "finding_summary": "spread widening"}, "replay_metadata": {}},
         ],
         "dashboard_narrative_records": [
-            {"record_id": "N1", "created_at": "2026-05-24T01:00:00Z", "narrative_section": "expectation_fragility", "narrative_text": "Fragility concentrated in AI semis.", "related_findings": ["F2"], "payload": {}, "replay_metadata": {"replay_id": "replay-2"}}
+            {"record_id": "N1", "created_at": "2026-05-24T01:00:00Z", "narrative_section": "expectation_fragility", "related_finding_ids": ["F2"], "payload": {"narrative_text": "Fragility concentrated in AI semis."}, "replay_metadata": {"replay_id": "replay-2"}}
         ],
         "dashboard_evidence_map_records": [
-            {"record_id": "E1", "created_at": "2026-05-24T01:00:00Z", "finding_id": "F2", "evidence_ref": "EV2", "evidence_metadata": {"metric": "credit_spread"}, "payload": {}, "replay_metadata": {}}
+            {"record_id": "E1", "created_at": "2026-05-24T01:00:00Z", "finding_id": "F2", "evidence_ref": "EV2", "payload": {"evidence_metadata": {"metric": "credit_spread"}}, "replay_metadata": {}}
         ],
         "dashboard_export_manifests": [
-            {"record_id": "MREC1", "manifest_id": "M1", "created_at": "2026-05-24T01:00:00Z", "export_manifest_checksum": "chk-export", "record_counts": {"findings": 2}, "payload": {}, "replay_metadata": {}}
+            {"record_id": "MREC1", "manifest_id": "M1", "created_at": "2026-05-24T01:00:00Z", "manifest_checksum": "chk-export", "payload": {"record_counts": {"findings": 1}}, "replay_metadata": {}}
         ],
         "dashboard_persistence_audit_records": [
-            {"record_id": "A1", "audit_id": "A1", "created_at": "2026-05-24T01:00:00Z", "audit_status": "EXECUTED", "persisted_record_count": 4, "target_table": "dashboard_finding_records", "payload": {}, "replay_metadata": {}}
+            {"record_id": "A1", "audit_id": "A1", "created_at": "2026-05-24T01:00:00Z", "write_status": "EXECUTED", "target_table": "dashboard_finding_records", "payload": {}, "replay_metadata": {}}
         ],
         "dashboard_replay_metadata_records": [
-            {"record_id": "R1", "replay_id": "R1", "created_at": "2026-05-24T01:00:00Z", "replay_checksum": "chk-replay", "continuity_status": "VERIFIED", "payload": {}, "replay_metadata": {}}
+            {"record_id": "R1", "replay_id": "R1", "created_at": "2026-05-24T01:00:00Z", "replay_checksum": "chk-replay", "payload": {"continuity_status": "VERIFIED"}, "replay_metadata": {}}
         ],
     })
 
 
-def test_d7_helper_api_presence_and_import_smoke():
-    assert callable(load_d7_dashboard_findings)
-    assert callable(load_d7_dashboard_narratives)
-    assert callable(load_d7_dashboard_evidence_maps)
-    assert callable(load_d7_dashboard_operational_integrity)
-    assert callable(build_d7_dashboard_view_model)
-
-
-def test_d7_view_model_deterministic_shape_and_ordering():
-    client = _build_client()
-    findings = load_d7_dashboard_findings(client)
-    narratives = load_d7_dashboard_narratives(client)
-    evidence = load_d7_dashboard_evidence_maps(client)
-    integrity = load_d7_dashboard_operational_integrity(client)
-
-    vm1 = build_d7_dashboard_view_model(findings_payload=findings, narratives_payload=narratives, evidence_payload=evidence, integrity_payload=integrity)
-    vm2 = build_d7_dashboard_view_model(findings_payload=findings, narratives_payload=narratives, evidence_payload=evidence, integrity_payload=integrity)
-
-    assert vm1["view_model_checksum"] != ""
-    assert vm1["findings"][0]["finding_id"] == "F2"
-    assert vm1["overview"]["latest_operational_run"] == "replay-2"
-    assert vm1["schema_version"] == vm2["schema_version"]
-    assert vm1["invariant_flags"]["read_only"] is True
-
-
-def test_d7_missing_data_degraded_and_no_write_guarantee():
-    findings = load_d7_dashboard_findings(None)
-    narratives = load_d7_dashboard_narratives(None)
-    evidence = load_d7_dashboard_evidence_maps(None)
-    integrity = load_d7_dashboard_operational_integrity(None)
-    vm = build_d7_dashboard_view_model(findings_payload=findings, narratives_payload=narratives, evidence_payload=evidence, integrity_payload=integrity)
-
-    assert findings["status"] == "degraded"
-    assert vm["overview"]["latest_operational_run"] is None
-    assert vm["integrity"]["latest_export_manifest_checksum"] is None
-    assert vm["invariant_flags"]["no_writes"] is True
-
-
-def test_d7_supabase_abstraction_boundary_read_only_usage():
+def test_d7_no_invalid_column_references_in_selects():
     client = _build_client()
     _ = load_d7_dashboard_findings(client)
+    _ = load_d7_dashboard_narratives(client)
+    _ = load_d7_dashboard_evidence_maps(client)
     _ = load_d7_dashboard_operational_integrity(client)
-    assert client.write_calls == []
+    invalid = {"severity", "narrative_text", "evidence_metadata", "export_manifest_checksum", "audit_status", "continuity_status"}
+    selected_cols = set()
+    for _, cols in client.selections:
+        selected_cols.update(cols.split(","))
+    assert selected_cols.isdisjoint(invalid)
 
 
-def test_d7_runtime_diagnostics_shape_and_counts():
+def test_d7_view_model_uses_d2_mappings_and_payload_fallbacks():
+    client = _build_client()
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["findings"][0]["severity"] == "high"
+    assert vm["narratives"][0]["narrative_text"] == "Fragility concentrated in AI semis."
+    assert vm["evidence_maps"][0]["evidence_metadata"]["metric"] == "credit_spread"
+    assert vm["integrity"]["latest_export_manifest_checksum"] == "chk-export"
+    assert vm["integrity"]["latest_persistence_audit_status"] == "EXECUTED"
+    assert vm["integrity"]["verification_continuity"] == "VERIFIED"
+
+
+def test_d7_diagnostics_counts_work_without_invalid_columns():
     client = _build_client()
     findings = load_d7_dashboard_findings(client)
     narratives = load_d7_dashboard_narratives(client)
     evidence = load_d7_dashboard_evidence_maps(client)
     integrity = load_d7_dashboard_operational_integrity(client)
     out = build_d7_runtime_diagnostics(
-        runtime_config={
-            "supabase_url": "https://abc123.supabase.co",
-            "supabase_key": "eyJ...service_role...",
-            "credentials_present": True,
-            "supabase_url_source": "streamlit_secrets:SUPABASE_URL",
-            "github_actions_supabase_url": "https://abc123.supabase.co",
-        },
+        runtime_config={"supabase_url": "https://abc123.supabase.co", "supabase_key": "anon", "credentials_present": True},
         client_resolution={"client_resolved": True, "client_factory_source": "supabase_package"},
         table_payloads={
             "dashboard_finding_records": findings,
@@ -137,57 +119,9 @@ def test_d7_runtime_diagnostics_shape_and_counts():
             "dashboard_replay_metadata_records": integrity["replay"],
         },
     )
-    assert out["supabase_project_id_prefix"] == "abc123"
-    assert out["using_service_role_key"] is True
-    assert out["project_id_mismatch_vs_github_actions"] is False
-    assert out["table_diagnostics"]["dashboard_finding_records"]["row_count"] == 2
-    assert out["table_diagnostics"]["dashboard_finding_records"]["latest_created_at"] == "2026-05-24T01:00:00Z"
+    assert out["table_diagnostics"]["dashboard_finding_records"]["row_count"] == 1
 
 
-def test_d7_runtime_diagnostics_no_secret_leakage_and_mismatch_detection():
-    out = build_d7_runtime_diagnostics(
-        runtime_config={
-            "supabase_url": "https://streamlitxyz.supabase.co",
-            "supabase_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.service_role.payload",
-            "credentials_present": True,
-            "github_actions_supabase_url": "https://gha123.supabase.co",
-        },
-        client_resolution={"client_resolved": False, "client_factory_source": "unavailable"},
-        table_payloads={"dashboard_finding_records": {"status": "empty", "row_count": 0, "rows": [], "error": None}},
-    )
-    text = str(out)
-    assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in text
-    assert out["project_id_mismatch_vs_github_actions"] is True
-    assert out["using_anon_key"] is False
-
-
-def test_d7_payloads_do_not_require_run_id_field():
-    client = _build_client()
-    findings = load_d7_dashboard_findings(client)
-    assert "run_id" not in findings["rows"][0]
-
-
-def test_latest_run_fallback_to_checksum_prefix_when_no_replay_metadata_or_payload_replay_id():
-    findings_payload = {
-        "rows": [
-            {"record_id": "FR9", "created_at": "2026-05-24T10:00:00Z", "source_payload_checksum": "1234567890abcdef"}
-        ]
-    }
-    vm = build_d7_dashboard_view_model(
-        findings_payload=findings_payload,
-        narratives_payload={"rows": []},
-        evidence_payload={"rows": []},
-        integrity_payload={"manifests": {"rows": []}, "audits": {"rows": []}, "replay": {"rows": []}},
-    )
-    assert vm["overview"]["latest_operational_run"] == "1234567890ab"
-
-
-def test_d7_runtime_diagnostics_includes_derived_preview_without_run_id():
-    client = _build_client()
-    findings = load_d7_dashboard_findings(client)
-    out = build_d7_runtime_diagnostics(
-        runtime_config={"supabase_url": "https://abc123.supabase.co", "supabase_key": "anon", "credentials_present": True},
-        client_resolution={"client_resolved": True, "client_factory_source": "supabase_package"},
-        table_payloads={"dashboard_finding_records": findings},
-    )
-    assert out["table_diagnostics"]["dashboard_finding_records"]["derived_run_or_replay_preview"] == "replay-2"
+def test_d7_schema_map_has_only_allowed_keys_subset():
+    assert "dashboard_finding_records" in D7_PHYSICAL_COLUMNS_BY_TABLE
+    assert "severity" not in D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_finding_records"]

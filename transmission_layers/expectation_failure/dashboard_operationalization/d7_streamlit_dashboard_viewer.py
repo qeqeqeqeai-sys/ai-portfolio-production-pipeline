@@ -11,7 +11,42 @@ from urllib.parse import urlparse
 from typing import Any, Mapping
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
-D7_MODULE_VERSION = "1.0.0"
+D7_MODULE_VERSION = "1.1.0"
+
+D7_PHYSICAL_COLUMNS_BY_TABLE = {
+    "dashboard_finding_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "finding_id", "finding_type", "finding_title", "finding_severity", "finding_direction", "confidence_label",
+    ],
+    "dashboard_narrative_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "narrative_section", "related_finding_ids",
+    ],
+    "dashboard_evidence_map_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "finding_id", "evidence_ref",
+    ],
+    "dashboard_supervisor_panel_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "panel_name", "panel_status",
+    ],
+    "dashboard_export_manifests": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "manifest_id", "manifest_checksum",
+    ],
+    "dashboard_governance_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "governance_status", "forbidden_capabilities",
+    ],
+    "dashboard_replay_metadata_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "replay_id", "replay_checksum",
+    ],
+    "dashboard_persistence_audit_records": [
+        "record_id", "record_type", "source_payload_checksum", "export_checksum", "payload", "lineage_refs", "evidence_refs", "governance_notes", "replay_metadata", "created_at", "updated_at",
+        "audit_id", "batch_id", "target_table", "write_status",
+    ],
+}
 _D7_TABLES = (
     "dashboard_finding_records",
     "dashboard_narrative_records",
@@ -44,27 +79,21 @@ def _safe_rows(client: Any, *, table: str, columns: list[str], limit: int = 500,
 
 
 def load_d7_dashboard_findings(client: Any, *, limit: int = 500) -> OrderedDict[str, Any]:
-    return _safe_rows(client, table="dashboard_finding_records", columns=[
-        "record_id", "finding_id", "created_at", "finding_title", "finding_type", "severity", "direction", "confidence", "finding_summary", "evidence_refs", "lineage_refs", "source_payload_checksum", "export_checksum", "payload", "replay_metadata",
-    ], limit=limit, order_by="created_at", desc=True)
+    return _safe_rows(client, table="dashboard_finding_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_finding_records"], limit=limit, order_by="created_at", desc=True)
 
 
 def load_d7_dashboard_narratives(client: Any, *, limit: int = 200) -> OrderedDict[str, Any]:
-    return _safe_rows(client, table="dashboard_narrative_records", columns=[
-        "record_id", "created_at", "narrative_section", "narrative_text", "related_findings", "source_payload_checksum", "export_checksum", "payload", "replay_metadata",
-    ], limit=limit, order_by="created_at", desc=True)
+    return _safe_rows(client, table="dashboard_narrative_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_narrative_records"], limit=limit, order_by="created_at", desc=True)
 
 
 def load_d7_dashboard_evidence_maps(client: Any, *, limit: int = 500) -> OrderedDict[str, Any]:
-    return _safe_rows(client, table="dashboard_evidence_map_records", columns=[
-        "record_id", "created_at", "finding_id", "evidence_ref", "evidence_metadata", "source_payload_checksum", "export_checksum", "payload", "replay_metadata",
-    ], limit=limit, order_by="created_at", desc=True)
+    return _safe_rows(client, table="dashboard_evidence_map_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_evidence_map_records"], limit=limit, order_by="created_at", desc=True)
 
 
 def load_d7_dashboard_operational_integrity(client: Any) -> OrderedDict[str, Any]:
-    manifests = _safe_rows(client, table="dashboard_export_manifests", columns=["record_id", "manifest_id", "created_at", "export_manifest_checksum", "record_counts", "source_payload_checksum", "export_checksum", "payload", "replay_metadata"], limit=100)
-    audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=["record_id", "audit_id", "created_at", "audit_status", "persisted_record_count", "target_table", "source_payload_checksum", "export_checksum", "payload", "replay_metadata"], limit=200)
-    replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=["record_id", "replay_id", "created_at", "replay_checksum", "continuity_status", "source_payload_checksum", "export_checksum", "payload", "replay_metadata"], limit=100)
+    manifests = _safe_rows(client, table="dashboard_export_manifests", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_export_manifests"], limit=100)
+    audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_persistence_audit_records"], limit=200)
+    replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_replay_metadata_records"], limit=100)
     return OrderedDict([("manifests", manifests), ("audits", audits), ("replay", replay)])
 
 
@@ -158,10 +187,50 @@ def _latest_run_id(*sections: Mapping[str, Any]) -> str | None:
     return sorted(runs, reverse=True)[0][1] if runs else None
 
 
+
+
+def _payload_map(row: Mapping[str, Any]) -> Mapping[str, Any]:
+    payload = row.get("payload")
+    return payload if isinstance(payload, Mapping) else {}
+
+
+def _derive_continuity_status(row: Mapping[str, Any]) -> str | None:
+    payload = _payload_map(row)
+    replay_metadata = row.get("replay_metadata") if isinstance(row.get("replay_metadata"), Mapping) else {}
+    for source in (payload, replay_metadata):
+        val = source.get("continuity_status")
+        if val:
+            return str(val)
+    return "VERIFIED" if row.get("replay_checksum") else None
+
+
+def _transform_findings(rows: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    out=[]
+    for r in rows:
+        payload=_payload_map(r)
+        out.append(OrderedDict(r)|OrderedDict([("severity", r.get("finding_severity")),("direction", r.get("finding_direction")),("confidence", r.get("confidence_label") or payload.get("confidence")),("finding_summary", payload.get("finding_summary"))]))
+    return out
+
+
+def _transform_narratives(rows: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    out=[]
+    for r in rows:
+        payload=_payload_map(r)
+        out.append(OrderedDict(r)|OrderedDict([("narrative_text", payload.get("narrative_text") or payload.get("finding_summary")),("related_findings", r.get("related_finding_ids") or payload.get("related_findings") or [])]))
+    return out
+
+
+def _transform_evidence(rows: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    out=[]
+    for r in rows:
+        payload=_payload_map(r)
+        out.append(OrderedDict(r)|OrderedDict([("evidence_metadata", payload.get("evidence_metadata") or payload)]))
+    return out
+
 def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narratives_payload: Mapping[str, Any], evidence_payload: Mapping[str, Any], integrity_payload: Mapping[str, Any]) -> OrderedDict[str, Any]:
-    findings = list(findings_payload.get("rows", []))
-    narratives = list(narratives_payload.get("rows", []))
-    evidence_maps = list(evidence_payload.get("rows", []))
+    findings = _transform_findings(list(findings_payload.get("rows", [])))
+    narratives = _transform_narratives(list(narratives_payload.get("rows", [])))
+    evidence_maps = _transform_evidence(list(evidence_payload.get("rows", [])))
     manifests = list(integrity_payload.get("manifests", {}).get("rows", []))
     audits = list(integrity_payload.get("audits", {}).get("rows", []))
     replay = list(integrity_payload.get("replay", {}).get("rows", []))
@@ -174,9 +243,9 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     overview = OrderedDict([
         ("latest_operational_run", latest_run),
         ("certification_status", "AVAILABLE" if findings else "DEGRADED_OR_EMPTY"),
-        ("persistence_execution_status", str(latest_audit.get("audit_status") or "unknown")),
-        ("readback_verification_status", str(latest_replay.get("continuity_status") or "unknown")),
-        ("replay_checksum_continuity", bool(latest_replay.get("replay_checksum") and latest_manifest.get("export_manifest_checksum"))),
+        ("persistence_execution_status", str(latest_audit.get("write_status") or "unknown")),
+        ("readback_verification_status", str(_derive_continuity_status(latest_replay) or "unknown")),
+        ("replay_checksum_continuity", bool(latest_replay.get("replay_checksum") and latest_manifest.get("manifest_checksum"))),
     ])
 
     interpretation = OrderedDict([
@@ -195,11 +264,11 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("narratives", narratives),
         ("evidence_maps", evidence_maps),
         ("integrity", OrderedDict([
-            ("latest_export_manifest_checksum", latest_manifest.get("export_manifest_checksum")),
+            ("latest_export_manifest_checksum", latest_manifest.get("manifest_checksum")),
             ("latest_replay_checksum", latest_replay.get("replay_checksum")),
-            ("latest_persistence_audit_status", latest_audit.get("audit_status")),
-            ("record_counts", latest_manifest.get("record_counts") or {}),
-            ("verification_continuity", latest_replay.get("continuity_status") or "unknown"),
+            ("latest_persistence_audit_status", latest_audit.get("write_status")),
+            ("record_counts", _payload_map(latest_manifest).get("record_counts") or {}),
+            ("verification_continuity", _derive_continuity_status(latest_replay) or "unknown"),
         ])),
         ("runtime_sections", OrderedDict([
             ("findings_payload", deepcopy(findings_payload)),
@@ -221,4 +290,5 @@ __all__ = [
     "load_d7_dashboard_operational_integrity",
     "build_d7_dashboard_view_model",
     "build_d7_runtime_diagnostics",
+    "D7_PHYSICAL_COLUMNS_BY_TABLE",
 ]
