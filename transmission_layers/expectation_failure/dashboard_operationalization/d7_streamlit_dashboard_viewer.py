@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative, build_d17_confidence_attribution_inventory, build_d17_constraint_weight_summary, build_d17_lineage_trace_compression, build_d17_historical_confidence_overlays, build_d17_operator_drilldown_payload, build_d17_dashboard_payload, certify_d17_confidence_lineage_enrichment
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative, build_d17_confidence_attribution_inventory, build_d17_constraint_weight_summary, build_d17_lineage_trace_compression, build_d17_historical_confidence_overlays, build_d17_operator_drilldown_payload, build_d17_dashboard_payload, certify_d17_confidence_lineage_enrichment, build_d18_cross_run_confidence_inventory, build_d18_confidence_delta_summary, build_d18_constraint_persistence_summary, build_d18_regime_transition_confidence_delta, build_d18_operator_triage_queue, build_d18_priority_drilldown_cards, build_d18_dashboard_payload, certify_d18_cross_run_triage
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -19,6 +19,7 @@ D7_RENDER_SECTION_ORDER = (
     "d15_historical_operational_intelligence",
     "d16_historical_findings_operator_narrative",
     "d17_historical_confidence_lineage",
+    "d18_cross_run_confidence_delta_operator_triage",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -666,6 +667,14 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     d17_drilldowns = build_d17_operator_drilldown_payload(confidence_attribution_inventory=d17_inventory, lineage_trace_compression=d17_lineage, d16_dashboard_payload=d16_dashboard_payload)
     d17_dashboard_payload = build_d17_dashboard_payload(confidence_attribution_inventory=d17_inventory, constraint_weight_summary=d17_constraints, lineage_trace_compression=d17_lineage, historical_confidence_overlays=d17_overlays, operator_drilldown_payload=d17_drilldowns)
     d17_certification = certify_d17_confidence_lineage_enrichment(d16_dashboard_payload=d16_dashboard_payload, historical_confidence_overlays=d17_overlays, lineage_trace_compression=d17_lineage, dashboard_payload=d17_dashboard_payload)
+    d18_inventory = build_d18_cross_run_confidence_inventory(current_run_payload=d17_dashboard_payload, prior_run_payload=None, d17_confidence_overlays=d17_overlays, d17_operator_drilldowns=d17_drilldowns)
+    d18_delta_summary = build_d18_confidence_delta_summary(comparison_inventory=d18_inventory)
+    d18_constraint_summary = build_d18_constraint_persistence_summary(comparison_inventory=d18_inventory)
+    d18_regime_delta = build_d18_regime_transition_confidence_delta(comparison_inventory=d18_inventory, d16_dashboard_payload=d16_dashboard_payload)
+    d18_triage_queue = build_d18_operator_triage_queue(comparison_inventory=d18_inventory, constraint_persistence_summary=d18_constraint_summary, regime_transition_confidence_delta=d18_regime_delta)
+    d18_cards = build_d18_priority_drilldown_cards(triage_queue=d18_triage_queue)
+    d18_dashboard_payload = build_d18_dashboard_payload(comparison_inventory=d18_inventory, delta_summary=d18_delta_summary, constraint_persistence_summary=d18_constraint_summary, regime_transition_confidence_delta=d18_regime_delta, operator_triage_queue=d18_triage_queue, priority_drilldown_cards=d18_cards)
+    d18_certification = certify_d18_cross_run_triage(comparison_inventory=d18_inventory, delta_summary=d18_delta_summary, triage_queue=d18_triage_queue, dashboard_payload=d18_dashboard_payload)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -721,6 +730,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d16_historical_findings_narrative_certification", d16_certification),
         ("d17_historical_confidence_lineage", d17_dashboard_payload),
         ("d17_confidence_lineage_certification", d17_certification),
+        ("d18_cross_run_confidence_delta_operator_triage", d18_dashboard_payload),
+        ("d18_cross_run_triage_certification", d18_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1112,6 +1123,31 @@ def render_d17_historical_confidence_lineage(view_model: Mapping[str, Any], *, s
         st.json(plan.get("governance_debug_details", {}))
 
 
+def render_d18_cross_run_confidence_delta_operator_triage(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("d18_cross_run_confidence_delta_operator_triage") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping) or not payload:
+        st.markdown("### D18 Cross-Run Confidence Delta & Operator Triage")
+        st.caption("D18 cross-run triage is unavailable for this run.")
+        return
+    st.markdown("### D18 Cross-Run Confidence Delta & Operator Triage")
+    triage = _as_list(payload.get("Operator Triage Queue"))
+    if triage:
+        st.markdown("**Operator Triage Queue**")
+        for row in triage[:5]:
+            item = _payload_map(row)
+            st.markdown(f"- P{_render_value(item.get('priority_rank'))} [{_render_value(item.get('priority_band'))}] {_render_value(item.get('finding_or_cluster_ref'))}: {_render_value(item.get('review_reason'))}")
+    st.markdown(f"**Strengthened / Weakened / Stable:** {len(_as_list(payload.get('Strengthened Findings')))} / {len(_as_list(payload.get('Weakened Findings')))} / {len(_as_list(payload.get('Stable Findings')))}")
+    st.markdown(f"**Newly Observed / No Longer Observed:** {len(_as_list(payload.get('Newly Observed Findings')))} / {len(_as_list(payload.get('No Longer Observed Findings')))}")
+    cards = _as_list(payload.get("Priority Drilldown Cards"))
+    if cards:
+        st.markdown("**Priority Drilldown Cards**")
+        for c in cards[:3]:
+            card = _payload_map(c)
+            st.caption(f"{_render_value(card.get('title'))} — {_render_value(card.get('operator_review_hint'))}")
+    with st.expander("D18 Governance / Lineage Details"):
+        st.json(payload.get("Governance/Lineage Details", {}))
+
+
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
     plan = build_d7_render_plan(view_model)
     metrics = plan["overview_metrics"]
@@ -1258,6 +1294,7 @@ __all__ = [
     "render_d16_historical_findings_operator_narrative",
     "build_d17_historical_confidence_lineage_render_plan",
     "render_d17_historical_confidence_lineage",
+    "render_d18_cross_run_confidence_delta_operator_triage",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",

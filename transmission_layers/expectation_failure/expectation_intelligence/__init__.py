@@ -439,3 +439,16 @@ from .d17_historical_confidence_attribution_lineage_compression import (
     build_d17_report_payload,
     build_d17_report_markdown,
 )
+
+from .d18_cross_run_confidence_delta_operator_triage import (
+    build_d18_cross_run_confidence_inventory,
+    build_d18_confidence_delta_summary,
+    build_d18_constraint_persistence_summary,
+    build_d18_regime_transition_confidence_delta,
+    build_d18_operator_triage_queue,
+    build_d18_priority_drilldown_cards,
+    build_d18_dashboard_payload,
+    certify_d18_cross_run_triage,
+    build_d18_report_payload,
+    build_d18_report_markdown,
+)
