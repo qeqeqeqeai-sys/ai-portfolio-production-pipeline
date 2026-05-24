@@ -18,6 +18,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_integrity_overview,
     render_d8_2_replay_evidence_density_summary,
     render_d15_historical_operational_intelligence,
+    render_d16_historical_findings_operator_narrative,
     render_e6_expectation_executive_summary,
     render_d7_narrative_sections,
     render_d7_supervisor_interpretation,
@@ -377,10 +378,11 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
 
 def test_d7_renderer_helper_api_presence_and_ordering_constant():
     assert D7_RENDER_SECTION_ORDER == (
-        "e6_expectation_executive_summary", "d15_historical_operational_intelligence", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
+        "e6_expectation_executive_summary", "d15_historical_operational_intelligence", "d16_historical_findings_operator_narrative", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
     )
     assert callable(render_e6_expectation_executive_summary)
     assert callable(render_d15_historical_operational_intelligence)
+    assert callable(render_d16_historical_findings_operator_narrative)
     assert callable(render_d7_intelligence_overview)
     assert callable(render_d7_supervisor_interpretation)
     assert callable(render_d7_finding_cards)
