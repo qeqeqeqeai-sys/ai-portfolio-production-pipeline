@@ -22,14 +22,17 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Validate credentials
         run: |
+          set -euo pipefail
           test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL" && exit 1)
           test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY" && exit 1)
 
       - name: Run D6 proving cycle
         run: |
+          set -euo pipefail
           python scripts/run_d6_real_proving_cycle.py
