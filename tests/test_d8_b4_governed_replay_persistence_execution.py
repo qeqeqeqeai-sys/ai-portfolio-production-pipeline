@@ -58,15 +58,16 @@ class C:
 
 
 def test_governance_validation_and_plan():
-    g = validate_d8_b4_execution_governance(dry_run=False, client=C(), approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    g = validate_d8_b4_execution_governance(dry_run=False, client=C(), approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "true", "approve_append_only_persistence": "true", "approve_duplicate_prevention": "true", "approve_checksum_lineage": "true"})
     assert g["status"] == "GOVERNANCE_OK"
+    assert g["governance_status"] == "GOVERNANCE_OK"
     plan = build_d8_b4_persistence_execution_plan(governance=g, dry_run=False)
     assert plan["execution_status"] == "EXECUTION_READY"
 
 
 def test_non_dry_execution_append_only_and_readback():
     c = C()
-    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "true", "approve_append_only_persistence": "true", "approve_duplicate_prevention": "true", "approve_checksum_lineage": "true"})
     assert out["status"] in {"REPLAY_PERSISTENCE_OPERATIONAL", "REPLAY_PERSISTENCE_PARTIAL"}
     rb = out["readback"]
     assert rb["replay_metadata_row_count"] >= 1
@@ -76,18 +77,41 @@ def test_non_dry_execution_append_only_and_readback():
 
 def test_duplicate_idempotent_rerun_safety():
     c = C()
-    execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "true", "approve_append_only_persistence": "true", "approve_duplicate_prevention": "true", "approve_checksum_lineage": "true"})
     first = len(c.db["dashboard_replay_metadata_records"])
-    execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "true", "approve_append_only_persistence": "true", "approve_duplicate_prevention": "true", "approve_checksum_lineage": "true"})
     second = len(c.db["dashboard_replay_metadata_records"])
     assert second >= first
 
 
 def test_audit_and_report_shapes():
     c = C()
-    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "true", "approve_append_only_persistence": "true", "approve_duplicate_prevention": "true", "approve_checksum_lineage": "true"})
     audit = build_d8_b4_execution_audit_manifest(d6_result=out["d6_result"], governance=out["governance"], dry_run=False)
     assert "attempted_inserts" in audit
     rb = build_d8_b4_post_execution_readback(client=c)
     payload = build_d8_b4_execution_report_payload(governance=out["governance"], plan=out["plan"], audit=audit, readback=rb, d8_b2_retry=out["d8_b2_retry"])
     assert payload["no_direct_sql_bypass_used"] is True
+
+
+def test_missing_approvals_block_and_preserve_blockers():
+    c = C()
+    g = validate_d8_b4_execution_governance(dry_run=False, client=c, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    assert g["status"] == "GOVERNANCE_BLOCKED"
+    assert "missing_non_dry_run_approval" in g["blocking_reasons"]
+    assert "missing_append_only_persistence_approval" in g["blocking_reasons"]
+    assert "missing_duplicate_prevention_approval" in g["blocking_reasons"]
+    assert "missing_checksum_lineage_approval" in g["blocking_reasons"]
+    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+    assert out["status"] == "REPLAY_PERSISTENCE_GOVERNANCE_BLOCKED"
+    assert len(c.db["dashboard_replay_metadata_records"]) == 0
+    assert len(c.db["dashboard_export_manifests"]) == 0
+
+
+def test_partial_approvals_block():
+    c = C()
+    out = execute_d8_b4_governed_replay_persistence(client=c, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "true", "approve_append_only_persistence": "true"})
+    assert out["status"] == "REPLAY_PERSISTENCE_GOVERNANCE_BLOCKED"
+    blockers = out["governance"]["blocking_reasons"]
+    assert "missing_duplicate_prevention_approval" in blockers
+    assert "missing_checksum_lineage_approval" in blockers
