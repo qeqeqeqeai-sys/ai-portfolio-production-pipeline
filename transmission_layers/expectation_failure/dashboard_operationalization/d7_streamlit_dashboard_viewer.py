@@ -649,6 +649,14 @@ def _extract_e5_closeout(view_model: Mapping[str, Any]) -> Mapping[str, Any]:
     return payload if isinstance(payload, Mapping) else {}
 
 
+def _e5_alias_get(e5: Mapping[str, Any], *paths: tuple[str, ...]) -> Any:
+    for path in paths:
+        value = _nested_get(e5, path)
+        if value not in (None, "", []):
+            return value
+    return None
+
+
 def _to_bullets(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -673,61 +681,61 @@ def build_e6_executive_summary_render_plan(view_model: Mapping[str, Any]) -> Ord
     e5 = _extract_e5_closeout(view_model)
     if not e5:
         return OrderedDict([("available", False), ("message", "E5 supervisor closeout is unavailable for this run."), ("panels", OrderedDict()), ("debug", OrderedDict())])
-    dominant_regime = _nested_get(e5, ("composite_regime_synthesis", "dominant_expectation_regime"))
-    confidence_band = _nested_get(e5, ("composite_regime_synthesis", "regime_confidence_band"))
-    operational_status = _nested_get(e5, ("e5_operational_status", "e5_operational_status"))
-    readiness_score = _nested_get(e5, ("e5_operational_status", "operational_readiness_score"))
+    dominant_regime = _e5_alias_get(e5, ("composite_regime_synthesis", "dominant_expectation_regime"), ("e5_expectation_intelligence_envelope", "e5_expectation_regime_synthesis", "dominant_expectation_regime"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "dominant_expectation_regime"))
+    confidence_band = _e5_alias_get(e5, ("composite_regime_synthesis", "regime_confidence_band"), ("e5_expectation_intelligence_envelope", "e5_expectation_regime_synthesis", "regime_confidence_band"))
+    operational_status = _e5_alias_get(e5, ("e5_operational_status", "e5_operational_status"))
+    readiness_score = _e5_alias_get(e5, ("e5_operational_status", "operational_readiness_score"))
     panels = OrderedDict([
         ("executive_summary", OrderedDict([
             ("dominant_expectation_regime", _render_value(dominant_regime, fallback="Unavailable")),
             ("regime_confidence_band", _render_value(confidence_band, fallback="Unavailable")),
             ("operational_usefulness_status", _status_label(operational_status)),
             ("operational_readiness_score", _render_value(readiness_score, fallback="Unavailable")),
-            ("strongest_supporting_evidence_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "strongest_supporting_evidence_summary")), fallback="Unavailable")),
-            ("key_contradiction_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "key_contradiction_summary")), fallback="Unavailable")),
-            ("temporal_semantic_change_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "temporal_semantic_change_summary")), fallback="Unavailable")),
-            ("caveat_summary", _render_value(_nested_get(e5, ("supervisor_closeout", "caveat_summary")), fallback="Unavailable")),
-            ("supervisor_closeout_interpretation", _render_value(_nested_get(e5, ("supervisor_closeout", "supervisor_closeout_interpretation")), fallback="Unavailable")),
+            ("strongest_supporting_evidence_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "strongest_supporting_evidence_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "strongest_supporting_evidence")), fallback="Unavailable")),
+            ("key_contradiction_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "key_contradiction_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "key_contradictions"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "contradiction_significance_summary")), fallback="Unavailable")),
+            ("temporal_semantic_change_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "temporal_semantic_change_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "temporal_semantic_change")), fallback="Unavailable")),
+            ("caveat_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "caveat_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "confidence_caveats")), fallback="Unavailable")),
+            ("supervisor_closeout_interpretation", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "supervisor_closeout_interpretation"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "closeout_interpretation")), fallback="Unavailable")),
         ])),
         ("dominant_regime", OrderedDict([
             ("dominant_expectation_regime", _render_value(dominant_regime, fallback="Unavailable")),
-            ("supporting_regimes", _to_bullets(_nested_get(e5, ("composite_regime_synthesis", "supporting_regimes")))),
+            ("supporting_regimes", _to_bullets(_e5_alias_get(e5, ("composite_regime_synthesis", "supporting_regimes"), ("e5_expectation_intelligence_envelope", "e5_expectation_regime_synthesis", "supporting_regimes")))),
             ("regime_confidence_band", _render_value(confidence_band, fallback="Unavailable")),
-            ("regime_interpretation", _render_value(_nested_get(e5, ("composite_regime_synthesis", "regime_interpretation")), fallback="Unavailable")),
-            ("supporting_signal_refs", _to_bullets(_nested_get(e5, ("composite_regime_synthesis", "supporting_signal_refs")))),
-            ("caveats", _to_bullets(_nested_get(e5, ("composite_regime_synthesis", "caveats")))),
+            ("regime_interpretation", _render_value(_e5_alias_get(e5, ("composite_regime_synthesis", "regime_interpretation"), ("e5_expectation_intelligence_envelope", "e5_expectation_regime_synthesis", "regime_interpretation")), fallback="Unavailable")),
+            ("supporting_signal_refs", _to_bullets(_e5_alias_get(e5, ("composite_regime_synthesis", "supporting_signal_refs"), ("e5_expectation_intelligence_envelope", "e5_expectation_regime_synthesis", "supporting_signal_refs")))),
+            ("caveats", _to_bullets(_e5_alias_get(e5, ("composite_regime_synthesis", "caveats"), ("e5_expectation_intelligence_envelope", "e5_expectation_regime_synthesis", "caveats")))),
         ])),
         ("operational_usefulness", OrderedDict([
             ("e5_operational_status", _status_label(operational_status)),
             ("operational_readiness_score", _render_value(readiness_score, fallback="Unavailable")),
-            ("operational_readiness_interpretation", _render_value(_nested_get(e5, ("e5_operational_status", "operational_readiness_interpretation")), fallback="Unavailable")),
-            ("degrading_or_blocking_factors", _to_bullets(_nested_get(e5, ("e5_operational_status", "degrading_or_blocking_factors")))),
+            ("operational_readiness_interpretation", _render_value(_e5_alias_get(e5, ("e5_operational_status", "operational_readiness_interpretation")), fallback="Unavailable")),
+            ("degrading_or_blocking_factors", _to_bullets(_e5_alias_get(e5, ("e5_operational_status", "degrading_or_blocking_factors"), ("e5_operational_status", "blocking_or_degrading_factors")))),
         ])),
         ("contradiction_priority", OrderedDict([
-            ("most_important_contradictions", _to_bullets(_nested_get(e5, ("contradiction_priority_synthesis", "most_important_contradictions")))),
-            ("unresolved_contradiction_clusters", _to_bullets(_nested_get(e5, ("contradiction_priority_synthesis", "unresolved_contradiction_clusters")))),
-            ("contradiction_significance_summary", _render_value(_nested_get(e5, ("contradiction_priority_synthesis", "contradiction_significance_summary")), fallback="Unavailable")),
+            ("most_important_contradictions", _to_bullets(_e5_alias_get(e5, ("contradiction_priority_synthesis", "most_important_contradictions"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "contradiction_priority_inventory")))),
+            ("unresolved_contradiction_clusters", _to_bullets(_e5_alias_get(e5, ("contradiction_priority_synthesis", "unresolved_contradiction_clusters"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "unresolved_contradiction_clusters")))),
+            ("contradiction_significance_summary", _render_value(_e5_alias_get(e5, ("contradiction_priority_synthesis", "contradiction_significance_summary"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "contradiction_significance_summary")), fallback="Unavailable")),
             ("affected_themes_or_findings", _to_bullets(_nested_get(e5, ("contradiction_priority_synthesis", "affected_themes_or_findings")))),
         ])),
         ("strongest_evidence", OrderedDict([
-            ("strongest_supporting_evidence_refs", _to_bullets(_nested_get(e5, ("evidence_support_synthesis", "strongest_supporting_evidence_refs")))),
-            ("weakest_supporting_areas", _to_bullets(_nested_get(e5, ("evidence_support_synthesis", "weakest_supporting_areas")))),
-            ("evidence_support_interpretation", _render_value(_nested_get(e5, ("evidence_support_synthesis", "evidence_support_interpretation")), fallback="Unavailable")),
+            ("strongest_supporting_evidence_refs", _to_bullets(_e5_alias_get(e5, ("evidence_support_synthesis", "strongest_supporting_evidence_refs"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "strongest_supporting_evidence_refs")))),
+            ("weakest_supporting_areas", _to_bullets(_e5_alias_get(e5, ("evidence_support_synthesis", "weakest_supporting_areas"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "weakest_supporting_areas")))),
+            ("evidence_support_interpretation", _render_value(_e5_alias_get(e5, ("evidence_support_synthesis", "evidence_support_interpretation"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "closeout_interpretation")), fallback="Unavailable")),
             ("caveats", _to_bullets(_nested_get(e5, ("evidence_support_synthesis", "caveats")))),
         ])),
         ("temporal_semantic_change", OrderedDict([
-            ("persistent_themes", _to_bullets(_nested_get(e5, ("temporal_semantic_synthesis", "persistent_themes")))),
-            ("emerging_themes", _to_bullets(_nested_get(e5, ("temporal_semantic_synthesis", "emerging_themes")))),
-            ("fading_themes", _to_bullets(_nested_get(e5, ("temporal_semantic_synthesis", "fading_themes")))),
-            ("semantic_drift_assessment", _render_value(_nested_get(e5, ("temporal_semantic_synthesis", "semantic_drift_assessment")), fallback="Unavailable")),
-            ("expectation_framing_assessment", _render_value(_nested_get(e5, ("temporal_semantic_synthesis", "expectation_framing_assessment")), fallback="Unavailable")),
-            ("temporal_semantic_interpretation", _render_value(_nested_get(e5, ("temporal_semantic_synthesis", "temporal_semantic_interpretation")), fallback="Unavailable")),
+            ("persistent_themes", _to_bullets(_e5_alias_get(e5, ("temporal_semantic_synthesis", "persistent_themes"), ("e5_expectation_intelligence_envelope", "e5_temporal_semantic_synthesis", "persistent_theme_inventory")))),
+            ("emerging_themes", _to_bullets(_e5_alias_get(e5, ("temporal_semantic_synthesis", "emerging_themes"), ("e5_expectation_intelligence_envelope", "e5_temporal_semantic_synthesis", "emerging_theme_inventory")))),
+            ("fading_themes", _to_bullets(_e5_alias_get(e5, ("temporal_semantic_synthesis", "fading_themes"), ("e5_expectation_intelligence_envelope", "e5_temporal_semantic_synthesis", "fading_theme_inventory")))),
+            ("semantic_drift_assessment", _render_value(_e5_alias_get(e5, ("temporal_semantic_synthesis", "semantic_drift_assessment"), ("e5_expectation_intelligence_envelope", "e5_temporal_semantic_synthesis", "semantic_drift_assessment")), fallback="Unavailable")),
+            ("expectation_framing_assessment", _render_value(_e5_alias_get(e5, ("temporal_semantic_synthesis", "expectation_framing_assessment"), ("e5_expectation_intelligence_envelope", "e5_temporal_semantic_synthesis", "expectation_framing_assessment")), fallback="Unavailable")),
+            ("temporal_semantic_interpretation", _render_value(_e5_alias_get(e5, ("temporal_semantic_synthesis", "temporal_semantic_interpretation"), ("e5_expectation_intelligence_envelope", "e5_temporal_semantic_synthesis", "temporal_semantic_interpretation")), fallback="Unavailable")),
         ])),
         ("caveat_inventory", OrderedDict([
-            ("confidence_constraints", _to_bullets(_nested_get(e5, ("caveat_inventory", "confidence_constraints")))),
-            ("operational_limitations", _to_bullets(_nested_get(e5, ("caveat_inventory", "operational_limitations")))),
-            ("consolidated_caveats", _to_bullets(_nested_get(e5, ("caveat_inventory", "consolidated_caveats")))),
-            ("caveat_severity", _render_value(_nested_get(e5, ("caveat_inventory", "caveat_severity")), fallback="Unavailable")),
+            ("confidence_constraints", _to_bullets(_e5_alias_get(e5, ("caveat_inventory", "confidence_constraints"), ("e5_expectation_intelligence_envelope", "e5_caveat_inventory", "confidence_constraints")))),
+            ("operational_limitations", _to_bullets(_e5_alias_get(e5, ("caveat_inventory", "operational_limitations"), ("e5_expectation_intelligence_envelope", "e5_caveat_inventory", "operational_limitations")))),
+            ("consolidated_caveats", _to_bullets(_e5_alias_get(e5, ("caveat_inventory", "consolidated_caveats"), ("e5_expectation_intelligence_envelope", "e5_caveat_inventory", "consolidated_caveats")))),
+            ("caveat_severity", _render_value(_e5_alias_get(e5, ("caveat_inventory", "caveat_severity"), ("e5_expectation_intelligence_envelope", "e5_caveat_inventory", "confidence_band")), fallback="Unavailable")),
         ])),
     ])
     debug = OrderedDict([
