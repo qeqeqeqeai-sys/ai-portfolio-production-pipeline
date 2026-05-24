@@ -18,6 +18,93 @@ def _stable_checksum(payload: Any) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()
 
 
+def build_d6_post_execution_audit_record(cycle_result: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    d3 = dict(cycle_result.get("d3_persistence", {}))
+    table_results = [dict(r) for r in d3.get("table_results", []) if isinstance(r, Mapping)]
+    execution_state = str(d3.get("execution_state") or "")
+    cycle_checksum = str(cycle_result.get("cycle_checksum") or _stable_checksum(cycle_result))
+    audit_id = f"D6AUD-{cycle_checksum[:12].upper()}" if cycle_checksum else "D6AUD-UNKNOWN"
+    payload = OrderedDict([
+        ("d3_persistence_summary", d3),
+        ("per_table_execution_statuses", OrderedDict((str(r.get("target_table") or ""), str(r.get("execution_status") or "")) for r in table_results)),
+        ("attempted_record_count", int(sum(int(r.get("attempted_record_count") or 0) for r in table_results))),
+        ("persisted_record_count", int(sum(int(r.get("persisted_record_count") or 0) for r in table_results if r.get("persisted_record_count") is not None))),
+        ("failure_diagnostics", [OrderedDict([("target_table", str(r.get("target_table") or "")), ("error_type", str(r.get("error_type") or "")), ("error_message_short", str(r.get("error_message_short") or ""))]) for r in table_results if str(r.get("execution_status") or "").upper() == "FAILED"]),
+        ("persistence_failure_impacts_readback", bool(build_d6_operational_proving_summary(cycle_result).get("persistence_failure_impacts_readback"))),
+        ("persistence_status", execution_state),
+    ])
+    record = OrderedDict([
+        ("record_id", f"D6-EXEC-AUD-{cycle_checksum[:16].upper()}" if cycle_checksum else "D6-EXEC-AUD-UNKNOWN"),
+        ("record_type", "d3_execution_summary_record"),
+        ("audit_id", audit_id),
+        ("batch_id", f"D6CYCLE-{cycle_checksum[:12].upper()}" if cycle_checksum else "D6CYCLE-UNKNOWN"),
+        ("target_table", "dashboard_persistence_audit_records"),
+        ("write_status", "EXECUTED_WITH_FAILURES" if execution_state == "EXECUTED_WITH_FAILURES" else "EXECUTED"),
+        ("source_payload_checksum", str(cycle_result.get("o6", {}).get("o6_checksum") or "")),
+        ("export_checksum", str(cycle_result.get("o6", {}).get("export_checksum") or "")),
+        ("payload", payload),
+    ])
+    return record
+
+
+def build_d6_post_execution_replay_record(cycle_result: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    summary = build_d6_operational_proving_summary(cycle_result)
+    continuity = summary.get("checksum_continuity", {}) if isinstance(summary.get("checksum_continuity"), Mapping) else {}
+    cycle_checksum = str(cycle_result.get("cycle_checksum") or _stable_checksum(cycle_result))
+    payload = OrderedDict([
+        ("o5_checksum", str(continuity.get("o5_checksum") or "")),
+        ("o6_checksum", str(continuity.get("o6_checksum") or "")),
+        ("d3_summary_checksum", str(continuity.get("d3_summary_checksum") or "")),
+        ("d4_verification_checksum", str(continuity.get("d4_verification_checksum") or "")),
+        ("cycle_checksum", str(continuity.get("cycle_checksum") or cycle_checksum)),
+        ("raw_readback_verification_status", str(summary.get("readback_verification_status_raw") or "")),
+        ("effective_readback_verification_status", str(summary.get("readback_verification_status") or "")),
+        ("persistence_status", str(summary.get("persistence_state") or "")),
+        ("persisted_table_counts", OrderedDict((str(r.get("target_table") or ""), int(r.get("persisted_record_count") or 0)) for r in cycle_result.get("d3_persistence", {}).get("table_results", []) if isinstance(r, Mapping))),
+    ])
+    return OrderedDict([
+        ("record_id", f"D6-EXEC-REP-{cycle_checksum[:16].upper()}" if cycle_checksum else "D6-EXEC-REP-UNKNOWN"),
+        ("record_type", "d6_operational_cycle_replay_record"),
+        ("replay_id", f"D6REP-{cycle_checksum[:12].upper()}" if cycle_checksum else "D6REP-UNKNOWN"),
+        ("replay_checksum", str(cycle_result.get("cycle_checksum") or "")),
+        ("source_payload_checksum", str(cycle_result.get("o6", {}).get("o6_checksum") or "")),
+        ("export_checksum", str(cycle_result.get("o6", {}).get("export_checksum") or "")),
+        ("payload", payload),
+    ])
+
+
+def persist_d6_post_execution_summary_records(cycle_result: Mapping[str, Any], *, client: Any = None, dry_run: bool = False) -> OrderedDict[str, Any]:
+    if dry_run:
+        return OrderedDict([("execution_state", "DRY_RUN_NOT_EXECUTED"), ("persisted_record_count", 0), ("table_results", [])])
+    if client is None:
+        return OrderedDict([("execution_state", "NOT_EXECUTED_NO_CLIENT"), ("persisted_record_count", 0), ("table_results", [])])
+    writes = [
+        ("dashboard_persistence_audit_records", build_d6_post_execution_audit_record(cycle_result)),
+        ("dashboard_replay_metadata_records", build_d6_post_execution_replay_record(cycle_result)),
+    ]
+    table_results: list[OrderedDict[str, Any]] = []
+    failures = 0
+    for table, record in writes:
+        status = "PERSISTED"
+        err = ""
+        persisted_count = 0
+        try:
+            resp = client.table(table).upsert([record], on_conflict="record_id").execute()
+            data = getattr(resp, "data", None)
+            persisted_count = len(data) if isinstance(data, list) else 1
+        except Exception as exc:
+            failures += 1
+            status = "FAILED"
+            err = str(exc)[:200]
+        table_results.append(OrderedDict([("target_table", table), ("execution_status", status), ("persisted_record_count", persisted_count), ("error_message_short", err)]))
+    return OrderedDict([
+        ("execution_state", "EXECUTED_WITH_FAILURES" if failures else "EXECUTED"),
+        ("persisted_record_count", int(sum(int(r["persisted_record_count"]) for r in table_results)),
+        ),
+        ("table_results", table_results),
+    ])
+
+
 def build_d6_operational_proving_input(sample_observations: list[Mapping[str, Any]] | None = None) -> OrderedDict[str, Any]:
     observations = list(sample_observations or [
         OrderedDict([("observation_id", "D6-OBS-001"), ("as_of_date", "2026-05-22"), ("symbol", "NVDA"), ("entity_name", "NVIDIA"), ("sector", "Technology"), ("subsector", "AI Compute"), ("metric_name", "pe"), ("metric_category", "valuation_proxy"), ("percentile", 92), ("source_name", "certified_market_bundle"), ("checksum", "d6chk-001")]),
@@ -63,6 +150,7 @@ def execute_d6_operational_proving_cycle(payload: Mapping[str, Any] | None = Non
         ("persisted_dashboard_records", persisted),
     ])
     result["cycle_checksum"] = _stable_checksum(result)
+    result["d6_post_execution_summary_persistence"] = persist_d6_post_execution_summary_records(result, client=client, dry_run=dry_run)
     return result
 
 
@@ -161,4 +249,7 @@ __all__ = [
     "build_d6_operational_proving_summary",
     "build_d6_operational_proving_report",
     "certify_d6_operational_proving_cycle",
+    "build_d6_post_execution_audit_record",
+    "build_d6_post_execution_replay_record",
+    "persist_d6_post_execution_summary_records",
 ]
