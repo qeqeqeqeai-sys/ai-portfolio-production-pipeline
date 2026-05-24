@@ -6,6 +6,9 @@ on:
 jobs:
   run-dry-run-retry:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -15,12 +18,21 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Validate required secrets are present
+        run: |
+          test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL" && exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY" && exit 1)
+
+      - name: Secret-safe environment presence check
+        run: |
+          python - <<'PY'
+          import os
+          for k in ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "SUPABASE_KEY"]:
+              v = os.getenv(k)
+              print(k, "present=", bool(v), "length=", len(v) if v else 0)
+          PY
+
       - name: Execute D8.B2 dry-run retry
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          STREAMLIT_SUPABASE_URL: ${{ secrets.STREAMLIT_SUPABASE_URL }}
-          STREAMLIT_SUPABASE_KEY: ${{ secrets.STREAMLIT_SUPABASE_KEY }}
         run: |
           PYTHONPATH=. python scripts/run_d8_b2_real_supabase_dry_run_retry.py
       - name: Validate no-write marker
