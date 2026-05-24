@@ -95,10 +95,9 @@ def main() -> None:
     evidence_highlights = build_d7_evidence_highlights(vm.get("evidence_maps", []), vm.get("findings", []))
     supervisor_summary = build_d7_supervisor_summary(vm)
     integrity_overview = vm.get("integrity_overview", {})
-    debug_archive = build_d7_debug_payload_sections(
-        vm,
-        runtime_diagnostics=runtime_diagnostics,
-    )
+    debug_archive = build_d7_debug_payload_sections(vm)
+    if isinstance(debug_archive, dict):
+        debug_archive.setdefault("runtime_diagnostics", runtime_diagnostics)
 
     render_e6_expectation_executive_summary(vm, st=st)
     render_d7_intelligence_overview(vm, st=st)
