@@ -16,6 +16,7 @@ D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
 D7_RENDER_SECTION_ORDER = (
     "e6_expectation_executive_summary",
+    "d15_historical_operational_intelligence",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -924,6 +925,7 @@ def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]
     return OrderedDict([
         ("section_order", list(D7_RENDER_SECTION_ORDER)),
         ("e6_expectation_executive_summary", e6_plan),
+        ("d15_historical_operational_intelligence", build_d15_historical_operational_intelligence_render_plan(view_model)),
         ("overview_metrics", OrderedDict([
             ("dominant_fragility_theme", _render_value(supervisor.get("dominant_fragility_theme"))),
             ("expectation_pressure_state", _render_value(supervisor.get("expectation_pressure_concentration"))),
@@ -939,6 +941,68 @@ def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]
             ("operational_usefulness", _render_value(integrity.get("operational_usefulness"))),
         ])),
     ])
+
+
+def build_d15_historical_operational_intelligence_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    enrichment = view_model.get("d15_historical_backfill_execution_enrichment") if isinstance(view_model, Mapping) else {}
+    timeline = _as_list(view_model.get("d15_historical_execution_timeline")) if isinstance(view_model, Mapping) else []
+    certification = view_model.get("d15_dashboard_enrichment_certification") if isinstance(view_model, Mapping) else {}
+    enrichment = enrichment if isinstance(enrichment, Mapping) else {}
+    certification = certification if isinstance(certification, Mapping) else {}
+    if not enrichment:
+        return OrderedDict([
+            ("available", False),
+            ("message", "Historical backfill execution enrichment is unavailable for this run."),
+            ("primary_sections", OrderedDict()),
+            ("governance_debug_details", OrderedDict()),
+        ])
+    return OrderedDict([
+        ("available", True),
+        ("message", ""),
+        ("primary_sections", OrderedDict([
+            ("Historical Replay Depth", _render_value(enrichment.get("historical_replay_depth"), fallback="Unavailable")),
+            ("Historical Expectation Regime", _render_value(enrichment.get("historical_expectation_regime"), fallback="Unavailable")),
+            ("Regime Evolution Timeline / Cards", _as_list(enrichment.get("regime_evolution_timeline_cards"))),
+            ("Strongest Recurring Constraints", _as_list(enrichment.get("strongest_recurring_constraints"))),
+            ("Strongest Historical Patterns", _as_list(enrichment.get("strongest_historical_patterns"))),
+            ("Continuity Status", _render_value(enrichment.get("historical_continuity_status"), fallback="Unavailable")),
+            ("Supervisory Operational Summary", _render_value(enrichment.get("supervisory_operational_summary"), fallback="Unavailable")),
+            ("Supervisory Risk Band", _render_value(enrichment.get("supervisory_risk_band"), fallback="Unavailable")),
+            ("Operational Recommendation", _render_value(enrichment.get("operational_recommendation"), fallback="Unavailable")),
+        ])),
+        ("governance_debug_details", OrderedDict([
+            ("dashboard_enrichment_certification", deepcopy(certification)),
+            ("governance_debug_details", deepcopy(enrichment.get("governance_debug_details") or {})),
+            ("payload_checksum", enrichment.get("payload_checksum")),
+            ("timeline_events", deepcopy(timeline)),
+        ])),
+    ])
+
+
+def render_d15_historical_operational_intelligence(view_model: Mapping[str, Any], *, st: Any) -> None:
+    plan = build_d15_historical_operational_intelligence_render_plan(view_model)
+    st.markdown("### D15 Historical Operational Intelligence")
+    if not plan.get("available"):
+        st.caption(plan.get("message") or "Historical operational intelligence is unavailable.")
+        return
+    primary = plan.get("primary_sections", {})
+    cols = st.columns(3)
+    cols[0].metric("Historical Replay Depth", primary.get("Historical Replay Depth"))
+    cols[1].metric("Historical Expectation Regime", primary.get("Historical Expectation Regime"))
+    cols[2].metric("Continuity Status", primary.get("Continuity Status"))
+    st.markdown(f"**Supervisory Operational Summary:** {primary.get('Supervisory Operational Summary')}")
+    st.markdown(f"**Supervisory Risk Band:** {primary.get('Supervisory Risk Band')}")
+    st.markdown(f"**Operational Recommendation:** {primary.get('Operational Recommendation')}")
+    for section in ("Regime Evolution Timeline / Cards", "Strongest Recurring Constraints", "Strongest Historical Patterns"):
+        st.markdown(f"**{section}:**")
+        values = _as_list(primary.get(section))
+        if values:
+            for value in values:
+                st.markdown(f"- {_render_value(value)}")
+        else:
+            st.caption("Unavailable")
+    with st.expander("D15 Governance / Checksum / Audit Details"):
+        st.json(plan.get("governance_debug_details", {}))
 
 
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
@@ -1081,6 +1145,8 @@ __all__ = [
     "build_d7_debug_payload_sections",
     "D7_RENDER_SECTION_ORDER",
     "build_d7_render_plan",
+    "build_d15_historical_operational_intelligence_render_plan",
+    "render_d15_historical_operational_intelligence",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",
