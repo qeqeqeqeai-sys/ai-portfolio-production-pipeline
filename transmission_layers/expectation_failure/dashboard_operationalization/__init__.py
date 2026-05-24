@@ -238,6 +238,11 @@ __all__ = [
     "build_d5_real_execution_invariant_review",
     "build_d5_schema_persistence_readback_review",
     "build_d5_real_execution_checksum_manifest",
+    "build_d6_operational_proving_input",
+    "execute_d6_operational_proving_cycle",
+    "build_d6_operational_proving_summary",
+    "build_d6_operational_proving_report",
+    "certify_d6_operational_proving_cycle",
     "build_d5_real_dashboard_execution_closeout_payload",
     "certify_d5_real_dashboard_execution_closeout",
     "build_d5_real_dashboard_execution_closeout_report",
@@ -565,4 +570,12 @@ from .d5_real_dashboard_execution_closeout import (
     build_d5_real_dashboard_execution_closeout_payload,
     certify_d5_real_dashboard_execution_closeout,
     build_d5_real_dashboard_execution_closeout_report,
+)
+
+from .d6_operational_proving_cycle import (
+    build_d6_operational_proving_input,
+    execute_d6_operational_proving_cycle,
+    build_d6_operational_proving_summary,
+    build_d6_operational_proving_report,
+    certify_d6_operational_proving_cycle,
 )
