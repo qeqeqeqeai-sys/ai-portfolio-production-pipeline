@@ -61,6 +61,25 @@ def _persisted_table_counts(cycle_result: dict[str, Any]) -> OrderedDict[str, in
     return out
 
 
+def _print_d3_persistence_diagnostics(cycle_result: dict[str, Any]) -> None:
+    table_results = [r for r in cycle_result.get("d3_persistence", {}).get("table_results", []) if isinstance(r, dict)]
+    if not table_results:
+        print("d3_persistence_diagnostics=none")
+        return
+    print("d3_persistence_diagnostics=")
+    for row in table_results:
+        print(
+            "- "
+            f"target_table={row.get('target_table')}; "
+            f"execution_status={row.get('execution_status')}; "
+            f"attempted_record_count={int(row.get('attempted_record_count') or 0)}; "
+            f"persisted_record_count={int(row.get('persisted_record_count') or 0)}; "
+            f"error_type={row.get('error_type') or ''}; "
+            f"error_message_short={row.get('error_message_short') or ''}; "
+            f"batch_checksum={row.get('batch_checksum') or ''}"
+        )
+
+
 def main() -> int:
     try:
         client = _resolve_runtime_and_client()
@@ -79,7 +98,11 @@ def main() -> int:
     print("persisted_table_counts=")
     for table, count in _persisted_table_counts(result).items():
         print(f"- {table}: {count}")
+    _print_d3_persistence_diagnostics(result)
     print(f"supervisor_usefulness_evaluation={report.get('evaluation', {}).get('operational_usefulness')}")
+    print(f"persistence_failure_impacts_readback={summary.get('persistence_failure_impacts_readback')}")
+    print(f"effective_readback_verification_status={summary.get('readback_verification_status')}")
+    print(f"raw_readback_verification_status={summary.get('readback_verification_status_raw')}")
     print(f"checksum_continuity={dict(summary.get('checksum_continuity', {}))}")
     return 0
 
