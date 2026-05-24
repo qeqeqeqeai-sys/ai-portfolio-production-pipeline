@@ -28,4 +28,3 @@ steps:
   - name: Run D6 proving cycle
     run: |
       python scripts/run_d6_real_proving_cycle.py
-```
