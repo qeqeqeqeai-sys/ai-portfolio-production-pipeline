@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -555,6 +555,10 @@ def build_d7_debug_payload_sections(view_model: Mapping[str, Any]) -> OrderedDic
         ("raw_d8_2_payload", deepcopy(view_model.get("d8_2_replay_density_expansion") or {})),
         ("raw_d8_5_density_payload", deepcopy(view_model.get("d8_5_operational_intelligence_density_verification") or {})),
         ("raw_d8_5_backfill_payload", deepcopy(view_model.get("d8_5_supabase_backfill_readiness") or {})),
+        ("raw_d8_b1_payload", deepcopy(view_model.get("d8_b1_controlled_replay_expansion") or {})),
+        ("raw_d8_b1_reinforcement_payload", deepcopy(view_model.get("d8_b1_replay_reinforcement_diagnostics") or {})),
+        ("raw_d8_b1_backfill_payload", deepcopy(view_model.get("d8_b1_controlled_backfill_plan") or {})),
+        ("raw_d8_a1_payload", deepcopy(view_model.get("d8_a1_explainability_causal_narratives") or {})),
         ("internal_ids", OrderedDict([("latest_run", _nested_get(view_model, ("overview", "latest_operational_run")))])),
         ("raw_payload_json", deepcopy(view_model.get("runtime_sections", {}))),
     ])
@@ -637,6 +641,11 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     d8_5_backfill = assess_d8_5_supabase_backfill_readiness(density_verification=d8_5_density, findings=findings, historical_runs_payloads=effective_history, replay_metadata_rows=replay, evidence_maps=evidence_maps, e2_payload=e2_payload, d8_2_payload=d8_2_payload)
     d8_6_payload = build_d8_6_evidence_graph_enrichment_linkage_density(findings=findings, evidence_maps=evidence_maps, historical_runs_payloads=effective_history, e2_payload=e2_payload, d8_2_payload=d8_2_payload)
     d8_6_dashboard = build_d8_6_dashboard_view_model(d8_6_payload)
+    d8_b1_payload = build_d8_b1_controlled_replay_expansion(replay_metadata_rows=replay, historical_runs_payloads=effective_history, evidence_maps=evidence_maps, e2_payload=e2_payload, d8_2_payload=d8_2_payload)
+    d8_b1_reinforcement = build_d8_b1_replay_reinforcement_diagnostics(historical_runs_payloads=effective_history, e2_payload=e2_payload, d8_2_payload=d8_2_payload)
+    d8_b1_backfill_plan = build_d8_b1_controlled_backfill_plan(replay_metadata_rows=replay, historical_runs_payloads=effective_history, governance_inventory=build_e7_governance_boundary_inventory(), dry_run=True)
+    d8_a1_payload = build_d8_a1_explainability_causal_narratives(d8_2_payload=d8_2_payload, d8_5_payload=d8_5_density, d8_6_payload=d8_6_payload, d8_b1_payload=d8_b1_payload, d8_b1_reinforcement=d8_b1_reinforcement)
+    d8_a1_dashboard = build_d8_a1_dashboard_view_model(d8_a1_payload)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -680,6 +689,11 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d8_5_supabase_backfill_readiness", d8_5_backfill),
         ("d8_6_evidence_graph_enrichment", d8_6_payload),
         ("d8_6_dashboard", d8_6_dashboard),
+        ("d8_b1_controlled_replay_expansion", d8_b1_payload),
+        ("d8_b1_replay_reinforcement_diagnostics", d8_b1_reinforcement),
+        ("d8_b1_controlled_backfill_plan", d8_b1_backfill_plan),
+        ("d8_a1_explainability_causal_narratives", d8_a1_payload),
+        ("d8_a1_dashboard", d8_a1_dashboard),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
