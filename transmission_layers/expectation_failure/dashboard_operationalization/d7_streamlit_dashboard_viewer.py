@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -596,6 +596,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     e3_payload = build_e3_temporal_drift_report(historical_runs_payloads or [])
     e4_payload = build_e4_semantic_narrative_drift_report(historical_runs_payloads or [])
     e5_payload = build_e5_expectation_intelligence_envelope(e1_payload=e1_payload, e2_payload=e2_payload, e3_payload=e3_payload, e4_payload=e4_payload, d7_context=OrderedDict([("findings", findings), ("narratives", narratives), ("evidence_maps", evidence_maps)]), governance_metadata=OrderedDict([("read_only_surface", True)]))
+    d8_payload = build_d8_evidence_priority_inventory(findings, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
+    d8_dashboard = build_d8_dashboard_view_model(d8_payload)
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
@@ -629,6 +631,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("e3_temporal_expectation_memory", e3_payload),
         ("e4_semantic_theme_memory", e4_payload),
         ("e5_expectation_supervisor_closeout", e5_payload),
+        ("d8_evidence_prioritization", d8_payload),
+        ("d8_dashboard", d8_dashboard),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -692,6 +696,7 @@ def build_e6_executive_summary_render_plan(view_model: Mapping[str, Any]) -> Ord
             ("operational_usefulness_status", _status_label(operational_status)),
             ("operational_readiness_score", _render_value(readiness_score, fallback="Unavailable")),
             ("strongest_supporting_evidence_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "strongest_supporting_evidence_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "strongest_supporting_evidence")), fallback="Unavailable")),
+            ("d8_top_supporting_evidence", _render_value(_nested_get(view_model, ("d8_dashboard", "strongest_supporting_evidence_panel", "evidence_ref")), fallback="Unavailable")),
             ("key_contradiction_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "key_contradiction_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "key_contradictions"), ("e5_expectation_intelligence_envelope", "e5_evidence_contradiction_synthesis", "contradiction_significance_summary")), fallback="Unavailable")),
             ("temporal_semantic_change_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "temporal_semantic_change_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "temporal_semantic_change")), fallback="Unavailable")),
             ("caveat_summary", _render_value(_e5_alias_get(e5, ("supervisor_closeout", "caveat_summary"), ("e5_expectation_intelligence_envelope", "e5_supervisor_closeout", "confidence_caveats")), fallback="Unavailable")),
