@@ -112,6 +112,33 @@ def load_d7_dashboard_operational_integrity(client: Any) -> OrderedDict[str, Any
     return OrderedDict([("manifests", manifests), ("audits", audits), ("replay", replay), ("governance", governance), ("supervisor", supervisor)])
 
 
+def build_d7_historical_runs_from_integrity(*, replay_rows: list[Mapping[str, Any]], findings: list[Mapping[str, Any]], narratives: list[Mapping[str, Any]], evidence_maps: list[Mapping[str, Any]]) -> list[OrderedDict[str, Any]]:
+    history: list[OrderedDict[str, Any]] = []
+    for row in replay_rows:
+        if not isinstance(row, Mapping):
+            continue
+        payload = _payload_map(row)
+        replay_metadata = row.get("replay_metadata") if isinstance(row.get("replay_metadata"), Mapping) else {}
+        semantic = payload.get("semantic") if isinstance(payload.get("semantic"), Mapping) else {}
+        contradictions = payload.get("contradictions") if isinstance(payload.get("contradictions"), Mapping) else {}
+        run_id = _as_text(payload.get("run_id") or payload.get("replay_id") or replay_metadata.get("run_id") or replay_metadata.get("replay_id") or row.get("replay_id") or row.get("record_id"))
+        run_timestamp = _as_text(payload.get("run_timestamp") or payload.get("timestamp") or replay_metadata.get("run_timestamp") or row.get("created_at"))
+        if not (run_id and run_timestamp):
+            continue
+        history.append(OrderedDict([
+            ("run_id", run_id),
+            ("run_timestamp", run_timestamp),
+            ("timestamp", run_timestamp),
+            ("semantic", OrderedDict([("themes", _as_list(semantic.get("themes")))])),
+            ("contradictions", OrderedDict([("claims", _as_list(contradictions.get("claims")))])),
+            ("findings", deepcopy(findings)),
+            ("narratives", deepcopy(narratives)),
+            ("evidence_highlights", deepcopy(evidence_maps)),
+        ]))
+    history.sort(key=lambda r: (_as_text(r.get("run_timestamp")), _as_text(r.get("run_id"))))
+    return history
+
+
 def _safe_project_host(url: Any) -> tuple[str | None, str | None]:
     raw = str(url or "").strip()
     if not raw:
@@ -595,12 +622,14 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     intelligence_cards = build_d7_intelligence_cards(findings, evidence_maps)
     e1_payload = build_e1_expectation_intelligence_payload(findings, narratives, evidence_maps)
     e2_payload = build_e2_evidence_interpretation_payload(findings, narratives, evidence_maps, e1_payload)
-    e3_payload = build_e3_temporal_drift_report(historical_runs_payloads or [])
-    e4_payload = build_e4_semantic_narrative_drift_report(historical_runs_payloads or [])
+    derived_history = build_d7_historical_runs_from_integrity(replay_rows=replay, findings=findings, narratives=narratives, evidence_maps=evidence_maps)
+    effective_history = historical_runs_payloads or derived_history
+    e3_payload = build_e3_temporal_drift_report(effective_history)
+    e4_payload = build_e4_semantic_narrative_drift_report(effective_history)
     e5_payload = build_e5_expectation_intelligence_envelope(e1_payload=e1_payload, e2_payload=e2_payload, e3_payload=e3_payload, e4_payload=e4_payload, d7_context=OrderedDict([("findings", findings), ("narratives", narratives), ("evidence_maps", evidence_maps)]), governance_metadata=OrderedDict([("read_only_surface", True)]))
     d8_payload = build_d8_evidence_priority_inventory(findings, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
     d8_dashboard = build_d8_dashboard_view_model(d8_payload)
-    d8_2_payload = build_d8_2_payload(historical_runs_payloads or [], findings, narratives, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
+    d8_2_payload = build_d8_2_payload(effective_history, findings, narratives, evidence_maps, e2_payload, e3_payload, e4_payload, e5_payload)
     d8_2_dashboard = build_d8_2_dashboard_view_model(d8_2_payload)
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
