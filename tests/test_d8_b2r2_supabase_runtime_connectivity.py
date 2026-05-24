@@ -89,6 +89,7 @@ def test_connectivity_failure_handling():
     cred = audit_supabase_runtime_credentials(env={"SUPABASE_URL": "https://x", "SUPABASE_KEY": "k"})
     out = audit_supabase_read_only_connectivity(credential_audit=cred, client=_Client(fail=True))
     assert out["read_only_connectivity_status"] == "READ_ONLY_CONNECTIVITY_BLOCKED"
+    assert out["connectivity_exception_class"] == "RuntimeError"
 
 
 def test_dashboard_operator_comparison():
@@ -113,3 +114,12 @@ def test_no_write_governance_boundary():
     cred = audit_supabase_runtime_credentials(env={"SUPABASE_URL": "https://x", "SUPABASE_KEY": "k"})
     out = audit_supabase_read_only_connectivity(credential_audit=cred, client=_Client())
     assert all("insert" not in str(x).lower() for x in [cred, out])
+
+
+def test_status_mapping_for_connectivity_categories():
+    runtime = {
+        "recommendation": "BLOCKED_READ_ONLY_CONNECTIVITY",
+        "connectivity_audit": {"blocked_category": "permission_failure"},
+    }
+    d8 = build_d8_b2r_source_repair_report_payload(client_audit={"client_resolved": True}, source_audit={}, runtime_connectivity=runtime)
+    assert d8["status"] == "SOURCE_BLOCKED_PERMISSION_FAILURE"

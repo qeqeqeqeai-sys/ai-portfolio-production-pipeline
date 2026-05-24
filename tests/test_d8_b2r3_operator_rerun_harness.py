@@ -68,6 +68,7 @@ def test_report_write_and_deterministic_schema(tmp_path: Path):
     text = p.read_text(encoding="utf-8")
     for key in [
         "Execution timestamp (UTC)", "credential_status", "client_status", "read_only_connectivity_status",
+        "selected_key_source", "client_exception_class", "connectivity_exception_class", "connectivity_exception_short_message",
         "expected_tables", "accessible_tables", "replay_metadata_row_count", "manifest_row_count",
         "dashboard_replay_row_count", "d7_derived_historical_source_count", "d8_b2_candidate_source_count",
         "final_status", "recommendation", "Explicit no-write confirmation"

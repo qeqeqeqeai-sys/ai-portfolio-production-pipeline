@@ -84,6 +84,13 @@ def audit_supabase_read_only_connectivity(*, credential_audit: Mapping[str, Any]
         return OrderedDict([
             ("client_status", "CLIENT_UNRESOLVED"),
             ("read_only_connectivity_status", "READ_ONLY_CONNECTIVITY_NOT_ATTEMPTED"),
+            ("selected_key_source", _t(credential_audit.get("supabase_key_source")) or "missing"),
+            ("create_client_import_status", "not_attempted"),
+            ("client_exception_class", None),
+            ("client_exception_short_message", None),
+            ("connectivity_exception_class", None),
+            ("connectivity_exception_short_message", None),
+            ("blocked_category", "client_construction_failure"),
             ("resolved_client_factory_source", "unavailable"),
             ("blocked_reason", "CREDENTIALS_MISSING"),
             ("table_probe", []),
@@ -94,6 +101,13 @@ def audit_supabase_read_only_connectivity(*, credential_audit: Mapping[str, Any]
         return OrderedDict([
             ("client_status", "CLIENT_UNRESOLVED"),
             ("read_only_connectivity_status", "READ_ONLY_CONNECTIVITY_BLOCKED"),
+            ("selected_key_source", _t(credential_audit.get("supabase_key_source")) or "missing"),
+            ("create_client_import_status", "ok" if resolution.get("supabase_package_available") else "failed"),
+            ("client_exception_class", resolution.get("client_error_type")),
+            ("client_exception_short_message", resolution.get("client_error_message_short")),
+            ("connectivity_exception_class", None),
+            ("connectivity_exception_short_message", None),
+            ("blocked_category", "client_construction_failure"),
             ("resolved_client_factory_source", _t(resolution.get("client_factory_source")) or "unavailable"),
             ("blocked_reason", "CLIENT_UNRESOLVED"),
             ("table_probe", []),
@@ -110,9 +124,28 @@ def audit_supabase_read_only_connectivity(*, credential_audit: Mapping[str, Any]
                 count = len(data) if isinstance(data, list) else 0
             probe.append(OrderedDict([("table", table), ("ok", True), ("count", int(count))]))
     except Exception as exc:
+        msg = str(exc).lower()
+        category = "connectivity_failure"
+        if any(x in msg for x in ("not authorized", "jwt", "401", "invalid api key", "auth")):
+            category = "auth_failure"
+        elif any(x in msg for x in ("permission", "forbidden", "rls", "42501", "403")):
+            category = "permission_failure"
+        elif any(x in msg for x in ("schema", "3f000")):
+            category = "schema_missing"
+        elif any(x in msg for x in ("does not exist", "undefined table", "42p01", "not found")):
+            category = "table_not_found"
+        elif any(x in msg for x in ("timeout", "timed out", "connection", "dns")):
+            category = "connectivity_timeout"
         return OrderedDict([
             ("client_status", "CLIENT_RESOLVED"),
             ("read_only_connectivity_status", "READ_ONLY_CONNECTIVITY_BLOCKED"),
+            ("selected_key_source", _t(credential_audit.get("supabase_key_source")) or "missing"),
+            ("create_client_import_status", "ok" if resolution.get("supabase_package_available") else "unknown"),
+            ("client_exception_class", None),
+            ("client_exception_short_message", None),
+            ("connectivity_exception_class", type(exc).__name__),
+            ("connectivity_exception_short_message", _t(str(exc))[:160]),
+            ("blocked_category", category),
             ("resolved_client_factory_source", _t(resolution.get("client_factory_source")) or "unavailable"),
             ("blocked_reason", f"READ_ONLY_PROBE_FAILED:{type(exc).__name__}"),
             ("table_probe", probe),
@@ -121,6 +154,13 @@ def audit_supabase_read_only_connectivity(*, credential_audit: Mapping[str, Any]
     return OrderedDict([
         ("client_status", "CLIENT_RESOLVED"),
         ("read_only_connectivity_status", "READ_ONLY_CONNECTIVITY_OK"),
+        ("selected_key_source", _t(credential_audit.get("supabase_key_source")) or "missing"),
+        ("create_client_import_status", "ok" if resolution.get("supabase_package_available") else "unknown"),
+        ("client_exception_class", None),
+        ("client_exception_short_message", None),
+        ("connectivity_exception_class", None),
+        ("connectivity_exception_short_message", None),
+        ("blocked_category", None),
         ("resolved_client_factory_source", _t(resolution.get("client_factory_source")) or "unavailable"),
         ("blocked_reason", None),
         ("table_probe", probe),
