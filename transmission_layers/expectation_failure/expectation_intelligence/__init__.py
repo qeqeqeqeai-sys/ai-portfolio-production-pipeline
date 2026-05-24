@@ -176,6 +176,17 @@ __all__ = [
     "build_d8_1_operational_card_render_model",
     "certify_d8_evidence_prioritization",
     "build_d8_evidence_prioritization_report",
+    "build_d8_2_replay_density_inventory",
+    "build_d8_2_semantic_persistence_summary",
+    "build_d8_2_evidence_density_summary",
+    "build_d8_2_theme_evolution_summary",
+    "build_d8_2_regime_transition_history",
+    "build_d8_2_contradiction_persistence_summary",
+    "build_d8_2_evidence_relationship_graph",
+    "build_d8_2_dashboard_view_model",
+    "certify_d8_2_replay_density_expansion",
+    "build_d8_2_replay_density_report",
+    "build_d8_2_payload",
 
 ]
 
@@ -190,4 +201,18 @@ from .d8_evidence_prioritization_operational_insight import (
     build_d8_1_operational_card_render_model,
     certify_d8_evidence_prioritization,
     build_d8_evidence_prioritization_report,
+)
+
+from .d8_2_evidence_density_historical_replay_expansion import (
+    build_d8_2_replay_density_inventory,
+    build_d8_2_semantic_persistence_summary,
+    build_d8_2_evidence_density_summary,
+    build_d8_2_theme_evolution_summary,
+    build_d8_2_regime_transition_history,
+    build_d8_2_contradiction_persistence_summary,
+    build_d8_2_evidence_relationship_graph,
+    build_d8_2_dashboard_view_model,
+    certify_d8_2_replay_density_expansion,
+    build_d8_2_replay_density_report,
+    build_d8_2_payload,
 )
