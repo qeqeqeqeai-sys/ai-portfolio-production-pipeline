@@ -91,11 +91,12 @@ def main() -> None:
         st.json(runtime_diagnostics)
 
     c1, c2, c3, c4, c5 = st.columns(5)
+    normalized = vm.get("integrity", {}).get("normalized", {})
     c1.metric("Latest Run", overview.get("latest_operational_run") or "n/a")
     c2.metric("Certification", overview.get("certification_status") or "n/a")
     c3.metric("Persistence", overview.get("persistence_execution_status") or "n/a")
     c4.metric("Readback", overview.get("readback_verification_status") or "n/a")
-    c5.metric("Checksum Continuity", "yes" if overview.get("replay_checksum_continuity") else "no")
+    c5.metric("Checksum Continuity", str(overview.get("replay_checksum_continuity") or "no"))
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Findings", "Narratives", "Evidence", "Integrity", "Supervisor"])
     with tab1:
@@ -115,6 +116,13 @@ def main() -> None:
 
     with tab4:
         st.json(vm["integrity"])
+        with st.expander("D7 integrity diagnostics", expanded=False):
+            st.json({
+                "persistence_status_source": normalized.get("integrity_sources", {}).get("persistence_status_source"),
+                "readback_status_source": normalized.get("integrity_sources", {}).get("readback_status_source"),
+                "checksum_fields_discovered": [k for k, v in (normalized.get("checksum_chain") or {}).items() if v],
+                "integrity_warnings": normalized.get("integrity_warnings", []),
+            })
         with st.expander("Raw integrity payload"):
             st.json(vm["runtime_sections"]["integrity_payload"])
 
