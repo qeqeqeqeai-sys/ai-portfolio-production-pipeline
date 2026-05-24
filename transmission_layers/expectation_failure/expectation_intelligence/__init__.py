@@ -191,6 +191,11 @@ __all__ = [
     "assess_d8_5_supabase_backfill_readiness",
     "build_d8_6_evidence_graph_enrichment_linkage_density",
     "build_d8_6_dashboard_view_model",
+    "build_d8_b1_controlled_replay_expansion",
+    "build_d8_b1_replay_reinforcement_diagnostics",
+    "build_d8_b1_controlled_backfill_plan",
+    "build_d8_a1_explainability_causal_narratives",
+    "build_d8_a1_dashboard_view_model",
 
 ]
 
@@ -231,3 +236,13 @@ from .d8_6_evidence_graph_enrichment_linkage_density import (
     build_d8_6_dashboard_view_model,
 )
 
+from .d8_b1_controlled_replay_expansion import (
+    build_d8_b1_controlled_replay_expansion,
+    build_d8_b1_replay_reinforcement_diagnostics,
+    build_d8_b1_controlled_backfill_plan,
+)
+
+from .d8_a1_explainability_causal_narratives import (
+    build_d8_a1_explainability_causal_narratives,
+    build_d8_a1_dashboard_view_model,
+)
