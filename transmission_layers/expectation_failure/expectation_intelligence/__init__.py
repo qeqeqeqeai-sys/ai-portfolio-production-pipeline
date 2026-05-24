@@ -166,4 +166,27 @@ __all__ = [
     "certify_e7_expectation_intelligence_readiness",
     "build_e7_expectation_closeout_payload",
     "build_e7_expectation_closeout_report",
+    "build_d8_evidence_priority_inventory",
+    "build_d8_supporting_evidence_rankings",
+    "build_d8_contradiction_priority_summary",
+    "build_d8_operational_insight_cards",
+    "build_d8_evidence_lineage_trace",
+    "build_d8_operational_interpretation",
+    "build_d8_dashboard_view_model",
+    "certify_d8_evidence_prioritization",
+    "build_d8_evidence_prioritization_report",
+
 ]
+
+from .d8_evidence_prioritization_operational_insight import (
+    build_d8_evidence_priority_inventory,
+    build_d8_supporting_evidence_rankings,
+    build_d8_contradiction_priority_summary,
+    build_d8_operational_insight_cards,
+    build_d8_evidence_lineage_trace,
+    build_d8_operational_interpretation,
+    build_d8_dashboard_view_model,
+    certify_d8_evidence_prioritization,
+    build_d8_evidence_prioritization_report,
+)
+
