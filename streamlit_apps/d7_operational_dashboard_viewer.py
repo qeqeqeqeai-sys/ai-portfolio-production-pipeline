@@ -44,11 +44,31 @@ def main() -> None:
     client_resolution = resolve_streamlit_supabase_client(runtime_config)
     client = client_resolution.get("client")
 
-    if not client_resolution.get("client_resolved"):
-        st.status("Supabase client unavailable; rendering degraded read-only shell.")
-
     vm = _load_view_model_cached(client)
     overview = vm["overview"]
+    findings_payload = vm["runtime_sections"]["findings_payload"]
+    narratives_payload = vm["runtime_sections"]["narratives_payload"]
+    evidence_payload = vm["runtime_sections"]["evidence_payload"]
+    integrity_payload = vm["runtime_sections"]["integrity_payload"]
+    table_row_counts = {
+        "dashboard_finding_records": int(findings_payload.get("row_count") or 0),
+        "dashboard_narrative_records": int(narratives_payload.get("row_count") or 0),
+        "dashboard_evidence_map_records": int(evidence_payload.get("row_count") or 0),
+        "dashboard_export_manifests": int(integrity_payload.get("manifests", {}).get("row_count") or 0),
+        "dashboard_persistence_audit_records": int(integrity_payload.get("audits", {}).get("row_count") or 0),
+        "dashboard_replay_metadata_records": int(integrity_payload.get("replay", {}).get("row_count") or 0),
+    }
+    total_rows = sum(table_row_counts.values())
+
+    if not client_resolution.get("client_resolved"):
+        st.warning("Supabase client not configured")
+    elif total_rows == 0:
+        st.info("No persisted dashboard records found")
+    else:
+        st.success(f"Loaded {table_row_counts['dashboard_finding_records']} findings from Supabase")
+
+    with st.expander("Supabase table row counts", expanded=False):
+        st.json(table_row_counts)
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Latest Run", overview.get("latest_operational_run") or "n/a")
