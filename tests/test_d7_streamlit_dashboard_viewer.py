@@ -122,6 +122,10 @@ def test_d7_checksum_continuity_yes_with_full_chain():
     client = _build_client()
     client.tables["dashboard_export_manifests"][0]["source_payload_checksum"] = "src-1"
     client.tables["dashboard_export_manifests"][0]["export_checksum"] = "exp-1"
+    client.tables["dashboard_export_manifests"][0]["manifest_checksum"] = "man-1"
+    client.tables["dashboard_replay_metadata_records"][0]["replay_checksum"] = "rep-1"
+    client.tables["dashboard_replay_metadata_records"][0]["source_payload_checksum"] = "src-1"
+    client.tables["dashboard_replay_metadata_records"][0]["export_checksum"] = "exp-1"
     vm = build_d7_dashboard_view_model(
         findings_payload=load_d7_dashboard_findings(client),
         narratives_payload=load_d7_dashboard_narratives(client),
@@ -169,3 +173,86 @@ def test_d7_diagnostics_counts_work_without_invalid_columns():
 def test_d7_schema_map_has_only_allowed_keys_subset():
     assert "dashboard_finding_records" in D7_PHYSICAL_COLUMNS_BY_TABLE
     assert "severity" not in D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_finding_records"]
+
+def test_d7_ignores_stale_planned_when_newer_executed_exists():
+    client = _build_client()
+    client.tables["dashboard_persistence_audit_records"] = [
+        {"record_id": "A-old", "created_at": "2026-05-24T01:00:00Z", "write_status": "PLANNED", "payload": {}, "replay_metadata": {}},
+        {"record_id": "A-new", "created_at": "2026-05-24T02:00:00Z", "write_status": "EXECUTED", "payload": {}, "replay_metadata": {}},
+    ]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["integrity"]["normalized"]["persistence_status"] == "EXECUTED"
+    assert vm["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"] == "A-new"
+
+
+def test_d7_prefers_latest_row_by_created_at_for_ties():
+    client = _build_client()
+    client.tables["dashboard_persistence_audit_records"] = [
+        {"record_id": "A1", "created_at": "2026-05-24T01:00:00Z", "write_status": "PERSISTED", "payload": {}, "replay_metadata": {}},
+        {"record_id": "A2", "created_at": "2026-05-24T03:00:00Z", "write_status": "PERSISTED", "payload": {}, "replay_metadata": {}},
+    ]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"] == "A2"
+
+
+def test_d7_derives_certified_readback_from_replay_payload_priority():
+    client = _build_client()
+    client.tables["dashboard_replay_metadata_records"] = [
+        {"record_id": "R-old", "created_at": "2026-05-24T01:00:00Z", "payload": {"readback_verification_status": "PENDING"}, "replay_metadata": {}},
+        {"record_id": "R-new", "created_at": "2026-05-24T02:00:00Z", "payload": {"effective_readback_verification_status": "CERTIFIED_REAL_READBACK_VERIFIED"}, "replay_metadata": {}},
+    ]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["integrity"]["normalized"]["readback_status"] == "CERTIFIED_REAL_READBACK_VERIFIED"
+    assert vm["integrity"]["normalized"]["integrity_sources"]["selected_readback_record_id"] == "R-new"
+
+
+def test_d7_selects_full_checksum_chain_when_available():
+    client = _build_client()
+    client.tables["dashboard_export_manifests"] = [
+        {"record_id": "M-new", "created_at": "2026-05-24T03:00:00Z", "source_payload_checksum": "s1", "export_checksum": "e1", "payload": {}, "replay_metadata": {}},
+        {"record_id": "M-full", "created_at": "2026-05-24T02:00:00Z", "source_payload_checksum": "s0", "export_checksum": "e0", "manifest_checksum": "m0", "payload": {"o5_checksum": "o5", "o6_checksum": "o6", "d3_summary_checksum": "d3", "d4_verification_checksum": "d4", "cycle_checksum": "cyc"}, "replay_metadata": {}},
+    ]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["integrity"]["normalized"]["checksum_chain"]["o6_checksum"] == "o6"
+    assert vm["integrity"]["normalized"]["integrity_sources"]["selected_integrity_strategy"] in {"latest_full_checksum_chain", "latest_successful"}
+
+
+def test_d7_deterministic_tie_breaker_for_equal_created_at_rows():
+    client = _build_client()
+    client.tables["dashboard_persistence_audit_records"] = [
+        {"record_id": "Aaa", "created_at": "2026-05-24T04:00:00Z", "write_status": "EXECUTED", "payload": {}, "replay_metadata": {}},
+        {"record_id": "Abb", "created_at": "2026-05-24T04:00:00Z", "write_status": "EXECUTED", "payload": {}, "replay_metadata": {}},
+    ]
+    vm1 = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    vm2 = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm1["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"] == vm2["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"]

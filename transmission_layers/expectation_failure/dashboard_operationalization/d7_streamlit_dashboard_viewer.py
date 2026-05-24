@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from typing import Any, Mapping
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
-D7_MODULE_VERSION = "1.1.0"
+D7_MODULE_VERSION = "1.2.0"
 
 D7_PHYSICAL_COLUMNS_BY_TABLE = {
     "dashboard_finding_records": [
@@ -91,11 +91,11 @@ def load_d7_dashboard_evidence_maps(client: Any, *, limit: int = 500) -> Ordered
 
 
 def load_d7_dashboard_operational_integrity(client: Any) -> OrderedDict[str, Any]:
-    manifests = _safe_rows(client, table="dashboard_export_manifests", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_export_manifests"], limit=100)
-    audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_persistence_audit_records"], limit=200)
-    replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_replay_metadata_records"], limit=100)
-    governance = _safe_rows(client, table="dashboard_governance_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_governance_records"], limit=100)
-    supervisor = _safe_rows(client, table="dashboard_supervisor_panel_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_supervisor_panel_records"], limit=100)
+    manifests = _safe_rows(client, table="dashboard_export_manifests", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_export_manifests"], limit=50)
+    audits = _safe_rows(client, table="dashboard_persistence_audit_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_persistence_audit_records"], limit=50)
+    replay = _safe_rows(client, table="dashboard_replay_metadata_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_replay_metadata_records"], limit=50)
+    governance = _safe_rows(client, table="dashboard_governance_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_governance_records"], limit=50)
+    supervisor = _safe_rows(client, table="dashboard_supervisor_panel_records", columns=D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_supervisor_panel_records"], limit=50)
     return OrderedDict([("manifests", manifests), ("audits", audits), ("replay", replay), ("governance", governance), ("supervisor", supervisor)])
 
 
@@ -198,72 +198,123 @@ def _nested_get(source: Mapping[str, Any], path: tuple[str, ...]) -> Any:
     return current
 
 
-def _extract_persistence(audits: list[Mapping[str, Any]]) -> tuple[str, str | None, list[str]]:
-    executed_values = {"EXECUTED", "SUCCESS", "SUCCEEDED", "COMPLETED"}
-    failed_values = {"FAILED", "ERROR", "EXECUTED_WITH_FAILURES", "PARTIAL_FAILURE"}
+def _status_rank(status: str | None) -> int:
+    precedence = {
+        "EXECUTED_WITH_FAILURES": 4,
+        "EXECUTED": 3,
+        "PERSISTED": 2,
+        "PLANNED": 1,
+        "UNKNOWN": 0,
+    }
+    return precedence.get(str(status or "").strip().upper(), 0)
+
+
+def _extract_persistence(audits: list[Mapping[str, Any]]) -> tuple[str, str | None, list[str], Mapping[str, Any] | None]:
     seen_statuses: list[str] = []
-    source = None
+    selected_source: str | None = None
+    best_row: Mapping[str, Any] | None = None
+    best_status = "UNKNOWN"
+    best_rank = -1
     for row in audits:
         payload = _payload_map(row)
+        result_summary = _nested_get(payload, ("result_summary",)) if isinstance(_nested_get(payload, ("result_summary",)), Mapping) else {}
+        table_results = list(_nested_get(payload, ("result_summary", "table_results")) or []) if isinstance(_nested_get(payload, ("result_summary", "table_results")), list) else []
+        table_statuses = [str(item.get("write_status") or item.get("status") or "").strip().upper() for item in table_results if isinstance(item, Mapping)]
+        any_failed = any(x in {"FAILED", "ERROR", "EXECUTED_WITH_FAILURES", "PARTIAL_FAILURE"} for x in table_statuses)
+        all_persisted = bool(table_statuses) and all(x in {"EXECUTED", "PERSISTED", "SUCCESS", "SUCCEEDED", "COMPLETED"} for x in table_statuses)
+
         candidates = [
             ("dashboard_persistence_audit_records.write_status", row.get("write_status")),
             ("dashboard_persistence_audit_records.payload.persistence_status", payload.get("persistence_status")),
             ("dashboard_persistence_audit_records.payload.execution_status", payload.get("execution_status")),
             ("dashboard_persistence_audit_records.payload.result_summary.persistence_status", _nested_get(payload, ("result_summary", "persistence_status"))),
         ]
+        if any_failed:
+            candidates.append(("dashboard_persistence_audit_records.payload.result_summary.table_results", "EXECUTED_WITH_FAILURES"))
+        elif all_persisted:
+            candidates.append(("dashboard_persistence_audit_records.payload.result_summary.table_results", "EXECUTED"))
+
+        row_best_status = "UNKNOWN"
+        row_best_source = None
+        row_best_rank = -1
         for candidate_source, candidate in candidates:
-            if candidate:
-                normalized = str(candidate).strip().upper()
-                seen_statuses.append(normalized)
-                source = source or candidate_source
-    if any(x in failed_values for x in seen_statuses):
-        return "EXECUTED_WITH_FAILURES", source, seen_statuses
-    if any(x in executed_values for x in seen_statuses):
-        return "EXECUTED", source, seen_statuses
-    return "PLANNED", source, seen_statuses
+            if not candidate:
+                continue
+            normalized = str(candidate).strip().upper()
+            seen_statuses.append(normalized)
+            rank = _status_rank(normalized)
+            if rank > row_best_rank:
+                row_best_rank = rank
+                row_best_status = normalized
+                row_best_source = candidate_source
+        created_at = str(row.get("created_at") or "")
+        if row_best_rank > best_rank or (row_best_rank == best_rank and created_at > str((best_row or {}).get("created_at") or "")):
+            best_rank = row_best_rank
+            best_status = row_best_status
+            selected_source = row_best_source
+            best_row = row
+    if best_rank < 0:
+        return "PLANNED", None, seen_statuses, None
+    return best_status if best_status != "UNKNOWN" else "PLANNED", selected_source, seen_statuses, best_row
 
 
-def _extract_readback(replay: list[Mapping[str, Any]]) -> tuple[str, str | None]:
+def _extract_readback(replay: list[Mapping[str, Any]]) -> tuple[str, str | None, Mapping[str, Any] | None]:
     lookup_paths = [
-        ("dashboard_replay_metadata_records.payload.readback_verification_status", ("payload", "readback_verification_status")),
         ("dashboard_replay_metadata_records.payload.effective_readback_verification_status", ("payload", "effective_readback_verification_status")),
+        ("dashboard_replay_metadata_records.payload.readback_verification_status", ("payload", "readback_verification_status")),
         ("dashboard_replay_metadata_records.payload.raw_readback_verification_status", ("payload", "raw_readback_verification_status")),
+        ("dashboard_replay_metadata_records.payload.verification_status", ("payload", "verification_status")),
         ("dashboard_replay_metadata_records.replay_metadata.readback_verification_status", ("replay_metadata", "readback_verification_status")),
         ("dashboard_replay_metadata_records.payload.verification_handoff_status", ("payload", "verification_handoff_status")),
     ]
+    best = ("unknown", None, None, -1, "")
     for row in replay:
         for source_name, path in lookup_paths:
             value = _nested_get(row, path)
             if value:
-                return str(value), source_name
-    return "unknown", None
+                row_score = 2 if "effective_" in source_name else 1
+                created_at = str(row.get("created_at") or "")
+                if row_score > best[3] or (row_score == best[3] and created_at > best[4]):
+                    best = (str(value), source_name, row, row_score, created_at)
+                break
+    return best[0], best[1], best[2]
 
 
-def _extract_checksum_chain(manifests: list[Mapping[str, Any]], replay: list[Mapping[str, Any]], audits: list[Mapping[str, Any]]) -> tuple[OrderedDict[str, Any], str, list[str]]:
-    chain = OrderedDict([
-        ("source_payload_checksum", None),
-        ("export_checksum", None),
-        ("manifest_checksum", None),
-        ("replay_checksum", None),
-        ("cycle_checksum", None),
-        ("o5_checksum", None),
-        ("o6_checksum", None),
-        ("d3_checksum", None),
-        ("d4_checksum", None),
-    ])
-    warnings: list[str] = []
+def _extract_checksum_chain(manifests: list[Mapping[str, Any]], replay: list[Mapping[str, Any]], audits: list[Mapping[str, Any]]) -> tuple[OrderedDict[str, Any], str, list[str], str]:
+    fields = ["source_payload_checksum", "export_checksum", "manifest_checksum", "replay_checksum", "cycle_checksum", "o5_checksum", "o6_checksum", "d3_checksum", "d4_checksum"]
+    groups: dict[tuple[str, str], OrderedDict[str, Any]] = {}
     for row in manifests + replay + audits:
         payload = _payload_map(row)
         replay_metadata = row.get("replay_metadata") if isinstance(row.get("replay_metadata"), Mapping) else {}
-        chain["source_payload_checksum"] = chain["source_payload_checksum"] or row.get("source_payload_checksum") or payload.get("source_payload_checksum")
-        chain["export_checksum"] = chain["export_checksum"] or row.get("export_checksum") or payload.get("export_checksum")
-        chain["manifest_checksum"] = chain["manifest_checksum"] or row.get("manifest_checksum") or payload.get("manifest_checksum")
-        chain["replay_checksum"] = chain["replay_checksum"] or row.get("replay_checksum") or payload.get("replay_checksum")
-        chain["cycle_checksum"] = chain["cycle_checksum"] or payload.get("cycle_checksum") or replay_metadata.get("cycle_checksum")
-        chain["o5_checksum"] = chain["o5_checksum"] or payload.get("o5_checksum") or replay_metadata.get("o5_checksum")
-        chain["o6_checksum"] = chain["o6_checksum"] or payload.get("o6_checksum") or replay_metadata.get("o6_checksum")
-        chain["d3_checksum"] = chain["d3_checksum"] or payload.get("d3_checksum") or replay_metadata.get("d3_checksum")
-        chain["d4_checksum"] = chain["d4_checksum"] or payload.get("d4_checksum") or replay_metadata.get("d4_checksum")
+        source = row.get("source_payload_checksum") or payload.get("source_payload_checksum") or ""
+        export = row.get("export_checksum") or payload.get("export_checksum") or ""
+        key = (str(source), str(export))
+        bucket = groups.setdefault(key, OrderedDict((k, None) for k in fields))
+        bucket["source_payload_checksum"] = bucket["source_payload_checksum"] or source
+        bucket["export_checksum"] = bucket["export_checksum"] or export
+        bucket["manifest_checksum"] = bucket["manifest_checksum"] or row.get("manifest_checksum") or payload.get("manifest_checksum")
+        bucket["replay_checksum"] = bucket["replay_checksum"] or row.get("replay_checksum") or payload.get("replay_checksum")
+        bucket["cycle_checksum"] = bucket["cycle_checksum"] or payload.get("cycle_checksum") or replay_metadata.get("cycle_checksum")
+        bucket["o5_checksum"] = bucket["o5_checksum"] or payload.get("o5_checksum") or replay_metadata.get("o5_checksum")
+        bucket["o6_checksum"] = bucket["o6_checksum"] or payload.get("o6_checksum") or replay_metadata.get("o6_checksum")
+        bucket["d3_checksum"] = bucket["d3_checksum"] or payload.get("d3_checksum") or payload.get("d3_summary_checksum") or replay_metadata.get("d3_checksum")
+        bucket["d4_checksum"] = bucket["d4_checksum"] or payload.get("d4_checksum") or payload.get("d4_verification_checksum") or replay_metadata.get("d4_checksum")
+
+    selected_integrity_strategy = "latest_available"
+    if groups:
+        latest_key = max(groups.keys(), key=lambda k: (bool(k[0] or k[1]), k[0], k[1]))
+        chain = groups[latest_key]
+        full_count = sum(1 for k in fields if chain.get(k))
+        if full_count < 6:
+            chain = max(groups.values(), key=lambda g: sum(1 for k in fields if g.get(k)))
+            selected_integrity_strategy = "latest_full_checksum_chain"
+        else:
+            selected_integrity_strategy = "latest_successful"
+    else:
+        chain = OrderedDict((k, None) for k in fields)
+        selected_integrity_strategy = "fallback_partial"
+
+    warnings: list[str] = []
     primary = ["source_payload_checksum", "export_checksum", "manifest_checksum", "replay_checksum"]
     discovered = [k for k, v in chain.items() if v]
     primary_count = sum(1 for key in primary if chain[key])
@@ -276,9 +327,7 @@ def _extract_checksum_chain(manifests: list[Mapping[str, Any]], replay: list[Map
         continuity = "no"
         warnings.append("insufficient_checksum_chain_evidence")
     warnings.append(f"checksum_fields_discovered={','.join(discovered) if discovered else 'none'}")
-    return chain, continuity, warnings
-
-
+    return chain, continuity, warnings, selected_integrity_strategy
 
 
 def _payload_map(row: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -332,9 +381,9 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     latest_replay = replay[0] if replay else {}
     latest_audit = audits[0] if audits else {}
 
-    persistence_status, persistence_source, persistence_candidates = _extract_persistence(audits)
-    readback_status, readback_source = _extract_readback(replay)
-    checksum_chain, continuity, continuity_warnings = _extract_checksum_chain(manifests, replay, audits)
+    persistence_status, persistence_source, persistence_candidates, selected_audit = _extract_persistence(audits)
+    readback_status, readback_source, selected_readback = _extract_readback(replay)
+    checksum_chain, continuity, continuity_warnings, selected_integrity_strategy = _extract_checksum_chain(manifests, replay, audits)
     if not latest_run:
         latest_run = (
             (latest_replay.get("replay_id") if latest_replay else None)
@@ -356,6 +405,12 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
             ("persistence_status_source", persistence_source),
             ("readback_status_source", readback_source),
             ("persistence_candidates_seen", persistence_candidates),
+            ("selected_persistence_record_id", (selected_audit or {}).get("record_id")),
+            ("selected_persistence_created_at", (selected_audit or {}).get("created_at")),
+            ("selected_readback_record_id", (selected_readback or {}).get("record_id")),
+            ("selected_readback_created_at", (selected_readback or {}).get("created_at")),
+            ("audit_rows_inspected", len(audits)),
+            ("selected_integrity_strategy", selected_integrity_strategy),
         ])),
         ("integrity_warnings", continuity_warnings),
     ])
@@ -386,7 +441,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("integrity", OrderedDict([
             ("latest_export_manifest_checksum", latest_manifest.get("manifest_checksum")),
             ("latest_replay_checksum", latest_replay.get("replay_checksum")),
-            ("latest_persistence_audit_status", latest_audit.get("write_status")),
+            ("latest_persistence_audit_status", (selected_audit or latest_audit).get("write_status")),
             ("record_counts", _payload_map(latest_manifest).get("record_counts") or {}),
             ("verification_continuity", _derive_continuity_status(latest_replay) or "unknown"),
             ("normalized", normalized_integrity),
