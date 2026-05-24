@@ -14,6 +14,7 @@ from .d8_b2_controlled_replay_backfill_execution import (
 )
 from .d8_b2r_replay_candidate_source_repair_audit import audit_replay_candidate_sources
 from .d8_b1_controlled_replay_expansion import build_d8_b1_controlled_backfill_plan
+from .d8_b2r3_operator_rerun_harness import build_operator_rerun_payload
 
 REPORT_PATH = Path("reports/d8_b2_real_supabase_dry_run_retry_report.md")
 
@@ -56,9 +57,25 @@ def _recommendation(execution_status: str, governance_status: str, accepted: int
 
 
 def build_real_supabase_dry_run_retry_payload(*, runtime_config: Mapping[str, Any] | None = None, client: Any = None, client_factory: Any = None) -> OrderedDict[str, Any]:
+    operator_diag = build_operator_rerun_payload(runtime_config=runtime_config, client=client, client_factory=client_factory)
     source_diag = build_d8_b2_dry_run_source_diagnostics(runtime_config=runtime_config, client=client, client_factory=client_factory)
     if source_diag.get("status") != "SOURCE_READY":
-        return OrderedDict([("timestamp_utc", _now_utc_iso()), ("source_diagnostics", source_diag), ("status", "BLOCKED_SOURCE_NOT_READY"), ("no_write_confirmed", True)])
+        return OrderedDict([
+            ("timestamp_utc", _now_utc_iso()),
+            ("status", "BLOCKED_SOURCE_NOT_READY"),
+            ("source_diagnostics", source_diag),
+            ("source_status", source_diag.get("status")),
+            ("source_recommendation", source_diag.get("recommendation")),
+            ("credential_status", (operator_diag.get("credential_audit") or {}).get("status")),
+            ("client_status", (operator_diag.get("connectivity_audit") or {}).get("client_status")),
+            ("read_only_connectivity_status", (operator_diag.get("connectivity_audit") or {}).get("read_only_connectivity_status")),
+            ("selected_key_source", operator_diag.get("selected_key_source")),
+            ("accessible_tables", operator_diag.get("accessible_tables") or []),
+            ("inaccessible_tables", operator_diag.get("inaccessible_tables") or []),
+            ("blocked_reason", source_diag.get("blocked_reason") or source_diag.get("status")),
+            ("recommendation", source_diag.get("recommendation")),
+            ("no_write_confirmed", True),
+        ])
 
     resolved_client = client
     if resolved_client is None:
@@ -73,7 +90,7 @@ def build_real_supabase_dry_run_retry_payload(*, runtime_config: Mapping[str, An
     replay_rows = int(inv.get("replay_metadata_row_count") or 0)
     manifest_rows = int(((source_audit.get("table_diagnostics") or {}).get("manifest") or {}).get("row_count") or 0)
 
-    existing_ids = sorted({str(c.get("run_id")) for c in candidates if isinstance(c, Mapping) and c.get("run_id")})
+    existing_ids: list[str] = []
     gov = validate_backfill_execution_governance(dry_run=True, client=resolved_client)
     cand_validation = validate_backfill_candidates(candidates=candidates, existing_replay_ids=existing_ids)
     b1 = build_d8_b1_controlled_backfill_plan(replay_metadata_rows=[], historical_runs_payloads=candidates, governance_inventory={}, dry_run=True)
@@ -90,6 +107,14 @@ def build_real_supabase_dry_run_retry_payload(*, runtime_config: Mapping[str, An
     return OrderedDict([
         ("timestamp_utc", _now_utc_iso()),
         ("source_diagnostics", source_diag),
+        ("source_status", source_diag.get("status")),
+        ("source_recommendation", source_diag.get("recommendation")),
+        ("credential_status", (operator_diag.get("credential_audit") or {}).get("status")),
+        ("client_status", (operator_diag.get("connectivity_audit") or {}).get("client_status")),
+        ("read_only_connectivity_status", (operator_diag.get("connectivity_audit") or {}).get("read_only_connectivity_status")),
+        ("selected_key_source", operator_diag.get("selected_key_source")),
+        ("accessible_tables", operator_diag.get("accessible_tables") or []),
+        ("inaccessible_tables", operator_diag.get("inaccessible_tables") or []),
         ("candidate_inventory", OrderedDict([
             ("replay_metadata_row_count", replay_rows),
             ("manifest_row_count", manifest_rows),
@@ -101,7 +126,6 @@ def build_real_supabase_dry_run_retry_payload(*, runtime_config: Mapping[str, An
             ("rejected_reasons", sorted({reason for row in _as_list(cand_validation.get("rejected_candidates")) for reason in _as_list(row.get("reasons"))})),
             ("duplicate_ids", _as_list(cand_validation.get("duplicate_ids"))),
             ("source_shape_compatible", bool(((source_audit.get("shape_comparison") or {}).get("source_shape_compatible")))),
-            ("selected_key_source", ((source_diag.get("source_audit") or {}).get("table_diagnostics") and source_diag.get("source_audit") or {})),
         ])),
         ("governance", gov),
         ("plan", plan),
@@ -114,7 +138,22 @@ def build_real_supabase_dry_run_retry_payload(*, runtime_config: Mapping[str, An
 
 def render_real_supabase_dry_run_retry_report(payload: Mapping[str, Any]) -> str:
     if payload.get("status") == "BLOCKED_SOURCE_NOT_READY":
-        return "# D8.B2 Real Supabase Dry-Run Retry Report\n\n- no_write_confirmed: true\n- recommendation: BLOCKED_GOVERNANCE\n"
+        lines = [
+            "# D8.B2 Real Supabase Dry-Run Retry Report",
+            "",
+            f"- source_status: `{payload.get('source_status')}`",
+            f"- source_recommendation: `{payload.get('source_recommendation')}`",
+            f"- credential_status: `{payload.get('credential_status')}`",
+            f"- client_status: `{payload.get('client_status')}`",
+            f"- read_only_connectivity_status: `{payload.get('read_only_connectivity_status')}`",
+            f"- selected_key_source: `{payload.get('selected_key_source')}`",
+            f"- accessible_tables: `{payload.get('accessible_tables')}`",
+            f"- inaccessible_tables: `{payload.get('inaccessible_tables')}`",
+            f"- blocked_reason: `{payload.get('blocked_reason')}`",
+            f"- recommendation: `{payload.get('recommendation')}`",
+            "- no_write_confirmed: true",
+        ]
+        return "\n".join(lines) + "\n"
     inv = payload.get("candidate_inventory") or {}
     gov = payload.get("governance") or {}
     plan = payload.get("plan") or {}
@@ -130,6 +169,12 @@ def render_real_supabase_dry_run_retry_report(payload: Mapping[str, Any]) -> str
         "## Source Readiness Summary",
         f"- source_status: `{(payload.get('source_diagnostics') or {}).get('status')}`",
         f"- source_recommendation: `{(payload.get('source_diagnostics') or {}).get('recommendation')}`",
+        f"- credential_status: `{payload.get('credential_status')}`",
+        f"- client_status: `{payload.get('client_status')}`",
+        f"- read_only_connectivity_status: `{payload.get('read_only_connectivity_status')}`",
+        f"- selected_key_source: `{payload.get('selected_key_source')}`",
+        f"- accessible_tables: `{payload.get('accessible_tables')}`",
+        f"- inaccessible_tables: `{payload.get('inaccessible_tables')}`",
         "",
         "## Candidate Inventory Summary",
         *(f"- {k}: `{v}`" for k, v in inv.items() if k != "selected_key_source"),
