@@ -144,6 +144,7 @@ def build_d8_b2r_source_repair_report_payload(*, client_audit: Mapping[str, Any]
             status_map = {
                 "auth_failure": "SOURCE_BLOCKED_AUTH_FAILURE",
                 "permission_failure": "SOURCE_BLOCKED_PERMISSION_FAILURE",
+                "shape_mismatch": "SOURCE_BLOCKED_SHAPE_MISMATCH",
                 "table_not_found": "SOURCE_BLOCKED_TABLE_NOT_FOUND",
                 "schema_missing": "SOURCE_BLOCKED_TABLE_NOT_FOUND",
                 "connectivity_timeout": "SOURCE_BLOCKED_CONNECTIVITY_FAILURE",

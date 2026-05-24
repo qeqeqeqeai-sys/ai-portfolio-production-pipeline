@@ -14,14 +14,17 @@ class _Result:
 
 
 class _Table:
-    def __init__(self, fail=False):
+    def __init__(self, fail=False, error_message="read failed"):
         self.fail = fail
+        self.error_message = error_message
         self.ops = []
+        self.selected = None
 
-    def select(self, *_args, **_kwargs):
+    def select(self, *args, **_kwargs):
         self.ops.append("select")
+        self.selected = args[0] if args else None
         if self.fail:
-            raise RuntimeError("read failed")
+            raise RuntimeError(self.error_message)
         return self
 
     def limit(self, *_args, **_kwargs):
@@ -34,12 +37,16 @@ class _Table:
 
 
 class _Client:
-    def __init__(self, fail=False):
+    def __init__(self, fail=False, error_message="read failed"):
         self.fail = fail
+        self.error_message = error_message
         self.writes = 0
+        self.probes = {}
 
-    def table(self, _name):
-        return _Table(fail=self.fail)
+    def table(self, name):
+        t = _Table(fail=self.fail, error_message=self.error_message)
+        self.probes[name] = t
+        return t
 
 
 def test_credentials_missing():
@@ -80,9 +87,12 @@ def test_connectivity_not_attempted_when_missing():
 
 def test_connectivity_success_with_injected_client():
     cred = audit_supabase_runtime_credentials(env={"SUPABASE_URL": "https://x", "SUPABASE_KEY": "k"})
-    out = audit_supabase_read_only_connectivity(credential_audit=cred, client=_Client())
+    client = _Client()
+    out = audit_supabase_read_only_connectivity(credential_audit=cred, client=client)
     assert out["client_status"] == "CLIENT_RESOLVED"
     assert out["read_only_connectivity_status"] == "READ_ONLY_CONNECTIVITY_OK"
+    assert client.probes["dashboard_replay_metadata_records"].selected == "record_id"
+    assert out["table_probe"][0]["probe_column_assumption_removed"] is True
 
 
 def test_connectivity_failure_handling():
@@ -90,6 +100,17 @@ def test_connectivity_failure_handling():
     out = audit_supabase_read_only_connectivity(credential_audit=cred, client=_Client(fail=True))
     assert out["read_only_connectivity_status"] == "READ_ONLY_CONNECTIVITY_BLOCKED"
     assert out["connectivity_exception_class"] == "RuntimeError"
+
+
+def test_missing_column_maps_to_shape_mismatch_not_table_not_found():
+    cred = audit_supabase_runtime_credentials(env={"SUPABASE_URL": "https://x", "SUPABASE_KEY": "k"})
+    out = audit_supabase_read_only_connectivity(
+        credential_audit=cred,
+        client=_Client(fail=True, error_message="column dashboard_replay_metadata_records.id does not exist (SQLSTATE 42703)"),
+    )
+    assert out["blocked_category"] == "shape_mismatch"
+    assert out["blocked_category"] != "table_not_found"
+    assert out["table_probe"][-1]["table_probe_error_code"] == "42703"
 
 
 def test_dashboard_operator_comparison():
@@ -123,3 +144,12 @@ def test_status_mapping_for_connectivity_categories():
     }
     d8 = build_d8_b2r_source_repair_report_payload(client_audit={"client_resolved": True}, source_audit={}, runtime_connectivity=runtime)
     assert d8["status"] == "SOURCE_BLOCKED_PERMISSION_FAILURE"
+
+
+def test_status_mapping_for_shape_mismatch():
+    runtime = {
+        "recommendation": "BLOCKED_READ_ONLY_CONNECTIVITY",
+        "connectivity_audit": {"blocked_category": "shape_mismatch"},
+    }
+    d8 = build_d8_b2r_source_repair_report_payload(client_audit={"client_resolved": True}, source_audit={}, runtime_connectivity=runtime)
+    assert d8["status"] == "SOURCE_BLOCKED_SHAPE_MISMATCH"
