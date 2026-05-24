@@ -176,6 +176,52 @@ def build_d8_dashboard_view_model(d8_payload: Mapping[str, Any]) -> OrderedDict[
     ])
 
 
+def build_d8_1_operational_card_render_model(d8_payload: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    dashboard = build_d8_dashboard_view_model(d8_payload if isinstance(d8_payload, Mapping) else {})
+    strongest_support = dashboard.get("strongest_supporting_evidence_panel") if isinstance(dashboard.get("strongest_supporting_evidence_panel"), Mapping) else {}
+    strongest_contradiction = dashboard.get("strongest_contradiction_panel") if isinstance(dashboard.get("strongest_contradiction_panel"), Mapping) else {}
+    lineage = dashboard.get("evidence_lineage_summaries") if isinstance(dashboard.get("evidence_lineage_summaries"), Mapping) else {}
+    interpretation = (d8_payload.get("operational_interpretation") or {}) if isinstance(d8_payload, Mapping) else {}
+    if not d8_payload or (not strongest_support and not strongest_contradiction and not dashboard.get("evidence_priority_cards")):
+        return OrderedDict([
+            ("available", False),
+            ("degraded", True),
+            ("message", "D8 operational insight payload is unavailable or degraded."),
+            ("cards", []),
+            ("debug", OrderedDict([("raw_d8_payload", deepcopy(d8_payload if isinstance(d8_payload, Mapping) else {}))])),
+        ])
+    cards = [
+        OrderedDict([("section", "What matters most"), ("content", _as_text(next(iter(_as_list(interpretation.get("interpretation_sentences"))), "")) or "No deterministic interpretation sentence was available.")]),
+        OrderedDict([("section", "Why this regime was selected"), ("content", f"Strongest supporting evidence is {_as_text(strongest_support.get('evidence_ref')) or 'unavailable'} with priority score {_as_text(strongest_support.get('priority_score')) or 'N/A'} ({_as_text(strongest_support.get('quality_band')) or 'unrated'} quality band).")]),
+        OrderedDict([("section", "Main contradiction"), ("content", f"Top contradiction severity is {_as_text(strongest_contradiction.get('severity')) or 'unavailable'} ({_as_text(strongest_contradiction.get('severity_score')) or 'N/A'}), direction {_as_text(strongest_contradiction.get('direction')) or 'unknown'}." )]),
+        OrderedDict([("section", "Confidence weakener"), ("content", _as_text(next(iter(_as_list(lineage.get("degrading_caveats"))), "")) or "No explicit confidence weakener was present.")]),
+        OrderedDict([("section", "Temporal/semantic drift"), ("content", _as_text(next((c.get('insight') for c in _as_list(dashboard.get('evidence_priority_cards')) if _as_text(c.get('card_type')) == 'temporal_semantic_posture'), "")) or "Temporal/semantic drift was not available.")]),
+        OrderedDict([("section", "What to monitor next"), ("content", _as_text(strongest_contradiction.get("operational_significance")) or "monitor")]),
+        OrderedDict([("section", "Evidence lineage"), ("content", _as_text(interpretation.get("lineage_summary")) or "Lineage summary unavailable.")]),
+    ]
+    return OrderedDict([
+        ("available", True),
+        ("degraded", False),
+        ("message", ""),
+        ("cards", cards),
+        ("supporting_evidence", OrderedDict([
+            ("strongest_supporting_evidence_ref", strongest_support.get("evidence_ref")),
+            ("priority_score", strongest_support.get("priority_score")),
+            ("priority_level", strongest_support.get("quality_band")),
+        ])),
+        ("contradiction", OrderedDict([
+            ("strongest_contradicting_evidence_refs", _as_list(strongest_contradiction.get("supporting_evidence_refs"))),
+            ("severity", strongest_contradiction.get("severity")),
+            ("severity_score", strongest_contradiction.get("severity_score")),
+            ("direction", strongest_contradiction.get("direction")),
+        ])),
+        ("operational_interpretation", _as_text(next(iter(_as_list(interpretation.get("interpretation_sentences"))), ""))),
+        ("confidence_caveats", _as_list(lineage.get("degrading_caveats"))),
+        ("lineage_summary", _as_text(interpretation.get("lineage_summary"))),
+        ("debug", OrderedDict([("raw_d8_payload", deepcopy(d8_payload))])),
+    ])
+
+
 def certify_d8_evidence_prioritization(d8_payload: Mapping[str, Any]) -> OrderedDict[str, Any]:
     return OrderedDict([
         ("deterministic", True),

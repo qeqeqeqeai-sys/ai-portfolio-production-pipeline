@@ -173,6 +173,7 @@ __all__ = [
     "build_d8_evidence_lineage_trace",
     "build_d8_operational_interpretation",
     "build_d8_dashboard_view_model",
+    "build_d8_1_operational_card_render_model",
     "certify_d8_evidence_prioritization",
     "build_d8_evidence_prioritization_report",
 
@@ -186,7 +187,7 @@ from .d8_evidence_prioritization_operational_insight import (
     build_d8_evidence_lineage_trace,
     build_d8_operational_interpretation,
     build_d8_dashboard_view_model,
+    build_d8_1_operational_card_render_model,
     certify_d8_evidence_prioritization,
     build_d8_evidence_prioritization_report,
 )
-

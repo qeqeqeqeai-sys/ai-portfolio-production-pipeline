@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -791,6 +791,34 @@ def render_e6_expectation_executive_summary(view_model: Mapping[str, Any], *, st
         st.json(plan.get("debug", {}))
 
 
+def render_d8_1_operational_insight_cards(view_model: Mapping[str, Any], *, st: Any) -> None:
+    st.markdown("### D8.1 Operational Insight Cards")
+    card_model = build_d8_1_operational_card_render_model(view_model.get("d8_evidence_prioritization") if isinstance(view_model, Mapping) else {})
+    if not card_model.get("available"):
+        st.caption(card_model.get("message") or "D8.1 cards unavailable.")
+        return
+    support = card_model.get("supporting_evidence", {})
+    contradiction = card_model.get("contradiction", {})
+    cols = st.columns(3)
+    cols[0].metric("Strongest Supporting Evidence", _render_value(support.get("strongest_supporting_evidence_ref"), fallback="Unavailable"))
+    cols[1].metric("Contradiction Severity", _render_value(contradiction.get("severity"), fallback="Unavailable"))
+    cols[2].metric("Evidence Priority", _render_value(support.get("priority_score"), fallback="Unavailable"))
+    st.markdown(f"**Strongest Contradicting Evidence:** {_render_value(', '.join(str(x) for x in _as_list(contradiction.get('strongest_contradicting_evidence_refs'))), fallback='Unavailable')}")
+    st.markdown(f"**Operational Interpretation:** {_render_value(card_model.get('operational_interpretation'), fallback='Unavailable')}")
+    caveats = _as_list(card_model.get("confidence_caveats"))
+    st.markdown("**Confidence Caveats:**")
+    if caveats:
+        for caveat in caveats:
+            st.markdown(f"- {caveat}")
+    else:
+        st.caption("No caveats were provided.")
+    st.caption(f"Lineage summary: {_render_value(card_model.get('lineage_summary'), fallback='Unavailable')}")
+    for card in _as_list(card_model.get("cards")):
+        st.markdown(f"**{_render_value(card.get('section'), fallback='Insight')}:** {_render_value(card.get('content'))}")
+    with st.expander("D8.1 Debug/Archive Payload"):
+        st.json(card_model.get("debug", {}))
+
+
 def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
     supervisor = view_model.get("supervisor_summary") if isinstance(view_model.get("supervisor_summary"), Mapping) else {}
     integrity = view_model.get("integrity_overview") if isinstance(view_model.get("integrity_overview"), Mapping) else {}
@@ -938,6 +966,7 @@ def render_d7_debug_archive(debug_payload_sections: Mapping[str, Any], *, st: An
 __all__ = [
     "build_e6_executive_summary_render_plan",
     "render_e6_expectation_executive_summary",
+    "render_d8_1_operational_insight_cards",
     "load_d7_dashboard_findings",
     "load_d7_dashboard_narratives",
     "load_d7_dashboard_evidence_maps",
