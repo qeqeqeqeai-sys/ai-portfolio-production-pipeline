@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Mapping
 
 from .d8_b1_controlled_replay_expansion import build_d8_b1_controlled_backfill_plan
+from .d8_b2r_replay_candidate_source_repair_audit import audit_supabase_client_resolution, audit_replay_candidate_sources, build_d8_b2r_source_repair_report_payload
 
 D8_B2_VERSION = "d8_b2_controlled_replay_backfill_execution_v1"
 
@@ -201,3 +202,10 @@ def execute_controlled_replay_backfill(*, candidates: list[Mapping[str, Any]], e
         ("duplicate_count", duplicate_count),
         ("execution_checksum", _stable_checksum(OrderedDict([("plan", plan), ("audit", audit), ("inserted_count", write_count)]))),
     ])
+
+
+def build_d8_b2_dry_run_source_diagnostics(*, runtime_config: Mapping[str, Any] | None = None, client: Any = None, client_factory: Any = None, findings: list[Mapping[str, Any]] | None = None, narratives: list[Mapping[str, Any]] | None = None, evidence_maps: list[Mapping[str, Any]] | None = None) -> OrderedDict[str, Any]:
+    client_audit = audit_supabase_client_resolution(runtime_config=runtime_config, client=client, client_factory=client_factory)
+    resolved_client = client if client_audit.get("client_resolved") else None
+    source_audit = audit_replay_candidate_sources(client=resolved_client, findings=findings, narratives=narratives, evidence_maps=evidence_maps)
+    return build_d8_b2r_source_repair_report_payload(client_audit=client_audit, source_audit=source_audit)
