@@ -45,6 +45,19 @@ from .e4_semantic_theme_memory import (
     build_e4_semantic_narrative_drift_report,
 )
 
+
+from .e5_expectation_supervisor_closeout import (
+    build_e5_expectation_intelligence_envelope,
+    build_e5_composite_synthesis,
+    build_e5_expectation_regime_synthesis,
+    classify_e5_expectation_regime,
+    build_e5_evidence_contradiction_synthesis,
+    build_e5_temporal_semantic_synthesis,
+    build_e5_caveat_consolidation,
+    certify_e5_expectation_operational_usefulness,
+    build_e5_supervisor_closeout,
+)
+
 from .e1_expectation_intelligence import (
     build_e1_contradiction_profile,
     build_e1_contradiction_summary,
@@ -114,4 +127,14 @@ __all__ = [
     "build_e4_theme_evidence_support_profile",
     "build_e4_semantic_memory_supervisor_summary",
     "build_e4_semantic_narrative_drift_report",
+
+    "build_e5_expectation_intelligence_envelope",
+    "build_e5_composite_synthesis",
+    "build_e5_expectation_regime_synthesis",
+    "classify_e5_expectation_regime",
+    "build_e5_evidence_contradiction_synthesis",
+    "build_e5_temporal_semantic_synthesis",
+    "build_e5_caveat_consolidation",
+    "certify_e5_expectation_operational_usefulness",
+    "build_e5_supervisor_closeout",
 ]
