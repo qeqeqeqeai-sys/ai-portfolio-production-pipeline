@@ -8,6 +8,7 @@ def test_d7_operational_dashboard_viewer_is_intelligence_first():
     assert "render_d15_historical_operational_intelligence" in source
     assert "render_d16_historical_findings_operator_narrative" in source
     assert "render_d17_historical_confidence_lineage" in source
+    assert "render_d18_cross_run_confidence_delta_operator_triage" in source
     assert "render_d7_intelligence_overview" in source
     assert "render_d7_finding_cards" in source
     assert "render_d7_narrative_sections" in source
@@ -93,6 +94,7 @@ def test_d7_operational_dashboard_viewer_main_smoke_catches_signature_mismatches
     monkeypatch.setattr(app, "render_d15_historical_operational_intelligence", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d16_historical_findings_operator_narrative", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d17_historical_confidence_lineage", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
     monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
@@ -137,6 +139,7 @@ def test_d7_operational_dashboard_viewer_imported_helpers_match_runtime_contract
         "render_d15_historical_operational_intelligence": "(view_model, st)",
         "render_d16_historical_findings_operator_narrative": "(view_model, st)",
         "render_d17_historical_confidence_lineage": "(view_model, st)",
+        "render_d18_cross_run_confidence_delta_operator_triage": "(view_model, st)",
         "render_e6_expectation_executive_summary": "(view_model, st)",
         "load_d7_dashboard_evidence_maps": "(client, limit)",
         "load_d7_dashboard_findings": "(client, limit)",
@@ -196,6 +199,7 @@ def test_d7_operational_dashboard_calls_d8_1_renderer(monkeypatch):
     monkeypatch.setattr(app, "render_d15_historical_operational_intelligence", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d16_historical_findings_operator_narrative", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d17_historical_confidence_lineage", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
     monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
@@ -240,6 +244,7 @@ def test_d7_operational_dashboard_calls_d8_2_renderer(monkeypatch):
     monkeypatch.setattr(app, "render_d15_historical_operational_intelligence", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d16_historical_findings_operator_narrative", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d17_historical_confidence_lineage", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
     monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
@@ -256,7 +261,7 @@ def test_d7_operational_dashboard_calls_d8_2_renderer(monkeypatch):
 def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fallbacks(monkeypatch):
     import streamlit_apps.d7_operational_dashboard_viewer as app
 
-    calls = {"render_order": [], "d15_payload_variants": [], "d16_calls": 0, "d17_calls":0}
+    calls = {"render_order": [], "d15_payload_variants": [], "d16_calls": 0, "d17_calls":0, "d18_calls":0}
 
     class _Ctx:
         def __enter__(self): return self
@@ -309,6 +314,9 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
 
     def _overview(_model, *, st):
         calls["render_order"].append("intelligence_overview")
+    def _d18(_model, *, st):
+        calls["render_order"].append("d18_cross_run_confidence_delta_operator_triage")
+        calls["d18_calls"] += 1
     def _d16(_model, *, st):
         calls["render_order"].append("d16_historical_findings_operator_narrative")
         calls["d16_calls"] += 1
@@ -317,6 +325,7 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
     monkeypatch.setattr(app, "render_d15_historical_operational_intelligence", _d15)
     monkeypatch.setattr(app, "render_d16_historical_findings_operator_narrative", _d16)
     monkeypatch.setattr(app, "render_d17_historical_confidence_lineage", _d17)
+    monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", _d18)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", _overview)
 
     base_vm = {
@@ -332,11 +341,12 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
         calls["render_order"].clear()
         monkeypatch.setattr(app, "_load_view_model_cached", lambda _client, _vm={**base_vm, **variant}: _vm)
         app.main()
-        assert calls["render_order"][:5] == [
+        assert calls["render_order"][:6] == [
             "e6_expectation_executive_summary",
             "d15_historical_operational_intelligence",
             "d16_historical_findings_operator_narrative",
             "d17_historical_confidence_lineage",
+            "d18_cross_run_confidence_delta_operator_triage",
             "intelligence_overview",
         ]
     assert calls["d15_payload_variants"] == ["present", "missing", "degraded"]
