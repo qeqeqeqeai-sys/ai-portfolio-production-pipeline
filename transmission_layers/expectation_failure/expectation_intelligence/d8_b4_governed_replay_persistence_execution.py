@@ -122,6 +122,26 @@ def build_d8_b4_execution_audit_manifest(*, d6_result: Mapping[str, Any], govern
     ])
 
 
+def build_d8_b4_governance_diagnostics(*, result: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    governance = result.get("governance") or {}
+    plan = result.get("plan") or {}
+    report_payload = result.get("report_payload") or {}
+    return OrderedDict([
+        ("status", result.get("status")),
+        ("governance_status", governance.get("status") or governance.get("governance_status")),
+        ("blocking_reasons", _as_list(governance.get("blocking_reasons"))),
+        ("dry_run", governance.get("dry_run")),
+        ("injected_client_present", governance.get("injected_client_present")),
+        ("approval_flag_present", governance.get("approval_flag_present")),
+        ("append_only_confirmed", governance.get("append_only_confirmed")),
+        ("duplicate_prevention_confirmed", governance.get("duplicate_prevention_confirmed")),
+        ("checksum_lineage_confirmed", governance.get("checksum_lineage_confirmed")),
+        ("approved_tables_present", governance.get("approved_tables_present")),
+        ("execution_status", plan.get("execution_status")),
+        ("recommendation", report_payload.get("recommendation") or result.get("status")),
+    ])
+
+
 def execute_d8_b4_governed_replay_persistence(*, client: Any, approval_flags: Mapping[str, Any] | None = None, dry_run: bool = False) -> OrderedDict[str, Any]:
     governance = validate_d8_b4_execution_governance(dry_run=dry_run, client=client, approval_flags=approval_flags)
     plan = build_d8_b4_persistence_execution_plan(governance=governance, dry_run=dry_run)
