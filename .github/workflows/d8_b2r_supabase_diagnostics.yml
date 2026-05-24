@@ -24,6 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Verify Supabase client availability
+        run: |
+          python - <<'PY'
+          import importlib.util
+          print("supabase_installed=", importlib.util.find_spec("supabase") is not None)
+          PY
+
       - name: Validate required secrets are present
         run: |
           test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL" && exit 1)
@@ -36,13 +43,14 @@ jobs:
 
       - name: Confirm read-only diagnostics only
         run: |
-          if ! rg -n "Mode:\*\* READ-ONLY diagnostics|Explicit no-write confirmation:\*\* true" reports/d8_b2r_real_supabase_diagnostics_status_report.md; then
+          if ! grep -E -n "Mode:\*\* READ-ONLY diagnostics|Explicit no-write confirmation:\*\* true" reports/d8_b2r_real_supabase_diagnostics_status_report.md; then
             echo "Read-only confirmation markers missing from diagnostics report."
             exit 1
           fi
           echo "Read-only diagnostics confirmed."
 
       - name: Upload diagnostics report artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: d8-b2r-real-supabase-diagnostics-report
