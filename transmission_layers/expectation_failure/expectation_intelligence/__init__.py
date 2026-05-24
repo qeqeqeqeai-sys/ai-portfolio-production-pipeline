@@ -15,6 +15,20 @@ from .e2_evidence_interpretation import (
     classify_e2_linkage_strength,
 )
 
+from .e3_temporal_expectation_memory import (
+    build_e3_temporal_drift_report,
+    build_e3_temporal_memory_index,
+    build_e3_temporal_supervisor_summary,
+    build_e3_expectation_pressure_drift,
+    build_e3_contradiction_drift,
+    build_e3_evidence_support_drift,
+    build_e3_fragility_concentration_drift,
+    build_e3_semantic_pressure_drift,
+    build_e3_exhaustion_risk_drift,
+    classify_e3_pressure_direction,
+    normalize_e3_temporal_runs,
+)
+
 from .e1_expectation_intelligence import (
     build_e1_contradiction_profile,
     build_e1_contradiction_summary,
@@ -59,4 +73,16 @@ __all__ = [
     "build_e2_evidence_interpretation_summary",
     "build_e2_strategist_evidence_brief",
     "build_e2_evidence_interpretation_payload",
+
+    "normalize_e3_temporal_runs",
+    "build_e3_temporal_memory_index",
+    "classify_e3_pressure_direction",
+    "build_e3_expectation_pressure_drift",
+    "build_e3_contradiction_drift",
+    "build_e3_evidence_support_drift",
+    "build_e3_fragility_concentration_drift",
+    "build_e3_semantic_pressure_drift",
+    "build_e3_exhaustion_risk_drift",
+    "build_e3_temporal_supervisor_summary",
+    "build_e3_temporal_drift_report",
 ]
