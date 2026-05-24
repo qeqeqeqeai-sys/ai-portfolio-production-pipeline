@@ -212,6 +212,15 @@ __all__ = [
     "build_d9_report_payload",
     "build_d9_report_markdown",
 
+    "build_d10_finding_snapshot",
+    "compare_d10_finding_snapshots",
+    "classify_d10_finding_persistence",
+    "build_d10_monitoring_cards",
+    "evaluate_d10_alert_readiness",
+    "certify_d10_monitoring_readiness",
+    "build_d10_report_payload",
+    "build_d10_report_markdown",
+
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -282,4 +291,16 @@ from .d9_persisted_evidence_finding_generation import (
     build_d9_dashboard_operational_cards,
     build_d9_report_payload,
     build_d9_report_markdown,
+)
+
+
+from .d10_longitudinal_finding_monitoring_alerting_readiness import (
+    build_d10_finding_snapshot,
+    compare_d10_finding_snapshots,
+    classify_d10_finding_persistence,
+    build_d10_monitoring_cards,
+    evaluate_d10_alert_readiness,
+    certify_d10_monitoring_readiness,
+    build_d10_report_payload,
+    build_d10_report_markdown,
 )
