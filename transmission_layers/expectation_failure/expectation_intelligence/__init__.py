@@ -221,6 +221,16 @@ __all__ = [
     "build_d10_report_payload",
     "build_d10_report_markdown",
 
+    "build_d11_backfill_inventory",
+    "validate_d11_backfill_eligibility",
+    "build_d11_historical_replay_windows",
+    "build_d11_backfill_reconstruction",
+    "build_d11_historical_evidence_summary",
+    "certify_d11_backfill",
+    "build_d11_dashboard_backfill_cards",
+    "build_d11_report_payload",
+    "build_d11_report_markdown",
+
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -303,4 +313,17 @@ from .d10_longitudinal_finding_monitoring_alerting_readiness import (
     certify_d10_monitoring_readiness,
     build_d10_report_payload,
     build_d10_report_markdown,
+)
+
+
+from .d11_historical_replay_evidence_backfill import (
+    build_d11_backfill_inventory,
+    validate_d11_backfill_eligibility,
+    build_d11_historical_replay_windows,
+    build_d11_backfill_reconstruction,
+    build_d11_historical_evidence_summary,
+    certify_d11_backfill,
+    build_d11_dashboard_backfill_cards,
+    build_d11_report_payload,
+    build_d11_report_markdown,
 )
