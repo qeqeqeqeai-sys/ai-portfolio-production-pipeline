@@ -15,6 +15,11 @@ READ_ONLY_TABLES = (
     "dashboard_export_manifests",
 )
 
+SAFE_PROBE_COLUMNS_BY_TABLE = {
+    "dashboard_replay_metadata_records": "record_id",
+    "dashboard_export_manifests": "*",
+}
+
 ACCEPTED_SUPABASE_KEY_ENV_NAMES = (
     "SUPABASE_SERVICE_ROLE_KEY",
     "SUPABASE_ANON_KEY",
@@ -117,25 +122,50 @@ def audit_supabase_read_only_connectivity(*, credential_audit: Mapping[str, Any]
     try:
         c = resolution.get("client")
         for table in tables:
-            resp = c.table(table).select("id", count="exact").limit(1).execute()
+            probe_columns = SAFE_PROBE_COLUMNS_BY_TABLE.get(table, "*")
+            resp = c.table(table).select(probe_columns, count="exact").limit(1).execute()
             count = getattr(resp, "count", None)
             if count is None:
                 data = getattr(resp, "data", [])
                 count = len(data) if isinstance(data, list) else 0
-            probe.append(OrderedDict([("table", table), ("ok", True), ("count", int(count))]))
+            probe.append(OrderedDict([
+                ("table", table),
+                ("ok", True),
+                ("count", int(count)),
+                ("probe_strategy", "safe_column_map" if table in SAFE_PROBE_COLUMNS_BY_TABLE else "fallback_wildcard"),
+                ("table_probe_columns", probe_columns),
+                ("probe_column_assumption_removed", True),
+                ("table_probe_error_code", None),
+                ("table_probe_error_message_short", None),
+            ]))
     except Exception as exc:
         msg = str(exc).lower()
         category = "connectivity_failure"
-        if any(x in msg for x in ("not authorized", "jwt", "401", "invalid api key", "auth")):
-            category = "auth_failure"
-        elif any(x in msg for x in ("permission", "forbidden", "rls", "42501", "403")):
-            category = "permission_failure"
-        elif any(x in msg for x in ("schema", "3f000")):
-            category = "schema_missing"
-        elif any(x in msg for x in ("does not exist", "undefined table", "42p01", "not found")):
-            category = "table_not_found"
-        elif any(x in msg for x in ("timeout", "timed out", "connection", "dns")):
-            category = "connectivity_timeout"
+        err_code = None
+        if "42703" in msg or "undefined column" in msg or "column" in msg and "does not exist" in msg:
+            category = "shape_mismatch"
+            err_code = "42703"
+        if category != "shape_mismatch":
+            if any(x in msg for x in ("not authorized", "jwt", "401", "invalid api key", "auth")):
+                category = "auth_failure"
+            elif any(x in msg for x in ("permission", "forbidden", "rls", "42501", "403")):
+                category = "permission_failure"
+            elif any(x in msg for x in ("schema", "3f000")):
+                category = "schema_missing"
+            elif any(x in msg for x in ("does not exist", "undefined table", "42p01", "not found")):
+                category = "table_not_found"
+            elif any(x in msg for x in ("timeout", "timed out", "connection", "dns")):
+                category = "connectivity_timeout"
+        probe.append(OrderedDict([
+            ("table", "unknown"),
+            ("ok", False),
+            ("count", 0),
+            ("probe_strategy", "safe_column_map"),
+            ("table_probe_columns", "n/a"),
+            ("probe_column_assumption_removed", True),
+            ("table_probe_error_code", err_code),
+            ("table_probe_error_message_short", _t(str(exc))[:160]),
+        ]))
         return OrderedDict([
             ("client_status", "CLIENT_RESOLVED"),
             ("read_only_connectivity_status", "READ_ONLY_CONNECTIVITY_BLOCKED"),
