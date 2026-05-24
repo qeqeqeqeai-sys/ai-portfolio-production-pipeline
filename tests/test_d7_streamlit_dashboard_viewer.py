@@ -15,6 +15,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_finding_cards,
     render_d7_intelligence_overview,
     render_d7_integrity_overview,
+    render_d8_2_replay_evidence_density_summary,
     render_e6_expectation_executive_summary,
     render_d7_narrative_sections,
     render_d7_supervisor_interpretation,
@@ -208,6 +209,26 @@ def test_d7_schema_map_has_only_allowed_keys_subset():
     assert "dashboard_finding_records" in D7_PHYSICAL_COLUMNS_BY_TABLE
     assert "severity" not in D7_PHYSICAL_COLUMNS_BY_TABLE["dashboard_finding_records"]
 
+
+def test_d8_2_summary_renderer_keeps_raw_ids_outside_primary_surface():
+    st = FakeStreamlit()
+    vm = {
+        "d8_2_dashboard": {
+            "semantic_persistence_summary": {"persistence_status": "persistent"},
+            "evidence_density_indicators": {"evidence_density_classification": "dense", "replay_linked_evidence_refs": ["EV-1"]},
+            "replay_continuity_summary": {"continuity_status": "CONTINUOUS"},
+            "regime_transition_history": {"transition_count": 2},
+            "persistent_contradiction_tracking": {"persistent_contradiction_themes": ["margin_pressure"]},
+            "thematic_evolution_summary": {"evolution_interpretation": "Themes stable with minor drift."},
+        },
+        "d8_2_replay_density_expansion": {"d8_2_checksum": "secret_checksum", "replay_density_inventory": {"run_ids": ["internal-run-1"]}},
+    }
+    render_d8_2_replay_evidence_density_summary(vm, st=st)
+    primary_text = " ".join(st.markdowns + st.captions)
+    assert "secret_checksum" not in primary_text
+    assert "internal-run-1" not in primary_text
+    assert st.json_calls
+
 def test_d7_ignores_stale_planned_when_newer_executed_exists():
     client = _build_client()
     client.tables["dashboard_persistence_audit_records"] = [
@@ -310,7 +331,7 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
 
 def test_d7_renderer_helper_api_presence_and_ordering_constant():
     assert D7_RENDER_SECTION_ORDER == (
-        "e6_expectation_executive_summary", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "governance_debug_archive"
+        "e6_expectation_executive_summary", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
     )
     assert callable(render_e6_expectation_executive_summary)
     assert callable(render_d7_intelligence_overview)
