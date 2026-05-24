@@ -5,6 +5,8 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d6_ope
     build_d6_operational_proving_report,
     certify_d6_operational_proving_cycle,
 )
+from transmission_layers.expectation_failure.dashboard_operationalization.d3_controlled_dashboard_persistence_execution import EXECUTED_WITH_FAILURES
+from scripts.run_d6_real_proving_cycle import _print_d3_persistence_diagnostics
 
 
 class _Resp:
@@ -65,3 +67,54 @@ def test_d6_dry_run_graceful_and_reporting_shape():
     assert summary["readback_verification_status"] in {"CERTIFIED_REAL_READBACK_VERIFIED", "DEGRADED_REAL_READBACK_VERIFIED"}
     assert "evaluation" in report and "observed_limitations" in report
     assert cert["certification_status"].startswith("CERTIFIED_") or cert["certification_status"].startswith("DEGRADED_")
+
+
+def test_d6_summary_degrades_certified_readback_when_persistence_failed():
+    result = execute_d6_operational_proving_cycle(build_d6_operational_proving_input(), client=FakeSupabaseClient(), dry_run=False)
+    result["d3_persistence"]["execution_state"] = EXECUTED_WITH_FAILURES
+    summary = build_d6_operational_proving_summary(result)
+    report = build_d6_operational_proving_report(result)
+    assert summary["readback_verification_status_raw"] == "CERTIFIED_REAL_READBACK_VERIFIED"
+    assert summary["readback_verification_status"] == "DEGRADED_REAL_READBACK_VERIFIED"
+    assert summary["persistence_failure_impacts_readback"] is True
+    assert report["persistence_observability"]["persistence_failure_impacts_readback"] is True
+
+
+def test_d6_summary_degrades_certified_readback_when_expected_but_zero_persisted():
+    result = execute_d6_operational_proving_cycle(build_d6_operational_proving_input(), client=FakeSupabaseClient(), dry_run=False)
+    for row in result["d3_persistence"]["table_results"]:
+        row["persisted_record_count"] = 0
+    summary = build_d6_operational_proving_summary(result)
+    assert summary["persistence_expected_record_count"] > 0
+    assert summary["persistence_persisted_record_count"] == 0
+    assert summary["persistence_zero_records_with_expected"] is True
+    assert summary["readback_verification_status"] == "DEGRADED_REAL_READBACK_VERIFIED"
+
+
+def test_runner_prints_actionable_d3_persistence_diagnostics(capsys):
+    _print_d3_persistence_diagnostics(
+        {
+            "d3_persistence": {
+                "table_results": [
+                    {
+                        "target_table": "dashboard_finding_records",
+                        "execution_status": "FAILED",
+                        "attempted_record_count": 3,
+                        "persisted_record_count": 0,
+                        "error_type": "RuntimeError",
+                        "error_message_short": "boom",
+                        "batch_checksum": "abc123",
+                    }
+                ]
+            }
+        }
+    )
+    out = capsys.readouterr().out
+    assert "d3_persistence_diagnostics=" in out
+    assert "target_table=dashboard_finding_records" in out
+    assert "execution_status=FAILED" in out
+    assert "attempted_record_count=3" in out
+    assert "persisted_record_count=0" in out
+    assert "error_type=RuntimeError" in out
+    assert "error_message_short=boom" in out
+    assert "batch_checksum=abc123" in out

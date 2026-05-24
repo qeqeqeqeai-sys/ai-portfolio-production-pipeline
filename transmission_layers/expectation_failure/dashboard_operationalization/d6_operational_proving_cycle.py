@@ -72,12 +72,24 @@ def build_d6_operational_proving_summary(cycle_result: Mapping[str, Any]) -> Ord
     evidence_map = dict(cycle_result.get("o5", {}).get("finding_evidence_map", {}))
     d3 = dict(cycle_result.get("d3_persistence", {}))
     d4v = dict(cycle_result.get("d4_verification", {}))
+    d3_results = [r for r in d3.get("table_results", []) if isinstance(r, Mapping)]
+    expected_records = int(sum(int(r.get("attempted_record_count") or 0) for r in d3_results))
+    persisted_records = int(sum(int(r.get("persisted_record_count") or 0) for r in d3_results))
+    persistence_failed = str(d3.get("execution_state") or "") == "EXECUTED_WITH_FAILURES"
+    zero_persist_with_expectation = expected_records > 0 and persisted_records == 0
+    raw_readback_status = str(d4v.get("verification_status") or "")
+    readback_status = "DEGRADED_REAL_READBACK_VERIFIED" if raw_readback_status == "CERTIFIED_REAL_READBACK_VERIFIED" and (persistence_failed or zero_persist_with_expectation) else raw_readback_status
     return OrderedDict([
         ("finding_count", len(findings)),
         ("narrative_count", len(narratives)),
         ("evidence_map_count", len(evidence_map)),
         ("persistence_state", str(d3.get("execution_state") or "")),
-        ("readback_verification_status", str(d4v.get("verification_status") or "")),
+        ("readback_verification_status", readback_status),
+        ("readback_verification_status_raw", raw_readback_status),
+        ("persistence_expected_record_count", expected_records),
+        ("persistence_persisted_record_count", persisted_records),
+        ("persistence_zero_records_with_expected", zero_persist_with_expectation),
+        ("persistence_failure_impacts_readback", persistence_failed or zero_persist_with_expectation),
         ("checksum_continuity", OrderedDict([
             ("o5_checksum", str(cycle_result.get("o5", {}).get("o5_checksum") or "")),
             ("o6_checksum", str(cycle_result.get("o6", {}).get("o6_checksum") or "")),
@@ -110,6 +122,15 @@ def build_d6_operational_proving_report(cycle_result: Mapping[str, Any]) -> Orde
             ("replay_checksum_continuity", "PRESENT" if all(summary["checksum_continuity"].values()) else "PARTIAL"),
             ("governance_compliance", "PASS"),
             ("operational_usefulness", usefulness),
+        ])),
+        ("persistence_observability", OrderedDict([
+            ("persistence_state", summary["persistence_state"]),
+            ("persistence_expected_record_count", summary["persistence_expected_record_count"]),
+            ("persistence_persisted_record_count", summary["persistence_persisted_record_count"]),
+            ("persistence_zero_records_with_expected", summary["persistence_zero_records_with_expected"]),
+            ("readback_verification_status_raw", summary["readback_verification_status_raw"]),
+            ("readback_verification_status_effective", summary["readback_verification_status"]),
+            ("persistence_failure_impacts_readback", summary["persistence_failure_impacts_readback"]),
         ])),
         ("observed_limitations", [
             "narratives are deterministic templates and may feel generic for some operators",
