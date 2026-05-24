@@ -11,7 +11,20 @@ import streamlit as st
 
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
     build_d7_dashboard_view_model,
+    build_d7_debug_payload_sections,
+    build_d7_evidence_highlights,
+    build_d7_intelligence_cards,
+    build_d7_narrative_sections,
     build_d7_runtime_diagnostics,
+    build_d7_supervisor_summary,
+    render_d7_debug_archive,
+    render_d7_evidence_highlights,
+    render_d7_finding_cards,
+    render_d7_integrity_overview,
+    render_d7_intelligence_overview,
+    render_d7_narrative_sections,
+    render_d7_supervisor_interpretation,
+    render_e6_expectation_executive_summary,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
     load_d7_dashboard_narratives,
@@ -39,7 +52,7 @@ def _load_view_model_cached(_client: object | None):
 
 def main() -> None:
     st.set_page_config(page_title="D7 Operational Dashboard Viewer", layout="wide")
-    st.title("SEFI D7 — Thin Operational Dashboard Viewer")
+    st.title("SEFI D7 — Intelligence-First Operational Dashboard")
 
     secret_url = st.secrets.get("SUPABASE_URL") if hasattr(st, "secrets") else None
     secret_key = (
@@ -50,19 +63,11 @@ def main() -> None:
     client = client_resolution.get("client")
 
     vm = _load_view_model_cached(client)
-    overview = vm["overview"]
     findings_payload = vm["runtime_sections"]["findings_payload"]
     narratives_payload = vm["runtime_sections"]["narratives_payload"]
     evidence_payload = vm["runtime_sections"]["evidence_payload"]
     integrity_payload = vm["runtime_sections"]["integrity_payload"]
-    table_row_counts = {
-        "dashboard_finding_records": int(findings_payload.get("row_count") or 0),
-        "dashboard_narrative_records": int(narratives_payload.get("row_count") or 0),
-        "dashboard_evidence_map_records": int(evidence_payload.get("row_count") or 0),
-        "dashboard_export_manifests": int(integrity_payload.get("manifests", {}).get("row_count") or 0),
-        "dashboard_persistence_audit_records": int(integrity_payload.get("audits", {}).get("row_count") or 0),
-        "dashboard_replay_metadata_records": int(integrity_payload.get("replay", {}).get("row_count") or 0),
-    }
+
     table_payloads = {
         "dashboard_finding_records": findings_payload,
         "dashboard_narrative_records": narratives_payload,
@@ -76,68 +81,49 @@ def main() -> None:
         client_resolution=client_resolution,
         table_payloads=table_payloads,
     )
-    total_rows = sum(table_row_counts.values())
+    total_rows = sum(int(payload.get("row_count") or 0) for payload in table_payloads.values())
 
     if not client_resolution.get("client_resolved"):
         st.warning("Supabase client not configured")
     elif total_rows == 0:
         st.info("No persisted dashboard records found")
     else:
-        st.success(f"Loaded {table_row_counts['dashboard_finding_records']} findings from Supabase")
+        st.success(f"Loaded {int(findings_payload.get('row_count') or 0)} findings from Supabase")
 
-    with st.expander("Supabase table row counts", expanded=False):
-        st.json(table_row_counts)
-    with st.expander("D7 runtime diagnostics", expanded=False):
-        st.json(runtime_diagnostics)
+    intelligence_cards = build_d7_intelligence_cards(vm.get("findings", []), vm.get("evidence_maps", []))
+    narrative_sections = build_d7_narrative_sections(vm.get("narratives", []), vm.get("findings", []), vm.get("evidence_maps", []))
+    evidence_highlights = build_d7_evidence_highlights(vm.get("evidence_maps", []), vm.get("findings", []))
+    supervisor_summary = build_d7_supervisor_summary(vm)
+    integrity_overview = vm.get("integrity_overview", {})
+    debug_archive = build_d7_debug_payload_sections(
+        vm,
+        runtime_diagnostics=runtime_diagnostics,
+    )
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    normalized = vm.get("integrity", {}).get("normalized", {})
-    c1.metric("Latest Run", overview.get("latest_operational_run") or "n/a")
-    c2.metric("Certification", overview.get("certification_status") or "n/a")
-    c3.metric("Persistence", overview.get("persistence_execution_status") or "n/a")
-    c4.metric("Readback", overview.get("readback_verification_status") or "n/a")
-    c5.metric("Checksum Continuity", str(overview.get("replay_checksum_continuity") or "no"))
+    render_e6_expectation_executive_summary(vm, st=st)
+    render_d7_intelligence_overview(vm, st=st)
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Findings", "Narratives", "Evidence", "Integrity", "Supervisor"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "Supervisor Interpretation",
+        "Key Finding Cards",
+        "Narrative Sections",
+        "Evidence Highlights",
+        "Operational Integrity",
+        "Governance / Debug Archive",
+    ])
+
     with tab1:
-        findings = vm["findings"]
-        severities = sorted({str(x.get("severity") or "") for x in findings if x.get("severity")})
-        types = sorted({str(x.get("finding_type") or "") for x in findings if x.get("finding_type")})
-        sev_filter = st.multiselect("Severity", severities, default=severities)
-        type_filter = st.multiselect("Finding Type", types, default=types)
-        filtered = [r for r in findings if (not sev_filter or r.get("severity") in sev_filter) and (not type_filter or r.get("finding_type") in type_filter)]
-        st.dataframe(filtered, use_container_width=True)
-
+        render_d7_supervisor_interpretation(supervisor_summary, st=st)
     with tab2:
-        st.dataframe(vm["narratives"], use_container_width=True)
-
+        render_d7_finding_cards(intelligence_cards, st=st)
     with tab3:
-        st.dataframe(vm["evidence_maps"], use_container_width=True)
-
+        render_d7_narrative_sections(narrative_sections, st=st)
     with tab4:
-        st.json(vm["integrity"])
-        with st.expander("D7 integrity diagnostics", expanded=False):
-            st.json({
-                "persistence_status_source": normalized.get("integrity_sources", {}).get("persistence_status_source"),
-                "readback_status_source": normalized.get("integrity_sources", {}).get("readback_status_source"),
-                "checksum_fields_discovered": [k for k, v in (normalized.get("checksum_chain") or {}).items() if v],
-                "integrity_warnings": normalized.get("integrity_warnings", []),
-            })
-        with st.expander("Raw integrity payload"):
-            st.json(vm["runtime_sections"]["integrity_payload"])
-
+        render_d7_evidence_highlights(evidence_highlights, st=st)
     with tab5:
-        interp = vm["runtime_sections"]
-        st.subheader("Supervisor Interpretation")
-        st.json(vm["invariant_flags"])
-        st.write("Operational usefulness interpretation:", vm.get("overview", {}).get("certification_status"))
-        st.write("Limitations and next step")
-        st.json(build_d7_dashboard_view_model(
-            findings_payload=vm["runtime_sections"]["findings_payload"],
-            narratives_payload=vm["runtime_sections"]["narratives_payload"],
-            evidence_payload=vm["runtime_sections"]["evidence_payload"],
-            integrity_payload=vm["runtime_sections"]["integrity_payload"],
-        )["integrity"])
+        render_d7_integrity_overview(integrity_overview, st=st)
+    with tab6:
+        render_d7_debug_archive(debug_archive, st=st)
 
 
 if __name__ == "__main__":
