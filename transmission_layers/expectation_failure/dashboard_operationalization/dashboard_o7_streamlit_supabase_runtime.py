@@ -46,10 +46,17 @@ def build_streamlit_supabase_runtime_config(*, supabase_url: str | None = None, 
     runtime_url = _safe_text(supabase_url)
     runtime_key = _safe_text(supabase_key)
     url_source = "arg" if runtime_url else ("env:SUPABASE_URL" if _safe_text(os.getenv("SUPABASE_URL")) else "missing")
-    key_source = "arg" if runtime_key else ("env:SUPABASE_ANON_KEY" if _safe_text(os.getenv("SUPABASE_ANON_KEY")) else ("env:SUPABASE_KEY" if _safe_text(os.getenv("SUPABASE_KEY")) else "missing"))
+    key_source = "arg" if runtime_key else (
+        "env:SUPABASE_SERVICE_ROLE_KEY" if _safe_text(os.getenv("SUPABASE_SERVICE_ROLE_KEY")) else (
+            "env:SUPABASE_ANON_KEY" if _safe_text(os.getenv("SUPABASE_ANON_KEY")) else ("env:SUPABASE_KEY" if _safe_text(os.getenv("SUPABASE_KEY")) else "missing")
+        )
+    )
+    normalized_url = runtime_url or _safe_text(os.getenv("SUPABASE_URL"))
+    if normalized_url and normalized_url.endswith("/"):
+        normalized_url = normalized_url.rstrip("/")
     cfg = OrderedDict([
-        ("supabase_url", runtime_url or _safe_text(os.getenv("SUPABASE_URL"))),
-        ("supabase_key", runtime_key or _safe_text(os.getenv("SUPABASE_ANON_KEY")) or _safe_text(os.getenv("SUPABASE_KEY"))),
+        ("supabase_url", normalized_url),
+        ("supabase_key", runtime_key or _safe_text(os.getenv("SUPABASE_SERVICE_ROLE_KEY")) or _safe_text(os.getenv("SUPABASE_ANON_KEY")) or _safe_text(os.getenv("SUPABASE_KEY"))),
         ("run_id", _safe_text(run_id)),
         ("as_of_date", _safe_text(as_of_date)),
         ("supabase_url_source", url_source),

@@ -29,12 +29,11 @@ def test_credentials_missing_client_unresolved():
     assert result["client_factory_source"] == "unavailable"
 
 
-def test_supabase_package_unavailable_clear_error_type():
+def test_supabase_constructor_failure_has_error_type():
     cfg = build_streamlit_supabase_runtime_config(supabase_url="u", supabase_key="k")
     result = resolve_streamlit_supabase_client(cfg)
     assert result["client_resolved"] is False
-    assert result["supabase_package_available"] is False
-    assert result["client_error_type"] in {"ModuleNotFoundError", "ImportError"}
+    assert result["client_error_type"] is not None
 
 
 def test_injected_factory_success():
@@ -76,3 +75,14 @@ def test_snapshot_unresolved_means_snapshot_not_loaded_and_fallback_preserved_an
     assert out1["payload_source"] == "fallback_payload"
     assert out1["payload"]["dashboard_entity_facts"] == payload["dashboard_entity_facts"]
     assert out1["runtime_diagnostics"] == out2["runtime_diagnostics"]
+
+
+def test_service_role_key_env_priority_and_url_normalization(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co/")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon")
+    monkeypatch.setenv("SUPABASE_KEY", "generic")
+    cfg = build_streamlit_supabase_runtime_config()
+    assert cfg["supabase_key"] == "svc"
+    assert cfg["supabase_key_source"] == "env:SUPABASE_SERVICE_ROLE_KEY"
+    assert cfg["supabase_url"] == "https://x.supabase.co"

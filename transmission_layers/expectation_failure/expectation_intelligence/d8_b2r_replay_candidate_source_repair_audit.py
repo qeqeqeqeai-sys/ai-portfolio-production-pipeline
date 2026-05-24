@@ -137,10 +137,19 @@ def build_d8_b2r_source_repair_report_payload(*, client_audit: Mapping[str, Any]
             status = "SOURCE_BLOCKED_CREDENTIALS_PARTIAL"
             recommendation = rec
         elif rec == "BLOCKED_CLIENT_CONSTRUCTION":
-            status = "SOURCE_BLOCKED_CLIENT_UNRESOLVED"
+            status = "SOURCE_BLOCKED_CLIENT_CONSTRUCTION"
             recommendation = rec
         elif rec == "BLOCKED_READ_ONLY_CONNECTIVITY":
-            status = "SOURCE_BLOCKED_READ_ONLY_CONNECTIVITY"
+            category = ((runtime.get("connectivity_audit") or {}).get("blocked_category") if isinstance(runtime.get("connectivity_audit"), Mapping) else None) or "connectivity_failure"
+            status_map = {
+                "auth_failure": "SOURCE_BLOCKED_AUTH_FAILURE",
+                "permission_failure": "SOURCE_BLOCKED_PERMISSION_FAILURE",
+                "table_not_found": "SOURCE_BLOCKED_TABLE_NOT_FOUND",
+                "schema_missing": "SOURCE_BLOCKED_TABLE_NOT_FOUND",
+                "connectivity_timeout": "SOURCE_BLOCKED_CONNECTIVITY_FAILURE",
+                "connectivity_failure": "SOURCE_BLOCKED_CONNECTIVITY_FAILURE",
+            }
+            status = status_map.get(str(category), "SOURCE_BLOCKED_CONNECTIVITY_FAILURE")
             recommendation = rec
         elif rec == "READY_FOR_D8_B2R_RERUN":
             status = "SOURCE_READY"
