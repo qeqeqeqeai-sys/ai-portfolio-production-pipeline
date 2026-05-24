@@ -248,6 +248,15 @@ __all__ = [
     "build_d13_dashboard_regime_evolution_cards",
     "build_d13_report_payload",
     "build_d13_report_markdown",
+    "build_d14_orchestration_inventory",
+    "validate_d14_orchestration_eligibility",
+    "build_d14_supervisory_rollup",
+    "build_d14_cross_phase_audit_continuity",
+    "build_d14_supervisory_operational_narrative",
+    "certify_d14_historical_evolution_orchestration",
+    "build_d14_dashboard_supervisory_cards",
+    "build_d14_report_payload",
+    "build_d14_report_markdown",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -367,4 +376,16 @@ from .d13_historical_expectation_delta_regime_evolution import (
     build_d13_dashboard_regime_evolution_cards,
     build_d13_report_payload,
     build_d13_report_markdown,
+)
+
+from .d14_governance_integrated_historical_evolution_orchestration import (
+    build_d14_orchestration_inventory,
+    validate_d14_orchestration_eligibility,
+    build_d14_supervisory_rollup,
+    build_d14_cross_phase_audit_continuity,
+    build_d14_supervisory_operational_narrative,
+    certify_d14_historical_evolution_orchestration,
+    build_d14_dashboard_supervisory_cards,
+    build_d14_report_payload,
+    build_d14_report_markdown,
 )
