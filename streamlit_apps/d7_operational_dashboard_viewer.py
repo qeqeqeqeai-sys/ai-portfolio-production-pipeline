@@ -20,6 +20,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d7_debug_archive,
     render_d7_evidence_highlights,
     render_d7_finding_cards,
+    render_d8_1_operational_insight_cards,
     render_d7_integrity_overview,
     render_d7_intelligence_overview,
     render_d7_narrative_sections,
@@ -114,6 +115,7 @@ def main() -> None:
     with tab1:
         render_d7_supervisor_interpretation(supervisor_summary, st=st)
     with tab2:
+        render_d8_1_operational_insight_cards(vm, st=st)
         render_d7_finding_cards(intelligence_cards, st=st)
     with tab3:
         render_d7_narrative_sections(narrative_sections, st=st)
