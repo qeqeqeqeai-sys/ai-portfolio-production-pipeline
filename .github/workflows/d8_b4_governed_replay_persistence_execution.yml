@@ -1,0 +1,44 @@
+name: d8_b4_governed_replay_persistence_execution
+
+on:
+  workflow_dispatch:
+
+jobs:
+  governed-non-dry-persistence:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt || true
+      - name: Warning banner
+        run: |
+          echo "::warning::NON-DRY governed replay persistence will write append-only rows using approved adapters only."
+      - name: Execute D8.B4
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          from pathlib import Path
+          from transmission_layers.expectation_failure.dashboard_operationalization.dashboard_o7_streamlit_supabase_runtime import resolve_streamlit_supabase_client
+          from transmission_layers.expectation_failure.expectation_intelligence.d8_b4_governed_replay_persistence_execution import execute_d8_b4_governed_replay_persistence
+          cfg = {"credentials_present": True, "supabase_url": "${SUPABASE_URL}", "supabase_key": "${SUPABASE_KEY}"}
+          client = resolve_streamlit_supabase_client(cfg).get("client")
+          out = execute_d8_b4_governed_replay_persistence(client=client, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+          Path("reports/d8_b4_execution_audit.json").write_text(str(out.get("audit_manifest")), encoding="utf-8")
+          Path("reports/d8_b4_post_readback.json").write_text(str(out.get("readback")), encoding="utf-8")
+          if out.get("governance", {}).get("status") != "GOVERNANCE_OK":
+            raise SystemExit("governance violation")
+          if out.get("audit_manifest", {}).get("append_only_confirmed") is not True:
+            raise SystemExit("duplicate-policy/append-only violation")
+          PY
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: d8-b4-governed-replay-persistence-artifacts
+          path: |
+            reports/d8_b4_execution_audit.json
+            reports/d8_b4_post_readback.json
