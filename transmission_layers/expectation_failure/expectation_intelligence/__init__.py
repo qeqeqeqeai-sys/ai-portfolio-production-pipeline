@@ -1,5 +1,20 @@
 """Deterministic E1 expectation intelligence expansion helpers."""
 
+from .e2_evidence_interpretation import (
+    build_e2_confidence_caveats,
+    build_e2_contradiction_evidence_map,
+    build_e2_evidence_finding_linkages,
+    build_e2_evidence_interpretation_payload,
+    build_e2_evidence_interpretation_summary,
+    build_e2_evidence_quality_profile,
+    build_e2_evidence_support_buckets,
+    build_e2_interpretation_support_chains,
+    build_e2_strategist_evidence_brief,
+    build_e2_support_chain_summary,
+    classify_e2_evidence_quality_band,
+    classify_e2_linkage_strength,
+)
+
 from .e1_expectation_intelligence import (
     build_e1_contradiction_profile,
     build_e1_contradiction_summary,
@@ -32,4 +47,16 @@ __all__ = [
     "build_e1_supervisor_interpretation",
     "build_e1_strategist_summary",
     "build_e1_expectation_intelligence_payload",
+    "build_e2_evidence_quality_profile",
+    "classify_e2_evidence_quality_band",
+    "build_e2_evidence_finding_linkages",
+    "classify_e2_linkage_strength",
+    "build_e2_interpretation_support_chains",
+    "build_e2_support_chain_summary",
+    "build_e2_evidence_support_buckets",
+    "build_e2_contradiction_evidence_map",
+    "build_e2_confidence_caveats",
+    "build_e2_evidence_interpretation_summary",
+    "build_e2_strategist_evidence_brief",
+    "build_e2_evidence_interpretation_payload",
 ]
