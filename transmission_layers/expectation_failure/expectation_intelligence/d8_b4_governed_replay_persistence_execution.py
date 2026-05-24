@@ -35,10 +35,11 @@ def _txt(v: Any) -> str:
 
 
 def validate_d8_b4_execution_governance(*, dry_run: bool, client: Any = None, approval_flags: Mapping[str, Any] | None = None) -> OrderedDict[str, Any]:
+    flags = dict(approval_flags or {})
     base = validate_backfill_execution_governance(
         dry_run=dry_run,
         client=client,
-        approval_flags=approval_flags,
+        approval_flags=flags,
         allowed_tables=[APPROVED_REPLAY_TABLE],
         append_only=True,
         duplicate_prevention=True,
@@ -47,23 +48,44 @@ def validate_d8_b4_execution_governance(*, dry_run: bool, client: Any = None, ap
     gates = audit_replay_persistence_gates(dry_run=dry_run, persistence_enabled=True, client_resolved=client is not None)
     pipeline = audit_replay_persistence_pipeline()
     blocked = list(_as_list(base.get("blocking_reasons")))
+    if not dry_run:
+        if flags.get("approve_non_dry_run") != "true":
+            blocked.append("missing_non_dry_run_approval")
+        if flags.get("approve_append_only_persistence") != "true":
+            blocked.append("missing_append_only_persistence_approval")
+        if flags.get("approve_duplicate_prevention") != "true":
+            blocked.append("missing_duplicate_prevention_approval")
+        if flags.get("approve_checksum_lineage") != "true":
+            blocked.append("missing_checksum_lineage_approval")
     if not pipeline.get("is_wired"):
         blocked.append("replay_persistence_not_wired")
+    approved_tables_present = bool(base.get("allowed_tables")) and set(_as_list(base.get("allowed_tables"))) == {APPROVED_REPLAY_TABLE}
     status = "GOVERNANCE_OK" if not blocked else "GOVERNANCE_BLOCKED"
     return OrderedDict([
+        ("governance_status", status),
         ("status", status),
+        ("blocking_reasons", sorted(set(blocked))),
         ("dry_run", bool(dry_run)),
-        ("approval_flags", OrderedDict(sorted(dict(approval_flags or {}).items()))),
+        ("injected_client_present", client is not None),
+        ("approval_flag_present", all(k in flags for k in ("approve_non_dry_run", "approve_append_only_persistence", "approve_duplicate_prevention", "approve_checksum_lineage"))),
+        ("append_only_confirmed", flags.get("approve_append_only_persistence") == "true"),
+        ("duplicate_prevention_confirmed", flags.get("approve_duplicate_prevention") == "true"),
+        ("checksum_lineage_confirmed", flags.get("approve_checksum_lineage") == "true"),
+        ("approved_tables_present", approved_tables_present),
+        ("approval_flags", OrderedDict(sorted(flags.items()))),
         ("required_runtime_flags", OrderedDict([
             ("dry_run", bool(dry_run)),
-            ("approved_for_execution", bool((approval_flags or {}).get("approved_for_execution"))),
-            ("approved_by_governance", bool((approval_flags or {}).get("approved_by_governance"))),
+            ("approved_for_execution", bool(flags.get("approved_for_execution"))),
+            ("approved_by_governance", bool(flags.get("approved_by_governance"))),
+            ("approve_non_dry_run", flags.get("approve_non_dry_run") == "true"),
+            ("approve_append_only_persistence", flags.get("approve_append_only_persistence") == "true"),
+            ("approve_duplicate_prevention", flags.get("approve_duplicate_prevention") == "true"),
+            ("approve_checksum_lineage", flags.get("approve_checksum_lineage") == "true"),
             ("append_only", True),
         ])),
         ("required_injected_client_shape", ["table", "insert", "upsert", "select", "execute"]),
         ("pipeline", pipeline),
         ("persistence_gates", gates),
-        ("blocking_reasons", sorted(set(blocked))),
         ("append_only_guarantee", True),
     ])
 

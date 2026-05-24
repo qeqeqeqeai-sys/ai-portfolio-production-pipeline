@@ -2,6 +2,23 @@ name: d8_b4_governed_replay_persistence_execution
 
 on:
   workflow_dispatch:
+    inputs:
+      approve_non_dry_run:
+        description: Explicit approval for non-dry-run persistence execution
+        required: true
+        type: string
+      approve_append_only_persistence:
+        description: Confirm append-only persistence policy
+        required: true
+        type: string
+      approve_duplicate_prevention:
+        description: Confirm duplicate prevention policy
+        required: true
+        type: string
+      approve_checksum_lineage:
+        description: Confirm checksum lineage policy
+        required: true
+        type: string
 
 jobs:
   governed-non-dry-persistence:
@@ -27,7 +44,7 @@ jobs:
           from transmission_layers.expectation_failure.expectation_intelligence.d8_b4_governed_replay_persistence_execution import execute_d8_b4_governed_replay_persistence
           cfg = {"credentials_present": True, "supabase_url": "${SUPABASE_URL}", "supabase_key": "${SUPABASE_KEY}"}
           client = resolve_streamlit_supabase_client(cfg).get("client")
-          out = execute_d8_b4_governed_replay_persistence(client=client, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True})
+          out = execute_d8_b4_governed_replay_persistence(client=client, dry_run=False, approval_flags={"approved_for_execution": True, "approved_by_governance": True, "approve_non_dry_run": "${{ github.event.inputs.approve_non_dry_run }}", "approve_append_only_persistence": "${{ github.event.inputs.approve_append_only_persistence }}", "approve_duplicate_prevention": "${{ github.event.inputs.approve_duplicate_prevention }}", "approve_checksum_lineage": "${{ github.event.inputs.approve_checksum_lineage }}"})
           Path("reports/d8_b4_execution_audit.json").write_text(str(out.get("audit_manifest")), encoding="utf-8")
           Path("reports/d8_b4_post_readback.json").write_text(str(out.get("readback")), encoding="utf-8")
           if out.get("governance", {}).get("status") != "GOVERNANCE_OK":
