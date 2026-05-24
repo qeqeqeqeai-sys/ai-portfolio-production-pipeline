@@ -10,6 +10,8 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload
+
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.2.0"
 D7_RENDER_SECTION_ORDER = (
@@ -498,6 +500,8 @@ def build_d7_supervisor_summary(view_model: Mapping[str, Any]) -> OrderedDict[st
     integrity_overview = view_model.get("integrity_overview") if isinstance(view_model.get("integrity_overview"), Mapping) else {}
     high_severity_count = sum(1 for card in cards if _as_text(card.get("severity_label")).lower() == "high")
     themes = sorted({_as_text(card.get("finding_type"), "unspecified") for card in cards})
+    e1 = view_model.get("e1_expectation_intelligence") if isinstance(view_model.get("e1_expectation_intelligence"), Mapping) else {}
+    strategist = e1.get("strategist_summary") if isinstance(e1.get("strategist_summary"), Mapping) else {}
     return OrderedDict([
         ("what_sefi_currently_believes", f"{len(cards)} persisted findings are available for expectation-fragility review."),
         ("dominant_fragility_themes", themes),
@@ -505,6 +509,8 @@ def build_d7_supervisor_summary(view_model: Mapping[str, Any]) -> OrderedDict[st
         ("operational_usefulness", integrity_overview.get("operational_usefulness", "moderate")),
         ("current_limitations", ["Interpretation remains deterministic and bounded by persisted payload richness.", "No live fetches, runtime writes, or predictive expansion are used."]),
         ("confidence_caveats", "Confidence labels are rendered exactly from persisted records; missing labels appear as unknown."),
+        ("e1_dominant_expectation_regime", strategist.get("dominant_expectation_regime", "unknown")),
+        ("e1_primary_fragility_drivers", strategist.get("primary_fragility_drivers", [])),
     ])
 
 
@@ -581,6 +587,7 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     ])
 
     intelligence_cards = build_d7_intelligence_cards(findings, evidence_maps)
+    e1_payload = build_e1_expectation_intelligence_payload(findings, narratives, evidence_maps)
     narrative_sections = build_d7_narrative_sections(narratives)
     evidence_highlights = build_d7_evidence_highlights(evidence_maps, findings)
     payload = OrderedDict([
@@ -605,10 +612,11 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
             ("evidence_payload", deepcopy(evidence_payload)),
             ("integrity_payload", deepcopy(integrity_payload)),
         ])),
-        ("supervisor_interpretation", interpretation),
+        ("supervisor_interpretation", OrderedDict(list(interpretation.items()) + [("e1_supervisor_interpretation", e1_payload.get("supervisor_interpretation", {}))])),
         ("intelligence_cards", intelligence_cards),
         ("narrative_sections", narrative_sections),
         ("evidence_highlights", evidence_highlights),
+        ("e1_expectation_intelligence", e1_payload),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
     payload["integrity_overview"] = build_d7_integrity_overview(payload)
