@@ -231,6 +231,15 @@ __all__ = [
     "build_d11_report_payload",
     "build_d11_report_markdown",
 
+    "build_d12_historical_expectation_inventory",
+    "validate_d12_synthesis_eligibility",
+    "build_d12_cross_window_expectation_patterns",
+    "classify_d12_historical_expectation_regime",
+    "build_d12_expectation_intelligence_synthesis",
+    "certify_d12_historical_expectation_synthesis",
+    "build_d12_dashboard_expectation_cards",
+    "build_d12_report_payload",
+    "build_d12_report_markdown",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -326,4 +335,17 @@ from .d11_historical_replay_evidence_backfill import (
     build_d11_dashboard_backfill_cards,
     build_d11_report_payload,
     build_d11_report_markdown,
+)
+
+
+from .d12_historical_expectation_intelligence_synthesis import (
+    build_d12_historical_expectation_inventory,
+    validate_d12_synthesis_eligibility,
+    build_d12_cross_window_expectation_patterns,
+    classify_d12_historical_expectation_regime,
+    build_d12_expectation_intelligence_synthesis,
+    certify_d12_historical_expectation_synthesis,
+    build_d12_dashboard_expectation_cards,
+    build_d12_report_payload,
+    build_d12_report_markdown,
 )
