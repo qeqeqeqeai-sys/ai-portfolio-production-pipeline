@@ -10,13 +10,14 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
 D7_RENDER_SECTION_ORDER = (
     "e6_expectation_executive_summary",
     "d15_historical_operational_intelligence",
+    "d16_historical_findings_operator_narrative",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -651,6 +652,12 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     d15_timeline = build_d15_historical_execution_timeline(d11_report_payload=d8_b1_payload.get("d11_report_payload"), d12_report_payload=d8_b1_payload.get("d12_report_payload"), d13_report_payload=d8_b1_payload.get("d13_report_payload"))
     d15_dashboard_enrichment = build_d15_dashboard_enrichment_payload(backfill_inventory=d15_inventory, historical_execution_timeline=d15_timeline, d14_report_payload=d8_b1_payload.get("d14_report_payload"))
     d15_certification = certify_d15_dashboard_enrichment(backfill_inventory=d15_inventory, dashboard_enrichment_payload=d15_dashboard_enrichment)
+    d16_inventory = build_d16_historical_finding_inventory(d11_report_payload=d8_b1_payload.get("d11_report_payload"), d12_report_payload=d8_b1_payload.get("d12_report_payload"), d13_report_payload=d8_b1_payload.get("d13_report_payload"), d14_report_payload=d8_b1_payload.get("d14_report_payload"), d15_dashboard_enrichment_payload=d15_dashboard_enrichment, d9_report_payload=None)
+    d16_clusters = build_d16_recurring_finding_clusters(historical_finding_inventory=d16_inventory, d12_report_payload=d8_b1_payload.get("d12_report_payload"))
+    d16_regime_narratives = build_d16_regime_linked_finding_narratives(recurring_finding_clusters=d16_clusters, d13_report_payload=d8_b1_payload.get("d13_report_payload"), d14_report_payload=d8_b1_payload.get("d14_report_payload"))
+    d16_summary = build_d16_operator_narrative_summary(historical_finding_inventory=d16_inventory, recurring_finding_clusters=d16_clusters, regime_linked_finding_narratives=d16_regime_narratives, d15_dashboard_enrichment_payload=d15_dashboard_enrichment)
+    d16_dashboard_payload = build_d16_dashboard_payload(historical_finding_inventory=d16_inventory, recurring_finding_clusters=d16_clusters, regime_linked_finding_narratives=d16_regime_narratives, operator_narrative_summary=d16_summary)
+    d16_certification = certify_d16_historical_findings_narrative(historical_finding_inventory=d16_inventory, recurring_finding_clusters=d16_clusters, regime_linked_finding_narratives=d16_regime_narratives, operator_narrative_summary=d16_summary, dashboard_payload=d16_dashboard_payload)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -702,6 +709,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d15_historical_backfill_execution_enrichment", d15_dashboard_enrichment),
         ("d15_historical_execution_timeline", d15_timeline),
         ("d15_dashboard_enrichment_certification", d15_certification),
+        ("d16_historical_findings_operator_narrative", d16_dashboard_payload),
+        ("d16_historical_findings_narrative_certification", d16_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -926,6 +935,7 @@ def build_d7_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]
         ("section_order", list(D7_RENDER_SECTION_ORDER)),
         ("e6_expectation_executive_summary", e6_plan),
         ("d15_historical_operational_intelligence", build_d15_historical_operational_intelligence_render_plan(view_model)),
+        ("d16_historical_findings_operator_narrative", build_d16_historical_findings_operator_narrative_render_plan(view_model)),
         ("overview_metrics", OrderedDict([
             ("dominant_fragility_theme", _render_value(supervisor.get("dominant_fragility_theme"))),
             ("expectation_pressure_state", _render_value(supervisor.get("expectation_pressure_concentration"))),
@@ -1002,6 +1012,51 @@ def render_d15_historical_operational_intelligence(view_model: Mapping[str, Any]
         else:
             st.caption("Unavailable")
     with st.expander("D15 Governance / Checksum / Audit Details"):
+        st.json(plan.get("governance_debug_details", {}))
+
+
+def build_d16_historical_findings_operator_narrative_render_plan(view_model: Mapping[str, Any]) -> OrderedDict[str, Any]:
+    payload = view_model.get("d16_historical_findings_operator_narrative") if isinstance(view_model, Mapping) else {}
+    cert = view_model.get("d16_historical_findings_narrative_certification") if isinstance(view_model, Mapping) else {}
+    payload = payload if isinstance(payload, Mapping) else {}
+    cert = cert if isinstance(cert, Mapping) else {}
+    if not payload:
+        return OrderedDict([("available", False), ("message", "D16 historical findings/operator narrative is unavailable for this run."), ("primary_sections", OrderedDict()), ("governance_debug_details", OrderedDict())])
+    return OrderedDict([
+        ("available", True),
+        ("message", ""),
+        ("primary_sections", OrderedDict([
+            ("Recurring historical findings", _as_list(payload.get("recurring_historical_findings"))),
+            ("Regime-linked findings", _as_list(payload.get("regime_linked_findings"))),
+            ("What changed", _as_list(payload.get("what_changed"))),
+            ("What persisted", _as_list(payload.get("what_persisted"))),
+            ("What degraded", _as_list(payload.get("what_degraded"))),
+            ("What improved", _as_list(payload.get("what_improved"))),
+            ("Recurrent confidence constraints", _as_list(payload.get("recurrent_confidence_constraints"))),
+            ("Operator narrative summary", _render_value(payload.get("operator_narrative_summary"), fallback="Unavailable")),
+            ("Operator attention next", _as_list(payload.get("operator_attention_next"))),
+        ])),
+        ("governance_debug_details", OrderedDict([("certification", deepcopy(cert)), ("governance_lineage_details", deepcopy(payload.get("governance_lineage_details") or {})), ("payload_checksum", payload.get("payload_checksum"))])),
+    ])
+
+
+def render_d16_historical_findings_operator_narrative(view_model: Mapping[str, Any], *, st: Any) -> None:
+    plan = build_d16_historical_findings_operator_narrative_render_plan(view_model)
+    st.markdown("### D16 Historical Findings & Operator Narrative")
+    if not plan.get("available"):
+        st.caption(plan.get("message") or "D16 historical findings/operator narrative unavailable.")
+        return
+    primary = plan.get("primary_sections", {})
+    for section in ("Recurring historical findings", "Regime-linked findings", "What changed", "What persisted", "What degraded", "What improved", "Recurrent confidence constraints", "Operator attention next"):
+        st.markdown(f"**{section}:**")
+        values = _as_list(primary.get(section))
+        if values:
+            for value in values:
+                st.markdown(f"- {_render_value(value)}")
+        else:
+            st.caption("Unavailable")
+    st.markdown(f"**Operator narrative summary:** {primary.get('Operator narrative summary')}")
+    with st.expander("D16 Governance / Lineage Details"):
         st.json(plan.get("governance_debug_details", {}))
 
 
@@ -1147,6 +1202,8 @@ __all__ = [
     "build_d7_render_plan",
     "build_d15_historical_operational_intelligence_render_plan",
     "render_d15_historical_operational_intelligence",
+    "build_d16_historical_findings_operator_narrative_render_plan",
+    "render_d16_historical_findings_operator_narrative",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",

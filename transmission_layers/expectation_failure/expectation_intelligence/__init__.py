@@ -257,6 +257,14 @@ __all__ = [
     "build_d14_dashboard_supervisory_cards",
     "build_d14_report_payload",
     "build_d14_report_markdown",
+    "build_d16_historical_finding_inventory",
+    "build_d16_recurring_finding_clusters",
+    "build_d16_regime_linked_finding_narratives",
+    "build_d16_operator_narrative_summary",
+    "build_d16_dashboard_payload",
+    "certify_d16_historical_findings_narrative",
+    "build_d16_report_payload",
+    "build_d16_report_markdown",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -397,4 +405,16 @@ from .d15_historical_backfill_execution_dashboard_enrichment import (
     certify_d15_dashboard_enrichment,
     build_d15_report_payload,
     build_d15_report_markdown,
+)
+
+
+from .d16_historical_findings_replay_operator_narrative import (
+    build_d16_historical_finding_inventory,
+    build_d16_recurring_finding_clusters,
+    build_d16_regime_linked_finding_narratives,
+    build_d16_operator_narrative_summary,
+    build_d16_dashboard_payload,
+    certify_d16_historical_findings_narrative,
+    build_d16_report_payload,
+    build_d16_report_markdown,
 )
