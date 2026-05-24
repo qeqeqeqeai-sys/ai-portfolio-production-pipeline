@@ -4,6 +4,9 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d6_ope
     build_d6_operational_proving_summary,
     build_d6_operational_proving_report,
     certify_d6_operational_proving_cycle,
+    build_d6_post_execution_audit_record,
+    build_d6_post_execution_replay_record,
+    persist_d6_post_execution_summary_records,
 )
 from transmission_layers.expectation_failure.dashboard_operationalization.d3_controlled_dashboard_persistence_execution import EXECUTED_WITH_FAILURES
 from scripts.run_d6_real_proving_cycle import _print_d3_persistence_diagnostics
@@ -56,6 +59,29 @@ def test_d6_deterministic_and_injected_client_orchestration():
     assert a["o5"]["finding_evidence_map"]
     assert a["d3_persistence"]["execution_state"] == "EXECUTED"
     assert a["d4_readback"]["execution_state"] == "EXECUTED"
+    assert a["d6_post_execution_summary_persistence"]["execution_state"] == "EXECUTED"
+
+
+def test_d6_post_execution_record_builders_are_deterministic():
+    result = execute_d6_operational_proving_cycle(build_d6_operational_proving_input(), client=FakeSupabaseClient(), dry_run=False)
+    a1 = build_d6_post_execution_audit_record(result)
+    a2 = build_d6_post_execution_audit_record(result)
+    r1 = build_d6_post_execution_replay_record(result)
+    r2 = build_d6_post_execution_replay_record(result)
+    assert a1 == a2
+    assert r1 == r2
+    assert a1["record_type"] == "d3_execution_summary_record"
+    assert r1["record_type"] == "d6_operational_cycle_replay_record"
+
+
+def test_d6_post_execution_persistence_respects_dry_run_and_client():
+    base = execute_d6_operational_proving_cycle(build_d6_operational_proving_input(), client=FakeSupabaseClient(), dry_run=False)
+    dry = persist_d6_post_execution_summary_records(base, client=FakeSupabaseClient(), dry_run=True)
+    noclient = persist_d6_post_execution_summary_records(base, client=None, dry_run=False)
+    persisted = persist_d6_post_execution_summary_records(base, client=FakeSupabaseClient(), dry_run=False)
+    assert dry["execution_state"] == "DRY_RUN_NOT_EXECUTED"
+    assert noclient["execution_state"] == "NOT_EXECUTED_NO_CLIENT"
+    assert persisted["execution_state"] == "EXECUTED"
 
 
 def test_d6_dry_run_graceful_and_reporting_shape():

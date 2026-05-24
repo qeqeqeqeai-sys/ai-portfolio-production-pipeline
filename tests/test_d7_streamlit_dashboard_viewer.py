@@ -256,3 +256,41 @@ def test_d7_deterministic_tie_breaker_for_equal_created_at_rows():
         integrity_payload=load_d7_dashboard_operational_integrity(client),
     )
     assert vm1["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"] == vm2["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"]
+
+
+def test_d7_prefers_post_execution_audit_record_over_planned_row():
+    client = _build_client()
+    client.tables["dashboard_persistence_audit_records"] = [
+        {"record_id": "A-plan", "record_type": "persistence_audit_record", "created_at": "2026-05-24T05:00:00Z", "write_status": "PLANNED", "payload": {}, "replay_metadata": {}},
+        {"record_id": "A-exec", "record_type": "d3_execution_summary_record", "created_at": "2026-05-24T04:00:00Z", "write_status": "EXECUTED", "payload": {}, "replay_metadata": {}},
+    ]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["integrity"]["normalized"]["persistence_status"] == "EXECUTED"
+    assert vm["integrity"]["normalized"]["integrity_sources"]["selected_persistence_record_id"] == "A-exec"
+
+
+def test_d7_derives_full_checksum_continuity_from_d6_replay_record():
+    client = _build_client()
+    client.tables["dashboard_replay_metadata_records"] = [
+        {
+            "record_id": "R-d6",
+            "record_type": "d6_operational_cycle_replay_record",
+            "created_at": "2026-05-24T06:00:00Z",
+            "source_payload_checksum": "src",
+            "export_checksum": "exp",
+            "payload": {"o5_checksum": "o5", "o6_checksum": "o6", "d3_summary_checksum": "d3", "d4_verification_checksum": "d4", "cycle_checksum": "cyc", "effective_readback_verification_status": "CERTIFIED_REAL_READBACK_VERIFIED"},
+            "replay_metadata": {},
+        }
+    ]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    assert vm["integrity"]["normalized"]["checksum_continuity"] == "yes"

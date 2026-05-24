@@ -247,8 +247,15 @@ def _extract_persistence(audits: list[Mapping[str, Any]]) -> tuple[str, str | No
                 row_best_rank = rank
                 row_best_status = normalized
                 row_best_source = candidate_source
+        record_type = str(row.get("record_type") or "")
+        row_priority = 1 if record_type == "d3_execution_summary_record" else 0
+        best_priority = 1 if str((best_row or {}).get("record_type") or "") == "d3_execution_summary_record" else 0
         created_at = str(row.get("created_at") or "")
-        if row_best_rank > best_rank or (row_best_rank == best_rank and created_at > str((best_row or {}).get("created_at") or "")):
+        if (
+            row_best_rank > best_rank
+            or (row_best_rank == best_rank and row_priority > best_priority)
+            or (row_best_rank == best_rank and row_priority == best_priority and created_at > str((best_row or {}).get("created_at") or ""))
+        ):
             best_rank = row_best_rank
             best_status = row_best_status
             selected_source = row_best_source
@@ -318,7 +325,8 @@ def _extract_checksum_chain(manifests: list[Mapping[str, Any]], replay: list[Map
     primary = ["source_payload_checksum", "export_checksum", "manifest_checksum", "replay_checksum"]
     discovered = [k for k, v in chain.items() if v]
     primary_count = sum(1 for key in primary if chain[key])
-    if primary_count == len(primary):
+    full_d6_chain = all(chain[k] for k in ("o5_checksum", "o6_checksum", "d3_checksum", "d4_checksum", "cycle_checksum"))
+    if primary_count == len(primary) or full_d6_chain:
         continuity = "yes"
     elif primary_count >= 2 or any(chain[k] for k in ("cycle_checksum", "o5_checksum", "o6_checksum", "d3_checksum", "d4_checksum")):
         continuity = "partial"
