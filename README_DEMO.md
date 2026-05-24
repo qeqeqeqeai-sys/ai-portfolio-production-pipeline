@@ -127,3 +127,13 @@ Expected post-seed diagnostics:
 - `dashboard_evidence_facts`
 - `dashboard_certification_reports`
 - `dashboard_run_manifests`
+
+## One-off D6 real proving cycle runner
+
+Use the one-off runner to execute D6 against real Supabase dashboard tables through an injected runtime-resolved client:
+
+```bash
+python scripts/run_d6_real_proving_cycle.py
+```
+
+It prints finding/narrative counts, persistence and readback verification statuses, per-table persisted counts, supervisor usefulness evaluation, and checksum continuity.
