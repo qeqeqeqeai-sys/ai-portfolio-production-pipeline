@@ -1,7 +1,12 @@
 from transmission_layers.expectation_failure.dashboard_operationalization.d7_streamlit_dashboard_viewer import (
     D7_PHYSICAL_COLUMNS_BY_TABLE,
     build_d7_dashboard_view_model,
+    build_d7_debug_payload_sections,
+    build_d7_evidence_highlights,
+    build_d7_intelligence_cards,
+    build_d7_narrative_sections,
     build_d7_runtime_diagnostics,
+    build_d7_supervisor_summary,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
     load_d7_dashboard_narratives,
@@ -294,3 +299,49 @@ def test_d7_derives_full_checksum_continuity_from_d6_replay_record():
         integrity_payload=load_d7_dashboard_operational_integrity(client),
     )
     assert vm["integrity"]["normalized"]["checksum_continuity"] == "yes"
+
+
+def test_d7_intelligence_cards_deterministic_and_contradiction_fallback():
+    client = _build_client()
+    vm = build_d7_dashboard_view_model(
+        findings_payload=load_d7_dashboard_findings(client),
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    cards1 = build_d7_intelligence_cards(vm["findings"], vm["evidence_maps"])
+    cards2 = build_d7_intelligence_cards(vm["findings"], vm["evidence_maps"])
+    assert cards1 == cards2
+    assert "No explicit contradiction/divergence notes" in cards1[0]["contradiction_or_divergence_notes"]
+
+
+def test_d7_narrative_grouping_and_missing_sections_stable():
+    rows = [{"narrative_section": "semantic_pressure", "payload": {"narrative_text": "x"}}, {"narrative_section": "unknown", "payload": {"narrative_text": "y"}}]
+    out = build_d7_narrative_sections(rows)
+    keys = [x["section_key"] for x in out]
+    assert keys == ["market_context", "semantic_pressure"]
+
+
+def test_d7_evidence_highlight_generation_and_payload_extraction_stability():
+    findings = [{"finding_id": "F2", "finding_title": "Elevated spread"}]
+    evidence = [{"finding_id": "F2", "evidence_ref": "EV2", "payload": {"semantic_drivers": ["credit"], "kpi_references": ["spread_z"]}}]
+    out = build_d7_evidence_highlights(evidence, findings)
+    assert out[0]["linked_finding"] == "Elevated spread"
+    assert out[0]["semantic_drivers"] == ["credit"]
+
+
+def test_d7_integrity_debug_separation_and_input_immutability():
+    client = _build_client()
+    findings_payload = load_d7_dashboard_findings(client)
+    before = findings_payload["rows"][0]["finding_title"]
+    vm = build_d7_dashboard_view_model(
+        findings_payload=findings_payload,
+        narratives_payload=load_d7_dashboard_narratives(client),
+        evidence_payload=load_d7_dashboard_evidence_maps(client),
+        integrity_payload=load_d7_dashboard_operational_integrity(client),
+    )
+    debug = build_d7_debug_payload_sections(vm)
+    summary = build_d7_supervisor_summary(vm)
+    assert "checksum_chain" in debug and "raw_payload_json" in debug
+    assert "what_sefi_currently_believes" in summary
+    assert findings_payload["rows"][0]["finding_title"] == before
