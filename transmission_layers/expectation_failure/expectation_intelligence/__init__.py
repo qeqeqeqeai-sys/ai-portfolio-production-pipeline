@@ -196,6 +196,12 @@ __all__ = [
     "build_d8_b1_controlled_backfill_plan",
     "build_d8_a1_explainability_causal_narratives",
     "build_d8_a1_dashboard_view_model",
+    "build_d8c_persisted_readback_inventory",
+    "validate_d8c_replay_manifest_lineage",
+    "build_d8c_dashboard_consumption_model",
+    "certify_d8c_dashboard_consumption",
+    "build_d8c_certification_report_payload",
+    "build_d8c_certification_report_markdown",
 
 ]
 
@@ -245,4 +251,14 @@ from .d8_b1_controlled_replay_expansion import (
 from .d8_a1_explainability_causal_narratives import (
     build_d8_a1_explainability_causal_narratives,
     build_d8_a1_dashboard_view_model,
+)
+
+
+from .d8_c_persisted_replay_readback_dashboard_certification import (
+    build_d8c_persisted_readback_inventory,
+    validate_d8c_replay_manifest_lineage,
+    build_d8c_dashboard_consumption_model,
+    certify_d8c_dashboard_consumption,
+    build_d8c_certification_report_payload,
+    build_d8c_certification_report_markdown,
 )
