@@ -44,13 +44,36 @@ def build_d8_2_replay_density_inventory(historical_runs_payloads: list[Mapping[s
             ]))
         prior_regime = regime or prior_regime
 
-    evidence_refs = _sorted_unique_texts([e.get("evidence_ref") for e in _as_list(evidence_maps) if isinstance(e, Mapping)])
+    evidence_refs = _sorted_unique_texts(
+        [
+            ref
+            for e in _as_list(evidence_maps)
+            if isinstance(e, Mapping)
+            for ref in (
+                [_as_text(e.get("evidence_ref"))]
+                + _as_list(e.get("supporting_evidence_refs"))
+                + _as_list((e.get("payload") or {}).get("supporting_evidence_refs") if isinstance(e.get("payload"), Mapping) else [])
+            )
+            if _as_text(ref)
+        ]
+    )
     linkage_rows = [l for l in _as_list(e2_payload.get("evidence_finding_linkages")) if isinstance(l, Mapping)]
     finding_ids = _sorted_unique_texts([f.get("finding_id") for f in _as_list(findings) if isinstance(f, Mapping)])
 
     evidence_lineage = []
     for ref in evidence_refs:
         linked_findings = _sorted_unique_texts([l.get("finding_id") for l in linkage_rows if _as_text(l.get("evidence_ref")) == ref])
+        if not linked_findings:
+            for e in _as_list(evidence_maps):
+                if not isinstance(e, Mapping):
+                    continue
+                refs = _sorted_unique_texts(
+                    ([_as_text(e.get("evidence_ref"))] if _as_text(e.get("evidence_ref")) else [])
+                    + _as_list(e.get("supporting_evidence_refs"))
+                    + _as_list((e.get("payload") or {}).get("supporting_evidence_refs") if isinstance(e.get("payload"), Mapping) else [])
+                )
+                if ref in refs and _as_text(e.get("finding_id")):
+                    linked_findings = _sorted_unique_texts(linked_findings + [_as_text(e.get("finding_id"))])
         evidence_lineage.append(OrderedDict([
             ("evidence_ref", ref),
             ("linked_findings", linked_findings),
@@ -160,12 +183,21 @@ def build_d8_2_evidence_relationship_graph(findings: list[Mapping[str, Any]], na
         if fid:
             nodes.append(OrderedDict([("node_id", fid), ("node_type", "finding")]))
     for e in sorted([x for x in evidence_maps if isinstance(x, Mapping)], key=lambda x: _as_text(x.get("evidence_ref"))):
-        ref = _as_text(e.get("evidence_ref"))
-        if ref:
+        linked_finding_ids = _sorted_unique_texts(
+            _as_list(e.get("finding_refs"))
+            + _as_list((e.get("payload") or {}).get("finding_refs") if isinstance(e.get("payload"), Mapping) else [])
+            + ([_as_text(e.get("finding_id"))] if _as_text(e.get("finding_id")) else [])
+            + _as_list((e.get("payload") or {}).get("linked_finding_ids") if isinstance(e.get("payload"), Mapping) else [])
+        )
+        evidence_candidates = _sorted_unique_texts(
+            ([_as_text(e.get("evidence_ref"))] if _as_text(e.get("evidence_ref")) else [])
+            + _as_list(e.get("supporting_evidence_refs"))
+            + _as_list((e.get("payload") or {}).get("supporting_evidence_refs") if isinstance(e.get("payload"), Mapping) else [])
+        )
+        for ref in evidence_candidates:
             nodes.append(OrderedDict([("node_id", ref), ("node_type", "evidence")]))
-            for fid in _as_list(e.get("finding_refs")):
-                if _as_text(fid):
-                    edges.append(OrderedDict([("from", ref), ("to", _as_text(fid)), ("edge_type", "supports")]))
+            for fid in linked_finding_ids:
+                edges.append(OrderedDict([("from", ref), ("to", fid), ("edge_type", "supports")]))
     for n in sorted([x for x in narratives if isinstance(x, Mapping)], key=lambda x: _as_text(x.get("record_id"))):
         rid = _as_text(n.get("record_id") or n.get("narrative_id"))
         if rid:
