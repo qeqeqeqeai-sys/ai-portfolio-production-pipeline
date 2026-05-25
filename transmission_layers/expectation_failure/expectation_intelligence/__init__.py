@@ -208,6 +208,24 @@ from .h2_governed_replay_expansion_cycle import (
 )
 
 __all__ = [
+    "CERTIFIED_EXPLAINABILITY_CONTINUITY_CALIBRATION",
+    "DEGRADED_EXPLAINABILITY_CONTINUITY_CALIBRATION",
+    "BLOCKED_EXPLAINABILITY_CONTINUITY_CALIBRATION",
+    "EXPLAINABILITY_IMPROVED",
+    "EXPLAINABILITY_STABLE",
+    "EXPLAINABILITY_DEGRADED",
+    "EXPLAINABILITY_VOLATILE",
+    "EXPLAINABILITY_INSUFFICIENT_HISTORY",
+    "build_ix5_explainability_baseline_profile",
+    "build_ix5_explainability_delta_analysis",
+    "build_ix5_boundary_consistency_monitor",
+    "build_ix5_narrative_calibration_stability",
+    "build_ix5_operator_trust_continuity_summary",
+    "build_ix5_calibration_recommendations",
+    "build_ix5_dashboard_payload",
+    "certify_ix5_explainability_continuity_calibration",
+    "build_ix5_report_payload",
+    "build_ix5_report_markdown",
     "build_cd3_report_markdown",
     "build_cd3_report_payload",
     "certify_cd3_governed_novelty_guided_replay_expansion_plan",
@@ -730,3 +748,24 @@ from .ix2_evidence_linked_insight_attribution import *
 
 from .ix3_structural_narrative_compression import *
 from .ix4_interpretability_hardening import *
+
+from .ix5_explainability_continuity_calibration import (
+    CERTIFIED_EXPLAINABILITY_CONTINUITY_CALIBRATION,
+    DEGRADED_EXPLAINABILITY_CONTINUITY_CALIBRATION,
+    BLOCKED_EXPLAINABILITY_CONTINUITY_CALIBRATION,
+    EXPLAINABILITY_IMPROVED,
+    EXPLAINABILITY_STABLE,
+    EXPLAINABILITY_DEGRADED,
+    EXPLAINABILITY_VOLATILE,
+    EXPLAINABILITY_INSUFFICIENT_HISTORY,
+    build_ix5_explainability_baseline_profile,
+    build_ix5_explainability_delta_analysis,
+    build_ix5_boundary_consistency_monitor,
+    build_ix5_narrative_calibration_stability,
+    build_ix5_operator_trust_continuity_summary,
+    build_ix5_calibration_recommendations,
+    build_ix5_dashboard_payload,
+    certify_ix5_explainability_continuity_calibration,
+    build_ix5_report_payload,
+    build_ix5_report_markdown,
+)

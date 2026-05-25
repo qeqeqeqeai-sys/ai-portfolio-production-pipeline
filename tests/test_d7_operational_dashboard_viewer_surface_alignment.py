@@ -155,6 +155,7 @@ def test_d7_operational_dashboard_viewer_imported_helpers_match_runtime_contract
         "render_d17_historical_confidence_lineage": "(view_model, st)",
         "render_d18_cross_run_confidence_delta_operator_triage": "(view_model, st)",
         "render_d19_triage_explainability_continuity_taxonomy": "(view_model, st)",
+        "render_ix5_explainability_continuity_calibration": "(view_model, st)",
         "render_h1_historical_density_expansion": "(view_model, st)",
         "render_e6_expectation_executive_summary": "(view_model, st)",
         "load_d7_dashboard_evidence_maps": "(client, limit)",
