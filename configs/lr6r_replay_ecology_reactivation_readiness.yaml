@@ -1,0 +1,58 @@
+deterministic_version: LR6R_REACTIVATION_READINESS_V1
+deterministic_seed: LR6R_REACTIVATION_READINESS_SEED_V1
+readiness_prerequisites:
+  sde_1a_taxonomy_complete: true
+  sde_1b_curated_candidate_universe_complete: true
+  sde_1c_deterministic_pruning_complete: true
+  sde_1d_semantic_readiness_certified: true
+  certified_entity_count: 300
+  ecosystem_coverage_complete: true
+  topology_readiness_score_above_threshold: true
+  lr6_replay_execution_reactivated: false
+replay_gating_rules:
+  dry_run_first_required: true
+  governance_escalation_gate_required: true
+  operator_approval_required: true
+  longitudinal_observability_required: true
+  replay_pause_conditions_enforced: true
+  rollback_guidance_required: true
+bounded_replay_rules:
+  bounded_replay_window_days_max: 30
+  dry_run_wave_count_max: 1
+  dry_run_write_mode: no_persistence_writes
+  execution_mode: readiness_planning_only
+  replay_entropy_preservation_required: true
+  replay_novelty_preservation_required: true
+replay_safety_thresholds:
+  replay_saturation_limit: 0.68
+  novelty_decay_floor: 0.35
+  saturation_breach_action: pause_and_escalate
+diversity_thresholds:
+  semantic_diversity_floor: 0.72
+  cross_ecosystem_floor: 0.60
+contradiction_richness_thresholds:
+  contradiction_density_floor: 0.55
+  minimum_contradiction_surfaces_per_entity: 1
+propagation_richness_thresholds:
+  propagation_richness_floor: 0.62
+  propagation_role_diversity_floor: 4
+monoculture_thresholds:
+  primary_ecosystem_share_cap: 0.22
+  single_theme_concentration_cap: 0.25
+replay_pause_conditions:
+  saturation_breach: true
+  diversity_floor_breach: true
+  contradiction_floor_breach: true
+  propagation_floor_breach: true
+  monoculture_cap_breach: true
+governance_certification_metadata:
+  no_replay_execution: true
+  no_replay_waves: true
+  no_persistence_writes: true
+  no_direct_sql: true
+  no_external_apis: true
+  no_prediction_or_trading: true
+  no_autonomous_expansion: true
+  additive_architecture_preserved: true
+  deterministic_reproducibility_preserved: true
+activation_recommendation_state: conditional_future_activation_only
