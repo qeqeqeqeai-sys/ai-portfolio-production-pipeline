@@ -16,6 +16,7 @@ from transmission_layers.expectation_failure.expectation_intelligence.d19_triage
 from transmission_layers.expectation_failure.expectation_intelligence.h1_historical_density_expansion import build_h1_density_expansion_inventory, build_h1_density_gap_analysis, build_h1_expansion_plan, build_h1_operational_density_summary, build_h1_dashboard_payload, certify_h1_density_expansion
 from transmission_layers.expectation_failure.expectation_intelligence.h2_governed_replay_expansion_cycle import build_h2_pre_expansion_baseline, build_h2_governed_expansion_recommendation, build_h2_operator_execution_checklist, build_h2_d21_command_template, build_h2_post_expansion_comparison, build_h2_cycle_dashboard_payload, certify_h2_governed_replay_expansion_cycle
 from transmission_layers.expectation_failure.expectation_intelligence.cd4_expectation_drift_and_replay_saturation_intelligence import build_cd4_replay_drift_profile, build_cd4_semantic_saturation_analysis, build_cd4_expectation_decay_analysis, build_cd4_replay_freshness_scoring, build_cd4_replay_half_life_estimation, build_cd4_concentration_instability_analysis, build_cd4_operator_attention_queue, build_cd4_dashboard_payload, certify_cd4_expectation_drift_and_replay_saturation_intelligence
+from transmission_layers.expectation_failure.expectation_intelligence.ix1_structural_insight_extraction import build_ix1_structural_insight_inventory, build_ix1_structural_anomaly_detection, build_ix1_transition_pattern_findings, build_ix1_expectation_structure_findings, build_ix1_insight_priority_ranking, build_ix1_operator_insight_summary, build_ix1_dashboard_payload, certify_ix1_structural_insight_extraction
 from transmission_layers.expectation_failure.expectation_intelligence.cd5_operator_adjudication_assist import build_cd5_operator_review_checklists, build_cd5_decision_rationale_previews, build_cd5_operator_decision_guidance, build_cd5_governance_consistency_analysis, build_cd5_decision_audit_preview, build_cd5_operator_attention_summary, build_cd5_dashboard_payload, certify_cd5_operator_adjudication_assist
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
@@ -35,6 +36,7 @@ D7_RENDER_SECTION_ORDER = (
     "cd3_governed_novelty_guided_replay_expansion_plan",
     "cd4_expectation_drift_and_replay_saturation_intelligence",
     "cd5_operator_adjudication_assist",
+    "ix1_structural_insight_extraction",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -759,6 +761,14 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     cd5_attention = build_cd5_operator_attention_summary(operator_decision_guidance=cd5_guidance, decision_rationale_previews=cd5_rationale)
     cd5_dashboard = build_cd5_dashboard_payload(operator_review_checklists=cd5_checklists, decision_rationale_previews=cd5_rationale, operator_decision_guidance=cd5_guidance, governance_consistency_analysis=cd5_consistency, decision_audit_preview=cd5_audit, operator_attention_summary=cd5_attention)
     cd5_certification = certify_cd5_operator_adjudication_assist(dashboard_payload=cd5_dashboard)
+    ix1_inventory = build_ix1_structural_insight_inventory(h1_h2_replay_interpretation=effective_history, cd1_diversity_diagnostics=cd1_inventory, h3_transition_intelligence=h3_inventory, cd4_drift_saturation_analysis=cd4_drift)
+    ix1_anomalies = build_ix1_structural_anomaly_detection(structural_insight_inventory=ix1_inventory, h3_transition_intelligence=h3_inventory, cd4_drift_saturation_analysis=cd4_drift)
+    ix1_transition = build_ix1_transition_pattern_findings(h3_transition_intelligence=h3_inventory)
+    ix1_expectation = build_ix1_expectation_structure_findings(structural_insight_inventory=ix1_inventory, structural_anomaly_detection=ix1_anomalies, transition_pattern_findings=ix1_transition)
+    ix1_ranking = build_ix1_insight_priority_ranking(structural_anomaly_detection=ix1_anomalies, transition_pattern_findings=ix1_transition, expectation_structure_findings=ix1_expectation)
+    ix1_summary = build_ix1_operator_insight_summary(insight_priority_ranking=ix1_ranking)
+    ix1_dashboard = build_ix1_dashboard_payload(structural_insight_inventory=ix1_inventory, structural_anomaly_detection=ix1_anomalies, transition_pattern_findings=ix1_transition, expectation_structure_findings=ix1_expectation, insight_priority_ranking=ix1_ranking, operator_insight_summary=ix1_summary)
+    ix1_certification = certify_ix1_structural_insight_extraction(dashboard_payload=ix1_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -834,6 +844,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("cd4_expectation_drift_and_replay_saturation_intelligence_certification", cd4_certification),
         ("cd5_operator_adjudication_assist", cd5_dashboard),
         ("cd5_operator_adjudication_assist_certification", cd5_certification),
+        ("ix1_structural_insight_extraction", ix1_dashboard),
+        ("ix1_structural_insight_extraction_certification", ix1_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1405,6 +1417,22 @@ def render_cd3_governed_novelty_guided_replay_expansion_plan(view_model: Mapping
 
 
 
+
+
+def render_ix1_structural_insight_extraction(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("ix1_structural_insight_extraction") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping) or not payload:
+        return
+    st.markdown("### IX1 — Structural Insight Extraction")
+    st.markdown(str(payload.get("Structural Insight Overview", "")))
+    for k in ("Structural Insight Inventory","Structural Anomaly Detection","Transition Pattern Findings","Expectation Structure Findings","Insight Priority Ranking","Operator Insight Summary"):
+        st.markdown(f"#### {k}")
+        st.json(payload.get(k))
+    with st.expander("Governance/Boundary Constraints"):
+        st.json(payload.get("Governance/Boundary Constraints", {}))
+    st.caption(str(payload.get("Explicit Non-Predictive Notice", "")))
+    st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
+
 def render_cd4_expectation_drift_and_replay_saturation_intelligence(view_model: Mapping[str, Any], *, st: Any) -> None:
     payload = view_model.get("cd4_expectation_drift_and_replay_saturation_intelligence") if isinstance(view_model, Mapping) else {}
     st.subheader("CD4 — Expectation Drift & Replay Saturation Intelligence")
@@ -1584,6 +1612,7 @@ __all__ = [
     "render_cd3_governed_novelty_guided_replay_expansion_plan",
     "render_cd4_expectation_drift_and_replay_saturation_intelligence",
     "render_cd5_operator_adjudication_assist",
+    "render_ix1_structural_insight_extraction",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",
