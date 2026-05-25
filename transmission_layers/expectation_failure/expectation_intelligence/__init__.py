@@ -709,3 +709,5 @@ from .cd4_expectation_drift_and_replay_saturation_intelligence import (
 from .cd5_operator_adjudication_assist import *
 
 from .ix1_structural_insight_extraction import *
+
+from .ix2_evidence_linked_insight_attribution import *

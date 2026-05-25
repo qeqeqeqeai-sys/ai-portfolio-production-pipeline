@@ -17,6 +17,7 @@ from transmission_layers.expectation_failure.expectation_intelligence.h1_histori
 from transmission_layers.expectation_failure.expectation_intelligence.h2_governed_replay_expansion_cycle import build_h2_pre_expansion_baseline, build_h2_governed_expansion_recommendation, build_h2_operator_execution_checklist, build_h2_d21_command_template, build_h2_post_expansion_comparison, build_h2_cycle_dashboard_payload, certify_h2_governed_replay_expansion_cycle
 from transmission_layers.expectation_failure.expectation_intelligence.cd4_expectation_drift_and_replay_saturation_intelligence import build_cd4_replay_drift_profile, build_cd4_semantic_saturation_analysis, build_cd4_expectation_decay_analysis, build_cd4_replay_freshness_scoring, build_cd4_replay_half_life_estimation, build_cd4_concentration_instability_analysis, build_cd4_operator_attention_queue, build_cd4_dashboard_payload, certify_cd4_expectation_drift_and_replay_saturation_intelligence
 from transmission_layers.expectation_failure.expectation_intelligence.ix1_structural_insight_extraction import build_ix1_structural_insight_inventory, build_ix1_structural_anomaly_detection, build_ix1_transition_pattern_findings, build_ix1_expectation_structure_findings, build_ix1_insight_priority_ranking, build_ix1_operator_insight_summary, build_ix1_dashboard_payload, certify_ix1_structural_insight_extraction
+from transmission_layers.expectation_failure.expectation_intelligence.ix2_evidence_linked_insight_attribution import build_ix2_insight_evidence_map, build_ix2_insight_lineage_index, build_ix2_cross_run_delta_tracker, build_ix2_evidence_strength_scorecard, build_ix2_delta_interpretation_summary, build_ix2_evidence_linked_operator_summary, build_ix2_dashboard_payload, certify_ix2_evidence_linked_insight_attribution
 from transmission_layers.expectation_failure.expectation_intelligence.cd5_operator_adjudication_assist import build_cd5_operator_review_checklists, build_cd5_decision_rationale_previews, build_cd5_operator_decision_guidance, build_cd5_governance_consistency_analysis, build_cd5_decision_audit_preview, build_cd5_operator_attention_summary, build_cd5_dashboard_payload, certify_cd5_operator_adjudication_assist
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
@@ -37,6 +38,7 @@ D7_RENDER_SECTION_ORDER = (
     "cd4_expectation_drift_and_replay_saturation_intelligence",
     "cd5_operator_adjudication_assist",
     "ix1_structural_insight_extraction",
+    "ix2_evidence_linked_insight_attribution",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -769,6 +771,15 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     ix1_summary = build_ix1_operator_insight_summary(insight_priority_ranking=ix1_ranking)
     ix1_dashboard = build_ix1_dashboard_payload(structural_insight_inventory=ix1_inventory, structural_anomaly_detection=ix1_anomalies, transition_pattern_findings=ix1_transition, expectation_structure_findings=ix1_expectation, insight_priority_ranking=ix1_ranking, operator_insight_summary=ix1_summary)
     ix1_certification = certify_ix1_structural_insight_extraction(dashboard_payload=ix1_dashboard)
+
+    ix2_evidence_map = build_ix2_insight_evidence_map(ix1_insight_priority_ranking=ix1_ranking, h1_h2_replay_interpretation=effective_history, h3_transition_intelligence=h3_inventory, cd4_drift_saturation_analysis=cd4_drift)
+    ix2_lineage = build_ix2_insight_lineage_index(insight_evidence_map=ix2_evidence_map)
+    ix2_delta = build_ix2_cross_run_delta_tracker(current_insight_evidence_map=ix2_evidence_map, prior_insight_evidence_map=None)
+    ix2_scorecard = build_ix2_evidence_strength_scorecard(insight_evidence_map=ix2_evidence_map, cross_run_delta_tracker=ix2_delta)
+    ix2_delta_summary = build_ix2_delta_interpretation_summary(cross_run_delta_tracker=ix2_delta, evidence_strength_scorecard=ix2_scorecard, insight_evidence_map=ix2_evidence_map)
+    ix2_operator_summary = build_ix2_evidence_linked_operator_summary(insight_evidence_map=ix2_evidence_map, cross_run_delta_tracker=ix2_delta, evidence_strength_scorecard=ix2_scorecard)
+    ix2_dashboard = build_ix2_dashboard_payload(insight_evidence_map=ix2_evidence_map, insight_lineage_index=ix2_lineage, cross_run_delta_tracker=ix2_delta, evidence_strength_scorecard=ix2_scorecard, delta_interpretation_summary=ix2_delta_summary, evidence_linked_operator_summary=ix2_operator_summary)
+    ix2_certification = certify_ix2_evidence_linked_insight_attribution(dashboard_payload=ix2_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -846,6 +857,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("cd5_operator_adjudication_assist_certification", cd5_certification),
         ("ix1_structural_insight_extraction", ix1_dashboard),
         ("ix1_structural_insight_extraction_certification", ix1_certification),
+        ("ix2_evidence_linked_insight_attribution", ix2_dashboard),
+        ("ix2_evidence_linked_insight_attribution_certification", ix2_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1433,6 +1446,21 @@ def render_ix1_structural_insight_extraction(view_model: Mapping[str, Any], *, s
     st.caption(str(payload.get("Explicit Non-Predictive Notice", "")))
     st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
 
+def render_ix2_evidence_linked_insight_attribution(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("ix2_evidence_linked_insight_attribution") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping) or not payload:
+        return
+    st.markdown("### IX2 — Evidence-Linked Insight Attribution & Delta Tracking")
+    st.markdown(str(payload.get("Evidence-Linked Insight Overview", "")))
+    for k in ("Insight Evidence Map","Cross-Run Delta Tracker","Evidence Strength Scorecard","Delta Interpretation Summary","Evidence-Linked Operator Summary","Thin Evidence / Attribution Warnings","Insight Lineage Index"):
+        st.markdown(f"#### {k}")
+        st.json(payload.get(k))
+    with st.expander("Governance/Boundary Constraints"):
+        st.json(payload.get("Governance/Boundary Constraints", {}))
+    st.caption(str(payload.get("Explicit Non-Predictive Notice", "")))
+    st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
+
+
 def render_cd4_expectation_drift_and_replay_saturation_intelligence(view_model: Mapping[str, Any], *, st: Any) -> None:
     payload = view_model.get("cd4_expectation_drift_and_replay_saturation_intelligence") if isinstance(view_model, Mapping) else {}
     st.subheader("CD4 — Expectation Drift & Replay Saturation Intelligence")
@@ -1613,6 +1641,7 @@ __all__ = [
     "render_cd4_expectation_drift_and_replay_saturation_intelligence",
     "render_cd5_operator_adjudication_assist",
     "render_ix1_structural_insight_extraction",
+    "render_ix2_evidence_linked_insight_attribution",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",
