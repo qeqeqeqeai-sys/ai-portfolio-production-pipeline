@@ -13,6 +13,7 @@ from typing import Any, Mapping
 from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative, build_d17_confidence_attribution_inventory, build_d17_constraint_weight_summary, build_d17_lineage_trace_compression, build_d17_historical_confidence_overlays, build_d17_operator_drilldown_payload, build_d17_dashboard_payload, certify_d17_confidence_lineage_enrichment, build_d18_cross_run_confidence_inventory, build_d18_confidence_delta_summary, build_d18_constraint_persistence_summary, build_d18_regime_transition_confidence_delta, build_d18_operator_triage_queue, build_d18_priority_drilldown_cards, build_d18_dashboard_payload, certify_d18_cross_run_triage
 
 from transmission_layers.expectation_failure.expectation_intelligence.d19_triage_explainability_continuity_taxonomy import build_d19_triage_explainability_inventory, build_d19_rank_change_rationale, build_d19_continuity_degradation_taxonomy, build_d19_constraint_escalation_summary, build_d19_regime_transition_impact_explanations, build_d19_operator_adjudication_notes, build_d19_dashboard_payload, certify_d19_triage_explainability
+from transmission_layers.expectation_failure.expectation_intelligence.h1_historical_density_expansion import build_h1_density_expansion_inventory, build_h1_density_gap_analysis, build_h1_expansion_plan, build_h1_operational_density_summary, build_h1_dashboard_payload, certify_h1_density_expansion
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -23,6 +24,7 @@ D7_RENDER_SECTION_ORDER = (
     "d17_historical_confidence_lineage",
     "d18_cross_run_confidence_delta_operator_triage",
     "d19_triage_explainability_continuity_taxonomy",
+    "h1_historical_density_expansion",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -687,6 +689,12 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     d19_notes = build_d19_operator_adjudication_notes(triage_explainability_inventory=d19_inventory, continuity_taxonomy=d19_taxonomy)
     d19_dashboard = build_d19_dashboard_payload(triage_explainability_inventory=d19_inventory, rank_change_rationales=d19_rationales, continuity_taxonomy=d19_taxonomy, constraint_escalation_summary=d19_constraints, regime_transition_impact_explanations=d19_regime, operator_adjudication_notes=d19_notes)
     d19_certification = certify_d19_triage_explainability(triage_explainability_inventory=d19_inventory, rank_change_rationales=d19_rationales, continuity_taxonomy=d19_taxonomy, dashboard_payload=d19_dashboard)
+    h1_inventory = build_h1_density_expansion_inventory(historical_runs=effective_history, d16_dashboard_payload=d16_dashboard_payload, d17_dashboard_payload=d17_dashboard_payload, d18_dashboard_payload=d18_dashboard_payload)
+    h1_gap_analysis = build_h1_density_gap_analysis(density_inventory=h1_inventory)
+    h1_plan = build_h1_expansion_plan(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis)
+    h1_summary = build_h1_operational_density_summary(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis)
+    h1_dashboard = build_h1_dashboard_payload(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis, expansion_plan=h1_plan, operational_density_summary=h1_summary)
+    h1_certification = certify_h1_density_expansion(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis, expansion_plan=h1_plan, dashboard_payload=h1_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -746,6 +754,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d18_cross_run_triage_certification", d18_certification),
         ("d19_triage_explainability_continuity_taxonomy", d19_dashboard),
         ("d19_triage_explainability_certification", d19_certification),
+        ("h1_historical_density_expansion", h1_dashboard),
+        ("h1_historical_density_expansion_certification", h1_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1193,6 +1203,30 @@ def render_d19_triage_explainability_continuity_taxonomy(view_model: Mapping[str
         st.markdown(f"- {_render_value(r.get('note_type'))}: {_render_value(r.get('note'))}")
     with st.expander("D19 Governance/Lineage Details"):
         st.json(payload.get("Governance / Lineage Details", {}))
+
+
+def render_h1_historical_density_expansion(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("h1_historical_density_expansion") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping):
+        st.markdown("### H1 Historical Density Expansion")
+        st.caption("H1 historical density expansion is unavailable for this run.")
+        return
+    st.markdown("### H1 Historical Density Expansion")
+    for section in (
+        "Historical Density Overview",
+        "Replay Coverage",
+        "Regime Diversity",
+        "Contradiction Evolution Richness",
+        "Continuity Linkage Density",
+        "Recurring Finding Density",
+        "Confidence Movement Density",
+        "Density Gap Analysis",
+        "Recommended Expansion Plan",
+    ):
+        st.markdown(f"**{section}**")
+        st.json(payload.get(section, {}))
+    with st.expander("H1 Governance/Lineage Details"):
+        st.json(payload.get("Governance/Lineage Details", {}))
 
 
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:

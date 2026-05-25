@@ -379,7 +379,7 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
 def test_d7_renderer_helper_api_presence_and_ordering_constant():
     assert D7_RENDER_SECTION_ORDER == (
         "e6_expectation_executive_summary", "d15_historical_operational_intelligence", "d16_historical_findings_operator_narrative", "d17_historical_confidence_lineage", "d18_cross_run_confidence_delta_operator_triage",
-            "d19_triage_explainability_continuity_taxonomy", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
+            "d19_triage_explainability_continuity_taxonomy", "h1_historical_density_expansion", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
     )
     assert callable(render_e6_expectation_executive_summary)
     assert callable(render_d15_historical_operational_intelligence)
