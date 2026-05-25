@@ -1,0 +1,229 @@
+{
+  "deterministic_version": "LR6_PREP_GOVERNED_ACTIVATION_PROPOSAL_V1",
+  "deterministic_seed": "LR6_PREP_GOVERNED_ACTIVATION_PROPOSAL_SEED_V1",
+  "objective": "Governed LR6 activation proposal preparation package (non-activating)",
+  "input_artifact_references": {
+    "pruned_universe": "configs/sde1c_pruned_entity_universe.yaml",
+    "sde1d_readiness": "configs/sde1d_semantic_ecosystem_readiness_certification.yaml",
+    "lr6r_readiness": "configs/lr6r_replay_ecology_reactivation_readiness.yaml",
+    "lr6_dry1": "configs/lr6_dry1_bounded_replay_ecology_diagnostic.yaml",
+    "lr6_dry2": "configs/lr6_dry2_expanded_replay_ecology_diagnostic.yaml",
+    "lr6_dry3": "configs/lr6_dry3_full_universe_replay_ecology_certification.yaml",
+    "lr6_dry3r": "configs/lr6_dry3r_full_universe_refinement.yaml",
+    "lr6_dry4": "configs/lr6_dry4_full_universe_saturation_guardrails.yaml"
+  },
+  "readiness_evidence_summary": {
+    "adjusted_readiness_score": 0.790225,
+    "readiness_threshold": 0.79,
+    "threshold_cleared": true,
+    "dry_progression": [
+      {
+        "stage": "LR6-DRY1",
+        "window": 60,
+        "score": 0.773737
+      },
+      {
+        "stage": "LR6-DRY2",
+        "window": 120,
+        "score": 0.788203
+      },
+      {
+        "stage": "LR6-DRY3",
+        "window": 300,
+        "score": 0.783225
+      },
+      {
+        "stage": "LR6-DRY3R",
+        "window": 300,
+        "score": 0.783225
+      },
+      {
+        "stage": "LR6-DRY4",
+        "window": 300,
+        "score": 0.790225
+      }
+    ]
+  },
+  "activation_gates": {
+    "gate_readiness_threshold_met": true,
+    "gate_no_severe_saturation_breach": true,
+    "gate_no_severe_monoculture_breach": true,
+    "gate_dry_run_history_complete": true,
+    "gate_governance_constraints_locked": true,
+    "gate_operator_approvals_complete": false
+  },
+  "bounded_first_activation_scope": {
+    "max_entities": 120,
+    "min_entities": 60,
+    "proposed_entity_count": 90,
+    "proposed_entity_ids": [
+      "E001",
+      "E002",
+      "E003",
+      "E005",
+      "E006",
+      "E007",
+      "E008",
+      "E009",
+      "E010",
+      "E011",
+      "E012",
+      "E013",
+      "E015",
+      "E016",
+      "E017",
+      "E018",
+      "E019",
+      "E020",
+      "E021",
+      "E022",
+      "E023",
+      "E025",
+      "E026",
+      "E027",
+      "E028",
+      "E029",
+      "E030",
+      "E031",
+      "E032",
+      "E033",
+      "E035",
+      "E036",
+      "E037",
+      "E038",
+      "E039",
+      "E040",
+      "E041",
+      "E042",
+      "E043",
+      "E045",
+      "E046",
+      "E047",
+      "E048",
+      "E049",
+      "E050",
+      "E051",
+      "E052",
+      "E053",
+      "E055",
+      "E056",
+      "E057",
+      "E058",
+      "E059",
+      "E060",
+      "E061",
+      "E062",
+      "E063",
+      "E065",
+      "E066",
+      "E067",
+      "E068",
+      "E069",
+      "E070",
+      "E071",
+      "E072",
+      "E073",
+      "E075",
+      "E076",
+      "E077",
+      "E078",
+      "E079",
+      "E080",
+      "E081",
+      "E082",
+      "E083",
+      "E085",
+      "E086",
+      "E087",
+      "E088",
+      "E089",
+      "E090",
+      "E091",
+      "E092",
+      "E093",
+      "E095",
+      "E096",
+      "E097",
+      "E098",
+      "E099",
+      "E100"
+    ],
+    "proposed_time_window_days": 30,
+    "full_universe_size": 300,
+    "smaller_than_full_universe": true
+  },
+  "operator_approval_requirements": {
+    "required_approver_roles": [
+      "SEFI_GOVERNANCE_OWNER",
+      "SEFI_REPLAY_OPERATOR",
+      "SEFI_RISK_OPERATOR"
+    ],
+    "required_approval_phrase": "APPROVE_LR6_GOVERNED_BOUNDED_ACTIVATION_PHASE1_NO_PRODUCTION_REPLAY_EXECUTION",
+    "dual_control_required": true,
+    "approval_expiration_hours": 24
+  },
+  "saturation_guardrails": {
+    "current_saturation_risk_score": 0.454545,
+    "severe_threshold": 0.85,
+    "warning_threshold": 0.6
+  },
+  "monoculture_guardrails": {
+    "current_monoculture_risk_score": 0.454545,
+    "severe_threshold": 0.25,
+    "dominance_watch_threshold": 0.15
+  },
+  "pause_conditions": [
+    "saturation_risk_score>=0.85",
+    "dominant_ecosystem_share>=0.25",
+    "operator_approval_missing",
+    "governance_boundary_violation"
+  ],
+  "rollback_conditions": [
+    "post_activation_readiness_score_drops_below_0.79",
+    "severe_guardrail_breach_confirmed",
+    "deterministic_reproducibility_check_fails"
+  ],
+  "governance_boundary_inventory": {
+    "no_replay_execution": true,
+    "no_replay_waves": true,
+    "no_persistence_writes": true,
+    "no_direct_sql": true,
+    "no_external_apis": true,
+    "no_prediction_or_trading": true,
+    "additive_architecture_preserved": true,
+    "deterministic_reproducibility_preserved": true,
+    "interpretability_preserved": true,
+    "lr6_production_replay_activated": false
+  },
+  "escalation_requirements": {
+    "escalate_on": [
+      "any_severe_guardrail_breach",
+      "approval_phrase_mismatch",
+      "boundary_violation"
+    ],
+    "escalation_path": [
+      "SEFI_GOVERNANCE_OWNER",
+      "SEFI_EXECUTIVE_REVIEW"
+    ]
+  },
+  "activation_risk_summary": {
+    "saturation": {
+      "current_saturation_risk_score": 0.454545,
+      "severe_threshold": 0.85,
+      "warning_threshold": 0.6
+    },
+    "monoculture": {
+      "current_monoculture_risk_score": 0.454545,
+      "severe_threshold": 0.25,
+      "dominance_watch_threshold": 0.15
+    },
+    "residual_risk_state": "bounded_and_governable"
+  },
+  "governance_certification": {
+    "proposal_certified": true,
+    "recommendation_state": "future_governed_activation_may_be_considered_after_operator_approvals",
+    "next_recommended_phase": "LR6-GOV-ACT-1 bounded governed activation review (no replay execution in prep)",
+    "lr6_production_replay_activated": false
+  },
+  "lr6_production_replay_activated": false
+}
