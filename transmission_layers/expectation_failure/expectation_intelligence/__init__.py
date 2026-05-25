@@ -133,6 +133,24 @@ from .h3_cross_replay_structural_transition_intelligence import (
     build_h3_report_markdown,
 )
 
+
+from .cd2_replay_novelty_prioritization import (
+    CERTIFIED_REPLAY_NOVELTY_PRIORITIZATION,
+    DEGRADED_REPLAY_NOVELTY_PRIORITIZATION,
+    BLOCKED_REPLAY_NOVELTY_PRIORITIZATION,
+    CD2_PRIORITY_BUCKETS,
+    build_cd2_replay_candidate_pool,
+    build_cd2_novelty_scorecard,
+    build_cd2_candidate_priority_buckets,
+    build_cd2_replay_selection_rationale,
+    build_cd2_prioritization_summary,
+    build_cd2_operator_guardrails,
+    build_cd2_dashboard_payload,
+    certify_cd2_replay_novelty_prioritization,
+    build_cd2_report_payload,
+    build_cd2_report_markdown,
+)
+
 from .h2_governed_replay_expansion_cycle import (
     CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE,
     DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE,
@@ -153,6 +171,20 @@ from .h2_governed_replay_expansion_cycle import (
 )
 
 __all__ = [
+    "build_cd2_report_markdown",
+    "build_cd2_report_payload",
+    "certify_cd2_replay_novelty_prioritization",
+    "build_cd2_dashboard_payload",
+    "build_cd2_operator_guardrails",
+    "build_cd2_prioritization_summary",
+    "build_cd2_replay_selection_rationale",
+    "build_cd2_candidate_priority_buckets",
+    "build_cd2_novelty_scorecard",
+    "build_cd2_replay_candidate_pool",
+    "CD2_PRIORITY_BUCKETS",
+    "BLOCKED_REPLAY_NOVELTY_PRIORITIZATION",
+    "DEGRADED_REPLAY_NOVELTY_PRIORITIZATION",
+    "CERTIFIED_REPLAY_NOVELTY_PRIORITIZATION",
     "build_h3_report_markdown",
     "build_h3_report_payload",
     "certify_h3_cross_replay_structural_transition_intelligence",
