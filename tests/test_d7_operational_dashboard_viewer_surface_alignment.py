@@ -11,6 +11,9 @@ def test_d7_operational_dashboard_viewer_is_intelligence_first():
     assert "render_d18_cross_run_confidence_delta_operator_triage" in source
     assert "render_d19_triage_explainability_continuity_taxonomy" in source
     assert "render_h1_historical_density_expansion" in source
+    assert "render_h2_governed_replay_expansion_cycle" in source
+    assert "render_cd1_candidate_diversity_strengthening" in source
+    assert "render_h3_cross_replay_structural_transition_intelligence" in source
     assert "render_d7_intelligence_overview" in source
     assert "render_d7_finding_cards" in source
     assert "render_d7_narrative_sections" in source
@@ -99,6 +102,9 @@ def test_d7_operational_dashboard_viewer_main_smoke_catches_signature_mismatches
     monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d19_triage_explainability_continuity_taxonomy", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_h1_historical_density_expansion", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_h2_governed_replay_expansion_cycle", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_cd1_candidate_diversity_strengthening", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_h3_cross_replay_structural_transition_intelligence", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
     monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
@@ -208,6 +214,9 @@ def test_d7_operational_dashboard_calls_d8_1_renderer(monkeypatch):
     monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d19_triage_explainability_continuity_taxonomy", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_h1_historical_density_expansion", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_h2_governed_replay_expansion_cycle", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_cd1_candidate_diversity_strengthening", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_h3_cross_replay_structural_transition_intelligence", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
     monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
@@ -255,6 +264,9 @@ def test_d7_operational_dashboard_calls_d8_2_renderer(monkeypatch):
     monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d19_triage_explainability_continuity_taxonomy", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_h1_historical_density_expansion", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_h2_governed_replay_expansion_cycle", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_cd1_candidate_diversity_strengthening", lambda model, *, st: None)
+    monkeypatch.setattr(app, "render_h3_cross_replay_structural_transition_intelligence", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", lambda model, *, st: None)
     monkeypatch.setattr(app, "render_d7_supervisor_interpretation", lambda summary, *, st: None)
     monkeypatch.setattr(app, "render_d7_finding_cards", lambda cards, *, st: None)
@@ -331,6 +343,12 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
     def _h1(view_model, *, st):
         calls["render_order"].append("h1_historical_density_expansion")
         calls["d18_calls"] += 1
+    def _h2(view_model, *, st):
+        calls["render_order"].append("h2_governed_replay_expansion_cycle")
+    def _cd1(view_model, *, st):
+        calls["render_order"].append("cd1_candidate_diversity_strengthening")
+    def _h3(view_model, *, st):
+        calls["render_order"].append("h3_cross_replay_structural_transition_intelligence")
     def _d16(_model, *, st):
         calls["render_order"].append("d16_historical_findings_operator_narrative")
         calls["d16_calls"] += 1
@@ -342,6 +360,9 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
     monkeypatch.setattr(app, "render_d18_cross_run_confidence_delta_operator_triage", _d18)
     monkeypatch.setattr(app, "render_d19_triage_explainability_continuity_taxonomy", _d19)
     monkeypatch.setattr(app, "render_h1_historical_density_expansion", _h1)
+    monkeypatch.setattr(app, "render_h2_governed_replay_expansion_cycle", _h2)
+    monkeypatch.setattr(app, "render_cd1_candidate_diversity_strengthening", _cd1)
+    monkeypatch.setattr(app, "render_h3_cross_replay_structural_transition_intelligence", _h3)
     monkeypatch.setattr(app, "render_d7_intelligence_overview", _overview)
 
     base_vm = {
@@ -357,7 +378,7 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
         calls["render_order"].clear()
         monkeypatch.setattr(app, "_load_view_model_cached", lambda _client, _vm={**base_vm, **variant}: _vm)
         app.main()
-        assert calls["render_order"][:8] == [
+        assert calls["render_order"][:11] == [
             "e6_expectation_executive_summary",
             "d15_historical_operational_intelligence",
             "d16_historical_findings_operator_narrative",
@@ -365,6 +386,9 @@ def test_d7_operational_dashboard_locks_top_level_section_precedence_and_d15_fal
             "d18_cross_run_confidence_delta_operator_triage",
             "d19_triage_explainability_continuity_taxonomy",
             "h1_historical_density_expansion",
+            "h2_governed_replay_expansion_cycle",
+            "cd1_candidate_diversity_strengthening",
+            "h3_cross_replay_structural_transition_intelligence",
             "intelligence_overview",
         ]
     assert calls["d15_payload_variants"] == ["present", "missing", "degraded"]

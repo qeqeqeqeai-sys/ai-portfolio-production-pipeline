@@ -32,6 +32,9 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_d18_cross_run_confidence_delta_operator_triage,
     render_d19_triage_explainability_continuity_taxonomy,
     render_h1_historical_density_expansion,
+    render_h2_governed_replay_expansion_cycle,
+    render_cd1_candidate_diversity_strengthening,
+    render_h3_cross_replay_structural_transition_intelligence,
     render_e6_expectation_executive_summary,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
@@ -114,6 +117,9 @@ def main() -> None:
     render_d18_cross_run_confidence_delta_operator_triage(vm, st=st)
     render_d19_triage_explainability_continuity_taxonomy(vm, st=st)
     render_h1_historical_density_expansion(vm, st=st)
+    render_h2_governed_replay_expansion_cycle(vm, st=st)
+    render_cd1_candidate_diversity_strengthening(vm, st=st)
+    render_h3_cross_replay_structural_transition_intelligence(vm, st=st)
     render_d7_intelligence_overview(vm, st=st)
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
