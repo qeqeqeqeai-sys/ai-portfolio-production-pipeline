@@ -1,0 +1,212 @@
+{
+  "deterministic_version": "LR6_EXP1_BOUNDED_SEMANTIC_OBSERVATION_V1",
+  "deterministic_seed": "LR6_EXP1_BOUNDED_SEMANTIC_OBSERVATION_SEED_V1",
+  "input_artifact_references": {
+    "sde1c_pruned_universe": "configs/sde1c_pruned_entity_universe.yaml",
+    "sde1d_readiness": "configs/sde1d_semantic_ecosystem_readiness_certification.yaml",
+    "lr6_governance_freeze": "configs/lr6_governance_freeze_and_mode_separation.yaml",
+    "lr6_dry4_guardrails": "configs/lr6_dry4_full_universe_saturation_guardrails.yaml"
+  },
+  "experimental_mode_context": {
+    "mode": "experimental_mode",
+    "profile": "bounded_semantic_replay_observation",
+    "deterministic": true,
+    "persistence": "disabled",
+    "governed_lr6_active": false,
+    "safety_rails": [
+      "additive_architecture_enforcement",
+      "bounded_replay_windows",
+      "deterministic_reproducibility",
+      "dry_run_first_policy",
+      "monoculture_caps",
+      "no_direct_sql_enforcement",
+      "observability_requirements",
+      "rollback_conditions",
+      "saturation_guardrails"
+    ],
+    "experimental_rules": [
+      "bounded_dry_runs",
+      "bounded_execution_scope",
+      "deterministic_execution",
+      "fast_semantic_iteration",
+      "lightweight_replay_experimentation",
+      "no_persistence_by_default",
+      "reduced_certification_recursion"
+    ]
+  },
+  "observation_window": {
+    "max_entities": 90,
+    "selected_entity_ids": [
+      "E030",
+      "E049",
+      "E019",
+      "E010",
+      "E059",
+      "E020",
+      "E009",
+      "E050",
+      "E029",
+      "E060",
+      "E040",
+      "E039",
+      "E090",
+      "E109",
+      "E079",
+      "E070",
+      "E119",
+      "E080",
+      "E069",
+      "E110",
+      "E089",
+      "E120",
+      "E100",
+      "E099",
+      "E150",
+      "E169",
+      "E139",
+      "E130",
+      "E179",
+      "E140",
+      "E129",
+      "E170",
+      "E149",
+      "E180",
+      "E160",
+      "E159",
+      "E210",
+      "E229",
+      "E199",
+      "E190",
+      "E239",
+      "E200",
+      "E189",
+      "E230",
+      "E209",
+      "E240",
+      "E220",
+      "E219",
+      "E270",
+      "E289",
+      "E259",
+      "E250",
+      "E299",
+      "E260",
+      "E249",
+      "E290",
+      "E269",
+      "E300",
+      "E280",
+      "E279",
+      "E330",
+      "E349",
+      "E319",
+      "E310",
+      "E047",
+      "E320",
+      "E309",
+      "E350",
+      "E329",
+      "E048",
+      "E340",
+      "E339",
+      "E018",
+      "E037",
+      "E007",
+      "E058",
+      "E107",
+      "E008",
+      "E057",
+      "E038",
+      "E017",
+      "E108",
+      "E028",
+      "E027",
+      "E078",
+      "E097",
+      "E067",
+      "E118",
+      "E167",
+      "E068"
+    ],
+    "ecosystem_counts": {
+      "ai_application_software_monetization": 8,
+      "ai_compute_core": 8,
+      "automation_robotics_industrial_ai": 8,
+      "china_geopolitical_export_control_exposure": 8,
+      "end_market_demand_validation": 8,
+      "energy_commodities_physical_inputs": 8,
+      "financing_rates_liquidity": 7,
+      "hyperscaler_cloud_demand": 7,
+      "memory_networking_interconnect": 7,
+      "narrative_hype_speculation_amplification": 7,
+      "power_grid_cooling_datacenter_infra": 7,
+      "semiconductor_supply_chain": 7
+    },
+    "ecosystem_diversity_preserved": true,
+    "saturation_guardrail_preserved": true,
+    "monoculture_guardrail_preserved": true,
+    "max_primary_ecosystem_share": 0.088889
+  },
+  "observation_metrics": {
+    "semantic": {
+      "semantic_adjacency_richness": 2.0,
+      "novelty_proxy": 0.872222
+    },
+    "ecosystem_interaction": {
+      "ecosystem_interaction_density": 0.166667,
+      "interaction_edges": 180
+    },
+    "contradiction": {
+      "contradiction_surface_diversity": 4,
+      "contradiction_surfaces": [
+        "capacity_vs_utilization",
+        "guidance_vs_orderbook",
+        "policy_vs_execution",
+        "valuation_vs_cashflow"
+      ]
+    },
+    "propagation": {
+      "propagation_pathway_diversity": 2.0,
+      "propagation_roles": [
+        "downstream_receiver",
+        "feedback_emitter",
+        "midstream_router",
+        "upstream_source"
+      ]
+    },
+    "transition": {
+      "transition_topology_diversity": 5,
+      "regime_exposure_topology": [
+        "geopolitical_escalation",
+        "liquidity_easing",
+        "liquidity_tightening",
+        "risk_off",
+        "risk_on"
+      ]
+    },
+    "saturation": {
+      "saturation_risk": 0.444445,
+      "guardrail_preserved": true
+    },
+    "monoculture": {
+      "monoculture_risk": 0.355556,
+      "guardrail_preserved": true
+    }
+  },
+  "observation_summary": {
+    "replay_ecology_observation_value": 0.813333,
+    "bounded_non_persistent_observation": true,
+    "governed_lr6_production_activation": false
+  },
+  "governance_certification_metadata": {
+    "experimental_mode_only": true,
+    "governed_lr6_production_activation": false,
+    "no_persistence_writes": true,
+    "no_direct_sql": true,
+    "no_external_apis": true,
+    "no_prediction_or_trading": true,
+    "additive_architecture_preserved": true,
+    "deterministic_reproducibility_preserved": true
+  },
+  "next_recommended_phase": "LR6-EXP2 bounded longitudinal semantic replay observation diagnostics"
+}
