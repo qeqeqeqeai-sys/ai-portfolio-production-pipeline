@@ -18,7 +18,7 @@ from transmission_layers.expectation_failure.expectation_intelligence.d21_limite
 
 STATUS_CONNECTIVITY_FAILED = "CONNECTIVITY_FAILED_NO_WRITE"
 STATUS_GOV_BLOCKED = "GOVERNANCE_BLOCKED_NO_WRITE"
-STATUS_SUCCESS = "D21_EXECUTED_WINDOW_1_SUCCESS"
+STATUS_SUCCESS = "D21_EXECUTED_LIMITED_GOVERNED_SUCCESS"
 STATUS_EXEC_FAILED = "D21_EXECUTION_FAILED_AFTER_APPROVAL"
 
 REQUIRED_APPROVALS = OrderedDict([
@@ -42,11 +42,17 @@ def _summary(status: str, **kwargs: Any) -> OrderedDict[str, Any]:
 
 
 def main() -> int:
-    window_count = str(os.getenv("D21_WINDOW_COUNT", "1")).strip()
+    window_count_raw = str(os.getenv("D21_WINDOW_COUNT", "1")).strip()
     approvals = {k: str(os.getenv(k.upper(), "")).strip() for k in REQUIRED_APPROVALS}
 
-    if window_count != "1":
-        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_equal_1_for_first_live_run"], window_count=window_count), indent=2))
+    try:
+        window_count = int(window_count_raw)
+    except ValueError:
+        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_be_integer"], window_count=window_count_raw), indent=2))
+        return 2
+
+    if window_count not in {1, 2}:
+        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_be_1_or_2_for_limited_governed_run"], window_count=window_count), indent=2))
         return 2
 
     approval_failures = [f"{k}_invalid" for k, v in REQUIRED_APPROVALS.items() if approvals.get(k) != v]
@@ -87,7 +93,7 @@ def main() -> int:
         out = execute_d21_limited_governed_non_dry_historical_backfill(
             client=resolution.get("client"),
             approval_flags=d21_approvals,
-            window_count=1,
+            window_count=window_count,
         )
     except Exception as exc:
         print(json.dumps(_summary(STATUS_EXEC_FAILED, error_type=type(exc).__name__, error_message_short=str(exc)[:200]), indent=2))

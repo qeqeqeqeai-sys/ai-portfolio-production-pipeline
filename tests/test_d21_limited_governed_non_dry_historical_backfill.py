@@ -60,6 +60,14 @@ def test_d21_first_and_second_run_insert_accounting_is_explicit_and_deterministi
         assert field in second
 
 
-def test_d21_blocks_out_of_bounds_window_count():
-    out = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=4)
-    assert out["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
+def test_d21_allows_window_count_1_and_2_and_blocks_3_and_0():
+    allowed_1 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=1)
+    allowed_2 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=2)
+    blocked_3 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=3)
+    blocked_0 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=0)
+
+    assert allowed_1["status"] == "D21_LIMITED_BACKFILL_EXECUTED"
+    assert allowed_2["status"] == "D21_LIMITED_BACKFILL_EXECUTED"
+    assert blocked_3["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
+    assert blocked_0["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
+    assert blocked_3["blocking_reasons"] == ["window_count_must_be_between_1_and_2"]

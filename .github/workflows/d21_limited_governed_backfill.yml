@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       window_count:
-        description: "First live run safety lock (must be exactly 1)"
+        description: "Limited governed run safety lock (allowed: 1 or 2)"
         required: true
         default: "1"
         type: string
@@ -26,7 +26,7 @@ on:
         type: string
 
 jobs:
-  governed-window-1-backfill:
+  governed-limited-window-backfill:
     runs-on: ubuntu-latest
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -80,9 +80,17 @@ jobs:
               return "missing"
             return hashlib.sha256(v.encode("utf-8")).hexdigest()[:12]
 
-          window_count = str(os.getenv("D21_WINDOW_COUNT", "")).strip()
-          if window_count != "1":
-            raise SystemExit("window_count must be exactly 1 for first live run")
+          window_count_raw = str(os.getenv("D21_WINDOW_COUNT", "")).strip()
+          if not window_count_raw:
+            raise SystemExit("window_count must be provided as integer 1 or 2")
+
+          try:
+            window_count = int(window_count_raw)
+          except ValueError:
+            raise SystemExit("window_count must be an integer with allowed values: 1 or 2")
+
+          if window_count not in {1, 2}:
+            raise SystemExit("window_count must be 1 or 2 for limited governed run")
 
           for key, expected in required_approvals.items():
             env_key = key.upper()
@@ -104,6 +112,6 @@ jobs:
           }, indent=2))
           PY
 
-      - name: Execute D21 governed window 1 backfill
+      - name: Execute D21 limited governed backfill
         run: |
           PYTHONPATH=. python scripts/run_d21_limited_governed_backfill.py
