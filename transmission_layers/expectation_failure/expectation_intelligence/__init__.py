@@ -117,6 +117,22 @@ from .cd1_candidate_diversity_strengthening import (
     build_cd1_report_markdown,
 )
 
+
+from .h3_cross_replay_structural_transition_intelligence import (
+    CERTIFIED_CROSS_REPLAY_STRUCTURAL_TRANSITION_INTELLIGENCE,
+    DEGRADED_CROSS_REPLAY_STRUCTURAL_TRANSITION_INTELLIGENCE,
+    BLOCKED_CROSS_REPLAY_STRUCTURAL_TRANSITION_INTELLIGENCE,
+    build_h3_replay_transition_inventory,
+    build_h3_structural_transition_chains,
+    build_h3_transition_novelty_analysis,
+    build_h3_transition_risk_diagnostics,
+    build_h3_operator_transition_recommendations,
+    build_h3_dashboard_payload,
+    certify_h3_cross_replay_structural_transition_intelligence,
+    build_h3_report_payload,
+    build_h3_report_markdown,
+)
+
 from .h2_governed_replay_expansion_cycle import (
     CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE,
     DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE,
@@ -137,6 +153,18 @@ from .h2_governed_replay_expansion_cycle import (
 )
 
 __all__ = [
+    "build_h3_report_markdown",
+    "build_h3_report_payload",
+    "certify_h3_cross_replay_structural_transition_intelligence",
+    "build_h3_dashboard_payload",
+    "build_h3_operator_transition_recommendations",
+    "build_h3_transition_risk_diagnostics",
+    "build_h3_transition_novelty_analysis",
+    "build_h3_structural_transition_chains",
+    "build_h3_replay_transition_inventory",
+    "BLOCKED_CROSS_REPLAY_STRUCTURAL_TRANSITION_INTELLIGENCE",
+    "DEGRADED_CROSS_REPLAY_STRUCTURAL_TRANSITION_INTELLIGENCE",
+    "CERTIFIED_CROSS_REPLAY_STRUCTURAL_TRANSITION_INTELLIGENCE",
     "build_cd1_report_markdown",
     "build_cd1_report_payload",
     "certify_cd1_candidate_diversity_strengthening",
