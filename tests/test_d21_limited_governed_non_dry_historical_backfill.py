@@ -22,13 +22,16 @@ def test_d21_halts_without_required_governance_flags():
 
 
 def test_d21_executes_limited_backfill_and_reports_safety():
-    out = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=2)
+    out = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=2, window_offset=0)
     assert out["status"] == "D21_LIMITED_BACKFILL_EXECUTED"
     assert out["window_count_executed"] == 2
     assert out["rows_inserted"]["dashboard_replay_metadata_records"] >= 1
     assert out["rows_inserted_semantics"] == "VISIBLE_PERSISTED_ROWS_AFTER_RUN"
     assert out["checksum_lineage_verified"] is True
     assert out["safety"]["no_direct_sql"] is True
+    assert out["candidate_selection_mode"] == "DETERMINISTIC_WINDOW_OFFSET_SLICE"
+    assert out["window_offset"] == 0
+    assert out["selected_candidate_ids"] == ["W1", "W2"]
 
 
 def test_d21_first_and_second_run_insert_accounting_is_explicit_and_deterministic():
@@ -104,4 +107,28 @@ def test_d21_workflow_window_count_range_and_approvals_unchanged():
 def test_d21_script_default_and_window_count_gate():
     script = Path("scripts/run_d21_limited_governed_backfill.py").read_text(encoding="utf-8")
     assert 'os.getenv("D21_WINDOW_COUNT", "1")' in script
+    assert 'os.getenv("D21_WINDOW_OFFSET", "0")' in script
     assert "window_count_must_be_1_or_2_or_3_for_limited_governed_run" in script
+
+
+def test_d21_window_offset_behaviors():
+    client = C()
+    execute_d21_limited_governed_non_dry_historical_backfill(client=client, approval_flags=APPROVALS, window_count=1, window_offset=0)
+    second_default = execute_d21_limited_governed_non_dry_historical_backfill(client=client, approval_flags=APPROVALS, window_count=1, window_offset=0)
+    offset_novel = execute_d21_limited_governed_non_dry_historical_backfill(client=client, approval_flags=APPROVALS, window_count=1, window_offset=1)
+    far_offset = execute_d21_limited_governed_non_dry_historical_backfill(client=client, approval_flags=APPROVALS, window_count=1, window_offset=999)
+
+    assert second_default["selected_candidate_ids"] == ["W1"]
+    assert second_default["rows_newly_inserted"]["dashboard_export_manifests"] == 0
+    assert second_default["selected_candidate_already_existing_count"] >= 1
+    assert offset_novel["selected_candidate_ids"] == ["W2"]
+    assert offset_novel["selected_candidate_new_count"] >= 1
+    assert offset_novel["next_recommended_window_offset"] == 2
+    assert far_offset["selected_candidate_ids"] == ["W1000"]
+    assert far_offset["window_offset"] == 999
+
+
+def test_d21_blocks_negative_window_offset():
+    blocked = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=1, window_offset=-1)
+    assert blocked["status"] == "BACKFILL_WINDOW_OFFSET_BLOCKED"
+    assert blocked["blocking_reasons"] == ["window_offset_must_be_zero_or_positive_integer"]
