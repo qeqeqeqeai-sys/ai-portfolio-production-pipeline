@@ -1,0 +1,59 @@
+{
+  "run_count": 0,
+  "ix_archive_coverage": {
+    "ix1": 0,
+    "ix2": 0,
+    "ix3": 0,
+    "ix4": 0,
+    "ix5": 0
+  },
+  "ix_status_distribution": {
+    "ix1": {},
+    "ix2": {},
+    "ix3": {},
+    "ix4": {},
+    "ix5": {}
+  },
+  "lineage_linked_runs": 0,
+  "lineage_coverage_ratio": 0.0,
+  "replay_diversity_observation": {
+    "theme_novelty_ratio": 0.0,
+    "classification": "low"
+  },
+  "cross_run_delta_evolution": {
+    "persistent_contradictions": [],
+    "semantic_fragility_evolution": "insufficient_data",
+    "transition_anomaly_recurrence": "insufficient_data",
+    "novelty_drought_or_saturation": "potential_saturation"
+  },
+  "compression_stability": {
+    "avg_score": 0.0,
+    "status": "insufficient_data"
+  },
+  "interpretability_hardening_behavior": {
+    "avg_score": 0.0,
+    "status": "insufficient_data"
+  },
+  "explainability_continuity_behavior": {
+    "avg_score": 0.0,
+    "status": "insufficient_data"
+  },
+  "governance_boundary_confirmation": {
+    "read_only_review": true,
+    "no_autonomous_replay_execution": true,
+    "no_autonomous_approval": true,
+    "no_direct_sql": true,
+    "non_predictive": true,
+    "append_only_semantics_preserved": true,
+    "checksum_lineage_preserved": true
+  },
+  "operational_gap_report": {
+    "ix_persistability_gap": "present",
+    "details": "Some IX payloads are absent from persisted replay rows; no new write path was introduced."
+  },
+  "stress_test_readiness": {
+    "status": "NOT_READY_MIN_HISTORY",
+    "minimum_governed_runs_recommended": 5,
+    "architecture_expansion_recommendation": "paused"
+  }
+}
