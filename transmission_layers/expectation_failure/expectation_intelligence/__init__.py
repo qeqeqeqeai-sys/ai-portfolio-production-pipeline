@@ -172,6 +172,22 @@ from .cd3_governed_novelty_guided_replay_expansion_plan import (
     build_cd3_report_markdown,
 )
 
+from .ix3_structural_narrative_compression import (
+    build_ix3_insight_cluster_inventory,
+    build_ix3_redundancy_and_overlap_analysis,
+    build_ix3_compressed_structural_narratives,
+    build_ix3_dominant_theme_summary,
+    build_ix3_operator_narrative_brief,
+    build_ix3_cluster_priority_ranking,
+    build_ix3_dashboard_payload,
+    certify_ix3_structural_narrative_compression,
+    build_ix3_report_payload,
+    build_ix3_report_markdown,
+    CERTIFIED_STRUCTURAL_NARRATIVE_COMPRESSION,
+    DEGRADED_STRUCTURAL_NARRATIVE_COMPRESSION,
+    BLOCKED_STRUCTURAL_NARRATIVE_COMPRESSION,
+)
+
 from .h2_governed_replay_expansion_cycle import (
     CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE,
     DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE,

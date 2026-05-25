@@ -18,6 +18,7 @@ from transmission_layers.expectation_failure.expectation_intelligence.h2_governe
 from transmission_layers.expectation_failure.expectation_intelligence.cd4_expectation_drift_and_replay_saturation_intelligence import build_cd4_replay_drift_profile, build_cd4_semantic_saturation_analysis, build_cd4_expectation_decay_analysis, build_cd4_replay_freshness_scoring, build_cd4_replay_half_life_estimation, build_cd4_concentration_instability_analysis, build_cd4_operator_attention_queue, build_cd4_dashboard_payload, certify_cd4_expectation_drift_and_replay_saturation_intelligence
 from transmission_layers.expectation_failure.expectation_intelligence.ix1_structural_insight_extraction import build_ix1_structural_insight_inventory, build_ix1_structural_anomaly_detection, build_ix1_transition_pattern_findings, build_ix1_expectation_structure_findings, build_ix1_insight_priority_ranking, build_ix1_operator_insight_summary, build_ix1_dashboard_payload, certify_ix1_structural_insight_extraction
 from transmission_layers.expectation_failure.expectation_intelligence.ix2_evidence_linked_insight_attribution import build_ix2_insight_evidence_map, build_ix2_insight_lineage_index, build_ix2_cross_run_delta_tracker, build_ix2_evidence_strength_scorecard, build_ix2_delta_interpretation_summary, build_ix2_evidence_linked_operator_summary, build_ix2_dashboard_payload, certify_ix2_evidence_linked_insight_attribution
+from transmission_layers.expectation_failure.expectation_intelligence.ix3_structural_narrative_compression import build_ix3_insight_cluster_inventory, build_ix3_redundancy_and_overlap_analysis, build_ix3_compressed_structural_narratives, build_ix3_dominant_theme_summary, build_ix3_operator_narrative_brief, build_ix3_cluster_priority_ranking, build_ix3_dashboard_payload, certify_ix3_structural_narrative_compression
 from transmission_layers.expectation_failure.expectation_intelligence.cd5_operator_adjudication_assist import build_cd5_operator_review_checklists, build_cd5_decision_rationale_previews, build_cd5_operator_decision_guidance, build_cd5_governance_consistency_analysis, build_cd5_decision_audit_preview, build_cd5_operator_attention_summary, build_cd5_dashboard_payload, certify_cd5_operator_adjudication_assist
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
@@ -39,6 +40,7 @@ D7_RENDER_SECTION_ORDER = (
     "cd5_operator_adjudication_assist",
     "ix1_structural_insight_extraction",
     "ix2_evidence_linked_insight_attribution",
+    "ix3_structural_narrative_compression",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -780,6 +782,14 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     ix2_operator_summary = build_ix2_evidence_linked_operator_summary(insight_evidence_map=ix2_evidence_map, cross_run_delta_tracker=ix2_delta, evidence_strength_scorecard=ix2_scorecard)
     ix2_dashboard = build_ix2_dashboard_payload(insight_evidence_map=ix2_evidence_map, insight_lineage_index=ix2_lineage, cross_run_delta_tracker=ix2_delta, evidence_strength_scorecard=ix2_scorecard, delta_interpretation_summary=ix2_delta_summary, evidence_linked_operator_summary=ix2_operator_summary)
     ix2_certification = certify_ix2_evidence_linked_insight_attribution(dashboard_payload=ix2_dashboard)
+    ix3_clusters = build_ix3_insight_cluster_inventory(ix1_insight_priority_ranking=ix1_ranking, ix2_insight_evidence_map=ix2_evidence_map, ix2_cross_run_delta_tracker=ix2_delta)
+    ix3_redundancy = build_ix3_redundancy_and_overlap_analysis(insight_cluster_inventory=ix3_clusters)
+    ix3_narratives = build_ix3_compressed_structural_narratives(insight_cluster_inventory=ix3_clusters)
+    ix3_themes = build_ix3_dominant_theme_summary(insight_cluster_inventory=ix3_clusters)
+    ix3_priority = build_ix3_cluster_priority_ranking(insight_cluster_inventory=ix3_clusters)
+    ix3_brief = build_ix3_operator_narrative_brief(compressed_structural_narratives=ix3_narratives, insight_cluster_inventory=ix3_clusters, cluster_priority_ranking=ix3_priority, redundancy_and_overlap_analysis=ix3_redundancy)
+    ix3_dashboard = build_ix3_dashboard_payload(insight_cluster_inventory=ix3_clusters, redundancy_and_overlap_analysis=ix3_redundancy, compressed_structural_narratives=ix3_narratives, dominant_theme_summary=ix3_themes, cluster_priority_ranking=ix3_priority, operator_narrative_brief=ix3_brief)
+    ix3_certification = certify_ix3_structural_narrative_compression(dashboard_payload=ix3_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -859,6 +869,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("ix1_structural_insight_extraction_certification", ix1_certification),
         ("ix2_evidence_linked_insight_attribution", ix2_dashboard),
         ("ix2_evidence_linked_insight_attribution_certification", ix2_certification),
+        ("ix3_structural_narrative_compression", ix3_dashboard),
+        ("ix3_structural_narrative_compression_certification", ix3_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1461,6 +1473,23 @@ def render_ix2_evidence_linked_insight_attribution(view_model: Mapping[str, Any]
     st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
 
 
+
+
+def render_ix3_structural_narrative_compression(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("ix3_structural_narrative_compression") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping) or not payload:
+        return
+    st.markdown("### IX3 — Structural Narrative Compression & Insight Clustering")
+    st.markdown(str(payload.get("Structural Narrative Compression Overview", "")))
+    for k in ("Compressed Structural Narratives","Dominant Theme Summary","Cluster Priority Ranking","Redundancy and Overlap Analysis","Thin Evidence / Narrative Caution Flags","Insight Cluster Inventory","Operator Narrative Brief"):
+        st.markdown(f"#### {k}")
+        st.json(payload.get(k))
+    with st.expander("Governance/Boundary Constraints"):
+        st.json(payload.get("Governance/Boundary Constraints", {}))
+    st.caption(str(payload.get("Explicit Non-Predictive Notice", "")))
+    st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
+
+
 def render_cd4_expectation_drift_and_replay_saturation_intelligence(view_model: Mapping[str, Any], *, st: Any) -> None:
     payload = view_model.get("cd4_expectation_drift_and_replay_saturation_intelligence") if isinstance(view_model, Mapping) else {}
     st.subheader("CD4 — Expectation Drift & Replay Saturation Intelligence")
@@ -1642,6 +1671,7 @@ __all__ = [
     "render_cd5_operator_adjudication_assist",
     "render_ix1_structural_insight_extraction",
     "render_ix2_evidence_linked_insight_attribution",
+    "render_ix3_structural_narrative_compression",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",
