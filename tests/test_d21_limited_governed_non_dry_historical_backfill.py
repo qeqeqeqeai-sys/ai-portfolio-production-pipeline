@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from transmission_layers.expectation_failure.expectation_intelligence.d21_limited_governed_non_dry_historical_backfill import (
     execute_d21_limited_governed_non_dry_historical_backfill,
 )
@@ -60,14 +62,46 @@ def test_d21_first_and_second_run_insert_accounting_is_explicit_and_deterministi
         assert field in second
 
 
-def test_d21_allows_window_count_1_and_2_and_blocks_3_and_0():
+def test_d21_allows_window_count_1_2_3_and_blocks_4_and_0():
     allowed_1 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=1)
     allowed_2 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=2)
-    blocked_3 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=3)
+    allowed_3 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=3)
+    blocked_4 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=4)
     blocked_0 = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=0)
 
     assert allowed_1["status"] == "D21_LIMITED_BACKFILL_EXECUTED"
     assert allowed_2["status"] == "D21_LIMITED_BACKFILL_EXECUTED"
-    assert blocked_3["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
+    assert allowed_3["status"] == "D21_LIMITED_BACKFILL_EXECUTED"
+    assert blocked_4["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
     assert blocked_0["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
-    assert blocked_3["blocking_reasons"] == ["window_count_must_be_between_1_and_2"]
+    assert blocked_4["blocking_reasons"] == ["window_count_must_be_between_1_and_3"]
+
+
+def test_d21_blocks_negative_window_count():
+    blocked = execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count=-1)
+    assert blocked["status"] == "BACKFILL_WINDOW_COUNT_BLOCKED"
+    assert blocked["blocking_reasons"] == ["window_count_must_be_between_1_and_3"]
+
+
+def test_d21_blocks_non_numeric_window_count():
+    try:
+        execute_d21_limited_governed_non_dry_historical_backfill(client=C(), approval_flags=APPROVALS, window_count="abc")
+    except ValueError:
+        pass
+    else:
+        assert False, "expected ValueError for non-numeric window_count"
+
+
+def test_d21_workflow_window_count_range_and_approvals_unchanged():
+    workflow = Path(".github/workflows/d21_limited_governed_backfill.yml").read_text(encoding="utf-8")
+    assert "window_count must be 1, 2, or 3 for limited governed run" in workflow
+    assert "I_APPROVE_D21_NON_DRY_BACKFILL" in workflow
+    assert "I_APPROVE_APPEND_ONLY_PERSISTENCE" in workflow
+    assert "I_APPROVE_DUPLICATE_PREVENTION" in workflow
+    assert "I_APPROVE_CHECKSUM_LINEAGE" in workflow
+
+
+def test_d21_script_default_and_window_count_gate():
+    script = Path("scripts/run_d21_limited_governed_backfill.py").read_text(encoding="utf-8")
+    assert 'os.getenv("D21_WINDOW_COUNT", "1")' in script
+    assert "window_count_must_be_1_or_2_or_3_for_limited_governed_run" in script

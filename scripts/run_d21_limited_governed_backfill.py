@@ -51,8 +51,8 @@ def main() -> int:
         print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_be_integer"], window_count=window_count_raw), indent=2))
         return 2
 
-    if window_count not in {1, 2}:
-        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_be_1_or_2_for_limited_governed_run"], window_count=window_count), indent=2))
+    if window_count not in {1, 2, 3}:
+        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_be_1_or_2_or_3_for_limited_governed_run"], window_count=window_count), indent=2))
         return 2
 
     approval_failures = [f"{k}_invalid" for k, v in REQUIRED_APPROVALS.items() if approvals.get(k) != v]

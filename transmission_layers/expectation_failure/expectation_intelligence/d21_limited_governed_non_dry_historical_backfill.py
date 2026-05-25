@@ -44,8 +44,8 @@ def _collect_ids_and_checksums(rows: list[Mapping[str, Any]], kind: str) -> list
 
 def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, approval_flags: Mapping[str, Any] | None = None, window_count: int = 1) -> OrderedDict[str, Any]:
     n = int(window_count)
-    if n < 1 or n > 2:
-        return OrderedDict([("status", "BACKFILL_WINDOW_COUNT_BLOCKED"), ("window_count", n), ("blocking_reasons", ["window_count_must_be_between_1_and_2"]), ("future_expansion_policy", "window_count_3_requires_separate_patch_and_approval")])
+    if n < 1 or n > 3:
+        return OrderedDict([("status", "BACKFILL_WINDOW_COUNT_BLOCKED"), ("window_count", n), ("blocking_reasons", ["window_count_must_be_between_1_and_3"]), ("future_expansion_policy", "window_count_above_3_requires_separate_patch_and_approval")])
 
     governance = validate_d8_b4_execution_governance(dry_run=False, client=client, approval_flags=approval_flags)
     if governance.get("status") != "GOVERNANCE_OK":
