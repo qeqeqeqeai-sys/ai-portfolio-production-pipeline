@@ -1,0 +1,177 @@
+{
+  "deterministic_version": "LR6_DRY3R_FULL_UNIVERSE_REFINEMENT_V1",
+  "deterministic_seed": "LR6_DRY3R_FULL_UNIVERSE_REFINEMENT_SEED_V1",
+  "objective": "LR6-DRY3R deterministic refinement and saturation-risk diagnostics (dry-run only)",
+  "input_artifact_references": {
+    "pruned_universe": "configs/sde1c_pruned_entity_universe.yaml",
+    "sde1d_readiness": "configs/sde1d_semantic_ecosystem_readiness_certification.yaml",
+    "lr6r_readiness": "configs/lr6r_replay_ecology_reactivation_readiness.yaml",
+    "lr6_dry1": "configs/lr6_dry1_bounded_replay_ecology_diagnostic.yaml",
+    "lr6_dry2": "configs/lr6_dry2_expanded_replay_ecology_diagnostic.yaml",
+    "lr6_dry3": "configs/lr6_dry3_full_universe_replay_ecology_certification.yaml"
+  },
+  "threshold_gap_analysis": {
+    "diagnostic_readiness_score": 0.783225,
+    "readiness_threshold": 0.79,
+    "threshold_gap": 0.006775,
+    "gap_bps": 68,
+    "miss_type": "near_threshold_shortfall"
+  },
+  "saturation_driver_diagnostics": {
+    "saturation_risk_score": 0.454545,
+    "saturation_risk_delta_vs_dry2": 0.075757,
+    "top_concentration_ecosystems": [
+      {
+        "ecosystem": "ai_compute_core",
+        "share": 0.1
+      },
+      {
+        "ecosystem": "automation_robotics_industrial_ai",
+        "share": 0.096667
+      },
+      {
+        "ecosystem": "end_market_demand_validation",
+        "share": 0.096667
+      },
+      {
+        "ecosystem": "financing_rates_liquidity",
+        "share": 0.096667
+      }
+    ],
+    "ecosystem_share_spread": 0.033333,
+    "scale_effect_interpretation": "acceptable_expansion_pressure"
+  },
+  "monoculture_driver_diagnostics": {
+    "monoculture_risk_score": 0.454545,
+    "monoculture_risk_delta_vs_dry2": 0.075757,
+    "dominant_ecosystem_share": 0.1,
+    "dominance_interpretation": "no_single_ecosystem_monoculture"
+  },
+  "ecosystem_pressure_diagnostics": {
+    "low_connectivity_threshold": 2.0,
+    "low_information_entity_count": 300,
+    "low_information_entities_preview": [
+      {
+        "entity_id": "E001",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "ai_compute_core"
+      },
+      {
+        "entity_id": "E002",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "hyperscaler_cloud_demand"
+      },
+      {
+        "entity_id": "E003",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "semiconductor_supply_chain"
+      },
+      {
+        "entity_id": "E005",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "memory_networking_interconnect"
+      },
+      {
+        "entity_id": "E006",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "ai_application_software_monetization"
+      },
+      {
+        "entity_id": "E007",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "automation_robotics_industrial_ai"
+      },
+      {
+        "entity_id": "E008",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "energy_commodities_physical_inputs"
+      },
+      {
+        "entity_id": "E009",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "financing_rates_liquidity"
+      },
+      {
+        "entity_id": "E010",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "china_geopolitical_export_control_exposure"
+      },
+      {
+        "entity_id": "E011",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "end_market_demand_validation"
+      },
+      {
+        "entity_id": "E012",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "narrative_hype_speculation_amplification"
+      },
+      {
+        "entity_id": "E013",
+        "pressure_score": 2.0,
+        "primary_ecosystem": "ai_compute_core"
+      }
+    ],
+    "low_connectivity_cluster_signal": "present"
+  },
+  "recommended_refinement_actions": {
+    "preserve_full_universe_300": true,
+    "entity_exclusion_recommended": false,
+    "actions": [
+      "Apply stricter saturation interpretation in next dry-run certification review.",
+      "Annotate topology pressure for top concentration ecosystems before DRY4 scoring.",
+      "Enforce ecosystem pressure cap review gate when dominant ecosystem share exceeds 0.10.",
+      "Add dry-run escalation guardrail: require non-increasing saturation trend before activation proposal.",
+      "Recommend targeted SDE-1C rebalancing only if saturation delta remains above +0.05 in next full-universe dry-run.",
+      "Execute another full-universe dry-run iteration with unchanged readiness threshold."
+    ],
+    "calibration_adjustment_required": true
+  },
+  "refined_readiness_decision": {
+    "refined_diagnostic_readiness_score": 0.783225,
+    "readiness_threshold": 0.79,
+    "threshold_unchanged": true,
+    "refined_readiness_decision": "additional_dry_run_iteration_required",
+    "lr6_production_replay_activated": false
+  },
+  "dry_sequence_comparison": {
+    "window_size_progression": [
+      60,
+      120,
+      300,
+      300
+    ],
+    "readiness_score_progression": [
+      0.773737,
+      0.788203,
+      0.783225,
+      0.783225
+    ],
+    "saturation_progression": [
+      0.378788,
+      0.378788,
+      0.454545
+    ],
+    "monoculture_progression": [
+      0.378788,
+      0.378788,
+      0.454545
+    ],
+    "interpretation": "full_universe_scale_effect_with_stable_topology"
+  },
+  "governance_certification_metadata": {
+    "no_replay_execution": true,
+    "no_replay_waves": true,
+    "no_persistence_writes": true,
+    "no_direct_sql": true,
+    "no_external_apis": true,
+    "no_prediction_or_trading": true,
+    "no_autonomous_expansion": true,
+    "additive_architecture_preserved": true,
+    "deterministic_reproducibility_preserved": true,
+    "dry_run_only": true,
+    "lr6_production_replay_activated": false
+  },
+  "next_recommended_phase": "LR6-DRY4 full-universe replay ecology dry-run with saturation guardrails",
+  "lr6_production_replay_activated": false
+}
