@@ -38,6 +38,9 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_cd2_replay_novelty_prioritization,
     render_cd3_governed_novelty_guided_replay_expansion_plan,
     render_ix1_structural_insight_extraction,
+    render_ix2_evidence_linked_insight_attribution,
+    render_ix3_structural_narrative_compression,
+    render_ix4_interpretability_hardening,
     render_e6_expectation_executive_summary,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
@@ -126,6 +129,9 @@ def main() -> None:
     render_cd2_replay_novelty_prioritization(vm, st=st)
     render_cd3_governed_novelty_guided_replay_expansion_plan(vm, st=st)
     render_ix1_structural_insight_extraction(vm, st=st)
+    render_ix2_evidence_linked_insight_attribution(vm, st=st)
+    render_ix3_structural_narrative_compression(vm, st=st)
+    render_ix4_interpretability_hardening(vm, st=st)
     render_d7_intelligence_overview(vm, st=st)
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([

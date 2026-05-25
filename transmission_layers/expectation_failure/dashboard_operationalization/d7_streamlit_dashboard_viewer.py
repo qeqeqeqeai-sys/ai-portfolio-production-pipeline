@@ -19,6 +19,7 @@ from transmission_layers.expectation_failure.expectation_intelligence.cd4_expect
 from transmission_layers.expectation_failure.expectation_intelligence.ix1_structural_insight_extraction import build_ix1_structural_insight_inventory, build_ix1_structural_anomaly_detection, build_ix1_transition_pattern_findings, build_ix1_expectation_structure_findings, build_ix1_insight_priority_ranking, build_ix1_operator_insight_summary, build_ix1_dashboard_payload, certify_ix1_structural_insight_extraction
 from transmission_layers.expectation_failure.expectation_intelligence.ix2_evidence_linked_insight_attribution import build_ix2_insight_evidence_map, build_ix2_insight_lineage_index, build_ix2_cross_run_delta_tracker, build_ix2_evidence_strength_scorecard, build_ix2_delta_interpretation_summary, build_ix2_evidence_linked_operator_summary, build_ix2_dashboard_payload, certify_ix2_evidence_linked_insight_attribution
 from transmission_layers.expectation_failure.expectation_intelligence.ix3_structural_narrative_compression import build_ix3_insight_cluster_inventory, build_ix3_redundancy_and_overlap_analysis, build_ix3_compressed_structural_narratives, build_ix3_dominant_theme_summary, build_ix3_operator_narrative_brief, build_ix3_cluster_priority_ranking, build_ix3_dashboard_payload, certify_ix3_structural_narrative_compression
+from transmission_layers.expectation_failure.expectation_intelligence.ix4_interpretability_hardening import build_ix4_dashboard_payload, certify_ix4_interpretability_hardening
 from transmission_layers.expectation_failure.expectation_intelligence.cd5_operator_adjudication_assist import build_cd5_operator_review_checklists, build_cd5_decision_rationale_previews, build_cd5_operator_decision_guidance, build_cd5_governance_consistency_analysis, build_cd5_decision_audit_preview, build_cd5_operator_attention_summary, build_cd5_dashboard_payload, certify_cd5_operator_adjudication_assist
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
@@ -41,6 +42,7 @@ D7_RENDER_SECTION_ORDER = (
     "ix1_structural_insight_extraction",
     "ix2_evidence_linked_insight_attribution",
     "ix3_structural_narrative_compression",
+    "ix4_interpretability_hardening",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -790,6 +792,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     ix3_brief = build_ix3_operator_narrative_brief(compressed_structural_narratives=ix3_narratives, insight_cluster_inventory=ix3_clusters, cluster_priority_ranking=ix3_priority, redundancy_and_overlap_analysis=ix3_redundancy)
     ix3_dashboard = build_ix3_dashboard_payload(insight_cluster_inventory=ix3_clusters, redundancy_and_overlap_analysis=ix3_redundancy, compressed_structural_narratives=ix3_narratives, dominant_theme_summary=ix3_themes, cluster_priority_ranking=ix3_priority, operator_narrative_brief=ix3_brief)
     ix3_certification = certify_ix3_structural_narrative_compression(dashboard_payload=ix3_dashboard)
+    ix4_dashboard = build_ix4_dashboard_payload(ix3_cluster_inventory=ix3_clusters, ix3_cluster_priority_ranking=ix3_priority, ix3_compressed_structural_narratives=ix3_narratives, ix2_cross_run_delta_tracker=ix2_delta)
+    ix4_certification = certify_ix4_interpretability_hardening(dashboard_payload=ix4_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -871,6 +875,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("ix2_evidence_linked_insight_attribution_certification", ix2_certification),
         ("ix3_structural_narrative_compression", ix3_dashboard),
         ("ix3_structural_narrative_compression_certification", ix3_certification),
+        ("ix4_interpretability_hardening", ix4_dashboard),
+        ("ix4_interpretability_hardening_certification", ix4_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1489,6 +1495,21 @@ def render_ix3_structural_narrative_compression(view_model: Mapping[str, Any], *
     st.caption(str(payload.get("Explicit Non-Predictive Notice", "")))
     st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
 
+
+
+def render_ix4_interpretability_hardening(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("ix4_interpretability_hardening") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping) or not payload:
+        return
+    st.markdown("### IX4 — Interpretability Hardening & Narrative Explainability")
+    st.markdown(str(payload.get("Interpretability Hardening Overview", "")))
+    for k in ("Cluster Explainability Cards","Narrative Explainability Analysis","Interpretability Scorecard","Narrative Boundary Enforcement","Operator Explainability Summary","Auditability Preview"):
+        st.markdown(f"#### {k}")
+        st.json(payload.get(k))
+    with st.expander("Governance/Boundary Constraints"):
+        st.json(payload.get("Governance/Boundary Constraints", {}))
+    st.caption(str(payload.get("Explicit Non-Predictive Notice", "")))
+    st.caption(str(payload.get("Explicit Non-Execution Notice", "")))
 
 def render_cd4_expectation_drift_and_replay_saturation_intelligence(view_model: Mapping[str, Any], *, st: Any) -> None:
     payload = view_model.get("cd4_expectation_drift_and_replay_saturation_intelligence") if isinstance(view_model, Mapping) else {}
