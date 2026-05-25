@@ -1,0 +1,74 @@
+name: lr5_first_governed_replay_wave
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Default-safe mode. Must be false for non-dry execution."
+        required: true
+        default: "true"
+        type: string
+      d21_window_count:
+        description: "Bounded run size (1, 2, or 3 only)."
+        required: true
+        default: "1"
+        type: string
+      d21_window_offset:
+        description: "Deterministic non-negative integer offset."
+        required: true
+        default: "0"
+        type: string
+      execute_non_dry:
+        description: "Must equal I_APPROVE_D21_NON_DRY_BACKFILL"
+        required: false
+        default: ""
+        type: string
+      approve_append_only:
+        description: "Must equal I_APPROVE_APPEND_ONLY_PERSISTENCE"
+        required: false
+        default: ""
+        type: string
+      approve_duplicate_prevention:
+        description: "Must equal I_APPROVE_DUPLICATE_PREVENTION"
+        required: false
+        default: ""
+        type: string
+      approve_checksum_lineage:
+        description: "Must equal I_APPROVE_CHECKSUM_LINEAGE"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  lr5-first-wave:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      D21_WINDOW_COUNT: ${{ github.event.inputs.d21_window_count }}
+      D21_WINDOW_OFFSET: ${{ github.event.inputs.d21_window_offset }}
+      EXECUTE_NON_DRY: ${{ github.event.inputs.execute_non_dry }}
+      APPROVE_APPEND_ONLY: ${{ github.event.inputs.approve_append_only }}
+      APPROVE_DUPLICATE_PREVENTION: ${{ github.event.inputs.approve_duplicate_prevention }}
+      APPROVE_CHECKSUM_LINEAGE: ${{ github.event.inputs.approve_checksum_lineage }}
+      DRY_RUN: ${{ github.event.inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Governance warning and fail-closed validation
+        run: |
+          echo "WARNING: LR5 governed replay can perform non-dry persistence only with explicit approvals and bounded controls."
+          python - <<'PY'
+          import os
+          dry = str(os.getenv("DRY_RUN", "true")).strip().lower()
+          if dry != "false":
+            raise SystemExit("Fail-closed: DRY_RUN must be false for non-dry execution.")
+          PY
+      - name: Execute approved governed replay script only
+        run: PYTHONPATH=. python scripts/run_d21_limited_governed_backfill.py
+      - name: Stop after first bounded wave review support
+        run: PYTHONPATH=. python scripts/run_lr5_first_governed_replay_wave_review.py --execution-status GOVERNED_WORKFLOW_PATH --credential-status GITHUB_ACTIONS_REQUIRED
