@@ -100,6 +100,23 @@ from .h1_historical_density_expansion import (
     build_h1_report_payload,
     build_h1_report_markdown,
 )
+
+from .cd1_candidate_diversity_strengthening import (
+    CERTIFIED_CANDIDATE_DIVERSITY_STRENGTHENING,
+    DEGRADED_CANDIDATE_DIVERSITY_STRENGTHENING,
+    BLOCKED_CANDIDATE_DIVERSITY_STRENGTHENING,
+    CD1_TAXONOMY_CATEGORIES,
+    build_cd1_candidate_diversity_inventory,
+    build_cd1_diversity_gap_analysis,
+    build_cd1_candidate_diversity_taxonomy,
+    build_cd1_diversification_recommendations,
+    build_cd1_semantic_richness_assessment,
+    build_cd1_dashboard_payload,
+    certify_cd1_candidate_diversity_strengthening,
+    build_cd1_report_payload,
+    build_cd1_report_markdown,
+)
+
 from .h2_governed_replay_expansion_cycle import (
     CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE,
     DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE,
@@ -120,6 +137,19 @@ from .h2_governed_replay_expansion_cycle import (
 )
 
 __all__ = [
+    "build_cd1_report_markdown",
+    "build_cd1_report_payload",
+    "certify_cd1_candidate_diversity_strengthening",
+    "build_cd1_dashboard_payload",
+    "build_cd1_semantic_richness_assessment",
+    "build_cd1_diversification_recommendations",
+    "build_cd1_candidate_diversity_taxonomy",
+    "build_cd1_diversity_gap_analysis",
+    "build_cd1_candidate_diversity_inventory",
+    "CD1_TAXONOMY_CATEGORIES",
+    "BLOCKED_CANDIDATE_DIVERSITY_STRENGTHENING",
+    "DEGRADED_CANDIDATE_DIVERSITY_STRENGTHENING",
+    "CERTIFIED_CANDIDATE_DIVERSITY_STRENGTHENING",
     "build_e1_expectation_pressure_profile",
     "classify_e1_expectation_pressure_state",
     "build_e1_expectation_pressure_summary",
