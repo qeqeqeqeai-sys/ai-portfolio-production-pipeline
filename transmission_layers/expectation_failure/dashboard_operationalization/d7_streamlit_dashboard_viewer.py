@@ -14,6 +14,7 @@ from transmission_layers.expectation_failure.expectation_intelligence import bui
 
 from transmission_layers.expectation_failure.expectation_intelligence.d19_triage_explainability_continuity_taxonomy import build_d19_triage_explainability_inventory, build_d19_rank_change_rationale, build_d19_continuity_degradation_taxonomy, build_d19_constraint_escalation_summary, build_d19_regime_transition_impact_explanations, build_d19_operator_adjudication_notes, build_d19_dashboard_payload, certify_d19_triage_explainability
 from transmission_layers.expectation_failure.expectation_intelligence.h1_historical_density_expansion import build_h1_density_expansion_inventory, build_h1_density_gap_analysis, build_h1_expansion_plan, build_h1_operational_density_summary, build_h1_dashboard_payload, certify_h1_density_expansion
+from transmission_layers.expectation_failure.expectation_intelligence.h2_governed_replay_expansion_cycle import build_h2_pre_expansion_baseline, build_h2_governed_expansion_recommendation, build_h2_operator_execution_checklist, build_h2_d21_command_template, build_h2_post_expansion_comparison, build_h2_cycle_dashboard_payload, certify_h2_governed_replay_expansion_cycle
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -25,6 +26,7 @@ D7_RENDER_SECTION_ORDER = (
     "d18_cross_run_confidence_delta_operator_triage",
     "d19_triage_explainability_continuity_taxonomy",
     "h1_historical_density_expansion",
+    "h2_governed_replay_expansion_cycle",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -695,6 +697,13 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     h1_summary = build_h1_operational_density_summary(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis)
     h1_dashboard = build_h1_dashboard_payload(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis, expansion_plan=h1_plan, operational_density_summary=h1_summary)
     h1_certification = certify_h1_density_expansion(density_inventory=h1_inventory, density_gap_analysis=h1_gap_analysis, expansion_plan=h1_plan, dashboard_payload=h1_dashboard)
+    h2_baseline = build_h2_pre_expansion_baseline(h1_dashboard_payload=h1_dashboard, h1_inventory=h1_inventory, d7_view_model=None, h1_certification=h1_certification)
+    h2_recommendation = build_h2_governed_expansion_recommendation(h1_expansion_plan=h1_plan, pre_expansion_baseline=h2_baseline)
+    h2_checklist = build_h2_operator_execution_checklist(recommendation=h2_recommendation)
+    h2_command_template = build_h2_d21_command_template(recommendation=h2_recommendation)
+    h2_post = build_h2_post_expansion_comparison(pre_expansion_baseline=h2_baseline, post_h1_inventory=None)
+    h2_dashboard = build_h2_cycle_dashboard_payload(pre_expansion_baseline=h2_baseline, governed_expansion_recommendation=h2_recommendation, operator_execution_checklist=h2_checklist, d21_command_template=h2_command_template, post_expansion_comparison=h2_post)
+    h2_certification = certify_h2_governed_replay_expansion_cycle(pre_expansion_baseline=h2_baseline, governed_expansion_recommendation=h2_recommendation, operator_execution_checklist=h2_checklist, d21_command_template=h2_command_template, cycle_dashboard_payload=h2_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -756,6 +765,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("d19_triage_explainability_certification", d19_certification),
         ("h1_historical_density_expansion", h1_dashboard),
         ("h1_historical_density_expansion_certification", h1_certification),
+        ("h2_governed_replay_expansion_cycle", h2_dashboard),
+        ("h2_governed_replay_expansion_cycle_certification", h2_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1229,6 +1240,31 @@ def render_h1_historical_density_expansion(view_model: Mapping[str, Any], *, st:
         st.json(payload.get("Governance/Lineage Details", {}))
 
 
+def render_h2_governed_replay_expansion_cycle(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("h2_governed_replay_expansion_cycle") if isinstance(view_model, Mapping) else {}
+    if not isinstance(payload, Mapping) or not payload:
+        st.markdown("### H2 Governed Replay Expansion Execution Cycle")
+        st.caption("H2 governed replay expansion cycle is unavailable for this run.")
+        return
+    st.markdown("### H2 Governed Replay Expansion Execution Cycle")
+    st.markdown("**Governed Expansion Recommendation**")
+    st.json(payload.get("Governed Expansion Recommendation", {}))
+    st.markdown("**Pre-Expansion Baseline**")
+    st.json(payload.get("Pre-Expansion Baseline", {}))
+    st.markdown("**Operator Execution Checklist**")
+    for item in _as_list(payload.get("Operator Execution Checklist")):
+        row = _payload_map(item)
+        st.markdown(f"- {_render_value(row.get('step'))}: {_render_value(row.get('required'))}")
+    st.markdown("**D21 Command Template**")
+    st.code(_render_value(payload.get("D21 Command Template"), fallback="Unavailable"), language="bash")
+    post = _payload_map(payload.get("Post-Expansion Comparison"))
+    if post:
+        st.markdown("**Post-Expansion Comparison**")
+        st.json(post)
+    with st.expander("H2 Governance/Lineage Controls"):
+        st.json(payload.get("Governance/Lineage Controls", {}))
+
+
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
     plan = build_d7_render_plan(view_model)
     metrics = plan["overview_metrics"]
@@ -1376,6 +1412,8 @@ __all__ = [
     "build_d17_historical_confidence_lineage_render_plan",
     "render_d17_historical_confidence_lineage",
     "render_d18_cross_run_confidence_delta_operator_triage",
+    "render_h1_historical_density_expansion",
+    "render_h2_governed_replay_expansion_cycle",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",

@@ -100,6 +100,24 @@ from .h1_historical_density_expansion import (
     build_h1_report_payload,
     build_h1_report_markdown,
 )
+from .h2_governed_replay_expansion_cycle import (
+    CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE,
+    DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE,
+    BLOCKED_GOVERNED_REPLAY_EXPANSION_CYCLE,
+    H2_DENSITY_IMPROVED,
+    H2_DENSITY_UNCHANGED,
+    H2_DENSITY_DEGRADED,
+    H2_POST_RUN_INSUFFICIENT_DATA,
+    build_h2_pre_expansion_baseline,
+    build_h2_governed_expansion_recommendation,
+    build_h2_operator_execution_checklist,
+    build_h2_d21_command_template,
+    build_h2_post_expansion_comparison,
+    build_h2_cycle_dashboard_payload,
+    certify_h2_governed_replay_expansion_cycle,
+    build_h2_report_payload,
+    build_h2_report_markdown,
+)
 
 __all__ = [
     "build_e1_expectation_pressure_profile",
@@ -284,6 +302,23 @@ __all__ = [
     "certify_d17_confidence_lineage_enrichment",
     "build_d17_report_payload",
     "build_d17_report_markdown",
+
+    "CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE",
+    "DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE",
+    "BLOCKED_GOVERNED_REPLAY_EXPANSION_CYCLE",
+    "H2_DENSITY_IMPROVED",
+    "H2_DENSITY_UNCHANGED",
+    "H2_DENSITY_DEGRADED",
+    "H2_POST_RUN_INSUFFICIENT_DATA",
+    "build_h2_pre_expansion_baseline",
+    "build_h2_governed_expansion_recommendation",
+    "build_h2_operator_execution_checklist",
+    "build_h2_d21_command_template",
+    "build_h2_post_expansion_comparison",
+    "build_h2_cycle_dashboard_payload",
+    "certify_h2_governed_replay_expansion_cycle",
+    "build_h2_report_payload",
+    "build_h2_report_markdown",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
