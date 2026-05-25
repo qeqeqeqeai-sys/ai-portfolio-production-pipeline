@@ -15,6 +15,7 @@ from transmission_layers.expectation_failure.expectation_intelligence import bui
 from transmission_layers.expectation_failure.expectation_intelligence.d19_triage_explainability_continuity_taxonomy import build_d19_triage_explainability_inventory, build_d19_rank_change_rationale, build_d19_continuity_degradation_taxonomy, build_d19_constraint_escalation_summary, build_d19_regime_transition_impact_explanations, build_d19_operator_adjudication_notes, build_d19_dashboard_payload, certify_d19_triage_explainability
 from transmission_layers.expectation_failure.expectation_intelligence.h1_historical_density_expansion import build_h1_density_expansion_inventory, build_h1_density_gap_analysis, build_h1_expansion_plan, build_h1_operational_density_summary, build_h1_dashboard_payload, certify_h1_density_expansion
 from transmission_layers.expectation_failure.expectation_intelligence.h2_governed_replay_expansion_cycle import build_h2_pre_expansion_baseline, build_h2_governed_expansion_recommendation, build_h2_operator_execution_checklist, build_h2_d21_command_template, build_h2_post_expansion_comparison, build_h2_cycle_dashboard_payload, certify_h2_governed_replay_expansion_cycle
+from transmission_layers.expectation_failure.expectation_intelligence.cd4_expectation_drift_and_replay_saturation_intelligence import build_cd4_replay_drift_profile, build_cd4_semantic_saturation_analysis, build_cd4_expectation_decay_analysis, build_cd4_replay_freshness_scoring, build_cd4_replay_half_life_estimation, build_cd4_concentration_instability_analysis, build_cd4_operator_attention_queue, build_cd4_dashboard_payload, certify_cd4_expectation_drift_and_replay_saturation_intelligence
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -31,6 +32,7 @@ D7_RENDER_SECTION_ORDER = (
     "h3_cross_replay_structural_transition_intelligence",
     "cd2_replay_novelty_prioritization",
     "cd3_governed_novelty_guided_replay_expansion_plan",
+    "cd4_expectation_drift_and_replay_saturation_intelligence",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -737,6 +739,15 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     cd3_rationale = build_cd3_expansion_plan_rationale(expansion_plan=cd3_expansion_plan)
     cd3_dashboard = build_cd3_dashboard_payload(expansion_plan=cd3_expansion_plan, operator_review_queue=cd3_review_queue, rationale=cd3_rationale)
     cd3_certification = certify_cd3_governed_novelty_guided_replay_expansion_plan(candidate_set=cd3_candidate_set, expansion_plan=cd3_expansion_plan, dashboard_payload=cd3_dashboard, operator_review_queue=cd3_review_queue)
+    cd4_drift = build_cd4_replay_drift_profile(replay_candidates=cd2_pool, cd2_dashboard_payload=cd2_dashboard, cd3_dashboard_payload=cd3_dashboard)
+    cd4_saturation = build_cd4_semantic_saturation_analysis(replay_drift_profile=cd4_drift)
+    cd4_decay = build_cd4_expectation_decay_analysis(replay_drift_profile=cd4_drift, semantic_saturation_analysis=cd4_saturation)
+    cd4_fresh = build_cd4_replay_freshness_scoring(expectation_decay_analysis=cd4_decay, semantic_saturation_analysis=cd4_saturation)
+    cd4_half = build_cd4_replay_half_life_estimation(expectation_decay_analysis=cd4_decay, semantic_saturation_analysis=cd4_saturation)
+    cd4_conc = build_cd4_concentration_instability_analysis(replay_candidates=cd2_pool, semantic_saturation_analysis=cd4_saturation)
+    cd4_queue = build_cd4_operator_attention_queue(replay_freshness_scoring=cd4_fresh, expectation_decay_analysis=cd4_decay, concentration_instability_analysis=cd4_conc)
+    cd4_dashboard = build_cd4_dashboard_payload(replay_drift_profile=cd4_drift, semantic_saturation_analysis=cd4_saturation, expectation_decay_analysis=cd4_decay, replay_freshness_scoring=cd4_fresh, replay_half_life_estimation=cd4_half, concentration_instability_analysis=cd4_conc, operator_attention_queue=cd4_queue)
+    cd4_certification = certify_cd4_expectation_drift_and_replay_saturation_intelligence(dashboard_payload=cd4_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -808,6 +819,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("cd2_replay_novelty_prioritization_certification", cd2_certification),
         ("cd3_governed_novelty_guided_replay_expansion_plan", cd3_dashboard),
         ("cd3_governed_novelty_guided_replay_expansion_plan_certification", cd3_certification),
+        ("cd4_expectation_drift_and_replay_saturation_intelligence", cd4_dashboard),
+        ("cd4_expectation_drift_and_replay_saturation_intelligence_certification", cd4_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1377,6 +1390,18 @@ def render_cd3_governed_novelty_guided_replay_expansion_plan(view_model: Mapping
     st.error(str(payload.get("Explicit Non-Execution Notice", "CD3 is plan-only and not execution approval.")))
 
 
+
+
+def render_cd4_expectation_drift_and_replay_saturation_intelligence(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("cd4_expectation_drift_and_replay_saturation_intelligence") if isinstance(view_model, Mapping) else {}
+    st.subheader("CD4 — Expectation Drift & Replay Saturation Intelligence")
+    for key in ("Expectation Drift Overview", "Replay Freshness Scorecard", "Semantic Saturation Analysis", "Expectation Decay Analysis", "Replay Half-Life Estimation", "Concentration Instability Summary", "Operator Attention Queue"):
+        st.markdown(f"### {key}")
+        st.json(payload.get(key, [] if "Queue" in key or "Analysis" in key or "Overview" in key or "Scorecard" in key or "Estimation" in key or "Summary" in key else {}))
+    st.markdown("### Governance & Boundary Constraints")
+    st.json(payload.get("Governance & Boundary Constraints", {}))
+    st.error(str(payload.get("Explicit Non-Execution Notice", "CD4 is read-only recommendation intelligence; no replay execution.")))
+
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
     plan = build_d7_render_plan(view_model)
     metrics = plan["overview_metrics"]
@@ -1530,6 +1555,7 @@ __all__ = [
     "render_h3_cross_replay_structural_transition_intelligence",
     "render_cd2_replay_novelty_prioritization",
     "render_cd3_governed_novelty_guided_replay_expansion_plan",
+    "render_cd4_expectation_drift_and_replay_saturation_intelligence",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",
