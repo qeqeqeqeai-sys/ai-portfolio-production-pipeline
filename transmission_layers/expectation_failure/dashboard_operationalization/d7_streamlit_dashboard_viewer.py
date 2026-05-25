@@ -16,6 +16,7 @@ from transmission_layers.expectation_failure.expectation_intelligence.d19_triage
 from transmission_layers.expectation_failure.expectation_intelligence.h1_historical_density_expansion import build_h1_density_expansion_inventory, build_h1_density_gap_analysis, build_h1_expansion_plan, build_h1_operational_density_summary, build_h1_dashboard_payload, certify_h1_density_expansion
 from transmission_layers.expectation_failure.expectation_intelligence.h2_governed_replay_expansion_cycle import build_h2_pre_expansion_baseline, build_h2_governed_expansion_recommendation, build_h2_operator_execution_checklist, build_h2_d21_command_template, build_h2_post_expansion_comparison, build_h2_cycle_dashboard_payload, certify_h2_governed_replay_expansion_cycle
 from transmission_layers.expectation_failure.expectation_intelligence.cd4_expectation_drift_and_replay_saturation_intelligence import build_cd4_replay_drift_profile, build_cd4_semantic_saturation_analysis, build_cd4_expectation_decay_analysis, build_cd4_replay_freshness_scoring, build_cd4_replay_half_life_estimation, build_cd4_concentration_instability_analysis, build_cd4_operator_attention_queue, build_cd4_dashboard_payload, certify_cd4_expectation_drift_and_replay_saturation_intelligence
+from transmission_layers.expectation_failure.expectation_intelligence.cd5_operator_adjudication_assist import build_cd5_operator_review_checklists, build_cd5_decision_rationale_previews, build_cd5_operator_decision_guidance, build_cd5_governance_consistency_analysis, build_cd5_decision_audit_preview, build_cd5_operator_attention_summary, build_cd5_dashboard_payload, certify_cd5_operator_adjudication_assist
 
 D7_SCHEMA_VERSION = "d7_streamlit_dashboard_viewer_v1"
 D7_MODULE_VERSION = "1.3.0"
@@ -33,6 +34,7 @@ D7_RENDER_SECTION_ORDER = (
     "cd2_replay_novelty_prioritization",
     "cd3_governed_novelty_guided_replay_expansion_plan",
     "cd4_expectation_drift_and_replay_saturation_intelligence",
+    "cd5_operator_adjudication_assist",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -748,6 +750,15 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     cd4_queue = build_cd4_operator_attention_queue(replay_freshness_scoring=cd4_fresh, expectation_decay_analysis=cd4_decay, concentration_instability_analysis=cd4_conc)
     cd4_dashboard = build_cd4_dashboard_payload(replay_drift_profile=cd4_drift, semantic_saturation_analysis=cd4_saturation, expectation_decay_analysis=cd4_decay, replay_freshness_scoring=cd4_fresh, replay_half_life_estimation=cd4_half, concentration_instability_analysis=cd4_conc, operator_attention_queue=cd4_queue)
     cd4_certification = certify_cd4_expectation_drift_and_replay_saturation_intelligence(dashboard_payload=cd4_dashboard)
+
+    cd5_checklists = build_cd5_operator_review_checklists(replay_candidates=cd2_pool, cd3_dashboard_payload=cd3_dashboard, cd4_dashboard_payload=cd4_dashboard)
+    cd5_rationale = build_cd5_decision_rationale_previews(replay_candidates=cd2_pool, cd3_dashboard_payload=cd3_dashboard, cd4_dashboard_payload=cd4_dashboard)
+    cd5_guidance = build_cd5_operator_decision_guidance(operator_review_checklists=cd5_checklists, decision_rationale_previews=cd5_rationale)
+    cd5_consistency = build_cd5_governance_consistency_analysis(operator_review_checklists=cd5_checklists, operator_decision_guidance=cd5_guidance, decision_rationale_previews=cd5_rationale)
+    cd5_audit = build_cd5_decision_audit_preview(operator_review_checklists=cd5_checklists, decision_rationale_previews=cd5_rationale, operator_decision_guidance=cd5_guidance)
+    cd5_attention = build_cd5_operator_attention_summary(operator_decision_guidance=cd5_guidance, decision_rationale_previews=cd5_rationale)
+    cd5_dashboard = build_cd5_dashboard_payload(operator_review_checklists=cd5_checklists, decision_rationale_previews=cd5_rationale, operator_decision_guidance=cd5_guidance, governance_consistency_analysis=cd5_consistency, decision_audit_preview=cd5_audit, operator_attention_summary=cd5_attention)
+    cd5_certification = certify_cd5_operator_adjudication_assist(dashboard_payload=cd5_dashboard)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -821,6 +832,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("cd3_governed_novelty_guided_replay_expansion_plan_certification", cd3_certification),
         ("cd4_expectation_drift_and_replay_saturation_intelligence", cd4_dashboard),
         ("cd4_expectation_drift_and_replay_saturation_intelligence_certification", cd4_certification),
+        ("cd5_operator_adjudication_assist", cd5_dashboard),
+        ("cd5_operator_adjudication_assist_certification", cd5_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1402,6 +1415,20 @@ def render_cd4_expectation_drift_and_replay_saturation_intelligence(view_model: 
     st.json(payload.get("Governance & Boundary Constraints", {}))
     st.error(str(payload.get("Explicit Non-Execution Notice", "CD4 is read-only recommendation intelligence; no replay execution.")))
 
+
+
+def render_cd5_operator_adjudication_assist(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("cd5_operator_adjudication_assist") if isinstance(view_model, Mapping) else {}
+    if not payload:
+        st.caption("CD5 operator adjudication assist unavailable.")
+        return
+    st.markdown("### CD5 — Operator Adjudication Assist")
+    for section in ("Operator Decision Guidance", "Governance Consistency Analysis", "Decision Rationale Previews", "Decision Audit Preview", "Operator Attention Summary"):
+        st.markdown(f"**{section}**")
+        st.json(payload.get(section))
+    with st.expander("Governance/Boundary Constraints"):
+        st.json(payload.get("Governance/Boundary Constraints"))
+    st.caption(str(payload.get("Explicit Non-Execution Notice") or ""))
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
     plan = build_d7_render_plan(view_model)
     metrics = plan["overview_metrics"]
@@ -1556,6 +1583,7 @@ __all__ = [
     "render_cd2_replay_novelty_prioritization",
     "render_cd3_governed_novelty_guided_replay_expansion_plan",
     "render_cd4_expectation_drift_and_replay_saturation_intelligence",
+    "render_cd5_operator_adjudication_assist",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",

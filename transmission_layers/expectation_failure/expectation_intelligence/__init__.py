@@ -487,6 +487,20 @@ __all__ = [
     "BLOCKED_EXPECTATION_DRIFT_AND_REPLAY_SATURATION_INTELLIGENCE",
     "DEGRADED_EXPECTATION_DRIFT_AND_REPLAY_SATURATION_INTELLIGENCE",
     "CERTIFIED_EXPECTATION_DRIFT_AND_REPLAY_SATURATION_INTELLIGENCE",
+
+    "build_cd5_operator_review_checklists",
+    "build_cd5_decision_rationale_previews",
+    "build_cd5_operator_decision_guidance",
+    "build_cd5_governance_consistency_analysis",
+    "build_cd5_decision_audit_preview",
+    "build_cd5_operator_attention_summary",
+    "build_cd5_dashboard_payload",
+    "certify_cd5_operator_adjudication_assist",
+    "build_cd5_report_payload",
+    "build_cd5_report_markdown",
+    "CERTIFIED_OPERATOR_ADJUDICATION_ASSIST",
+    "DEGRADED_OPERATOR_ADJUDICATION_ASSIST",
+    "BLOCKED_OPERATOR_ADJUDICATION_ASSIST",
 ]
 
 from .d8_evidence_prioritization_operational_insight import (
@@ -690,3 +704,6 @@ from .cd4_expectation_drift_and_replay_saturation_intelligence import (
     build_cd4_report_payload,
     build_cd4_report_markdown,
 )
+
+
+from .cd5_operator_adjudication_assist import *
