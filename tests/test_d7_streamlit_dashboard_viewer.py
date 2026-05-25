@@ -22,6 +22,7 @@ from transmission_layers.expectation_failure.dashboard_operationalization.d7_str
     render_e6_expectation_executive_summary,
     render_d7_narrative_sections,
     render_d7_supervisor_interpretation,
+    render_cd2_replay_novelty_prioritization,
     load_d7_dashboard_evidence_maps,
     load_d7_dashboard_findings,
     load_d7_dashboard_narratives,
@@ -379,11 +380,12 @@ def test_d7_prefers_post_execution_audit_record_over_planned_row():
 def test_d7_renderer_helper_api_presence_and_ordering_constant():
     assert D7_RENDER_SECTION_ORDER == (
         "e6_expectation_executive_summary", "d15_historical_operational_intelligence", "d16_historical_findings_operator_narrative", "d17_historical_confidence_lineage", "d18_cross_run_confidence_delta_operator_triage",
-            "d19_triage_explainability_continuity_taxonomy", "h1_historical_density_expansion", "h2_governed_replay_expansion_cycle", "cd1_candidate_diversity_strengthening", "h3_cross_replay_structural_transition_intelligence", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
+            "d19_triage_explainability_continuity_taxonomy", "h1_historical_density_expansion", "h2_governed_replay_expansion_cycle", "cd1_candidate_diversity_strengthening", "h3_cross_replay_structural_transition_intelligence", "cd2_replay_novelty_prioritization", "intelligence_overview", "supervisor_interpretation", "key_finding_cards", "narrative_sections", "evidence_highlights", "operational_integrity_overview", "replay_evidence_density_summary", "governance_debug_archive"
     )
     assert callable(render_e6_expectation_executive_summary)
     assert callable(render_d15_historical_operational_intelligence)
     assert callable(render_d16_historical_findings_operator_narrative)
+    assert callable(render_cd2_replay_novelty_prioritization)
     assert callable(render_d7_intelligence_overview)
     assert callable(render_d7_supervisor_interpretation)
     assert callable(render_d7_finding_cards)
