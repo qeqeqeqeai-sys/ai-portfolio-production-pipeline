@@ -1,0 +1,81 @@
+deterministic_version: LR6_GOV_FREEZE_V1
+deterministic_seed: LR6_GOV_FREEZE_SEED_V1
+governance_inventory:
+  active_core_governance:
+    - bounded_replay_windows
+    - dry_run_first_policy
+    - saturation_guardrails
+    - monoculture_caps
+    - rollback_conditions
+    - observability_requirements
+    - deterministic_reproducibility
+    - no_direct_sql_enforcement
+    - additive_architecture_enforcement
+  obsolete_recursive_governance:
+    - repeated_certification_recursion
+    - repeated_approval_preparation_recursion
+    - repeated_review_recursion
+    - governance_of_governance_layers
+    - operator_decision_recursion_layers
+active_governance_layers:
+  - bounded_replay_windows
+  - dry_run_first_policy
+  - saturation_guardrails
+  - monoculture_caps
+  - rollback_conditions
+  - observability_requirements
+  - deterministic_reproducibility
+  - no_direct_sql_enforcement
+  - additive_architecture_enforcement
+frozen_governance_layers:
+  - repeated_certification_recursion
+  - repeated_approval_preparation_recursion
+  - repeated_review_recursion
+  - governance_of_governance_layers
+  - operator_decision_recursion_layers
+experimental_mode_rules:
+  - lightweight_replay_experimentation
+  - bounded_dry_runs
+  - reduced_certification_recursion
+  - no_persistence_by_default
+  - fast_semantic_iteration
+  - deterministic_execution
+  - bounded_execution_scope
+governed_mode_rules:
+  - full_governance
+  - approvals_required
+  - persistence_controls
+  - replay_lineage
+  - escalation_gates
+  - rollback_authority
+retained_safety_rails:
+  - bounded_replay_windows
+  - dry_run_first_policy
+  - saturation_guardrails
+  - monoculture_caps
+  - rollback_conditions
+  - observability_requirements
+  - deterministic_reproducibility
+  - no_direct_sql_enforcement
+  - additive_architecture_enforcement
+governance_recursion_diagnostics:
+  recursive_layer_count: 5
+  governance_recursion_risk: contained_by_freeze
+  active_recursive_layers: 0
+retention_policy:
+  policy_name: lr6_governance_freeze_retention_policy
+  historical_governance_deleted: false
+  retention_mode: archive_and_reference_only
+  interpretability_preserved: true
+  additive_architecture_preserved: true
+governance_certification_metadata:
+  governance_freeze_certified: true
+  no_replay_execution: true
+  no_replay_waves: true
+  no_persistence_writes: true
+  no_direct_sql: true
+  no_external_apis: true
+  no_prediction_or_trading: true
+  deterministic_reproducibility_preserved: true
+  historical_governance_deleted: false
+next_recommended_phase: LR6-OBS-SHIFT-1 replay observation and semantic evolution acceleration under frozen governance baseline
