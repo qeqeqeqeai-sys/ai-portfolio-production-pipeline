@@ -1,0 +1,98 @@
+{
+  "deterministic_version": "LR6_GOV_DEC_OPERATOR_DECISION_RECORD_V1",
+  "deterministic_seed": "LR6_GOV_DEC_OPERATOR_DECISION_RECORD_SEED_V1",
+  "objective": "Deterministic operator decision-record layer for LR6 governed activation request without execution",
+  "input_artifact_references": {
+    "lr6_gov_act2_config": "configs/lr6_gov_act2_operator_complete_activation_request_package.yaml",
+    "lr6_gov_act2_report": "reports/lr6_gov_act2_operator_complete_activation_request_package.md",
+    "lr6_gov_act1": "configs/lr6_gov_act1_bounded_activation_review.yaml",
+    "lr6_dry4": "configs/lr6_dry4_full_universe_saturation_guardrails.yaml"
+  },
+  "request_summary": {
+    "source_certification_outcome": "ready_for_operator_decision",
+    "proposed_bounded_scope": {
+      "entity_count": 90,
+      "window_days": 30
+    },
+    "request_ready_for_operator_decision": true
+  },
+  "required_approval_phrases": {
+    "required_primary_phrase": "APPROVE_LR6_GOVERNED_BOUNDED_ACTIVATION_PHASE1_NO_PRODUCTION_REPLAY_EXECUTION",
+    "required_secondary_phrases": [
+      "APPROVED_LR6_GOV_ACT2_SCOPE_90_ENTITY_30_DAY",
+      "CONFIRMED_LR6_GOV_ACT2_MONOCULTURE_WATCH_ACTIVE",
+      "CONFIRMED_LR6_GOV_ACT2_SATURATION_WATCH_ACTIVE",
+      "CONFIRMED_LR6_GOV_ACT2_PAUSE_AND_ROLLBACK_AUTHORITY_READY"
+    ],
+    "required_phrase_inventory": [
+      "APPROVE_LR6_GOVERNED_BOUNDED_ACTIVATION_PHASE1_NO_PRODUCTION_REPLAY_EXECUTION",
+      "APPROVED_LR6_GOV_ACT2_SCOPE_90_ENTITY_30_DAY",
+      "CONFIRMED_LR6_GOV_ACT2_MONOCULTURE_WATCH_ACTIVE",
+      "CONFIRMED_LR6_GOV_ACT2_SATURATION_WATCH_ACTIVE",
+      "CONFIRMED_LR6_GOV_ACT2_PAUSE_AND_ROLLBACK_AUTHORITY_READY"
+    ],
+    "provided_approval_phrase_placeholders": {
+      "APPROVE_LR6_GOVERNED_BOUNDED_ACTIVATION_PHASE1_NO_PRODUCTION_REPLAY_EXECUTION": null,
+      "APPROVED_LR6_GOV_ACT2_SCOPE_90_ENTITY_30_DAY": null,
+      "CONFIRMED_LR6_GOV_ACT2_MONOCULTURE_WATCH_ACTIVE": null,
+      "CONFIRMED_LR6_GOV_ACT2_SATURATION_WATCH_ACTIVE": null,
+      "CONFIRMED_LR6_GOV_ACT2_PAUSE_AND_ROLLBACK_AUTHORITY_READY": null
+    }
+  },
+  "approval_validation": {
+    "all_required_phrases_explicitly_supplied": false,
+    "missing_required_phrases": [
+      "APPROVE_LR6_GOVERNED_BOUNDED_ACTIVATION_PHASE1_NO_PRODUCTION_REPLAY_EXECUTION",
+      "APPROVED_LR6_GOV_ACT2_SCOPE_90_ENTITY_30_DAY",
+      "CONFIRMED_LR6_GOV_ACT2_MONOCULTURE_WATCH_ACTIVE",
+      "CONFIRMED_LR6_GOV_ACT2_SATURATION_WATCH_ACTIVE",
+      "CONFIRMED_LR6_GOV_ACT2_PAUSE_AND_ROLLBACK_AUTHORITY_READY"
+    ],
+    "approval_inferred_from_artifacts": false,
+    "approval_validation_status": "incomplete"
+  },
+  "decision_state": {
+    "decision_state": "pending_operator_decision",
+    "approval_recorded": false,
+    "default_decision_state": "pending_operator_decision",
+    "lr6_production_replay_activated": false
+  },
+  "residual_risk_acknowledgement": {
+    "residual_risk_acknowledgement_required": true,
+    "residual_risk_checklist": {
+      "monoculture_dominance_watch_active": false,
+      "operator_approvals_not_completed": false,
+      "bounded_activation_operational_variance": false
+    }
+  },
+  "deferral_rejection_paths": {
+    "paths": [
+      "defer_for_missing_approval_phrases",
+      "reject_due_to_unacknowledged_residual_risk",
+      "defer_for_governance_boundary_revalidation",
+      "reject_due_to_scope_or_window_mismatch"
+    ]
+  },
+  "governance_boundary_review": {
+    "no_replay_execution": true,
+    "no_replay_waves": true,
+    "no_persistence_writes": true,
+    "no_direct_sql": true,
+    "no_external_apis": true,
+    "no_prediction_or_trading": true,
+    "additive_architecture_preserved": true,
+    "deterministic_reproducibility_preserved": true,
+    "interpretability_preserved": true,
+    "lr6_production_replay_activated": false
+  },
+  "certification_outcome": {
+    "decision_record_certified": true,
+    "certification_outcome": "ready_for_operator_decision_recording",
+    "operator_decision_state": "pending_operator_decision",
+    "approval_validation_status": "incomplete",
+    "lr6_production_replay_activated": false,
+    "no_execution_performed": true
+  },
+  "next_recommended_phase": "LR6-GOV-EXEC-PREP \u2014 Governed Execution Preparation",
+  "lr6_production_replay_activated": false
+}
