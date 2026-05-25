@@ -151,6 +151,27 @@ from .cd2_replay_novelty_prioritization import (
     build_cd2_report_markdown,
 )
 
+
+from .cd3_governed_novelty_guided_replay_expansion_plan import (
+    CERTIFIED_GOVERNED_NOVELTY_GUIDED_REPLAY_EXPANSION_PLAN,
+    DEGRADED_GOVERNED_NOVELTY_GUIDED_REPLAY_EXPANSION_PLAN,
+    BLOCKED_GOVERNED_NOVELTY_GUIDED_REPLAY_EXPANSION_PLAN,
+    ELIGIBLE_FOR_OPERATOR_REVIEW,
+    DEFER_SATURATED_OR_REPETITIVE,
+    DEFER_GOVERNANCE_INCOMPLETE,
+    DEFER_INSUFFICIENT_DATA,
+    DEFER_LOW_MARGINAL_INFORMATION,
+    build_cd3_replay_expansion_candidate_set,
+    build_cd3_bounded_expansion_plan,
+    build_cd3_operator_review_queue,
+    build_cd3_governance_preflight_checklist,
+    build_cd3_expansion_plan_rationale,
+    build_cd3_dashboard_payload,
+    certify_cd3_governed_novelty_guided_replay_expansion_plan,
+    build_cd3_report_payload,
+    build_cd3_report_markdown,
+)
+
 from .h2_governed_replay_expansion_cycle import (
     CERTIFIED_GOVERNED_REPLAY_EXPANSION_CYCLE,
     DEGRADED_GOVERNED_REPLAY_EXPANSION_CYCLE,
@@ -171,6 +192,23 @@ from .h2_governed_replay_expansion_cycle import (
 )
 
 __all__ = [
+    "build_cd3_report_markdown",
+    "build_cd3_report_payload",
+    "certify_cd3_governed_novelty_guided_replay_expansion_plan",
+    "build_cd3_dashboard_payload",
+    "build_cd3_expansion_plan_rationale",
+    "build_cd3_governance_preflight_checklist",
+    "build_cd3_operator_review_queue",
+    "build_cd3_bounded_expansion_plan",
+    "build_cd3_replay_expansion_candidate_set",
+    "DEFER_LOW_MARGINAL_INFORMATION",
+    "DEFER_INSUFFICIENT_DATA",
+    "DEFER_GOVERNANCE_INCOMPLETE",
+    "DEFER_SATURATED_OR_REPETITIVE",
+    "ELIGIBLE_FOR_OPERATOR_REVIEW",
+    "BLOCKED_GOVERNED_NOVELTY_GUIDED_REPLAY_EXPANSION_PLAN",
+    "DEGRADED_GOVERNED_NOVELTY_GUIDED_REPLAY_EXPANSION_PLAN",
+    "CERTIFIED_GOVERNED_NOVELTY_GUIDED_REPLAY_EXPANSION_PLAN",
     "build_cd2_report_markdown",
     "build_cd2_report_payload",
     "certify_cd2_replay_novelty_prioritization",
