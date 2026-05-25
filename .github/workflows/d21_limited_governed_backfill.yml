@@ -1,0 +1,104 @@
+name: d21_limited_governed_backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_count:
+        description: "First live run safety lock (must be exactly 1)"
+        required: true
+        default: "1"
+        type: string
+      execute_non_dry:
+        description: "Must equal I_APPROVE_D21_NON_DRY_BACKFILL"
+        required: true
+        type: string
+      approve_append_only:
+        description: "Must equal I_APPROVE_APPEND_ONLY_PERSISTENCE"
+        required: true
+        type: string
+      approve_duplicate_prevention:
+        description: "Must equal I_APPROVE_DUPLICATE_PREVENTION"
+        required: true
+        type: string
+      approve_checksum_lineage:
+        description: "Must equal I_APPROVE_CHECKSUM_LINEAGE"
+        required: true
+        type: string
+
+jobs:
+  governed-window-1-backfill:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      D21_WINDOW_COUNT: ${{ github.event.inputs.window_count }}
+      EXECUTE_NON_DRY: ${{ github.event.inputs.execute_non_dry }}
+      APPROVE_APPEND_ONLY: ${{ github.event.inputs.approve_append_only }}
+      APPROVE_DUPLICATE_PREVENTION: ${{ github.event.inputs.approve_duplicate_prevention }}
+      APPROVE_CHECKSUM_LINEAGE: ${{ github.event.inputs.approve_checksum_lineage }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt || true
+
+      - name: Targeted tests
+        run: |
+          python -m pytest -q \
+            tests/test_d21_limited_governed_non_dry_historical_backfill.py \
+            tests/test_d8_b4_governed_replay_persistence_execution.py \
+            tests/test_d8_c_persisted_replay_readback_dashboard_certification.py
+
+      - name: Governance + secret preflight
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+
+          required_approvals = {
+            "execute_non_dry": "I_APPROVE_D21_NON_DRY_BACKFILL",
+            "approve_append_only": "I_APPROVE_APPEND_ONLY_PERSISTENCE",
+            "approve_duplicate_prevention": "I_APPROVE_DUPLICATE_PREVENTION",
+            "approve_checksum_lineage": "I_APPROVE_CHECKSUM_LINEAGE",
+          }
+
+          def fp(v: str | None) -> str:
+            if not v:
+              return "missing"
+            return hashlib.sha256(v.encode("utf-8")).hexdigest()[:12]
+
+          window_count = str(os.getenv("D21_WINDOW_COUNT", "")).strip()
+          if window_count != "1":
+            raise SystemExit("window_count must be exactly 1 for first live run")
+
+          for key, expected in required_approvals.items():
+            env_key = key.upper()
+            if str(os.getenv(env_key, "")).strip() != expected:
+              raise SystemExit(f"required approval phrase mismatch: {key}")
+
+          supabase_url = os.getenv("SUPABASE_URL")
+          supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+          if not supabase_url or not supabase_service_role_key:
+            raise SystemExit("missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+
+          print(json.dumps({
+            "supabase_url_present": bool(supabase_url),
+            "supabase_service_role_key_present": bool(supabase_service_role_key),
+            "supabase_url_fingerprint": fp(supabase_url),
+            "supabase_service_role_key_fingerprint": fp(supabase_service_role_key),
+            "window_count": window_count,
+            "preflight_status": "PASS"
+          }, indent=2))
+          PY
+
+      - name: Execute D21 governed window 1 backfill
+        run: |
+          PYTHONPATH=. python scripts/run_d21_limited_governed_backfill.py
