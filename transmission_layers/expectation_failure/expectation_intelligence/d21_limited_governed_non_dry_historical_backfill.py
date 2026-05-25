@@ -28,6 +28,20 @@ def _windowed_payload(window_index: int) -> OrderedDict[str, Any]:
     return OrderedDict([("sample_observations", obs)])
 
 
+def _read_replay_and_manifest_rows(client: Any) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+    replay_rows = list(getattr(client.table("dashboard_replay_metadata_records").select("*").execute(), "data", []) or [])
+    manifest_rows = list(getattr(client.table("dashboard_export_manifests").select("*").execute(), "data", []) or [])
+    return replay_rows, manifest_rows
+
+
+def _collect_ids_and_checksums(rows: list[Mapping[str, Any]], kind: str) -> list[str]:
+    if kind == "replay":
+        vals = [str(r.get("replay_id") or r.get("record_id") or "").strip() for r in rows if isinstance(r, Mapping)]
+    else:
+        vals = [str(r.get("export_checksum") or r.get("manifest_checksum") or "").strip() for r in rows if isinstance(r, Mapping)]
+    return sorted({v for v in vals if v})
+
+
 def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, approval_flags: Mapping[str, Any] | None = None, window_count: int = 1) -> OrderedDict[str, Any]:
     n = int(window_count)
     if n < 1 or n > 3:
@@ -37,20 +51,58 @@ def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, app
     if governance.get("status") != "GOVERNANCE_OK":
         return OrderedDict([("status", "REPLAY_PERSISTENCE_GOVERNANCE_BLOCKED"), ("governance", governance), ("window_count", n)])
 
+    replay_rows_before, manifest_rows_before = _read_replay_and_manifest_rows(client)
+    replay_ids_before = set(_collect_ids_and_checksums(replay_rows_before, "replay"))
+    manifest_checksums_before = set(_collect_ids_and_checksums(manifest_rows_before, "manifest"))
+
     runs: list[OrderedDict[str, Any]] = []
-    inserted_replay = 0
-    inserted_manifest = 0
     for i in range(n):
         payload = _windowed_payload(i)
         d6 = execute_d6_operational_proving_cycle(payload=payload, client=client, dry_run=False)
         run = execute_d8_b4_governed_replay_persistence(client=client, approval_flags=approval_flags, dry_run=False)
         readback = run.get("readback") or {}
-        inserted_replay = max(inserted_replay, int(readback.get("replay_metadata_row_count") or 0))
-        inserted_manifest = max(inserted_manifest, int(readback.get("manifest_row_count") or 0))
         runs.append(OrderedDict([("window_index", i + 1), ("as_of_date", payload["sample_observations"][0]["as_of_date"]), ("d6_cycle_checksum", d6.get("cycle_checksum")), ("execution_status", run.get("status")), ("audit_manifest", run.get("audit_manifest")), ("readback", readback)]))
 
-    post = build_d8_b4_post_execution_readback(client=client)
     rerun = execute_d8_b4_governed_replay_persistence(client=client, approval_flags=approval_flags, dry_run=False)
+
+    replay_rows_after, manifest_rows_after = _read_replay_and_manifest_rows(client)
+    replay_ids_after = set(_collect_ids_and_checksums(replay_rows_after, "replay"))
+    manifest_checksums_after = set(_collect_ids_and_checksums(manifest_rows_after, "manifest"))
+
+    post = build_d8_b4_post_execution_readback(client=client)
+    attempted_replay = len(list(post.get("latest_replay_ids") or []))
+    attempted_manifest = len(list(post.get("latest_manifest_checksums") or []))
+
+    newly_inserted_replay = max(0, len(replay_ids_after - replay_ids_before))
+    newly_inserted_manifest = max(0, len(manifest_checksums_after - manifest_checksums_before))
+
+    rows_attempted = OrderedDict([
+        ("dashboard_replay_metadata_records", attempted_replay),
+        ("dashboard_export_manifests", attempted_manifest),
+    ])
+    rows_newly_inserted = OrderedDict([
+        ("dashboard_replay_metadata_records", newly_inserted_replay),
+        ("dashboard_export_manifests", newly_inserted_manifest),
+    ])
+    rows_already_existing = OrderedDict([
+        ("dashboard_replay_metadata_records", max(0, rows_attempted["dashboard_replay_metadata_records"] - newly_inserted_replay)),
+        ("dashboard_export_manifests", max(0, rows_attempted["dashboard_export_manifests"] - newly_inserted_manifest)),
+    ])
+    duplicate_prevented_rows = OrderedDict(rows_already_existing)
+    before_counts = OrderedDict([
+        ("dashboard_replay_metadata_records", len(replay_rows_before)),
+        ("dashboard_export_manifests", len(manifest_rows_before)),
+    ])
+    after_counts = OrderedDict([
+        ("dashboard_replay_metadata_records", len(replay_rows_after)),
+        ("dashboard_export_manifests", len(manifest_rows_after)),
+    ])
+    net_new_rows = OrderedDict([
+        ("dashboard_replay_metadata_records", max(0, after_counts["dashboard_replay_metadata_records"] - before_counts["dashboard_replay_metadata_records"])),
+        ("dashboard_export_manifests", max(0, after_counts["dashboard_export_manifests"] - before_counts["dashboard_export_manifests"])),
+    ])
+
+    duplicate_prevention_mode = "IDEMPOTENT_EXISTING_ROWS_REUSED" if sum(net_new_rows.values()) == 0 else "INSERTED_NEW_ROWS_WITH_IDEMPOTENT_GUARDS"
 
     return OrderedDict([
         ("status", "D21_LIMITED_BACKFILL_EXECUTED"),
@@ -59,6 +111,18 @@ def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, app
         ("approved_persistence_path", "D8.B4 -> O6/O7/D3/D6 adapters"),
         ("window_runs", runs),
         ("rows_inserted", OrderedDict([("dashboard_replay_metadata_records", post.get("replay_metadata_row_count", 0)), ("dashboard_export_manifests", post.get("manifest_row_count", 0))])),
+        ("rows_inserted_semantics", "VISIBLE_PERSISTED_ROWS_AFTER_RUN"),
+        ("rows_attempted", rows_attempted),
+        ("rows_newly_inserted", rows_newly_inserted),
+        ("rows_already_existing", rows_already_existing),
+        ("duplicate_prevented_rows", duplicate_prevented_rows),
+        ("duplicate_prevention_mode", duplicate_prevention_mode),
+        ("before_counts", before_counts),
+        ("after_counts", after_counts),
+        ("net_new_rows", net_new_rows),
+        ("persisted_rows_visible_after_run", OrderedDict([("dashboard_replay_metadata_records", post.get("replay_metadata_row_count", 0)), ("dashboard_export_manifests", post.get("manifest_row_count", 0))])),
+        ("inserted_or_existing_replay_ids", sorted(replay_ids_after)),
+        ("inserted_or_existing_manifest_checksums", sorted(manifest_checksums_after)),
         ("duplicate_prevention_result", rerun.get("status")),
         ("checksum_lineage_verified", bool(post.get("lineage_checksum_present"))),
         ("d7_readback", post),
