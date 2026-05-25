@@ -42,26 +42,31 @@ def _collect_ids_and_checksums(rows: list[Mapping[str, Any]], kind: str) -> list
     return sorted({v for v in vals if v})
 
 
-def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, approval_flags: Mapping[str, Any] | None = None, window_count: int = 1) -> OrderedDict[str, Any]:
+def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, approval_flags: Mapping[str, Any] | None = None, window_count: int = 1, window_offset: int = 0) -> OrderedDict[str, Any]:
     n = int(window_count)
     if n < 1 or n > 3:
         return OrderedDict([("status", "BACKFILL_WINDOW_COUNT_BLOCKED"), ("window_count", n), ("blocking_reasons", ["window_count_must_be_between_1_and_3"]), ("future_expansion_policy", "window_count_above_3_requires_separate_patch_and_approval")])
+    offset = int(window_offset)
+    if offset < 0:
+        return OrderedDict([("status", "BACKFILL_WINDOW_OFFSET_BLOCKED"), ("window_offset", offset), ("blocking_reasons", ["window_offset_must_be_zero_or_positive_integer"])])
 
     governance = validate_d8_b4_execution_governance(dry_run=False, client=client, approval_flags=approval_flags)
     if governance.get("status") != "GOVERNANCE_OK":
-        return OrderedDict([("status", "REPLAY_PERSISTENCE_GOVERNANCE_BLOCKED"), ("governance", governance), ("window_count", n)])
+        return OrderedDict([("status", "REPLAY_PERSISTENCE_GOVERNANCE_BLOCKED"), ("governance", governance), ("window_count", n), ("window_offset", offset)])
 
     replay_rows_before, manifest_rows_before = _read_replay_and_manifest_rows(client)
     replay_ids_before = set(_collect_ids_and_checksums(replay_rows_before, "replay"))
     manifest_checksums_before = set(_collect_ids_and_checksums(manifest_rows_before, "manifest"))
 
     runs: list[OrderedDict[str, Any]] = []
-    for i in range(n):
+    selected_indices = list(range(offset, offset + n))
+    selected_candidate_ids = [f"W{idx+1}" for idx in selected_indices]
+    for i in selected_indices:
         payload = _windowed_payload(i)
         d6 = execute_d6_operational_proving_cycle(payload=payload, client=client, dry_run=False)
         run = execute_d8_b4_governed_replay_persistence(client=client, approval_flags=approval_flags, dry_run=False)
         readback = run.get("readback") or {}
-        runs.append(OrderedDict([("window_index", i + 1), ("as_of_date", payload["sample_observations"][0]["as_of_date"]), ("d6_cycle_checksum", d6.get("cycle_checksum")), ("execution_status", run.get("status")), ("audit_manifest", run.get("audit_manifest")), ("readback", readback)]))
+        runs.append(OrderedDict([("window_index", i + 1), ("candidate_id", f"W{i+1}"), ("as_of_date", payload["sample_observations"][0]["as_of_date"]), ("d6_cycle_checksum", d6.get("cycle_checksum")), ("execution_status", run.get("status")), ("audit_manifest", run.get("audit_manifest")), ("readback", readback)]))
 
     rerun = execute_d8_b4_governed_replay_persistence(client=client, approval_flags=approval_flags, dry_run=False)
 
@@ -103,10 +108,24 @@ def execute_d21_limited_governed_non_dry_historical_backfill(*, client: Any, app
     ])
 
     duplicate_prevention_mode = "IDEMPOTENT_EXISTING_ROWS_REUSED" if sum(net_new_rows.values()) == 0 else "INSERTED_NEW_ROWS_WITH_IDEMPOTENT_GUARDS"
+    selected_existing_count = rows_already_existing["dashboard_replay_metadata_records"]
+    selected_new_count = rows_newly_inserted["dashboard_replay_metadata_records"]
+    novel_window_available = bool(selected_new_count > 0)
+    next_recommended_window_offset = offset + n
 
     return OrderedDict([
         ("status", "D21_LIMITED_BACKFILL_EXECUTED"),
         ("window_count_executed", n),
+        ("window_offset", offset),
+        ("candidate_selection_mode", "DETERMINISTIC_WINDOW_OFFSET_SLICE"),
+        ("available_candidate_count", "UNBOUNDED_DETERMINISTIC_GENERATOR"),
+        ("selected_candidate_count", len(selected_indices)),
+        ("selected_candidate_ids", selected_candidate_ids),
+        ("selected_candidate_already_existing_count", selected_existing_count),
+        ("selected_candidate_new_count", selected_new_count),
+        ("novel_window_available", novel_window_available),
+        ("next_recommended_window_offset", next_recommended_window_offset),
+        ("novel_window_status", "D21_EXECUTED_SAFELY_NO_NOVEL_CANDIDATES_AVAILABLE_UNDER_CURRENT_DETERMINISTIC_CANDIDATE_INVENTORY_DENSITY_IMPROVEMENT_REQUIRES_UPSTREAM_CANDIDATE_EXPANSION" if not novel_window_available else "D21_EXECUTED_SAFELY_WITH_NOVEL_CANDIDATES"),
         ("governance_flags_used", OrderedDict(sorted(dict(approval_flags or {}).items()))),
         ("approved_persistence_path", "D8.B4 -> O6/O7/D3/D6 adapters"),
         ("window_runs", runs),

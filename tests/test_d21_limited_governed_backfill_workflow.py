@@ -22,8 +22,9 @@ def test_workflow_exists_and_dispatch_only():
 
 def test_workflow_enforces_window_count_and_approval_phrases():
     text = _workflow_text()
-    assert "window_count must be 1 or 2 for limited governed run" in text
-    assert "window_count must be an integer with allowed values: 1 or 2" in text
+    assert "window_count must be 1, 2, or 3 for limited governed run" in text
+    assert "window_count must be an integer with allowed values: 1, 2, or 3" in text
+    assert "window_offset must be a non-negative integer" in text
     assert "I_APPROVE_D21_NON_DRY_BACKFILL" in text
     assert "I_APPROVE_APPEND_ONLY_PERSISTENCE" in text
     assert "I_APPROVE_DUPLICATE_PREVENTION" in text
@@ -55,3 +56,10 @@ def test_script_statuses_are_allowed_set():
         "D21_EXECUTION_FAILED_AFTER_APPROVAL",
     }
     assert {STATUS_CONNECTIVITY_FAILED, STATUS_GOV_BLOCKED, STATUS_SUCCESS, STATUS_EXEC_FAILED} == allowed
+
+
+def test_workflow_includes_window_offset_input_and_env_mapping():
+    text = _workflow_text()
+    assert "window_offset:" in text
+    assert "D21_WINDOW_OFFSET" in text
+    assert 'default: "0"' in text

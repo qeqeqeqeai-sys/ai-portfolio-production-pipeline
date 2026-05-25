@@ -8,6 +8,11 @@ on:
         required: true
         default: "1"
         type: string
+      window_offset:
+        description: "Deterministic replay candidate offset (integer >= 0; default 0)"
+        required: true
+        default: "0"
+        type: string
       execute_non_dry:
         description: "Must equal I_APPROVE_D21_NON_DRY_BACKFILL"
         required: true
@@ -33,6 +38,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       D21_WINDOW_COUNT: ${{ github.event.inputs.window_count }}
+      D21_WINDOW_OFFSET: ${{ github.event.inputs.window_offset }}
       EXECUTE_NON_DRY: ${{ github.event.inputs.execute_non_dry }}
       APPROVE_APPEND_ONLY: ${{ github.event.inputs.approve_append_only }}
       APPROVE_DUPLICATE_PREVENTION: ${{ github.event.inputs.approve_duplicate_prevention }}
@@ -81,6 +87,7 @@ jobs:
             return hashlib.sha256(v.encode("utf-8")).hexdigest()[:12]
 
           window_count_raw = str(os.getenv("D21_WINDOW_COUNT", "")).strip()
+          window_offset_raw = str(os.getenv("D21_WINDOW_OFFSET", "0")).strip()
           if not window_count_raw:
             raise SystemExit("window_count must be provided as integer 1, 2, or 3")
 
@@ -91,6 +98,12 @@ jobs:
 
           if window_count not in {1, 2, 3}:
             raise SystemExit("window_count must be 1, 2, or 3 for limited governed run")
+          try:
+            window_offset = int(window_offset_raw)
+          except ValueError:
+            raise SystemExit("window_offset must be a non-negative integer")
+          if window_offset < 0:
+            raise SystemExit("window_offset must be a non-negative integer")
 
           for key, expected in required_approvals.items():
             env_key = key.upper()
@@ -108,6 +121,7 @@ jobs:
             "supabase_url_fingerprint": fp(supabase_url),
             "supabase_service_role_key_fingerprint": fp(supabase_service_role_key),
             "window_count": window_count,
+            "window_offset": window_offset,
             "preflight_status": "PASS"
           }, indent=2))
           PY

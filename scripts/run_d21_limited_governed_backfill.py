@@ -43,6 +43,7 @@ def _summary(status: str, **kwargs: Any) -> OrderedDict[str, Any]:
 
 def main() -> int:
     window_count_raw = str(os.getenv("D21_WINDOW_COUNT", "1")).strip()
+    window_offset_raw = str(os.getenv("D21_WINDOW_OFFSET", "0")).strip()
     approvals = {k: str(os.getenv(k.upper(), "")).strip() for k in REQUIRED_APPROVALS}
 
     try:
@@ -53,6 +54,14 @@ def main() -> int:
 
     if window_count not in {1, 2, 3}:
         print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_count_must_be_1_or_2_or_3_for_limited_governed_run"], window_count=window_count), indent=2))
+        return 2
+    try:
+        window_offset = int(window_offset_raw)
+    except ValueError:
+        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_offset_must_be_non_negative_integer"], window_offset=window_offset_raw), indent=2))
+        return 2
+    if window_offset < 0:
+        print(json.dumps(_summary(STATUS_GOV_BLOCKED, blocking_reasons=["window_offset_must_be_non_negative_integer"], window_offset=window_offset), indent=2))
         return 2
 
     approval_failures = [f"{k}_invalid" for k, v in REQUIRED_APPROVALS.items() if approvals.get(k) != v]
@@ -94,6 +103,7 @@ def main() -> int:
             client=resolution.get("client"),
             approval_flags=d21_approvals,
             window_count=window_count,
+            window_offset=window_offset,
         )
     except Exception as exc:
         print(json.dumps(_summary(STATUS_EXEC_FAILED, error_type=type(exc).__name__, error_message_short=str(exc)[:200]), indent=2))
@@ -110,6 +120,16 @@ def main() -> int:
         rows_inserted_semantics=out.get("rows_inserted_semantics"),
         rows_attempted=out.get("rows_attempted"),
         rows_newly_inserted=out.get("rows_newly_inserted"),
+        candidate_selection_mode=out.get("candidate_selection_mode"),
+        window_offset=out.get("window_offset"),
+        available_candidate_count=out.get("available_candidate_count"),
+        selected_candidate_count=out.get("selected_candidate_count"),
+        selected_candidate_ids=out.get("selected_candidate_ids"),
+        selected_candidate_already_existing_count=out.get("selected_candidate_already_existing_count"),
+        selected_candidate_new_count=out.get("selected_candidate_new_count"),
+        novel_window_available=out.get("novel_window_available"),
+        next_recommended_window_offset=out.get("next_recommended_window_offset"),
+        novel_window_status=out.get("novel_window_status"),
         rows_already_existing=out.get("rows_already_existing"),
         duplicate_prevented_rows=out.get("duplicate_prevented_rows"),
         duplicate_prevention_mode=out.get("duplicate_prevention_mode"),
