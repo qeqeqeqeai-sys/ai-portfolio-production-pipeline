@@ -90,6 +90,16 @@ from .e7_expectation_closeout_certification import (
     build_e7_expectation_closeout_payload,
     build_e7_expectation_closeout_report,
 )
+from .h1_historical_density_expansion import (
+    build_h1_density_expansion_inventory,
+    build_h1_density_gap_analysis,
+    build_h1_expansion_plan,
+    build_h1_operational_density_summary,
+    build_h1_dashboard_payload,
+    certify_h1_density_expansion,
+    build_h1_report_payload,
+    build_h1_report_markdown,
+)
 
 __all__ = [
     "build_e1_expectation_pressure_profile",
