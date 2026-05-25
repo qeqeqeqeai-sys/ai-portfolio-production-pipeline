@@ -10,7 +10,7 @@ import json
 from urllib.parse import urlparse
 from typing import Any, Mapping
 
-from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative, build_d17_confidence_attribution_inventory, build_d17_constraint_weight_summary, build_d17_lineage_trace_compression, build_d17_historical_confidence_overlays, build_d17_operator_drilldown_payload, build_d17_dashboard_payload, certify_d17_confidence_lineage_enrichment, build_d18_cross_run_confidence_inventory, build_d18_confidence_delta_summary, build_d18_constraint_persistence_summary, build_d18_regime_transition_confidence_delta, build_d18_operator_triage_queue, build_d18_priority_drilldown_cards, build_d18_dashboard_payload, certify_d18_cross_run_triage, build_cd1_candidate_diversity_inventory, build_cd1_diversity_gap_analysis, build_cd1_candidate_diversity_taxonomy, build_cd1_diversification_recommendations, build_cd1_semantic_richness_assessment, build_cd1_dashboard_payload, certify_cd1_candidate_diversity_strengthening, build_h3_replay_transition_inventory, build_h3_structural_transition_chains, build_h3_transition_novelty_analysis, build_h3_transition_risk_diagnostics, build_h3_operator_transition_recommendations, build_h3_dashboard_payload, certify_h3_cross_replay_structural_transition_intelligence, build_cd2_replay_candidate_pool, build_cd2_novelty_scorecard, build_cd2_candidate_priority_buckets, build_cd2_replay_selection_rationale, build_cd2_prioritization_summary, build_cd2_operator_guardrails, build_cd2_dashboard_payload, certify_cd2_replay_novelty_prioritization
+from transmission_layers.expectation_failure.expectation_intelligence import build_e1_expectation_intelligence_payload, build_e2_evidence_interpretation_payload, build_e3_temporal_drift_report, build_e4_semantic_narrative_drift_report, build_e5_expectation_intelligence_envelope, build_d8_evidence_priority_inventory, build_d8_dashboard_view_model, build_d8_1_operational_card_render_model, build_d8_2_payload, build_d8_2_dashboard_view_model, build_d8_5_operational_intelligence_density_verification, assess_d8_5_supabase_backfill_readiness, build_d8_6_evidence_graph_enrichment_linkage_density, build_d8_6_dashboard_view_model, build_d8_b1_controlled_replay_expansion, build_d8_b1_replay_reinforcement_diagnostics, build_d8_b1_controlled_backfill_plan, build_d8_a1_explainability_causal_narratives, build_d8_a1_dashboard_view_model, build_e7_expectation_capability_inventory, build_e7_governance_boundary_inventory, build_d15_backfill_execution_inventory, build_d15_historical_execution_timeline, build_d15_dashboard_enrichment_payload, certify_d15_dashboard_enrichment, build_d16_historical_finding_inventory, build_d16_recurring_finding_clusters, build_d16_regime_linked_finding_narratives, build_d16_operator_narrative_summary, build_d16_dashboard_payload, certify_d16_historical_findings_narrative, build_d17_confidence_attribution_inventory, build_d17_constraint_weight_summary, build_d17_lineage_trace_compression, build_d17_historical_confidence_overlays, build_d17_operator_drilldown_payload, build_d17_dashboard_payload, certify_d17_confidence_lineage_enrichment, build_d18_cross_run_confidence_inventory, build_d18_confidence_delta_summary, build_d18_constraint_persistence_summary, build_d18_regime_transition_confidence_delta, build_d18_operator_triage_queue, build_d18_priority_drilldown_cards, build_d18_dashboard_payload, certify_d18_cross_run_triage, build_cd1_candidate_diversity_inventory, build_cd1_diversity_gap_analysis, build_cd1_candidate_diversity_taxonomy, build_cd1_diversification_recommendations, build_cd1_semantic_richness_assessment, build_cd1_dashboard_payload, certify_cd1_candidate_diversity_strengthening, build_h3_replay_transition_inventory, build_h3_structural_transition_chains, build_h3_transition_novelty_analysis, build_h3_transition_risk_diagnostics, build_h3_operator_transition_recommendations, build_h3_dashboard_payload, certify_h3_cross_replay_structural_transition_intelligence, build_cd2_replay_candidate_pool, build_cd2_novelty_scorecard, build_cd2_candidate_priority_buckets, build_cd2_replay_selection_rationale, build_cd2_prioritization_summary, build_cd2_operator_guardrails, build_cd2_dashboard_payload, certify_cd2_replay_novelty_prioritization, build_cd3_replay_expansion_candidate_set, build_cd3_bounded_expansion_plan, build_cd3_operator_review_queue, build_cd3_governance_preflight_checklist, build_cd3_expansion_plan_rationale, build_cd3_dashboard_payload, certify_cd3_governed_novelty_guided_replay_expansion_plan
 
 from transmission_layers.expectation_failure.expectation_intelligence.d19_triage_explainability_continuity_taxonomy import build_d19_triage_explainability_inventory, build_d19_rank_change_rationale, build_d19_continuity_degradation_taxonomy, build_d19_constraint_escalation_summary, build_d19_regime_transition_impact_explanations, build_d19_operator_adjudication_notes, build_d19_dashboard_payload, certify_d19_triage_explainability
 from transmission_layers.expectation_failure.expectation_intelligence.h1_historical_density_expansion import build_h1_density_expansion_inventory, build_h1_density_gap_analysis, build_h1_expansion_plan, build_h1_operational_density_summary, build_h1_dashboard_payload, certify_h1_density_expansion
@@ -30,6 +30,7 @@ D7_RENDER_SECTION_ORDER = (
     "cd1_candidate_diversity_strengthening",
     "h3_cross_replay_structural_transition_intelligence",
     "cd2_replay_novelty_prioritization",
+    "cd3_governed_novelty_guided_replay_expansion_plan",
     "intelligence_overview",
     "supervisor_interpretation",
     "key_finding_cards",
@@ -730,6 +731,12 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
     cd2_guardrails = build_cd2_operator_guardrails()
     cd2_dashboard = build_cd2_dashboard_payload(candidate_pool=cd2_pool, novelty_scorecard=cd2_scorecard, priority_buckets=cd2_buckets, selection_rationale=cd2_rationale, prioritization_summary=cd2_summary, operator_guardrails=cd2_guardrails)
     cd2_certification = certify_cd2_replay_novelty_prioritization(candidate_pool=cd2_pool, novelty_scorecard=cd2_scorecard, dashboard_payload=cd2_dashboard, operator_guardrails=cd2_guardrails)
+    cd3_candidate_set = build_cd3_replay_expansion_candidate_set(cd2_candidate_pool=cd2_pool, cd2_novelty_scorecard=cd2_scorecard, cd2_priority_buckets=cd2_buckets)
+    cd3_expansion_plan = build_cd3_bounded_expansion_plan(candidate_set=cd3_candidate_set)
+    cd3_review_queue = build_cd3_operator_review_queue(expansion_plan=cd3_expansion_plan)
+    cd3_rationale = build_cd3_expansion_plan_rationale(expansion_plan=cd3_expansion_plan)
+    cd3_dashboard = build_cd3_dashboard_payload(expansion_plan=cd3_expansion_plan, operator_review_queue=cd3_review_queue, rationale=cd3_rationale)
+    cd3_certification = certify_cd3_governed_novelty_guided_replay_expansion_plan(candidate_set=cd3_candidate_set, expansion_plan=cd3_expansion_plan, dashboard_payload=cd3_dashboard, operator_review_queue=cd3_review_queue)
     if isinstance(d8_6_payload.get("strongest_supporting_evidence"), Mapping) and _as_text((d8_6_payload.get("strongest_supporting_evidence") or {}).get("evidence_ref")):
         d8_dashboard["strongest_supporting_evidence_panel"] = deepcopy(d8_6_payload.get("strongest_supporting_evidence"))
     narrative_sections = build_d7_narrative_sections(narratives)
@@ -799,6 +806,8 @@ def build_d7_dashboard_view_model(*, findings_payload: Mapping[str, Any], narrat
         ("h3_cross_replay_structural_transition_intelligence_certification", h3_certification),
         ("cd2_replay_novelty_prioritization", cd2_dashboard),
         ("cd2_replay_novelty_prioritization_certification", cd2_certification),
+        ("cd3_governed_novelty_guided_replay_expansion_plan", cd3_dashboard),
+        ("cd3_governed_novelty_guided_replay_expansion_plan_certification", cd3_certification),
         ("e7_expectation_closeout_certification", OrderedDict([("capability_inventory", build_e7_expectation_capability_inventory()), ("governance_boundary_inventory", build_e7_governance_boundary_inventory())])),
         ("invariant_flags", OrderedDict([("read_only", True), ("no_writes", True), ("no_hidden_client_creation", True), ("explicit_client_injection", True)])),
     ])
@@ -1343,6 +1352,31 @@ def render_cd2_replay_novelty_prioritization(view_model: Mapping[str, Any], *, s
         st.json(payload.get("Governance/Operator Guardrails", {}))
 
 
+def render_cd3_governed_novelty_guided_replay_expansion_plan(view_model: Mapping[str, Any], *, st: Any) -> None:
+    payload = view_model.get("cd3_governed_novelty_guided_replay_expansion_plan") if isinstance(view_model, Mapping) else {}
+    st.subheader("CD3 — Governed Novelty-Guided Replay Expansion Plan")
+    st.caption("Plan-only, deterministic, recommendation-only layer. No replay execution approval.")
+    st.markdown("### Governed Replay Expansion Plan Overview")
+    st.json(payload.get("Governed Replay Expansion Plan Overview", {}))
+    st.markdown("### Selected Replay Candidates")
+    st.json(payload.get("Selected Replay Candidates", []))
+    st.markdown("### Operator Review Queue")
+    st.json(payload.get("Operator Review Queue", []))
+    st.markdown("### Deferred Replay Candidates")
+    st.json(payload.get("Deferred Replay Candidates", []))
+    st.markdown("### Novelty Coverage Summary")
+    st.json(payload.get("Novelty Coverage Summary", {}))
+    st.markdown("### Diversity Balance Summary")
+    st.json(payload.get("Diversity Balance Summary", {}))
+    st.markdown("### Concentration Risk Reduction Summary")
+    st.write(payload.get("Concentration Risk Reduction Summary"))
+    with st.expander("Governance Preflight Checklist"):
+        st.json(payload.get("Governance Preflight Checklist", {}))
+    st.markdown("### Expansion Plan Rationale")
+    st.json(payload.get("Expansion Plan Rationale", {}))
+    st.error(str(payload.get("Explicit Non-Execution Notice", "CD3 is plan-only and not execution approval.")))
+
+
 def render_d7_intelligence_overview(view_model: Mapping[str, Any], *, st: Any) -> None:
     plan = build_d7_render_plan(view_model)
     metrics = plan["overview_metrics"]
@@ -1495,6 +1529,7 @@ __all__ = [
     "render_cd1_candidate_diversity_strengthening",
     "render_h3_cross_replay_structural_transition_intelligence",
     "render_cd2_replay_novelty_prioritization",
+    "render_cd3_governed_novelty_guided_replay_expansion_plan",
     "render_d7_intelligence_overview",
     "render_d7_supervisor_interpretation",
     "render_d7_finding_cards",
