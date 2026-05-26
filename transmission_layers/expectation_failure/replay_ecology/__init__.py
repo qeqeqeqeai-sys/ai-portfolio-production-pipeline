@@ -131,3 +131,21 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid1_pre_post_r
     build_lr6_evid1_weak_signal_delta,
     certify_lr6_evid1_evidence_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid1a_evidence_source_mapping import (
+    EVID1_DIMENSIONS,
+    METRIC_POPULATION_STATUS_VALUES,
+    RUN1_MEASURABILITY_VALUES,
+    SOURCE_STATUS_VALUES,
+    build_lr6_evid1a_baseline_source_inventory,
+    build_lr6_evid1a_enriched_source_inventory,
+    build_lr6_evid1a_evid1_population_plan,
+    build_lr6_evid1a_markdown_report,
+    build_lr6_evid1a_metric_source_map,
+    build_lr6_evid1a_minimum_evidence_requirements,
+    build_lr6_evid1a_missing_metric_inventory,
+    build_lr6_evid1a_run1_output_measurability_review,
+    build_lr6_evid1a_source_mapping_context,
+    build_lr6_evid1a_supervisor_review,
+    certify_lr6_evid1a_mapping_boundary,
+)
