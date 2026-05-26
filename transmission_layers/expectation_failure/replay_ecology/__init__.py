@@ -96,3 +96,11 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_obs9_execution_r
     build_lr6_obs9_weak_signal_success_criteria,
     certify_lr6_obs9_review_framework_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_exec1_first_governed_bounded_enriched_replay_wave import (
+    build_lr6_exec1_execution_context,
+    build_lr6_exec1_expected_artifacts,
+    build_lr6_exec1_wave_preparation,
+    execute_lr6_exec1_first_wave,
+    validate_lr6_exec1_governance_approvals,
+)
