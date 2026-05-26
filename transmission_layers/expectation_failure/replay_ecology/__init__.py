@@ -243,3 +243,18 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid9_real_repla
     certify_lr6_evid9_production_plan_boundary,
     discover_lr6_evid9_replay_metric_sources,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid10_first_real_replay_metric_payload_emission_design import (
+    build_lr6_evid10_design_context,
+    identify_lr6_evid10_first_metric_target,
+    build_lr6_evid10_replay_richness_payload_contract,
+    build_lr6_evid10_existing_field_mapping,
+    build_lr6_evid10_payload_derivation_plan,
+    build_lr6_evid10_evid6_compatibility_mapping,
+    build_lr6_evid10_validation_plan,
+    build_lr6_evid10_non_synthetic_readiness_review,
+    build_lr6_evid10_integration_boundary_plan,
+    build_lr6_evid10_supervisor_review,
+    build_lr6_evid10_markdown_report,
+    certify_lr6_evid10_design_boundary,
+)
