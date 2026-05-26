@@ -133,7 +133,20 @@ def build_lr6_obs6_first_wave_candidates(target_wave_size: int = TARGET_WAVE_SIZ
         selected.append(item)
         selected_tickers.add(item["ticker"])
 
-    return selected[:size]
+    finalized: list[dict[str, Any]] = []
+    for item in selected[:size]:
+        roles = list(item.get("roles", []))
+        finalized.append({
+            **item,
+            "ecological_role": roles[0] if roles else "unknown",
+            "observation_role": roles[0] if roles else "unknown",
+            "weak_signal_bridge": "weak_signal_secondary_bridges" in roles,
+            "contradiction_carrier": "cross_regime_contradiction_carriers" in roles,
+            "propagation_bridge": any(r in roles for r in ("grid_utilities_power_demand", "telecom_infrastructure", "data_center_infrastructure", "logistics_supply_chain")),
+            "source_basis": "OBS6+OBS4",
+            "selection_reason": "deterministic_ranked_selection_with_required_role_coverage",
+        })
+    return finalized
 
 
 def build_lr6_obs6_role_balance_review() -> dict[str, Any]:

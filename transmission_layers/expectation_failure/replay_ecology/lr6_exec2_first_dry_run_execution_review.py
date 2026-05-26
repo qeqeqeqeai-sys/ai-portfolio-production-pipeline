@@ -15,8 +15,12 @@ SOURCE_PHASE = "LR6-EXEC2"
 def _role_counts(candidates: list[dict[str, Any]]) -> dict[str, int]:
     counter: Counter[str] = Counter()
     for c in candidates:
-        role = str(c.get("role", "unknown"))
-        counter[role] += 1
+        roles = c.get("roles")
+        if isinstance(roles, list) and roles:
+            for role in roles:
+                counter[str(role)] += 1
+        else:
+            counter["unknown"] += 1
     return dict(sorted(counter.items()))
 
 
@@ -26,6 +30,11 @@ def build_lr6_exec2_first_dry_run_execution_review() -> dict[str, Any]:
     candidates = list(dry.get("wave_preparation", {}).get("selected_candidates", []))
     selected_count = int(dry.get("wave_preparation", {}).get("selected_count", 0))
     role_balance = _role_counts(candidates)
+    known_role_candidates = sum(1 for c in candidates if isinstance(c.get("roles"), list) and len(c.get("roles", [])) > 0)
+    unknown_role_candidates = selected_count - known_role_candidates
+    weak_signal_count = sum(1 for c in candidates if c.get("weak_signal_bridge") is True)
+    contradiction_count = sum(1 for c in candidates if c.get("contradiction_carrier") is True)
+    propagation_count = sum(1 for c in candidates if c.get("propagation_bridge") is True)
 
     execution = dry.get("execution", {})
     boundary = dry.get("execution_boundary_certification", {})
@@ -49,9 +58,19 @@ def build_lr6_exec2_first_dry_run_execution_review() -> dict[str, Any]:
             "count_match": selected_count == 16,
             "role_balance": role_balance,
             "required_roles_present": {
-                "weak_signal": role_balance.get("weak_signal", 0) > 0,
-                "contradiction": role_balance.get("contradiction", 0) > 0,
-                "propagation": role_balance.get("propagation", 0) > 0,
+                "weak_signal": weak_signal_count > 0,
+                "contradiction": contradiction_count > 0,
+                "propagation": propagation_count > 0,
+            },
+            "role_attribution": {
+                "total_candidates": selected_count,
+                "known_role_metadata_count": known_role_candidates,
+                "unknown_role_metadata_count": unknown_role_candidates,
+                "weak_signal_count": weak_signal_count,
+                "contradiction_carrier_count": contradiction_count,
+                "propagation_bridge_count": propagation_count,
+                "role_metadata_preserved": known_role_candidates > 0,
+                "any_missing_role_metadata": unknown_role_candidates > 0,
             },
         },
         "governance_behavior_review": {

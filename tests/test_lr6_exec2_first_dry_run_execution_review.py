@@ -25,3 +25,18 @@ def test_lr6_exec2_validation_checks_and_recommendation():
     assert checks["no_direct_sql_boundary"] is True
     assert checks["outputs_bounded_reviewable"] is True
     assert out["recommendation"]["decision"] == "proceed_to_one_bounded_governed_non_dry_observation_wave"
+
+
+def test_lr6_exec2_role_attribution_is_preserved_and_not_all_unknown():
+    out = build_lr6_exec2_first_dry_run_execution_review()
+    role_review = out["wave_assembly_review"]["role_attribution"]
+    required_roles = out["wave_assembly_review"]["required_roles_present"]
+    assert role_review["known_role_metadata_count"] > 0
+    assert role_review["unknown_role_metadata_count"] != role_review["total_candidates"]
+    assert role_review["weak_signal_count"] > 0
+    assert role_review["contradiction_carrier_count"] > 0
+    assert role_review["propagation_bridge_count"] > 0
+    assert role_review["role_metadata_preserved"] is True
+    assert required_roles["weak_signal"] is True
+    assert required_roles["contradiction"] is True
+    assert required_roles["propagation"] is True

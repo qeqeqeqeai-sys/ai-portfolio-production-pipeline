@@ -43,6 +43,11 @@ def test_wave_size_roles_and_deterministic_membership():
     assert "weak_signal_secondary_bridges" in roles
     assert "cross_regime_contradiction_carriers" in roles
     assert any(r in roles for r in ("grid_utilities_power_demand", "telecom_infrastructure", "data_center_infrastructure", "logistics_supply_chain"))
+    assert all("source_basis" in c for c in wave_1)
+    assert all("ecological_role" in c for c in wave_1)
+    assert any(c.get("weak_signal_bridge") is True for c in wave_1)
+    assert any(c.get("contradiction_carrier") is True for c in wave_1)
+    assert any(c.get("propagation_bridge") is True for c in wave_1)
 
 
 def test_reviews_questions_stops_and_non_authorization():

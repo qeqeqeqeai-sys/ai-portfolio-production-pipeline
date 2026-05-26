@@ -13,8 +13,18 @@
 - candidate_count: `16`
 - expected_count: `16`
 - count_match: `True`
-- role_balance: `{'unknown': 16}`
-- required_roles_present: `{'weak_signal': False, 'contradiction': False, 'propagation': False}`
+- role_balance: `{'ai_consulting_integration': 1, 'cross_regime_contradiction_carriers': 8, 'cybersecurity': 1, 'data_center_infrastructure': 1, 'grid_utilities_power_demand': 4, 'industrial_automation': 1, 'logistics_supply_chain': 3, 'peripheral_ai_ecosystem_actors': 1, 'robotics': 2, 'semiconductor_equipment': 2, 'telecom_infrastructure': 2, 'weak_signal_secondary_bridges': 8}`
+- required_roles_present: `{'weak_signal': True, 'contradiction': True, 'propagation': True}`
+
+## role_attribution_review
+- total_candidates: `16`
+- candidates_with_known_role_metadata: `16`
+- candidates_with_unknown_role_metadata: `0`
+- weak_signal_count: `8`
+- contradiction_carrier_count: `8`
+- propagation_bridge_count: `10`
+- role_preservation_status: `preserved`
+- any_missing_role_metadata: `False`
 
 ## governance_behavior_review
 - dry_run_default: `True`
