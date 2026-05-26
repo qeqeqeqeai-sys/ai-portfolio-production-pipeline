@@ -381,3 +381,22 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_live3_first_tiny
     certify_lr6_live3_execution_boundary,
     execute_lr6_live3_non_dry_wave,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_live4_first_non_dry_execution_result_verification import (
+    build_lr6_live4_append_only_verification,
+    build_lr6_live4_duplicate_prevention_review,
+    build_lr6_live4_halt_condition_review,
+    build_lr6_live4_inserted_row_review,
+    build_lr6_live4_lineage_retention_review,
+    build_lr6_live4_markdown_report,
+    build_lr6_live4_payload_rejection_review,
+    build_lr6_live4_persistence_event_review,
+    build_lr6_live4_persistence_target_review,
+    build_lr6_live4_rollback_metadata_review,
+    build_lr6_live4_scaling_recommendation,
+    build_lr6_live4_scope_compliance_review,
+    build_lr6_live4_supervisor_verification,
+    build_lr6_live4_verification_context,
+    certify_lr6_live4_verification_boundary,
+    inspect_lr6_live4_live3_execution_surface,
+)
