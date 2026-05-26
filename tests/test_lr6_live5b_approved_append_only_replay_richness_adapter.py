@@ -192,6 +192,45 @@ def test_runner_blocks_before_adapter_when_missing_credentials_or_governance(mon
     assert p["status"] == "APPROVED_EXECUTION_GOVERNANCE_FAILURE"
 
 
+
+def test_nullable_boolean_fields_are_coerced_to_false_for_stable_row():
+    m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    c = FakeClient()
+    intent = _intent("nullable-bools")
+    intent["payload"].update({
+        "scaffold_only": None,
+        "comparison_ready": None,
+        "concentration_warning": None,
+        "evidence_status": None,
+        "execution_mode": None,
+    })
+
+    r = adapter.execute_append_only_insert(insert_intents=[intent], metadata=m, client=c)
+    assert r["halt_triggered"] is False
+    row = c.t.rows[0]
+
+    assert row["scaffold_only"] is False
+    assert row["comparison_ready"] is False
+    assert row["concentration_warning"] is False
+    assert row["evidence_status"] == "MEASURED"
+    assert row["execution_mode"] == "append_only_insert"
+    assert row["adapter_name"] == adapter.APPROVED_ADAPTER_NAME
+
+
+def test_stable_row_boolean_columns_are_never_none():
+    m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    c = FakeClient()
+    intents = [_intent("none-bool-1"), _intent("none-bool-2")]
+    intents[0]["payload"].update({"scaffold_only": None, "comparison_ready": None, "concentration_warning": None})
+    intents[1]["payload"].update({"scaffold_only": False, "comparison_ready": True, "concentration_warning": False})
+
+    r = adapter.execute_append_only_insert(insert_intents=intents, metadata=m, client=c)
+    assert r["inserted_rows"] == 2
+    for row in c.t.rows:
+        assert row["scaffold_only"] is not None
+        assert row["comparison_ready"] is not None
+        assert row["concentration_warning"] is not None
+
 def test_report_sections_complete():
     text = open("reports/lr6_live5b_approved_append_only_replay_richness_adapter.md", encoding="utf-8").read().lower()
     for s in ["objective", "approved adapter design", "append-only semantics", "boundary certification", "recommendation for next step"]:
