@@ -86,7 +86,7 @@ def test_stable_row_defaults_required_fields_and_metric_constants():
     r = adapter.execute_append_only_insert(insert_intents=[intent], metadata=m, client=c)
     assert r["halt_triggered"] is False
     row = c.t.rows[0]
-    assert row["wave_id"].startswith("LR6_LIVE5_WAVE_")
+    assert row["wave_id"].startswith("LR6_LIVE7_WAVE_")
     assert row["entity_id"] == "E1"
     assert row["metric_target"] == "replay_richness"
     assert row["metric_dimension"] == "replay_richness"
