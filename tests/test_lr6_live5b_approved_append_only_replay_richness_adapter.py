@@ -75,6 +75,52 @@ def test_success_and_duplicate_reporting():
     assert r2["duplicate_prevented"] is True
 
 
+
+
+def test_adapter_inserts_only_approved_top_level_columns():
+    m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    c = FakeClient()
+    intent = _intent("k100")
+    intent["payload"].update({
+        "wave_id": "wave-0",
+        "comparison_ready": True,
+        "payload_id": "p-123",
+        "replay_window_label": "window-a",
+        "custom_field": "x",
+    })
+
+    r = adapter.execute_append_only_insert(insert_intents=[intent], metadata=m, client=c)
+    assert r["halt_triggered"] is False
+    assert len(c.t.rows) == 1
+    row = c.t.rows[0]
+
+    assert set(row.keys()) == set(adapter.APPROVED_TOP_LEVEL_COLUMNS)
+    assert "payload_id" not in row
+    assert "replay_window_label" not in row
+    assert "custom_field" not in row
+
+    assert row["payload"]["payload_id"] == "p-123"
+    assert row["payload"]["replay_window_label"] == "window-a"
+    assert row["payload"]["custom_field"] == "x"
+
+
+def test_no_dynamic_column_whack_a_mole_behavior_for_multiple_rows():
+    m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    c = FakeClient()
+    a = _intent("k1")
+    b = _intent("k2")
+    a["payload"].update({"payload_id": "p1", "new_dynamic_a": 1})
+    b["payload"].update({"replay_window_label": "w2", "new_dynamic_b": 2})
+
+    r = adapter.execute_append_only_insert(insert_intents=[a, b], metadata=m, client=c)
+    assert r["inserted_rows"] == 2
+    assert len(c.t.rows) == 2
+    for row in c.t.rows:
+        assert set(row.keys()) == set(adapter.APPROVED_TOP_LEVEL_COLUMNS)
+
+    assert c.t.rows[0]["payload"]["new_dynamic_a"] == 1
+    assert c.t.rows[1]["payload"]["new_dynamic_b"] == 2
+
 def test_live5_runner_uses_adapter_and_not_no_adapter(monkeypatch):
     monkeypatch.setenv("LIVE5_APPROVAL_PHRASE", "LIVE5")
     monkeypatch.setenv("LIVE5_NON_DRY_EXECUTION_TOKEN", "LIVE5")
