@@ -964,3 +964,40 @@ from .phase_a3_derived_replay_ecology_measurement import (
     build_phase_a3_supervisor_review,
     build_phase_a3_markdown_report,
 )
+
+
+from .phase_a6_observational_replay_ecology_stress_simulation import (
+    build_phase_a6_stress_simulation_configuration,
+    build_phase_a6_density_escalation_scenarios,
+    build_phase_a6_topology_stress_propagation_simulation,
+    build_phase_a6_entropy_degradation_simulation,
+    build_phase_a6_recurrence_cascade_simulation,
+    build_phase_a6_replay_overlap_amplification_simulation,
+    build_phase_a6_semantic_crowding_escalation_simulation,
+    build_phase_a6_structural_redundancy_escalation_simulation,
+    build_phase_a6_weak_node_amplification_simulation,
+    build_phase_a6_novelty_decay_stress_simulation,
+    build_phase_a6_survivability_threshold_analysis,
+    build_phase_a6_decompression_effectiveness_review,
+    build_phase_a6_ecology_collapse_threshold_review,
+    build_phase_a6_supervisor_review,
+    build_phase_a6_markdown_report,
+)
+
+__all__.extend([
+    "build_phase_a6_stress_simulation_configuration",
+    "build_phase_a6_density_escalation_scenarios",
+    "build_phase_a6_topology_stress_propagation_simulation",
+    "build_phase_a6_entropy_degradation_simulation",
+    "build_phase_a6_recurrence_cascade_simulation",
+    "build_phase_a6_replay_overlap_amplification_simulation",
+    "build_phase_a6_semantic_crowding_escalation_simulation",
+    "build_phase_a6_structural_redundancy_escalation_simulation",
+    "build_phase_a6_weak_node_amplification_simulation",
+    "build_phase_a6_novelty_decay_stress_simulation",
+    "build_phase_a6_survivability_threshold_analysis",
+    "build_phase_a6_decompression_effectiveness_review",
+    "build_phase_a6_ecology_collapse_threshold_review",
+    "build_phase_a6_supervisor_review",
+    "build_phase_a6_markdown_report",
+])
