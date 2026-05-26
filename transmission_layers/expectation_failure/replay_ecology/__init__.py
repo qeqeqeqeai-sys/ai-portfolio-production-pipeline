@@ -166,3 +166,18 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid2_measurable
     build_lr6_evid2_supervisor_review,
     certify_lr6_evid2_capture_design_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid3_measurable_evidence_capture_adapter import (
+    adapt_lr6_evid3_baseline_payload,
+    adapt_lr6_evid3_enriched_payload,
+    adapt_lr6_evid3_payload_to_evidence_records,
+    build_lr6_evid3_adapter_context,
+    build_lr6_evid3_comparison_readiness_report,
+    build_lr6_evid3_evid1_ready_payload,
+    build_lr6_evid3_extraction_quality_report,
+    build_lr6_evid3_markdown_report,
+    build_lr6_evid3_metric_extractors,
+    build_lr6_evid3_supported_payload_contracts,
+    build_lr6_evid3_supervisor_review,
+    certify_lr6_evid3_adapter_boundary,
+)
