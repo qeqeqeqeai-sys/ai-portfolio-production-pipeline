@@ -298,3 +298,17 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid13_dry_run_r
     build_lr6_evid13_markdown_report,
     certify_lr6_evid13_attachment_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid14_first_replay_richness_payload_supervisor_review import (
+    build_lr6_evid14_review_context,
+    build_lr6_evid14_payload_meaningfulness_criteria,
+    review_lr6_evid14_replay_richness_payload,
+    build_lr6_evid14_signal_sufficiency_review,
+    build_lr6_evid14_payload_shallowness_review,
+    build_lr6_evid14_persistence_readiness_review,
+    build_lr6_evid14_live_ingestion_readiness_review,
+    build_lr6_evid14_governed_emission_recommendation,
+    build_lr6_evid14_supervisor_review,
+    build_lr6_evid14_markdown_report,
+    certify_lr6_evid14_review_boundary,
+)
