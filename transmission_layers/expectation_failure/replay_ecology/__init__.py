@@ -271,3 +271,17 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid11_first_rea
     build_lr6_evid11_markdown_report,
     certify_lr6_evid11_builder_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid12_real_replay_richness_payload_validation_harness import (
+    build_lr6_evid12_validation_context,
+    build_lr6_evid12_validation_scenarios,
+    run_lr6_evid12_validation_scenario,
+    run_lr6_evid12_validation_harness,
+    build_lr6_evid12_validation_matrix,
+    build_lr6_evid12_status_transition_review,
+    build_lr6_evid12_rejection_safety_review,
+    build_lr6_evid12_comparison_readiness_review,
+    build_lr6_evid12_supervisor_review,
+    build_lr6_evid12_markdown_report,
+    certify_lr6_evid12_validation_boundary,
+)
