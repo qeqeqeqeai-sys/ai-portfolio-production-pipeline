@@ -200,3 +200,174 @@ def build_phase_a1c_markdown_report() -> str:
     r=build_phase_a1c_supervisor_review()
     sections=["# Phase A1C Structural Topology & Contradiction Hardening","## objective","Harden curated structural universe before ingestion.","## relationship to A1B","A1C replaces placeholder naming, index adjacency, and shallow taxonomies from A1B while preserving governance boundaries.","## observational-only boundary",str(r['governance_boundary']),"## company-name hardening findings",str(Counter(x['company_name_review_status'] for x in build_phase_a1c_real_company_name_map())),"## structural adjacency class design",", ".join(build_phase_a1c_structural_adjacency_classes()),"## structural adjacency map findings",f"link_count={len(build_phase_a1c_structural_adjacency_map())}","## contradiction taxonomy findings",", ".join(build_phase_a1c_contradiction_taxonomy().keys()),"## entity contradiction profile findings",f"entity_profiles={len(build_phase_a1c_entity_contradiction_profiles())}","## propagation taxonomy findings",", ".join(build_phase_a1c_propagation_taxonomy().keys()),"## entity propagation profile findings",f"entity_profiles={len(build_phase_a1c_entity_propagation_profiles())}","## monoculture review findings",str(r['monoculture_review']),"## low-information node review findings",str(r['low_information_review_summary']),"## replacement review findings",str(r['replacement_summary']),"## governance preservation","All Phase A1/A1B governance boundary flags preserved exactly.","## residual risks","Some unmapped names require curator review; IT concentration remains structurally elevated.","## recommendation for A1D / Phase B","Prioritize curator mapping completion and rebalance replacements before any ingestion or topology activation."]
     return "\n".join(sections)
+
+
+A1D_FMP_COVERAGE_CATEGORIES = [
+    "profile","quote","historical_price_daily","market_cap","key_metrics","ratios","enterprise_values",
+    "income_statement","balance_sheet_statement","cash_flow_statement","financial_growth",
+    "analyst_estimates_optional","earnings_calendar_optional",
+]
+
+
+def build_phase_a1d_data_availability_validation_framework() -> OrderedDict[str, Any]:
+    return OrderedDict([
+        ("phase", "A1D"),
+        ("mode", "deterministic_metadata_validation"),
+        ("objective", "classify_future_fmp_observational_viability_without_live_probes"),
+        ("input_sources", ["phase_a1b_curated_universe_metadata", "phase_a1c_name_review_status", "deterministic_listing_heuristics"]),
+        ("network_calls_allowed", False),
+        ("fmp_calls_allowed", False),
+        ("supabase_writes_allowed", False),
+        ("schema_expansion_allowed", False),
+        ("validation_status", "CONTRACT_ONLY_NOT_PROBED"),
+    ])
+
+
+def build_phase_a1d_required_fmp_coverage_contract() -> OrderedDict[str, OrderedDict[str, Any]]:
+    contract={
+        "profile":(True,True,"high","Entity identity and listing context unresolved."),
+        "quote":(True,True,"moderate","Current price anchor unavailable for replay normalization."),
+        "historical_price_daily":(True,True,"high","Replay continuity and trend reconstruction break."),
+        "market_cap":(True,True,"high","Size/liquidity conditioning unavailable."),
+        "key_metrics":(True,True,"moderate","Quality and efficiency factors weakened."),
+        "ratios":(True,False,"moderate","Valuation and efficiency cross-check limited."),
+        "enterprise_values":(True,True,"high","Capital-structure aware valuation missing."),
+        "income_statement":(True,True,"high","Earnings flow analysis unavailable."),
+        "balance_sheet_statement":(True,True,"high","Leverage and balance-sheet resilience unavailable."),
+        "cash_flow_statement":(True,True,"high","Cash conversion durability unavailable."),
+        "financial_growth":(True,False,"moderate","Growth continuity trajectories weakened."),
+        "analyst_estimates_optional":(False,False,"low","Forward consensus overlays unavailable."),
+        "earnings_calendar_optional":(False,False,"low","Event-timing context unavailable."),
+    }
+    return OrderedDict((k, OrderedDict([
+        ("required_for_replay_ecology", v[0]),
+        ("required_for_initial_ingestion", v[1]),
+        ("continuity_importance", v[2]),
+        ("absence_impact", v[3]),
+        ("validation_status", "CONTRACT_ONLY_NOT_PROBED"),
+    ])) for k,v in contract.items())
+
+
+def _a1d_listing_complexity_for(ticker:str, exchange_or_region:str) -> str:
+    if exchange_or_region != "US/NASDAQ-NYSE":
+        return "OTC_OR_UNCERTAIN"
+    adr_foreign={"TSM","ASML","STM","INFN","SAP","SHOP","STLA","TM","HMC","NIO","XPEV","LI","BIDU","BABA","PDD","JD","TCEHY","NTES","BILI","ERIC","NOK","INFY","WIT","SONY","SPOT","SE","MELI","CPNG","ARM","GFS","UMC"}
+    symbol_review={"S","U","D","ON","GE","AI","PATH"}
+    if ticker in symbol_review:
+        return "SYMBOL_REVIEW_REQUIRED"
+    if ticker in adr_foreign:
+        return "ADR_OR_FOREIGN_LISTING"
+    return "US_PRIMARY_LISTING"
+
+
+def build_phase_a1d_listing_complexity_review() -> OrderedDict[str, str]:
+    return OrderedDict((r["ticker"], _a1d_listing_complexity_for(r["ticker"], r["exchange_or_region"])) for r in build_phase_a1b_real_curated_structural_universe())
+
+
+def _continuity_from_complexity(complexity:str) -> str:
+    return {
+        "US_PRIMARY_LISTING":"STRONG_EXPECTED_CONTINUITY",
+        "ADR_OR_FOREIGN_LISTING":"MODERATE_EXPECTED_CONTINUITY",
+        "OTC_OR_UNCERTAIN":"WEAK_EXPECTED_CONTINUITY",
+        "SYMBOL_REVIEW_REQUIRED":"UNKNOWN_REQUIRES_PROBE",
+    }[complexity]
+
+
+def build_phase_a1d_historical_continuity_expectation() -> OrderedDict[str, str]:
+    review=build_phase_a1d_listing_complexity_review()
+    return OrderedDict((t,_continuity_from_complexity(c)) for t,c in review.items())
+
+
+def build_phase_a1d_entity_data_viability_profiles() -> list[OrderedDict[str, Any]]:
+    universe=build_phase_a1b_real_curated_structural_universe()
+    names={x['ticker']:x for x in build_phase_a1c_real_company_name_map()}
+    complexity=build_phase_a1d_listing_complexity_review(); continuity=build_phase_a1d_historical_continuity_expectation()
+    out=[]
+    for r in universe:
+        t=r['ticker']; cpx=complexity[t]; cont=continuity[t]; reasons=[]
+        if names[t]['company_name_review_status']!='VERIFIED_CURATED': reasons.append('company_name_review_required')
+        if cpx!='US_PRIMARY_LISTING': reasons.append(f'listing_complexity:{cpx.lower()}')
+        if cont in {'WEAK_EXPECTED_CONTINUITY','UNKNOWN_REQUIRES_PROBE'}: reasons.append(f'historical_continuity:{cont.lower()}')
+        if cpx=='US_PRIMARY_LISTING' and names[t]['company_name_review_status']=='VERIFIED_CURATED':
+            cls='HIGH_CONTINUITY_NODE'; rec='candidate_for_first_wave_live_probe'
+        elif cpx=='ADR_OR_FOREIGN_LISTING' and names[t]['company_name_review_status']=='VERIFIED_CURATED':
+            cls='MODERATE_CONTINUITY_NODE'; rec='include_with_region_specific_probe_guardrails'
+        elif cpx=='OTC_OR_UNCERTAIN':
+            cls='FRAGILE_DATA_NODE'; rec='defer_until_listing_and_source_coverage_probe'
+        elif cpx=='SYMBOL_REVIEW_REQUIRED':
+            cls='REQUIRES_LIVE_FMP_PROBE'; rec='resolve_symbol_ambiguity_before_ingestion'
+        else:
+            cls='LOW_CONTINUITY_NODE'; rec='curator_review_before_probe'
+        out.append(OrderedDict([
+            ('ticker',t),('company_name_review_status',names[t]['company_name_review_status']),('exchange_or_region',r['exchange_or_region']),('sector',r['sector']),('sefi_domain',r['sefi_domain']),('listing_complexity',cpx),
+            ('expected_price_history_coverage','HIGH' if cont=='STRONG_EXPECTED_CONTINUITY' else ('MEDIUM' if cont=='MODERATE_EXPECTED_CONTINUITY' else 'LOW')),
+            ('expected_fundamental_coverage','HIGH' if cpx=='US_PRIMARY_LISTING' else ('MEDIUM' if cpx=='ADR_OR_FOREIGN_LISTING' else 'LOW')),
+            ('expected_enterprise_value_coverage','HIGH' if cpx=='US_PRIMARY_LISTING' else ('MEDIUM' if cpx=='ADR_OR_FOREIGN_LISTING' else 'LOW')),
+            ('expected_key_metrics_coverage','HIGH' if cpx=='US_PRIMARY_LISTING' else ('MEDIUM' if cpx=='ADR_OR_FOREIGN_LISTING' else 'LOW')),
+            ('expected_statement_coverage','HIGH' if cpx=='US_PRIMARY_LISTING' else ('MEDIUM' if cpx=='ADR_OR_FOREIGN_LISTING' else 'LOW')),
+            ('expected_analyst_estimate_coverage','MEDIUM' if cpx in {'US_PRIMARY_LISTING','ADR_OR_FOREIGN_LISTING'} else 'LOW'),
+            ('expected_replay_continuity',cont),('data_viability_classification',cls),('fragility_reasons',reasons),('recommended_action',rec)
+        ]))
+    return out
+
+
+def build_phase_a1d_non_viable_entity_candidates() -> list[OrderedDict[str, Any]]:
+    return [OrderedDict([('ticker',x['ticker']),('classification',x['data_viability_classification']),('fragility_reasons',x['fragility_reasons']),('recommended_action',x['recommended_action'])]) for x in build_phase_a1d_entity_data_viability_profiles() if x['data_viability_classification'] in {'FRAGILE_DATA_NODE','NON_VIABLE_NODE','REQUIRES_LIVE_FMP_PROBE'}]
+
+
+def build_phase_a1d_data_coverage_gap_review() -> OrderedDict[str, Any]:
+    profiles=build_phase_a1d_entity_data_viability_profiles()
+    by_class=Counter(x['data_viability_classification'] for x in profiles)
+    name_review=[x['ticker'] for x in profiles if x['company_name_review_status']!='VERIFIED_CURATED']
+    adr=[x['ticker'] for x in profiles if x['listing_complexity']=='ADR_OR_FOREIGN_LISTING']
+    risky_domains=Counter(x['sefi_domain'] for x in profiles if x['data_viability_classification'] in {'FRAGILE_DATA_NODE','REQUIRES_LIVE_FMP_PROBE','LOW_CONTINUITY_NODE'})
+    return OrderedDict([
+        ('expected_strong_nodes',by_class.get('HIGH_CONTINUITY_NODE',0)),('expected_moderate_nodes',by_class.get('MODERATE_CONTINUITY_NODE',0)),('fragile_nodes',by_class.get('FRAGILE_DATA_NODE',0)),('non_viable_candidates',by_class.get('NON_VIABLE_NODE',0)),('live_probe_required_nodes',by_class.get('REQUIRES_LIVE_FMP_PROBE',0)),('adr_foreign_complexity_nodes',len(adr)),('company_name_review_required_nodes',len(name_review)),('structural_domains_with_elevated_data_risk',OrderedDict(sorted(risky_domains.items(), key=lambda kv:(-kv[1],kv[0]))[:10]))
+    ])
+
+
+def build_phase_a1d_replay_ecology_data_viability_classification() -> OrderedDict[str, Any]:
+    gaps=build_phase_a1d_data_coverage_gap_review(); total=len(build_phase_a1b_real_curated_structural_universe())
+    risk_ratio=(gaps['fragile_nodes']+gaps['non_viable_candidates']+gaps['live_probe_required_nodes'])/total
+    if gaps['non_viable_candidates']>0: cls='DATA_VALIDATION_BLOCKED'
+    elif risk_ratio>0.35: cls='DATA_VALIDATION_HIGH_FRAGILITY'
+    elif risk_ratio>0.12: cls='DATA_VALIDATION_WARNING'
+    else: cls='DATA_VALIDATION_READY'
+    return OrderedDict([('classification',cls),('deterministic_explanation','Classification uses deterministic listing complexity, continuity expectation, and name-review status only; no live probes.'),('affected_dimensions',['ticker_resolvability','price_history','fundamentals','enterprise_values','historical_continuity','listing_complexity']),('coverage_risk_estimate',round(risk_ratio,4)),('recommendation','Proceed to gated A1E live FMP probe for moderate/fragile/probe-required nodes before any ingestion.')])
+
+
+def build_phase_a1d_supervisor_review() -> OrderedDict[str, Any]:
+    return OrderedDict([('entity_count',len(build_phase_a1b_real_curated_structural_universe())),('governance_boundary',certify_phase_a_observational_expansion_boundary()),('validation_framework',build_phase_a1d_data_availability_validation_framework()),('coverage_contract_categories',list(build_phase_a1d_required_fmp_coverage_contract().keys())),('viability_classification_summary',Counter(x['data_viability_classification'] for x in build_phase_a1d_entity_data_viability_profiles())),('listing_complexity_summary',Counter(build_phase_a1d_listing_complexity_review().values())),('historical_continuity_summary',Counter(build_phase_a1d_historical_continuity_expectation().values())),('coverage_gap_review',build_phase_a1d_data_coverage_gap_review()),('replay_ecology_data_viability',build_phase_a1d_replay_ecology_data_viability_classification())])
+
+
+def build_phase_a1d_markdown_report() -> str:
+    r=build_phase_a1d_supervisor_review()
+    return "\n".join([
+        '# Phase A1D Data Availability & Structural Coverage Validation',
+        '## objective',
+        'Validate curated universe suitability for future FMP-style observational ingestion using deterministic metadata-only scaffolding.',
+        '## relationship to A1C',
+        'A1D consumes A1C company-name review and structural metadata, and adds data-availability viability classifications without live probes.',
+        '## observational-only boundary',
+        str(r['governance_boundary']),
+        '## FMP coverage contract',
+        str(build_phase_a1d_required_fmp_coverage_contract()),
+        '## entity data viability profile summary',
+        str(r['viability_classification_summary']),
+        '## listing complexity findings',
+        str(r['listing_complexity_summary']),
+        '## historical continuity expectation findings',
+        str(r['historical_continuity_summary']),
+        '## replay ecology data viability classification',
+        str(r['replay_ecology_data_viability']),
+        '## non-viable / fragile entity candidates',
+        str(build_phase_a1d_non_viable_entity_candidates()[:30]),
+        '## data coverage gap review',
+        str(r['coverage_gap_review']),
+        '## governance preservation',
+        'All observational-only governance boundary flags preserved exactly with deterministic, append-only validation.',
+        '## residual risks',
+        'Classification is contract-only and metadata-driven; live data continuity remains unverified until A1E probe.',
+        '## recommendation for A1E / live FMP probe',
+        'Run gated read-only live probe for probe-required and fragile nodes first, then moderate nodes, while preserving no-write boundaries.',
+    ])
