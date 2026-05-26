@@ -22,6 +22,7 @@ DOMAINS = [
     "telecom infrastructure","AI-adjacent cyclicals","macro-sensitive leaders","valuation-extreme entities",
     "volatility-extreme entities","contradiction-rich entities","regime-transition-sensitive entities",
 ]
+DOMAIN_TARGETS = OrderedDict((d, True) for d in DOMAINS)
 
 def _domain_for(i:int)->str:
     return DOMAINS[i % len(DOMAINS)]
@@ -371,3 +372,192 @@ def build_phase_a1d_markdown_report() -> str:
         '## recommendation for A1E / live FMP probe',
         'Run gated read-only live probe for probe-required and fragile nodes first, then moderate nodes, while preserving no-write boundaries.',
     ])
+
+# Phase A1E — Controlled Live FMP Probe Calibration
+import json
+import os
+import urllib.error
+import urllib.parse
+import urllib.request
+
+A1E_REQUIRED_ENDPOINTS = [
+    "profile", "quote", "historical-price", "market-cap", "key-metrics", "enterprise-values",
+    "income-statement", "balance-sheet-statement", "cash-flow-statement",
+]
+A1E_OPTIONAL_ENDPOINTS = ["analyst-estimates", "earnings-calendar"]
+A1E_CONTINUITY_CLASSES = [
+    "STRONG_CONTINUITY_CONFIRMED", "MODERATE_CONTINUITY_CONFIRMED", "PARTIAL_CONTINUITY", "FRAGILE_CONTINUITY", "NON_VIABLE_CONTINUITY", "NOT_CLASSIFIED_DUE_TO_INVALID_PROBE",
+]
+A1E_CONTROL_TICKERS = ["MSFT", "AAPL", "NVDA", "AMZN", "GOOGL", "META", "AMD", "ORCL"]
+A1E_ENDPOINT_URL_TEMPLATE_NAMES = OrderedDict([
+    ("profile", "v3/profile/{symbol}"),
+    ("quote", "v3/quote/{symbol}"),
+    ("historical-price", "v3/historical-price-full/{symbol}?serietype=line"),
+    ("market-cap", "v3/market-capitalization/{symbol}"),
+    ("key-metrics", "v3/key-metrics/{symbol}"),
+    ("enterprise-values", "v3/enterprise-values/{symbol}"),
+    ("income-statement", "v3/income-statement/{symbol}"),
+    ("balance-sheet-statement", "v3/balance-sheet-statement/{symbol}"),
+    ("cash-flow-statement", "v3/cash-flow-statement/{symbol}"),
+    ("analyst-estimates", "v3/analyst-estimates/{symbol}"),
+    ("earnings-calendar", "v3/historical/earning_calendar/{symbol}"),
+])
+
+
+def _a1e_api_key_info() -> OrderedDict[str, Any]:
+    for key in ("FMP_API_KEY", "FINANCIAL_MODELING_PREP_API_KEY"):
+        if os.getenv(key):
+            return OrderedDict([("api_key_present", True), ("api_key_source", key)])
+    return OrderedDict([("api_key_present", False), ("api_key_source", "NONE")])
+
+
+def build_phase_a1e_live_probe_configuration(max_entities: int = 40, probe_mode: str = "mock") -> OrderedDict[str, Any]:
+    cap = min(40, max(1, int(max_entities)))
+    return OrderedDict([
+        ("phase", "A1E"), ("mode", "controlled_live_fmp_probe_calibration"), ("probe_mode", probe_mode),
+        ("observational_only", True), ("max_entities", cap), ("required_endpoints", list(A1E_REQUIRED_ENDPOINTS)), ("optional_endpoints", list(A1E_OPTIONAL_ENDPOINTS)),
+        ("control_tickers", list(A1E_CONTROL_TICKERS)), ("endpoint_url_template_names", dict(A1E_ENDPOINT_URL_TEMPLATE_NAMES)),
+        ("persistence_allowed", False), ("supabase_writes_allowed", False), ("sql_writes_allowed", False), ("schema_expansion_allowed", False),
+    ])
+
+
+def build_phase_a1e_probe_candidate_selection(max_entities: int = 40) -> list[OrderedDict[str, Any]]:
+    profiles = build_phase_a1d_entity_data_viability_profiles()
+    by_ticker = {r["ticker"]: r for r in build_phase_a1b_real_curated_structural_universe()}
+    required = ["ON", "GE", "D", "S", "U", "AI", "PATH"] + A1E_CONTROL_TICKERS
+    selected = []; seen = set()
+    def add(t: str, reason: str) -> None:
+        if t in by_ticker and t not in seen and len(selected) < min(40, max_entities):
+            row = by_ticker[t]
+            selected.append(OrderedDict([("ticker", t), ("reason", reason), ("domain", row["sefi_domain"]), ("sector", row["sector"])]))
+            seen.add(t)
+    for t in required: add(t, "priority_or_control")
+    for p in profiles:
+        if p["data_viability_classification"] in {"REQUIRES_LIVE_FMP_PROBE", "MODERATE_CONTINUITY_NODE", "HIGH_CONTINUITY_NODE"}: add(p["ticker"], f"classification:{p['data_viability_classification']}")
+    for p in profiles:
+        if p["listing_complexity"] == "ADR_OR_FOREIGN_LISTING": add(p["ticker"], "adr_or_foreign_listing")
+    return selected[: min(40, max_entities)]
+
+
+def build_phase_a1e_live_fmp_fetcher(timeout_seconds: float = 8.0):
+    key_info = _a1e_api_key_info()
+    base = "https://financialmodelingprep.com/api/"
+    def fetcher(ticker: str, endpoint: str) -> OrderedDict[str, Any]:
+        if not key_info["api_key_present"]:
+            return OrderedDict([("ok", False), ("http_status", None), ("endpoint_status", "api_key_missing"), ("error_type", "auth_config_missing"), ("payload_shape", "none"), ("record_count", 0), ("has_required_payload", False)])
+        template = A1E_ENDPOINT_URL_TEMPLATE_NAMES.get(endpoint)
+        if not template:
+            return OrderedDict([("ok", False), ("http_status", None), ("endpoint_status", "invalid_endpoint_template"), ("error_type", "template_error"), ("payload_shape", "none"), ("record_count", 0), ("has_required_payload", False)])
+        rel = template.format(symbol=urllib.parse.quote(ticker))
+        url = f"{base}{rel}{'&' if '?' in rel else '?'}apikey={urllib.parse.quote(os.getenv(key_info['api_key_source'], ''))}"
+        req = urllib.request.Request(url=url, method="GET")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+                shape = "dict" if isinstance(payload, dict) else ("list" if isinstance(payload, list) else type(payload).__name__)
+                if isinstance(payload, list): count = len(payload)
+                elif isinstance(payload, dict): count = len(payload.get("historical", [])) if "historical" in payload else (1 if payload else 0)
+                else: count = 0
+                return OrderedDict([("ok", resp.status == 200 and count >= 1), ("http_status", resp.status), ("endpoint_status", "ok" if resp.status == 200 else f"http_{resp.status}"), ("error_type", "none"), ("payload_shape", shape), ("record_count", count), ("has_required_payload", count >= 1)])
+        except urllib.error.HTTPError as e:
+            status = int(getattr(e, "code", 0) or 0)
+            et = "auth_failure" if status in {401, 403} else ("rate_limit" if status == 429 else ("not_found" if status == 404 else ("plan_limit_or_permission_failure" if status in {402, 451} else "http_error")))
+            return OrderedDict([("ok", False), ("http_status", status), ("endpoint_status", f"http_{status}"), ("error_type", et), ("payload_shape", "none"), ("record_count", 0), ("has_required_payload", False)])
+        except TimeoutError:
+            return OrderedDict([("ok", False), ("http_status", None), ("endpoint_status", "timeout"), ("error_type", "timeout"), ("payload_shape", "none"), ("record_count", 0), ("has_required_payload", False)])
+        except Exception:
+            return OrderedDict([("ok", False), ("http_status", None), ("endpoint_status", "malformed_response"), ("error_type", "malformed_response"), ("payload_shape", "none"), ("record_count", 0), ("has_required_payload", False)])
+    return fetcher
+
+
+def _a1e_normalize_endpoint_result(endpoint: str, res: OrderedDict[str, Any]) -> OrderedDict[str, Any]:
+    return OrderedDict([
+        ("retrieval_success", bool(res.get("ok", False))), ("http_status", res.get("http_status")), ("endpoint_status", str(res.get("endpoint_status", "unknown"))),
+        ("error_type", str(res.get("error_type", "none"))), ("payload_shape", str(res.get("payload_shape", "none"))), ("record_count", int(res.get("record_count", 0))),
+        ("has_required_payload", bool(res.get("has_required_payload", False))), ("endpoint_url_template_name", A1E_ENDPOINT_URL_TEMPLATE_NAMES.get(endpoint, "unknown")), ("calibration_notes", []),
+    ])
+
+
+def build_phase_a1e_probe_result_normalization(raw: OrderedDict[str, Any], run_level_status: str = "LIVE_PROBE_VALID") -> OrderedDict[str, Any]:
+    endpoint_results = raw.get("endpoint_results", OrderedDict())
+    required = [endpoint_results[e] for e in A1E_REQUIRED_ENDPOINTS if e in endpoint_results]
+    success_count = sum(1 for v in required if v.get("retrieval_success"))
+    ratio = success_count / max(1, len(required))
+    continuity = "NON_VIABLE_CONTINUITY" if ratio < 0.2 else ("FRAGILE_CONTINUITY" if ratio < 0.45 else ("PARTIAL_CONTINUITY" if ratio < 0.65 else ("MODERATE_CONTINUITY_CONFIRMED" if ratio < 0.9 else "STRONG_CONTINUITY_CONFIRMED")))
+    if run_level_status in {"LIVE_PROBE_INVALID_ENDPOINT_OR_AUTH_FAILURE", "LIVE_PROBE_INFRASTRUCTURE_FAILURE", "LIVE_PROBE_NOT_CONFIGURED", "LIVE_PROBE_MOCK_ONLY"}:
+        continuity = "NOT_CLASSIFIED_DUE_TO_INVALID_PROBE"
+    return OrderedDict([("ticker", raw["ticker"]), ("retrieval_success_ratio", round(ratio, 4)), ("continuity_quality", continuity), ("sparsity_level", "high" if ratio < 0.45 else ("moderate" if ratio < 0.8 else "low")), ("structural_viability", "viable" if ratio >= 0.45 else "fragile"), ("replay_ecology_viability", "eligible_for_ingestion_screen" if ratio >= 0.65 else "defer"), ("endpoint_results", endpoint_results), ("calibration_notes", raw.get("calibration_notes", []))])
+
+
+def execute_phase_a1e_live_fmp_probe(fetcher=None, max_entities: int = 40, probe_mode: str = "mock") -> OrderedDict[str, Any]:
+    candidates = build_phase_a1e_probe_candidate_selection(max_entities=max_entities)
+    key_info = _a1e_api_key_info()
+    fetcher_type = "fetcher_not_configured"; live_probe_executed = False
+    using_builtin_live_fetcher = False
+    if probe_mode == "live":
+        if fetcher is None:
+            fetcher = build_phase_a1e_live_fmp_fetcher()
+            using_builtin_live_fetcher = True
+        fetcher_type = "live_fmp_fetcher"; live_probe_executed = True
+    elif probe_mode == "mock" and fetcher is not None:
+        fetcher_type = "mock_fetcher"
+    elif probe_mode == "mock" and fetcher is None:
+        fetcher = lambda ticker, endpoint: OrderedDict([("ok", False), ("http_status", None), ("endpoint_status", "fetcher_not_configured"), ("error_type", "not_configured"), ("payload_shape", "none"), ("record_count", 0), ("has_required_payload", False)])
+    raw_results = []
+    for c in candidates:
+        endpoint_results = OrderedDict()
+        for endpoint in A1E_REQUIRED_ENDPOINTS + A1E_OPTIONAL_ENDPOINTS:
+            endpoint_results[endpoint] = _a1e_normalize_endpoint_result(endpoint, fetcher(c["ticker"], endpoint))
+        raw_results.append(OrderedDict([("ticker", c["ticker"]), ("endpoint_results", endpoint_results), ("calibration_notes", [c["reason"]])]))
+
+    all_ep = [e for r in raw_results for e in r["endpoint_results"].values()]
+    diags = OrderedDict([
+        ("api_key_present", key_info["api_key_present"]), ("api_key_source", key_info["api_key_source"]), ("endpoint_template_validity", True),
+        ("auth_failure_count", sum(1 for e in all_ep if e["error_type"] == "auth_failure")), ("rate_limit_count", sum(1 for e in all_ep if e["error_type"] == "rate_limit")),
+        ("not_found_count", sum(1 for e in all_ep if e["error_type"] == "not_found")), ("malformed_response_count", sum(1 for e in all_ep if e["error_type"] == "malformed_response")),
+        ("timeout_count", sum(1 for e in all_ep if e["error_type"] == "timeout")), ("plan_limit_or_permission_failure_count", sum(1 for e in all_ep if e["error_type"] == "plan_limit_or_permission_failure")),
+    ])
+    controls = [r for r in raw_results if r["ticker"] in A1E_CONTROL_TICKERS]
+    control_failures = 0
+    for r in controls:
+        req = [r["endpoint_results"][e] for e in A1E_REQUIRED_ENDPOINTS]
+        if sum(1 for x in req if x["retrieval_success"]) <= 2: control_failures += 1
+    control_sanity = OrderedDict([("control_tickers", list(A1E_CONTROL_TICKERS)), ("controls_evaluated", len(controls)), ("controls_failed_broadly", control_failures), ("sanity_pass", control_failures <= 2)])
+
+    if probe_mode == "mock": run_status = "LIVE_PROBE_MOCK_ONLY"
+    elif fetcher_type == "fetcher_not_configured" or (using_builtin_live_fetcher and not key_info["api_key_present"]): run_status = "LIVE_PROBE_NOT_CONFIGURED"
+    elif diags["auth_failure_count"] > 0 or diags["not_found_count"] > max(20, len(all_ep)//3) or not control_sanity["sanity_pass"]: run_status = "LIVE_PROBE_INVALID_ENDPOINT_OR_AUTH_FAILURE"
+    elif diags["rate_limit_count"] > max(5, len(all_ep)//5) or diags["timeout_count"] > max(5, len(all_ep)//5): run_status = "LIVE_PROBE_INFRASTRUCTURE_FAILURE"
+    else: run_status = "LIVE_PROBE_VALID"
+
+    normalized = [build_phase_a1e_probe_result_normalization(r, run_status) for r in raw_results]
+    return OrderedDict([("probe_mode", probe_mode), ("live_probe_executed", live_probe_executed), ("fetcher_type", fetcher_type), ("diagnostics", diags), ("control_ticker_sanity", control_sanity), ("run_level_status", run_status), ("results", normalized)])
+
+
+def build_phase_a1e_ticker_resolution_review(results: list[OrderedDict[str, Any]]) -> OrderedDict[str, Any]:
+    ambiguous = [r["ticker"] for r in results if r["ticker"] in {"ON", "GE", "D", "S", "U", "AI", "PATH"}]
+    return OrderedDict([("symbol_ambiguity", ambiguous), ("renamed_entities", ["GE"]), ("adr_mapping_issues", []), ("endpoint_inconsistencies", []), ("missing_statement_coverage", [r["ticker"] for r in results if not r["endpoint_results"]["income-statement"]["retrieval_success"]]), ("sparse_historical_depth", [r["ticker"] for r in results if not r["endpoint_results"]["historical-price"]["retrieval_success"]]), ("broken_enterprise_value_continuity", [r["ticker"] for r in results if not r["endpoint_results"]["enterprise-values"]["retrieval_success"]]), ("incomplete_metric_history", [r["ticker"] for r in results if not r["endpoint_results"]["key-metrics"]["retrieval_success"]]),])
+
+def build_phase_a1e_historical_continuity_review(results): return OrderedDict((r["ticker"], r["continuity_quality"]) for r in results)
+def build_phase_a1e_statement_coverage_review(results): return OrderedDict((r["ticker"], OrderedDict((k, r["endpoint_results"][k]["retrieval_success"]) for k in ["income-statement", "balance-sheet-statement", "cash-flow-statement"])) for r in results)
+def build_phase_a1e_enterprise_value_review(results): return OrderedDict((r["ticker"], r["endpoint_results"]["enterprise-values"]) for r in results)
+def build_phase_a1e_key_metrics_review(results): return OrderedDict((r["ticker"], r["endpoint_results"]["key-metrics"]) for r in results)
+def build_phase_a1e_adr_behavior_review(results):
+    adr = {"TSM","ASML","SHOP","ARM","BABA","NTES","SONY"}
+    return [OrderedDict([("ticker", r["ticker"]), ("adr_consistency", "moderate"), ("statement_continuity", r["continuity_quality"]), ("valuation_continuity", r["endpoint_results"]["enterprise-values"]["endpoint_status"]), ("currency_normalization_concerns", True), ("region_specific_sparsity", r["continuity_quality"] in {"FRAGILE_CONTINUITY", "NON_VIABLE_CONTINUITY", "NOT_CLASSIFIED_DUE_TO_INVALID_PROBE"})]) for r in results if r["ticker"] in adr]
+def build_phase_a1e_probe_fragility_review(results): return [r for r in results if r["continuity_quality"] in {"FRAGILE_CONTINUITY", "NON_VIABLE_CONTINUITY", "NOT_CLASSIFIED_DUE_TO_INVALID_PROBE"}]
+
+def build_phase_a1e_probe_calibration_summary(probe_output):
+    results=probe_output["results"]; c=Counter(r["continuity_quality"] for r in results)
+    safe=[r["ticker"] for r in results if r["continuity_quality"] in {"STRONG_CONTINUITY_CONFIRMED","MODERATE_CONTINUITY_CONFIRMED"}]
+    defer=[r["ticker"] for r in results if r["ticker"] not in safe]
+    return OrderedDict([("run_level_status", probe_output["run_level_status"]), ("probe_mode", probe_output["probe_mode"]), ("live_probe_executed", probe_output["live_probe_executed"]), ("fetcher_type", probe_output["fetcher_type"]), ("total_entities_probed", len(results)), ("strong_continuity_count", c.get("STRONG_CONTINUITY_CONFIRMED",0)), ("moderate_continuity_count", c.get("MODERATE_CONTINUITY_CONFIRMED",0)), ("fragile_continuity_count", c.get("FRAGILE_CONTINUITY",0)), ("non_viable_count", c.get("NON_VIABLE_CONTINUITY",0)), ("not_classified_due_to_invalid_probe_count", c.get("NOT_CLASSIFIED_DUE_TO_INVALID_PROBE",0)), ("ADR_risk_findings", [x["ticker"] for x in build_phase_a1e_adr_behavior_review(results)]), ("symbol_ambiguity_findings", [r["ticker"] for r in results if r["ticker"] in {"ON", "GE", "D", "S", "U", "AI", "PATH"}]), ("continuity_break_findings", defer), ("recommended_replacement_candidates", defer[:10]), ("recommended_ingestion_safe_subset", safe[:20]), ("recommended_deferred_subset", defer[:20])])
+
+def build_phase_a1e_supervisor_review(fetcher=None, max_entities: int = 40, probe_mode: str = "mock"):
+    probe_output = execute_phase_a1e_live_fmp_probe(fetcher=fetcher, max_entities=max_entities, probe_mode=probe_mode)
+    results = probe_output["results"]
+    return OrderedDict([("governance_boundary", certify_phase_a_observational_expansion_boundary()), ("probe_configuration", build_phase_a1e_live_probe_configuration(max_entities=max_entities, probe_mode=probe_mode)), ("probe_mode", probe_output["probe_mode"]), ("live_probe_executed", probe_output["live_probe_executed"]), ("fetcher_type", probe_output["fetcher_type"]), ("api_key_diagnostics", probe_output["diagnostics"]), ("control_ticker_sanity", probe_output["control_ticker_sanity"]), ("run_level_status", probe_output["run_level_status"]), ("probe_results", results), ("ticker_resolution_findings", build_phase_a1e_ticker_resolution_review(results)), ("historical_continuity_findings", build_phase_a1e_historical_continuity_review(results)), ("statement_coverage_findings", build_phase_a1e_statement_coverage_review(results)), ("enterprise_value_findings", build_phase_a1e_enterprise_value_review(results)), ("key_metrics_findings", build_phase_a1e_key_metrics_review(results)), ("adr_behavior_findings", build_phase_a1e_adr_behavior_review(results)), ("fragility_findings", build_phase_a1e_probe_fragility_review(results)), ("calibration_summary", build_phase_a1e_probe_calibration_summary(probe_output))])
+
+def build_phase_a1e_markdown_report(review: OrderedDict[str, Any]) -> str:
+    s=review["calibration_summary"]
+    return "\n".join(["# Phase A1E Controlled Live FMP Probe Calibration","## objective","Perform first bounded live FMP continuity calibration before ingestion.","## relationship to A1D","A1D produced metadata-only readiness; A1E adds bounded live continuity validation.","## observational-only boundary",str(review["governance_boundary"]),"## probe configuration",str(review["probe_configuration"]),"## probe candidate rationale","Prioritized REQUIRES_LIVE_FMP_PROBE + ADR/foreign + high/moderate continuity controls + liquid control tickers.","## run mode and execution",str(OrderedDict([("probe_mode",review["probe_mode"]),("live_probe_executed",review["live_probe_executed"]),("fetcher_type",review["fetcher_type"])])),"## api key and endpoint diagnostics",str(review["api_key_diagnostics"]),"## control ticker sanity check",str(review["control_ticker_sanity"]),"## run-level validity",str(review["run_level_status"]),"## ticker resolution findings",str(review["ticker_resolution_findings"]),"## historical continuity findings",str(review["historical_continuity_findings"]),"## statement coverage findings",str(review["statement_coverage_findings"]),"## enterprise-value findings",str(review["enterprise_value_findings"]),"## key-metrics findings",str(review["key_metrics_findings"]),"## ADR behavior findings",str(review["adr_behavior_findings"]),"## fragility findings",str(review["fragility_findings"]),"## ingestion-safe subset recommendation",str(s["recommended_ingestion_safe_subset"]),"## deferred/replacement candidate recommendation",str(s["recommended_deferred_subset"]),"## governance preservation","All observational-only flags preserved; no write path expansion.","## residual risks","Symbol ambiguity and ADR currency normalization can still degrade continuity.","## recommendation for Phase B1","Only progress with ingestion-safe subset after explicit governance recertification and valid run-level status."])
