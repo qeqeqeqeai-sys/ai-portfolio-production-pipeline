@@ -259,6 +259,22 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid10_first_rea
     certify_lr6_evid10_design_boundary,
 )
 
+from transmission_layers.expectation_failure.replay_ecology.lr6_live1_first_tiny_governed_replay_ingestion_dry_run_wave import (
+    build_lr6_live1_append_only_simulation,
+    build_lr6_live1_dry_run_context,
+    build_lr6_live1_entity_wave_selection,
+    build_lr6_live1_governance_gate_review,
+    build_lr6_live1_halt_condition_monitor,
+    build_lr6_live1_markdown_report,
+    build_lr6_live1_payload_preparation,
+    build_lr6_live1_replay_window_scope,
+    build_lr6_live1_shadow_persistence_simulation,
+    build_lr6_live1_supervisor_review,
+    build_lr6_live1_wave_summary,
+    certify_lr6_live1_dry_run_boundary,
+    run_lr6_live1_dry_run_wave,
+)
+
 from transmission_layers.expectation_failure.replay_ecology.lr6_evid11_first_real_replay_richness_payload_builder import (
     build_lr6_evid11_builder_context,
     extract_lr6_evid11_structured_richness_fields,
