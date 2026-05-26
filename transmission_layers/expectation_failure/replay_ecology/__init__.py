@@ -104,3 +104,9 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_exec1_first_gove
     execute_lr6_exec1_first_wave,
     validate_lr6_exec1_governance_approvals,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_run1_single_governed_observation_wave import (
+    FINAL_DECISIONS,
+    REQUIRED_APPROVAL_PHRASE,
+    execute_lr6_run1_single_governed_observation_wave,
+)
