@@ -258,3 +258,16 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid10_first_rea
     build_lr6_evid10_markdown_report,
     certify_lr6_evid10_design_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid11_first_real_replay_richness_payload_builder import (
+    build_lr6_evid11_builder_context,
+    extract_lr6_evid11_structured_richness_fields,
+    validate_lr6_evid11_richness_source_artifact,
+    build_lr6_evid11_replay_richness_payload,
+    build_lr6_evid11_evid6_emission_candidate,
+    build_lr6_evid11_payload_validation_result,
+    build_lr6_evid11_scaffold_rejection_result,
+    build_lr6_evid11_supervisor_review,
+    build_lr6_evid11_markdown_report,
+    certify_lr6_evid11_builder_boundary,
+)
