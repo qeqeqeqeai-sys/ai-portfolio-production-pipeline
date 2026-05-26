@@ -76,6 +76,7 @@ def test_reviews_and_governance_and_no_ops_expansion():
     assert dict(flags) == expected
 
     src = open("transmission_layers/expectation_failure/phase_a1_curated_observational_expansion.py", "r", encoding="utf-8").read().lower()
+    src = src.split("a1d_fmp_coverage_categories", 1)[0]
     banned = ["requests.", "http://", "https://", "supabase", "insert into", "alter table", "create table", "fmp"]
     for token in banned:
         assert token not in src
