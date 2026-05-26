@@ -285,3 +285,16 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid12_real_repl
     build_lr6_evid12_markdown_report,
     certify_lr6_evid12_validation_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid13_dry_run_replay_richness_payload_attachment import (
+    build_lr6_evid13_attachment_context,
+    identify_lr6_evid13_dry_run_attachment_targets,
+    build_lr6_evid13_structured_artifact_adapter,
+    attach_lr6_evid13_replay_richness_payload_dry_run,
+    build_lr6_evid13_attachment_result,
+    build_lr6_evid13_dry_run_emission_preview,
+    build_lr6_evid13_attachment_safety_review,
+    build_lr6_evid13_supervisor_review,
+    build_lr6_evid13_markdown_report,
+    certify_lr6_evid13_attachment_boundary,
+)
