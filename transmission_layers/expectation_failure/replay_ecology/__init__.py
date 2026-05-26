@@ -312,3 +312,18 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid14_first_rep
     build_lr6_evid14_markdown_report,
     certify_lr6_evid14_review_boundary,
 )
+from transmission_layers.expectation_failure.replay_ecology.lr6_live0_governed_live_replay_ingestion_readiness_plan import (
+    build_lr6_live0_blocked_metric_review,
+    build_lr6_live0_conditional_metric_review,
+    build_lr6_live0_failure_halt_conditions,
+    build_lr6_live0_first_wave_scope_recommendation,
+    build_lr6_live0_governance_requirement_review,
+    build_lr6_live0_ingestion_wave_constraints,
+    build_lr6_live0_markdown_report,
+    build_lr6_live0_metric_ingestion_eligibility_review,
+    build_lr6_live0_persistence_isolation_plan,
+    build_lr6_live0_rate_limit_plan,
+    build_lr6_live0_readiness_context,
+    build_lr6_live0_supervisor_readiness_review,
+    certify_lr6_live0_readiness_boundary,
+)
