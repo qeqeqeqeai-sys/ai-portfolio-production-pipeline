@@ -361,3 +361,23 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_live0_governed_l
     build_lr6_live0_supervisor_readiness_review,
     certify_lr6_live0_readiness_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_live3_first_tiny_governed_replay_ingestion_non_dry_execution import (
+    REQUIRED_APPROVAL_PHRASE as LR6_LIVE3_REQUIRED_APPROVAL_PHRASE,
+    REQUIRED_EXECUTION_TOKEN as LR6_LIVE3_REQUIRED_EXECUTION_TOKEN,
+    build_lr6_live3_append_only_persistence_plan,
+    build_lr6_live3_duplicate_prevention_keys,
+    build_lr6_live3_entity_wave_selection,
+    build_lr6_live3_execution_context,
+    build_lr6_live3_execution_summary,
+    build_lr6_live3_governance_verification,
+    build_lr6_live3_halt_condition_monitor,
+    build_lr6_live3_lineage_retention_plan,
+    build_lr6_live3_markdown_report,
+    build_lr6_live3_payload_preparation,
+    build_lr6_live3_post_wave_review,
+    build_lr6_live3_rollback_metadata,
+    build_lr6_live3_supervisor_review,
+    certify_lr6_live3_execution_boundary,
+    execute_lr6_live3_non_dry_wave,
+)
