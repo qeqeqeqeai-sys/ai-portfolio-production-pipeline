@@ -42,6 +42,11 @@ def test_lr6_exec1_is_bounded_and_produces_deterministic_artifacts():
     assert a == b
     assert a["wave_preparation"]["selected_count"] == 16
     assert len(a["execution_review_artifacts"]) == 8
+    candidates = a["wave_preparation"]["selected_candidates"]
+    assert any(c.get("weak_signal_bridge") is True for c in candidates)
+    assert any(c.get("contradiction_carrier") is True for c in candidates)
+    assert any(c.get("propagation_bridge") is True for c in candidates)
+    assert all("source_basis" in c for c in candidates)
 
 
 def test_lr6_exec1_no_prediction_trading_or_direct_sql_paths():
