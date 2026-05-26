@@ -41,7 +41,7 @@ def test_scope_and_metric_and_adapter_enforcement():
     assert wrong_metric["persistence_attempted"] is True
     assert wrong_metric["inserted_rows"] >= 0
     assert wrong_metric["append_only_write_plan"]["target_name"] == "replay_richness_wave0_shadow"
-    assert wrong_metric["append_only_write_plan"]["adapter_name"] == "lr6_approved_append_only_shadow_adapter_v1"
+    assert wrong_metric["append_only_write_plan"]["adapter_name"] == "replay_richness_wave0_shadow_append_only_adapter"
 
 
 def test_lineage_rollback_halt_and_no_direct_sql_and_boundary_flags():
