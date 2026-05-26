@@ -37,7 +37,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
 
-      - name: Execute approved LIVE5 non-dry path (fail closed)
+      - name: Execute approved LIVE5 non-dry path
+        env:
+          PYTHONPATH: .
         run: |
           python scripts/run_lr6_live5_first_approved_non_dry_persistence_execution.py
 
