@@ -67,3 +67,17 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_obs7_dry_run_enr
     build_lr6_obs7_weak_signal_stress_review,
     certify_lr6_obs7_dry_run_boundary,
 )
+from transmission_layers.expectation_failure.replay_ecology.lr6_obs8_governed_enriched_replay_observation_proposal import (
+    build_lr6_obs8_approval_gate_requirements,
+    build_lr6_obs8_execution_non_authorization_notice,
+    build_lr6_obs8_expected_execution_artifacts,
+    build_lr6_obs8_fail_closed_conditions,
+    build_lr6_obs8_first_wave_governed_manifest,
+    build_lr6_obs8_governance_requirements,
+    build_lr6_obs8_markdown_report,
+    build_lr6_obs8_proposal_context,
+    build_lr6_obs8_stop_after_first_wave_policy,
+    build_lr6_obs8_supervisor_review,
+    build_lr6_obs8_verification_requirements,
+    certify_lr6_obs8_governed_proposal_boundary,
+)
