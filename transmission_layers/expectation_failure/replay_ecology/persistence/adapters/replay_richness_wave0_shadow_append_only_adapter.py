@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Any
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_live7_deterministic_shared_wave_id_remediation import (
+    build_lr6_live7_shared_wave_context,
+    build_lr6_live7_shared_wave_id,
+)
 
 APPROVED_ADAPTER_NAME = "replay_richness_wave0_shadow_append_only_adapter"
 APPROVED_TARGET = "replay_richness_wave0_shadow"
@@ -33,12 +37,11 @@ def approved_adapter_available() -> bool:
     return True
 
 
-def _derive_wave_id(*, key: str, payload: dict[str, Any]) -> str:
+def _derive_wave_id(*, shared_wave_id: str, payload: dict[str, Any]) -> str:
     payload_wave = payload.get("wave_id")
     if isinstance(payload_wave, str) and payload_wave.strip():
         return payload_wave.strip()
-    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:12].upper()
-    return f"LR6_LIVE5_WAVE_{digest}"
+    return shared_wave_id
 
 
 
@@ -115,6 +118,8 @@ def execute_append_only_insert(*, insert_intents: list[dict[str, Any]], metadata
     seen: set[str] = set()
     rows: list[dict[str, Any]] = []
     approved_columns = set(APPROVED_TOP_LEVEL_COLUMNS)
+    shared_wave_context = build_lr6_live7_shared_wave_context(insert_intents=insert_intents, metadata=metadata)
+    shared_wave_id = build_lr6_live7_shared_wave_id(shared_wave_context)
     for intent in insert_intents:
         key = str(intent.get("duplicate_prevention_key") or intent.get("duplicate_key"))
         if key in seen:
@@ -122,7 +127,7 @@ def execute_append_only_insert(*, insert_intents: list[dict[str, Any]], metadata
         seen.add(key)
 
         payload = dict(intent.get("payload", {}))
-        stable_wave_id = _derive_wave_id(key=key, payload=payload)
+        stable_wave_id = _derive_wave_id(shared_wave_id=shared_wave_id, payload=payload)
         row = {
             "wave_id": stable_wave_id,
             "entity_id": str(payload.get("entity_id")).strip(),

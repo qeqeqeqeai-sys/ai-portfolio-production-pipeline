@@ -416,3 +416,16 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_live5_first_appr
     certify_lr6_live5_execution_boundary,
     execute_lr6_live5_approved_non_dry_attempt,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_live7_deterministic_shared_wave_id_remediation import (
+    build_lr6_live7_append_only_certification,
+    build_lr6_live7_historical_compatibility_review,
+    build_lr6_live7_markdown_report,
+    build_lr6_live7_shared_wave_context,
+    build_lr6_live7_shared_wave_id,
+    build_lr6_live7_supervisor_review,
+    build_lr6_live7_wave_grouping_review,
+    build_lr6_live7_wave_lineage_review,
+    certify_lr6_live7_shared_wave_boundary,
+)
+
