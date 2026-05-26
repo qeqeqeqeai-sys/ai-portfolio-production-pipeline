@@ -7,6 +7,9 @@ from typing import Any
 from transmission_layers.expectation_failure.replay_ecology.lr6_exec1_first_governed_bounded_enriched_replay_wave import (
     execute_lr6_exec1_first_wave,
 )
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid6_minimal_in_memory_metrics_emission_hook import (
+    emit_lr6_replay_metric_evidence,
+)
 
 DETERMINISTIC_VERSION = "LR6_EXEC2_FIRST_DRY_RUN_EXECUTION_REVIEW_V1"
 SOURCE_PHASE = "LR6-EXEC2"
@@ -24,6 +27,30 @@ def _role_counts(candidates: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(counter.items()))
 
 
+
+
+def _build_dry_run_replay_metric_payload(dry_artifact: dict[str, Any]) -> dict[str, Any]:
+    execution = dry_artifact.get("execution", {}) if isinstance(dry_artifact, dict) else {}
+    return {
+        "dry_run": execution.get("dry_run") is True,
+        "execution_authorized": execution.get("executed_non_dry") is True,
+        "governance_review": {"status": execution.get("status", "DRY_RUN_COMPLETED")},
+        "review_sections": [a.get("artifact") for a in dry_artifact.get("execution_review_artifacts", []) if isinstance(a, dict)],
+        "stop_after_first_wave": execution.get("stop_after_first_wave_enforced") is True,
+    }
+
+
+def _build_evidence_emission_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "evidence_record_count": len(records),
+        "measured_record_count": sum(1 for r in records if r.get("evidence_status") == "MEASURED"),
+        "partial_record_count": sum(1 for r in records if r.get("evidence_status") == "PARTIAL"),
+        "missing_record_count": sum(1 for r in records if r.get("evidence_status") == "MISSING"),
+        "scaffold_only_record_count": sum(1 for r in records if r.get("evidence_status") == "SCAFFOLD_ONLY"),
+        "comparison_ready_record_count": sum(1 for r in records if r.get("comparison_ready") is True),
+        "evidence_hook_source": "lr6_evid6_minimal_in_memory_metrics_emission_hook.emit_lr6_replay_metric_evidence",
+    }
+
 def build_lr6_exec2_first_dry_run_execution_review() -> dict[str, Any]:
     dry = execute_lr6_exec1_first_wave(dry_run=True, approvals=None)
 
@@ -39,6 +66,20 @@ def build_lr6_exec2_first_dry_run_execution_review() -> dict[str, Any]:
     execution = dry.get("execution", {})
     boundary = dry.get("execution_boundary_certification", {})
     governance = dry.get("governance_approval_validation", {})
+
+    replay_metric_payload = _build_dry_run_replay_metric_payload(dry)
+    evidence_records = emit_lr6_replay_metric_evidence(
+        replay_phase="ENRICHED",
+        wave_id="LR6_EXEC2_DRY_RUN_WAVE1",
+        candidate_scope_id="LR6_EXEC2_DRY_RUN_SCOPE_16",
+        candidate_count=selected_count,
+        timestamp_or_snapshot_label="LR6_EXEC2_DRY_RUN",
+        replay_observation_payload=replay_metric_payload,
+        candidate_metadata=candidates,
+        source_artifact="lr6_exec2_first_dry_run_execution_review",
+        source_module=SOURCE_PHASE,
+    )
+    evidence_summary = _build_evidence_emission_summary(evidence_records)
 
     return {
         "meta": {
@@ -122,6 +163,10 @@ def build_lr6_exec2_first_dry_run_execution_review() -> dict[str, Any]:
             "no_direct_sql_boundary": boundary.get("no_direct_sql") is True,
             "outputs_bounded_reviewable": len(dry.get("execution_review_artifacts", [])) == 8,
         },
+        "evidence_emission_mode": "DRY_RUN_IN_MEMORY",
+        "evidence_records_are_empirical": False,
+        "evidence_records": evidence_records,
+        "evidence_emission_summary": evidence_summary,
         "recommendation": {
             "decision": "proceed_to_one_bounded_governed_non_dry_observation_wave",
             "conditions": [

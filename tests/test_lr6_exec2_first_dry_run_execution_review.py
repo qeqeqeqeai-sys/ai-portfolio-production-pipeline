@@ -40,3 +40,41 @@ def test_lr6_exec2_role_attribution_is_preserved_and_not_all_unknown():
     assert required_roles["weak_signal"] is True
     assert required_roles["contradiction"] is True
     assert required_roles["propagation"] is True
+
+
+def test_lr6_exec2_emits_seven_dry_run_in_memory_evidence_records_without_fake_measured_status():
+    out = build_lr6_exec2_first_dry_run_execution_review()
+    assert out["evidence_emission_mode"] == "DRY_RUN_IN_MEMORY"
+    assert out["evidence_records_are_empirical"] is False
+
+    records = out["evidence_records"]
+    assert len(records) == 7
+    assert out["evidence_emission_summary"]["evidence_record_count"] == 7
+
+    required_keys = {
+        "evidence_record_id", "replay_phase", "wave_id", "candidate_scope_id", "candidate_count",
+        "timestamp_or_snapshot_label", "metric_dimension", "measured_fields", "evidence_status",
+        "source_artifact", "source_module", "comparison_ready", "scaffold_only", "notes",
+    }
+    assert required_keys.issubset(records[0].keys())
+
+    statuses = {r["evidence_status"] for r in records}
+    assert "MEASURED" not in statuses
+    assert "PARTIAL" not in statuses
+    assert statuses == {"SCAFFOLD_ONLY"}
+
+    summary = out["evidence_emission_summary"]
+    assert summary["measured_record_count"] == 0
+    assert summary["partial_record_count"] == 0
+    assert summary["missing_record_count"] == 0
+    assert summary["scaffold_only_record_count"] == 7
+    assert summary["comparison_ready_record_count"] == 0
+
+
+def test_lr6_exec2_preserves_dry_run_non_authorized_non_persistent_posture_with_evidence_records():
+    out = build_lr6_exec2_first_dry_run_execution_review()
+    checks = out["validation_checks"]
+    assert checks["dry_run_true"] is True
+    assert checks["execution_authorized_false"] is True
+    assert checks["no_persistence_writes"] is True
+    assert checks["stop_after_first_wave_true"] is True
