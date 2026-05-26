@@ -212,3 +212,17 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid5_replay_met
     build_lr6_evid5_validation_rules,
     certify_lr6_evid5_hook_design_boundary,
 )
+
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid6_minimal_in_memory_metrics_emission_hook import (
+    build_lr6_evid6_evid3_compatibility_summary,
+    build_lr6_evid6_emission_quality_summary,
+    build_lr6_evid6_hook_context,
+    build_lr6_evid6_markdown_report,
+    build_lr6_evid6_required_field_contract,
+    build_lr6_evid6_supervisor_review,
+    build_lr6_evid6_supported_metric_dimensions,
+    certify_lr6_evid6_hook_boundary,
+    emit_lr6_replay_metric_evidence,
+    validate_lr6_evid6_metric_payload,
+)
