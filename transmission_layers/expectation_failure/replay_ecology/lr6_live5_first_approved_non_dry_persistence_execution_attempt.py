@@ -12,7 +12,7 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_live3_first_tiny
 )
 
 DETERMINISTIC_VERSION = "LR6_LIVE5_FIRST_APPROVED_NON_DRY_PERSISTENCE_EXECUTION_ATTEMPT_V1"
-APPROVED_APPEND_ONLY_ADAPTER = "lr6_approved_append_only_shadow_adapter_v1"
+APPROVED_APPEND_ONLY_ADAPTER = "replay_richness_wave0_shadow_append_only_adapter"
 HALT_CONDITIONS = [
     "approval_failure",
     "unsafe_promotion",
@@ -95,8 +95,19 @@ def build_lr6_live5_duplicate_prevention_review(prepared_payloads: list[dict[str
     return {"duplicate_keys": keys, "deterministic": keys == sorted(keys), "duplicates_found": len(keys) != len(set(keys))}
 
 
-def build_lr6_live5_append_only_write_plan(prepared_payloads: list[dict[str, Any]], duplicate_prevention: dict[str, Any]) -> dict[str, Any]:
-    intents = [{"insert_intent": "append_only_shadow_insert", "target_name": ISOLATED_PERSISTENCE_TARGET, "adapter_name": APPROVED_APPEND_ONLY_ADAPTER, "duplicate_key": k, "payload": p} for p, k in zip(prepared_payloads, duplicate_prevention.get("duplicate_keys", []))]
+def build_lr6_live5_append_only_write_plan(prepared_payloads: list[dict[str, Any]], duplicate_prevention: dict[str, Any], lineage_and_rollback: dict[str, Any]) -> dict[str, Any]:
+    intents = []
+    for p, k in zip(prepared_payloads, duplicate_prevention.get("duplicate_keys", [])):
+        intents.append({
+            "insert_intent": "append_only_shadow_insert",
+            "target_name": ISOLATED_PERSISTENCE_TARGET,
+            "adapter_name": APPROVED_APPEND_ONLY_ADAPTER,
+            "duplicate_key": k,
+            "duplicate_prevention_key": k,
+            "lineage_metadata": {"source_artifact_refs": p.get("source_artifact_refs", [])},
+            "rollback_metadata": lineage_and_rollback.get("rollback_metadata", {}).get(p.get("payload_id"), {}),
+            "payload": p,
+        })
     return {"append_only": True, "direct_sql_used": False, "target_name": ISOLATED_PERSISTENCE_TARGET, "adapter_name": APPROVED_APPEND_ONLY_ADAPTER, "insert_intents": intents}
 
 
@@ -137,8 +148,8 @@ def execute_lr6_live5_approved_non_dry_attempt(*, entities: list[dict[str, Any]]
     selection = build_lr6_live5_entity_wave_selection(entities)
     payload = build_lr6_live5_payload_preparation(selection, replay_window_label=context["replay_window_label"])
     dup = build_lr6_live5_duplicate_prevention_review(payload["prepared_payloads"])
-    plan = build_lr6_live5_append_only_write_plan(payload["prepared_payloads"], dup)
     lineage = build_lr6_live5_lineage_and_rollback_metadata(payload["prepared_payloads"])
+    plan = build_lr6_live5_append_only_write_plan(payload["prepared_payloads"], dup, lineage)
     halt = build_lr6_live5_halt_condition_monitor(approval_gate=approval, payload_preparation=payload, duplicate_prevention=dup, append_only_write_plan=plan, lineage_and_rollback=lineage, selection=selection)
     if halt["halt_triggered"]:
         return {"context": context, "approval_gate": approval, "entity_wave_selection": selection, "payload_preparation": payload, "duplicate_prevention_review": dup, "append_only_write_plan": plan, "lineage_and_rollback_metadata": lineage, "halt_condition_monitor": halt, "persistence_attempted": False, "inserted_rows": 0, "rejected_rows": len(payload["rejected_payloads"]), "adapter_result": None}

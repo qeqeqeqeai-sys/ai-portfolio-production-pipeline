@@ -89,7 +89,7 @@ def test_script_refuses_missing_approval_and_wrong_metric():
     assert payload['inserted_rows'] == 0
 
 
-def test_script_distinguishes_simulated_from_real_rows_and_blocks_without_adapter():
+def test_script_blocks_on_adapter_safety_when_schema_not_confirmed():
     cp = _run({
         'LIVE5_APPROVAL_PHRASE': 'I APPROVE LR6-LIVE NON-DRY TINY REPLAY EXECUTION',
         'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LR6_LIVE_NON_DRY_TINY_EXECUTION_TOKEN_REQUIRED',
@@ -104,7 +104,7 @@ def test_script_distinguishes_simulated_from_real_rows_and_blocks_without_adapte
     })
     assert cp.returncode != 0
     payload = json.loads(RESULT.read_text(encoding='utf-8'))
-    assert payload['status'] == 'APPROVED_EXECUTION_BLOCKED_NO_APPROVED_ADAPTER'
+    assert payload['status'] == 'APPROVED_EXECUTION_BLOCKED_ADAPTER_SAFETY_FAILURE'
     assert payload['attempted'] is False
     assert payload['inserted_rows'] == 0
     assert payload['simulated_sample_rows'] == 0
