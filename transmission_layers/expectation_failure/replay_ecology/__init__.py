@@ -196,3 +196,19 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid4_first_real
     discover_lr6_evid4_available_payload_sources,
     emit_lr6_evid4_evidence_records_from_available_payloads,
 )
+
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid5_replay_metrics_emission_hook_design import (
+    build_lr6_evid5_evid2_field_mapping,
+    build_lr6_evid5_evid3_adapter_compatibility_review,
+    build_lr6_evid5_hook_design_context,
+    build_lr6_evid5_integration_points,
+    build_lr6_evid5_markdown_report,
+    build_lr6_evid5_metric_computation_guidelines,
+    build_lr6_evid5_minimal_metric_contract,
+    build_lr6_evid5_non_persistence_emission_policy,
+    build_lr6_evid5_replay_time_emission_hook_spec,
+    build_lr6_evid5_supervisor_review,
+    build_lr6_evid5_validation_rules,
+    certify_lr6_evid5_hook_design_boundary,
+)
