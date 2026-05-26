@@ -429,3 +429,14 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_live7_determinis
     certify_lr6_live7_shared_wave_boundary,
 )
 
+from transmission_layers.expectation_failure.replay_ecology.lr6_live8_replay_cohort_integrity_monitoring_and_regression_safeguards import (
+    build_lr6_live8_anomaly_classification,
+    build_lr6_live8_append_only_boundary_monitor,
+    build_lr6_live8_cohort_integrity_review,
+    build_lr6_live8_historical_compatibility_monitor,
+    build_lr6_live8_markdown_report,
+    build_lr6_live8_monitoring_context,
+    build_lr6_live8_regression_safeguard_review,
+    build_lr6_live8_supervisor_review,
+    certify_lr6_live8_monitoring_boundary,
+)
