@@ -40,7 +40,7 @@ def test_live17_envelope_continuity_and_live19_gate_discussable_only():
     gate = live18.build_lr6_live18_live19_eligibility_gate()
     assert continuity["continuity_pass"] is True
     assert all(continuity["continuity_checks"].values())
-    assert gate["live19_gate"] == "LIVE19_TINY_PILOT_DRY_RUN_REHEARSAL_EXECUTION_DISCUSSABLE"
+    assert gate["live19_gate"] == "LIVE19_NON_EXECUTABLE_REHEARSAL_REVIEW_DISCUSSABLE"
     assert gate["execution_authorized"] is False
 
 

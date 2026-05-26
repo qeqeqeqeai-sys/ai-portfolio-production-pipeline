@@ -147,9 +147,9 @@ def certify_lr6_live18_persistence_write_path_blockade() -> dict[str, Any]:
 def build_lr6_live18_live19_eligibility_gate() -> dict[str, Any]:
     continuity = validate_lr6_live18_live17_envelope_continuity()
     if continuity["continuity_pass"]:
-        gate = "LIVE19_TINY_PILOT_DRY_RUN_REHEARSAL_EXECUTION_DISCUSSABLE"
+        gate = "LIVE19_NON_EXECUTABLE_REHEARSAL_REVIEW_DISCUSSABLE"
     else:
-        gate = "LIVE19_TINY_PILOT_DRY_RUN_REHEARSAL_EXECUTION_BLOCKED"
+        gate = "LIVE19_NON_EXECUTABLE_REHEARSAL_REVIEW_BLOCKED"
     return {"live19_gate": gate, "discussion_only": True, "execution_authorized": False}
 
 

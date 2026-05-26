@@ -31,4 +31,4 @@
 - {'replay_execution_enabled': False, 'live_persistence_enabled': False, 'write_path_enabled': False, 'direct_sql_allowed': False, 'schema_expansion_enabled': False, 'historical_row_rewrite_enabled': False, 'append_only_posture_preserved': True, 'sql_bypass_allowed': False}
 
 ## LIVE19 eligibility gate
-- {'live19_gate': 'LIVE19_TINY_PILOT_DRY_RUN_REHEARSAL_EXECUTION_DISCUSSABLE', 'discussion_only': True, 'execution_authorized': False}
+- {'live19_gate': 'LIVE19_NON_EXECUTABLE_REHEARSAL_REVIEW_DISCUSSABLE', 'discussion_only': True, 'execution_authorized': False}
