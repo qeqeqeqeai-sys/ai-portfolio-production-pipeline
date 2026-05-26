@@ -149,3 +149,20 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid1a_evidence_
     build_lr6_evid1a_supervisor_review,
     certify_lr6_evid1a_mapping_boundary,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid2_measurable_replay_evidence_capture_design import (
+    EVIDENCE_STATUS_VALUES as EVID2_EVIDENCE_STATUS_VALUES,
+    REPLAY_PHASE_VALUES,
+    build_lr6_evid2_baseline_capture_requirements,
+    build_lr6_evid2_capture_design_context,
+    build_lr6_evid2_enriched_capture_requirements,
+    build_lr6_evid2_evidence_record_schema,
+    build_lr6_evid2_evid1_population_mapping,
+    build_lr6_evid2_markdown_report,
+    build_lr6_evid2_metric_field_definitions,
+    build_lr6_evid2_no_scaffold_as_evidence_rules,
+    build_lr6_evid2_pre_post_pairing_requirements,
+    build_lr6_evid2_quality_validation_rules,
+    build_lr6_evid2_supervisor_review,
+    certify_lr6_evid2_capture_design_boundary,
+)
