@@ -1001,3 +1001,42 @@ __all__.extend([
     "build_phase_a6_supervisor_review",
     "build_phase_a6_markdown_report",
 ])
+
+
+from .phase_a7_replay_ecology_stabilization_hardening import (
+    build_phase_a7_stabilization_configuration,
+    build_phase_a7_entropy_reinforcement_model,
+    build_phase_a7_replay_corridor_decompression_model,
+    build_phase_a7_gravity_well_dispersion_model,
+    build_phase_a7_recurrence_dispersion_model,
+    build_phase_a7_topology_diversification_model,
+    build_phase_a7_anti_monoculture_hardening_model,
+    build_phase_a7_weak_node_resilience_model,
+    build_phase_a7_structural_escape_route_model,
+    build_phase_a7_novelty_preservation_model,
+    build_phase_a7_adaptive_survivability_model,
+    build_phase_a7_density_resilience_review,
+    build_phase_a7_collapse_resistance_review,
+    build_phase_a7_ecology_resilience_scorecard,
+    build_phase_a7_supervisor_review,
+    build_phase_a7_markdown_report,
+)
+
+__all__.extend([
+    "build_phase_a7_stabilization_configuration",
+    "build_phase_a7_entropy_reinforcement_model",
+    "build_phase_a7_replay_corridor_decompression_model",
+    "build_phase_a7_gravity_well_dispersion_model",
+    "build_phase_a7_recurrence_dispersion_model",
+    "build_phase_a7_topology_diversification_model",
+    "build_phase_a7_anti_monoculture_hardening_model",
+    "build_phase_a7_weak_node_resilience_model",
+    "build_phase_a7_structural_escape_route_model",
+    "build_phase_a7_novelty_preservation_model",
+    "build_phase_a7_adaptive_survivability_model",
+    "build_phase_a7_density_resilience_review",
+    "build_phase_a7_collapse_resistance_review",
+    "build_phase_a7_ecology_resilience_scorecard",
+    "build_phase_a7_supervisor_review",
+    "build_phase_a7_markdown_report",
+])
