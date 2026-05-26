@@ -27,11 +27,11 @@ def test_workflow_exists_and_dispatch_only():
 
 def test_required_inputs_and_guards_present():
     workflow_text = WORKFLOW.read_text(encoding='utf-8')
-    for required_input in [
-        'approval_phrase:', 'non_dry_execution_token:', 'max_entities:', 'metric_target:',
-        'persistence_target:', 'append_only_confirmation:', 'rollback_confirmation:', 'lineage_confirmation:'
-    ]:
-        assert required_input in workflow_text
+    assert 'max_entities:' in workflow_text
+    for removed_input in ['approval_phrase:', 'non_dry_execution_token:', 'metric_target:', 'persistence_target:', 'append_only_confirmation:', 'rollback_confirmation:', 'lineage_confirmation:']:
+        assert removed_input not in workflow_text
+    for hardcoded in ['LIVE5_APPROVAL_PHRASE: "LIVE5"', 'LIVE5_NON_DRY_EXECUTION_TOKEN: "LIVE5"', 'LIVE5_METRIC_TARGET: "replay_richness"', 'LIVE5_PERSISTENCE_TARGET: "replay_richness_wave0_shadow"', 'LIVE5_APPEND_ONLY_CONFIRMATION: "true"', 'LIVE5_ROLLBACK_CONFIRMATION: "true"', 'LIVE5_LINEAGE_CONFIRMATION: "true"', 'LIVE5_SCHEMA_CONFIRMED: "true"']:
+        assert hardcoded in workflow_text
     script_text = SCRIPT.read_text(encoding='utf-8')
     assert 'max_entities <= MAX_ENTITIES' in script_text
     assert 'LIVE5_METRIC_TARGET") == TARGET_METRIC' in script_text
@@ -53,8 +53,8 @@ def test_secrets_referenced_not_printed_and_no_direct_sql():
 
 def test_script_refuses_missing_credentials(monkeypatch):
     cp = _run({
-        'LIVE5_APPROVAL_PHRASE': 'I APPROVE LR6-LIVE NON-DRY TINY REPLAY EXECUTION',
-        'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LR6_LIVE_NON_DRY_TINY_EXECUTION_TOKEN_REQUIRED',
+        'LIVE5_APPROVAL_PHRASE': 'LIVE5',
+        'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LIVE5',
         'LIVE5_MAX_ENTITIES': '3',
         'LIVE5_METRIC_TARGET': 'replay_richness',
         'LIVE5_PERSISTENCE_TARGET': 'replay_richness_wave0_shadow',
@@ -72,7 +72,7 @@ def test_script_refuses_missing_credentials(monkeypatch):
 def test_script_refuses_missing_approval_and_wrong_metric():
     cp = _run({
         'LIVE5_APPROVAL_PHRASE': '',
-        'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LR6_LIVE_NON_DRY_TINY_EXECUTION_TOKEN_REQUIRED',
+        'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LIVE5',
         'LIVE5_MAX_ENTITIES': '3',
         'LIVE5_METRIC_TARGET': 'wrong_metric',
         'LIVE5_PERSISTENCE_TARGET': 'replay_richness_wave0_shadow',
@@ -91,8 +91,8 @@ def test_script_refuses_missing_approval_and_wrong_metric():
 
 def test_script_blocks_on_adapter_safety_when_schema_not_confirmed():
     cp = _run({
-        'LIVE5_APPROVAL_PHRASE': 'I APPROVE LR6-LIVE NON-DRY TINY REPLAY EXECUTION',
-        'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LR6_LIVE_NON_DRY_TINY_EXECUTION_TOKEN_REQUIRED',
+        'LIVE5_APPROVAL_PHRASE': 'LIVE5',
+        'LIVE5_NON_DRY_EXECUTION_TOKEN': 'LIVE5',
         'LIVE5_MAX_ENTITIES': '3',
         'LIVE5_METRIC_TARGET': 'replay_richness',
         'LIVE5_PERSISTENCE_TARGET': 'replay_richness_wave0_shadow',

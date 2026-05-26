@@ -76,8 +76,8 @@ def test_success_and_duplicate_reporting():
 
 
 def test_live5_runner_uses_adapter_and_not_no_adapter(monkeypatch):
-    monkeypatch.setenv("LIVE5_APPROVAL_PHRASE", "I APPROVE LR6-LIVE NON-DRY TINY REPLAY EXECUTION")
-    monkeypatch.setenv("LIVE5_NON_DRY_EXECUTION_TOKEN", "LR6_LIVE_NON_DRY_TINY_EXECUTION_TOKEN_REQUIRED")
+    monkeypatch.setenv("LIVE5_APPROVAL_PHRASE", "LIVE5")
+    monkeypatch.setenv("LIVE5_NON_DRY_EXECUTION_TOKEN", "LIVE5")
     monkeypatch.setenv("LIVE5_MAX_ENTITIES", "2")
     monkeypatch.setenv("LIVE5_METRIC_TARGET", "replay_richness")
     monkeypatch.setenv("LIVE5_PERSISTENCE_TARGET", "replay_richness_wave0_shadow")
