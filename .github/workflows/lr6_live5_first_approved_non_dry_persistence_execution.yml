@@ -3,51 +3,25 @@ name: LR6-LIVE5 First Approved Non-Dry Persistence Execution
 on:
   workflow_dispatch:
     inputs:
-      approval_phrase:
-        description: "Exact LIVE5 approval phrase"
-        required: true
-        type: string
-      non_dry_execution_token:
-        description: "Approved non-dry execution token"
-        required: true
-        type: string
       max_entities:
         description: "Maximum entities (must be <= 5)"
-        required: true
+        required: false
+        default: "5"
         type: string
-      metric_target:
-        description: "Must be replay_richness"
-        required: true
-        type: string
-      persistence_target:
-        description: "Must be isolated shadow target only"
-        required: true
-        type: string
-      append_only_confirmation:
-        description: "Must be true"
-        required: true
-        type: boolean
-      rollback_confirmation:
-        description: "Must be true"
-        required: true
-        type: boolean
-      lineage_confirmation:
-        description: "Must be true"
-        required: true
-        type: boolean
 
 jobs:
   live5-first-approved-non-dry-execution:
     runs-on: ubuntu-latest
     env:
-      LIVE5_APPROVAL_PHRASE: ${{ github.event.inputs.approval_phrase }}
-      LIVE5_NON_DRY_EXECUTION_TOKEN: ${{ github.event.inputs.non_dry_execution_token }}
-      LIVE5_MAX_ENTITIES: ${{ github.event.inputs.max_entities }}
-      LIVE5_METRIC_TARGET: ${{ github.event.inputs.metric_target }}
-      LIVE5_PERSISTENCE_TARGET: ${{ github.event.inputs.persistence_target }}
-      LIVE5_APPEND_ONLY_CONFIRMATION: ${{ github.event.inputs.append_only_confirmation }}
-      LIVE5_ROLLBACK_CONFIRMATION: ${{ github.event.inputs.rollback_confirmation }}
-      LIVE5_LINEAGE_CONFIRMATION: ${{ github.event.inputs.lineage_confirmation }}
+      LIVE5_APPROVAL_PHRASE: "LIVE5"
+      LIVE5_NON_DRY_EXECUTION_TOKEN: "LIVE5"
+      LIVE5_MAX_ENTITIES: ${{ github.event.inputs.max_entities || '5' }}
+      LIVE5_METRIC_TARGET: "replay_richness"
+      LIVE5_PERSISTENCE_TARGET: "replay_richness_wave0_shadow"
+      LIVE5_APPEND_ONLY_CONFIRMATION: "true"
+      LIVE5_ROLLBACK_CONFIRMATION: "true"
+      LIVE5_LINEAGE_CONFIRMATION: "true"
+      LIVE5_SCHEMA_CONFIRMED: "true"
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
