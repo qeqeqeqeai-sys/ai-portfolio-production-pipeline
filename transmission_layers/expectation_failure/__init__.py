@@ -948,3 +948,19 @@ __all__.extend([
     "certify_path5e_transmission_state_closeout",
     "build_path5e_propagation_supervisor_closeout_report",
 ])
+
+
+from .phase_a3_derived_replay_ecology_measurement import (
+    build_phase_a3_replay_ecology_measurement_configuration,
+    build_phase_a3_topology_entropy_measurement,
+    build_phase_a3_contradiction_entropy_measurement,
+    build_phase_a3_propagation_diversity_measurement,
+    build_phase_a3_hub_concentration_measurement,
+    build_phase_a3_replay_overlap_risk_measurement,
+    build_phase_a3_monoculture_pressure_measurement,
+    build_phase_a3_weak_node_amplification_measurement,
+    build_phase_a3_structural_balance_score,
+    build_phase_a3_replay_ecology_measurement_summary,
+    build_phase_a3_supervisor_review,
+    build_phase_a3_markdown_report,
+)
