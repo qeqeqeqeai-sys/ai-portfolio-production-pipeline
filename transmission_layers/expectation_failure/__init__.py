@@ -62,6 +62,19 @@ from .phase_a5_certainty_fragility import (
 )
 
 __all__ = [
+    "build_phase_a8_markdown_report",
+    "build_phase_a8_supervisor_review",
+    "build_phase_a8_ecology_equilibrium_scorecard",
+    "build_phase_a8_equilibrium_failure_review",
+    "build_phase_a8_collapse_delay_analysis",
+    "build_phase_a8_topology_balance_model",
+    "build_phase_a8_recurrence_equilibrium_model",
+    "build_phase_a8_entropy_equilibrium_model",
+    "build_phase_a8_gravity_well_phase_transition_model",
+    "build_phase_a8_stabilization_interference_model",
+    "build_phase_a8_survivability_ceiling_analysis",
+    "build_phase_a8_adaptive_equilibrium_model",
+    "build_phase_a8_equilibrium_configuration",
     "build_expectation_failure_score_contracts",
     "build_expectation_failure_evidence_schema",
     "build_expectation_failure_explanation_templates",
@@ -1040,3 +1053,20 @@ __all__.extend([
     "build_phase_a7_supervisor_review",
     "build_phase_a7_markdown_report",
 ])
+
+from .phase_a8_adaptive_replay_ecology_equilibrium_research import (
+    build_phase_a8_equilibrium_configuration,
+    build_phase_a8_adaptive_equilibrium_model,
+    build_phase_a8_survivability_ceiling_analysis,
+    build_phase_a8_stabilization_interference_model,
+    build_phase_a8_gravity_well_phase_transition_model,
+    build_phase_a8_entropy_equilibrium_model,
+    build_phase_a8_recurrence_equilibrium_model,
+    build_phase_a8_topology_balance_model,
+    build_phase_a8_collapse_delay_analysis,
+    build_phase_a8_equilibrium_failure_review,
+    build_phase_a8_ecology_equilibrium_scorecard,
+    build_phase_a8_supervisor_review,
+    build_phase_a8_markdown_report,
+)
+
