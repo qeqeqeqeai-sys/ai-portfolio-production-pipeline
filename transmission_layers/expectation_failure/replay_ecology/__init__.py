@@ -26,3 +26,17 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_obs4_enriched_re
     build_lr6_obs4_weak_signal_bridge_entities,
     certify_lr6_obs4_design_boundary,
 )
+from transmission_layers.expectation_failure.replay_ecology.lr6_obs5_enriched_universe_readiness_review import (
+    build_lr6_obs5_candidate_adjustment_recommendations,
+    build_lr6_obs5_contradiction_potential_assessment,
+    build_lr6_obs5_first_wave_readiness_decision,
+    build_lr6_obs5_markdown_report,
+    build_lr6_obs5_overconcentration_risk_assessment,
+    build_lr6_obs5_propagation_diversity_assessment,
+    build_lr6_obs5_readiness_context,
+    build_lr6_obs5_redundancy_and_sparse_category_review,
+    build_lr6_obs5_role_balance_assessment,
+    build_lr6_obs5_supervisor_review,
+    build_lr6_obs5_weak_signal_usefulness_assessment,
+    certify_lr6_obs5_readiness_boundary,
+)
