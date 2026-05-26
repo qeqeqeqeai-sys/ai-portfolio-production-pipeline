@@ -226,3 +226,20 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_evid6_minimal_in
     emit_lr6_replay_metric_evidence,
     validate_lr6_evid6_metric_payload,
 )
+
+from transmission_layers.expectation_failure.replay_ecology.lr6_evid9_real_replay_metric_payload_production_plan import (
+    COMPUTABILITY_STATUSES,
+    EVID_DIMENSIONS,
+    build_lr6_evid9_evid6_hook_integration_targets,
+    build_lr6_evid9_existing_observation_field_inventory,
+    build_lr6_evid9_markdown_report,
+    build_lr6_evid9_metric_computability_review,
+    build_lr6_evid9_minimal_real_metric_requirements,
+    build_lr6_evid9_missing_observation_field_inventory,
+    build_lr6_evid9_priority_metric_emission_order,
+    build_lr6_evid9_production_plan_context,
+    build_lr6_evid9_replay_path_integration_plan,
+    build_lr6_evid9_supervisor_review,
+    certify_lr6_evid9_production_plan_boundary,
+    discover_lr6_evid9_replay_metric_sources,
+)
