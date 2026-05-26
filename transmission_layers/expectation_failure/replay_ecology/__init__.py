@@ -40,3 +40,16 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_obs5_enriched_un
     build_lr6_obs5_weak_signal_usefulness_assessment,
     certify_lr6_obs5_readiness_boundary,
 )
+from transmission_layers.expectation_failure.replay_ecology.lr6_obs6_first_enriched_replay_wave_design import (
+    build_lr6_obs6_candidate_scores,
+    build_lr6_obs6_execution_non_authorization_notice,
+    build_lr6_obs6_first_wave_candidates,
+    build_lr6_obs6_markdown_report,
+    build_lr6_obs6_observation_questions,
+    build_lr6_obs6_role_balance_review,
+    build_lr6_obs6_selection_criteria,
+    build_lr6_obs6_stop_conditions,
+    build_lr6_obs6_supervisor_review,
+    build_lr6_obs6_wave_design_context,
+    certify_lr6_obs6_wave_design_boundary,
+)
