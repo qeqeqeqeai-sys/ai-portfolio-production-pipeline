@@ -8,6 +8,13 @@ from .phase_a1_contracts import (
     build_phase_a1_expectation_failure_contract_report,
 )
 
+from .phase_a1_curated_observational_expansion import (
+    build_phase_a_curated_observational_expansion_framework,
+    build_phase_a_sector_allocation_model,
+    build_phase_a_curated_300_stock_universe,
+    certify_phase_a_observational_expansion_boundary,
+)
+
 from .phase_a2_valuation_stretch import (
     build_phase_a2_valuation_stretch_report,
     build_valuation_stretch_evidence_summary,
@@ -47,6 +54,10 @@ __all__ = [
     "build_expectation_failure_explanation_templates",
     "build_expectation_failure_invariant_flags",
     "build_phase_a1_expectation_failure_contract_report",
+    "build_phase_a_curated_observational_expansion_framework",
+    "build_phase_a_sector_allocation_model",
+    "build_phase_a_curated_300_stock_universe",
+    "certify_phase_a_observational_expansion_boundary",
     "score_valuation_stretch",
     "build_valuation_stretch_thresholds",
     "build_valuation_stretch_subcomponent_contract",
