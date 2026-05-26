@@ -561,3 +561,119 @@ def build_phase_a1e_supervisor_review(fetcher=None, max_entities: int = 40, prob
 def build_phase_a1e_markdown_report(review: OrderedDict[str, Any]) -> str:
     s=review["calibration_summary"]
     return "\n".join(["# Phase A1E Controlled Live FMP Probe Calibration","## objective","Perform first bounded live FMP continuity calibration before ingestion.","## relationship to A1D","A1D produced metadata-only readiness; A1E adds bounded live continuity validation.","## observational-only boundary",str(review["governance_boundary"]),"## probe configuration",str(review["probe_configuration"]),"## probe candidate rationale","Prioritized REQUIRES_LIVE_FMP_PROBE + ADR/foreign + high/moderate continuity controls + liquid control tickers.","## run mode and execution",str(OrderedDict([("probe_mode",review["probe_mode"]),("live_probe_executed",review["live_probe_executed"]),("fetcher_type",review["fetcher_type"])])),"## api key and endpoint diagnostics",str(review["api_key_diagnostics"]),"## control ticker sanity check",str(review["control_ticker_sanity"]),"## run-level validity",str(review["run_level_status"]),"## ticker resolution findings",str(review["ticker_resolution_findings"]),"## historical continuity findings",str(review["historical_continuity_findings"]),"## statement coverage findings",str(review["statement_coverage_findings"]),"## enterprise-value findings",str(review["enterprise_value_findings"]),"## key-metrics findings",str(review["key_metrics_findings"]),"## ADR behavior findings",str(review["adr_behavior_findings"]),"## fragility findings",str(review["fragility_findings"]),"## ingestion-safe subset recommendation",str(s["recommended_ingestion_safe_subset"]),"## deferred/replacement candidate recommendation",str(s["recommended_deferred_subset"]),"## governance preservation","All observational-only flags preserved; no write path expansion.","## residual risks","Symbol ambiguity and ADR currency normalization can still degrade continuity.","## recommendation for Phase B1","Only progress with ingestion-safe subset after explicit governance recertification and valid run-level status."])
+
+
+def build_phase_a2_observational_expansion_configuration() -> OrderedDict[str, Any]:
+    return OrderedDict([
+        ("phase", "A2"),
+        ("mode", "controlled_300_stock_observational_expansion"),
+        ("deterministic_only", True),
+        ("pure_function_only", True),
+        ("execution_enabled", False),
+        ("persistence_enabled", False),
+        ("target_universe_size", len(build_phase_a1b_real_curated_structural_universe())),
+        ("governance_boundary", certify_phase_a_observational_expansion_boundary()),
+    ])
+
+
+def build_phase_a2_curated_ingestion_safe_subset() -> OrderedDict[str, list[str]]:
+    universe = build_phase_a1b_real_curated_structural_universe()
+    safe, deferred = [], []
+    for row in universe:
+        continuity_gate = row["replay_ecology_richness_score"] >= 8 and row["low_information_growth_risk_score"] <= 3
+        monoculture_gate = row["sector"] != "Information Technology" or row["contradiction_richness_score"] >= 8
+        topology_gate = row["adjacency_richness_score"] <= 9 and row["monoculture_risk_score"] >= 2
+        if continuity_gate and monoculture_gate and topology_gate:
+            safe.append(row["ticker"])
+        else:
+            deferred.append(row["ticker"])
+    return OrderedDict([("ingestion_safe_subset", safe), ("deferred_review_required_subset", deferred)])
+
+
+def build_phase_a2_replay_density_guardrails() -> list[OrderedDict[str, Any]]:
+    return [
+        OrderedDict([("guardrail", "max_topology_degree"), ("threshold", 8), ("rationale", "Prevent over-connected hub dominance."), ("replay_ecology_risk", "Topology monoculture and cascading replay artifacts."), ("mitigation_strategy", "Rebalance wave composition toward low-degree bridge nodes.")]),
+        OrderedDict([("guardrail", "max_domain_concentration"), ("threshold", "0.24"), ("rationale", "Maintain cross-domain structural diversity."), ("replay_ecology_risk", "Domain concentration suppresses contradiction breadth."), ("mitigation_strategy", "Cap per-domain additions and increase underrepresented domains.")]),
+        OrderedDict([("guardrail", "max_contradiction_saturation"), ("threshold", "0.18"), ("rationale", "Avoid contradiction-class crowding in dense cohorts."), ("replay_ecology_risk", "Contradiction monoculture reduces replay richness."), ("mitigation_strategy", "Inject orthogonal contradiction classes per wave.")]),
+        OrderedDict([("guardrail", "max_replay_density_growth_rate"), ("threshold", "0.12_per_wave"), ("rationale", "Bound replay complexity growth for reviewability."), ("replay_ecology_risk", "Unreviewable growth can hide fragility expansion."), ("mitigation_strategy", "Freeze wave progression when growth exceeds cap.")]),
+        OrderedDict([("guardrail", "max_adjacency_amplification"), ("threshold", "1.35x"), ("rationale", "Constrain amplification from cross-domain connectors."), ("replay_ecology_risk", "Amplified adjacency can distort structural balance."), ("mitigation_strategy", "Throttle high-amplification connectors to deferred set.")]),
+        OrderedDict([("guardrail", "max_replay_overlap_ratio"), ("threshold", "0.40"), ("rationale", "Reduce repeated overlap across sequential waves."), ("replay_ecology_risk", "Excess overlap degrades entropy and diversity."), ("mitigation_strategy", "Rotate contradiction and propagation classes each wave.")]),
+    ]
+
+
+def build_phase_a2_topology_saturation_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("adjacency_concentration", "moderate"), ("propagation_bottlenecks", "contained_within_domain_hubs"), ("over_connected_nodes", ["MSFT", "NVDA", "AMZN", "TSM"]), ("topology_monoculture", "guarded_but_elevated_it_hub_bias"), ("replay_amplification_risk", "moderate"), ("structural_fragility_clusters", ["hyperscaler_gpu_foundry", "cloud_security_enterprise"]), ("topology_density_limit", 8)])
+
+
+def build_phase_a2_contradiction_density_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("contradiction_diversity", "broad"), ("contradiction_persistence_richness", "moderate_high"), ("contradiction_overlap_concentration", "moderate"), ("contradiction_replay_amplification", "bounded"), ("contradiction_monoculture_risk", "low_moderate"), ("contradiction_density_target", "0.12_to_0.18")])
+
+
+def build_phase_a2_propagation_diversity_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("upstream_downstream_balance", "balanced"), ("infrastructure_vs_software_balance", "infrastructure_leaning_but_controlled"), ("macro_sensitive_propagation_balance", "moderate"), ("liquidity_sensitivity_diversity", "sufficient"), ("physical_infrastructure_representation", "strong"), ("policy_geopolitical_propagation_richness", "moderate_high"), ("target_diversity_floor", ">=0.70_class_coverage_ratio")])
+
+
+def build_phase_a2_monoculture_resistance_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("sector_monoculture_threshold", "0.55"), ("domain_monoculture_threshold", "0.24"), ("contradiction_monoculture_threshold", "0.18"), ("status", "resistant_with_active_rebalancing_required"), ("hotspots", ["Information Technology", "AI infrastructure", "cloud platforms"])])
+
+
+def build_phase_a2_replay_quality_preservation_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("replay_quality_metrics", ["structural_coverage_score", "contradiction_entropy_score", "propagation_diversity_score", "continuity_integrity_score"]), ("continuity_quality_thresholds", OrderedDict([("strong_or_moderate_min_ratio", "0.65"), ("fragile_max_ratio", "0.25")])), ("saturation_warning_levels", OrderedDict([("warning", ">=0.75"), ("critical", ">=0.90")])), ("replay_degradation_indicators", ["entropy_decline", "overlap_spike", "hub_degree_spike"]), ("structural_richness_indicators", ["domain_spread", "class_balance", "bridge_anchor_ratio"]), ("observational_entropy_indicators", ["contradiction_class_entropy", "propagation_class_entropy", "adjacency_class_entropy"])])
+
+
+def build_phase_a2_longitudinal_continuity_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("minimum_continuity_standards", ["no_full_history_requirement", "metadata_lineage_preserved", "continuity_quality_tag_required"]), ("acceptable_continuity_gaps", "up_to_2_consecutive_sparse_windows"), ("replay_survivability_constraints", ["defer_non_viable_nodes", "maintain_cross_domain_redundancy"]), ("weak_node_suppression_guidance", "limit weak nodes to <=15% per wave"), ("fragile_node_handling_guidance", "tag_and_defer_until_supervisor_clearance")])
+
+
+def build_phase_a2_structural_balance_review() -> OrderedDict[str, Any]:
+    return OrderedDict([("topology", build_phase_a2_topology_saturation_review()), ("contradiction", build_phase_a2_contradiction_density_review()), ("propagation", build_phase_a2_propagation_diversity_review()), ("monoculture", build_phase_a2_monoculture_resistance_review())])
+
+
+def build_phase_a2_observational_wave_plan() -> list[OrderedDict[str, Any]]:
+    return [
+        OrderedDict([("wave", 1), ("wave_size", 60), ("sequencing_rationale", "Start with highest continuity and high diversity anchors."), ("diversity_balancing", "enforce_domain_caps"), ("contradiction_balancing", "maximize_class_coverage"), ("topology_balancing", "exclude_hub_degree_above_8"), ("continuity_risk_balancing", "exclude_fragile_nodes")]),
+        OrderedDict([("wave", 2), ("wave_size", 70), ("sequencing_rationale", "Expand via bridge nodes with moderate continuity."), ("diversity_balancing", "prioritize_underrepresented_domains"), ("contradiction_balancing", "add_orthogonal_contradictions"), ("topology_balancing", "cap_adjacency_amplification"), ("continuity_risk_balancing", "allow_limited_fragile_under_15_percent")]),
+        OrderedDict([("wave", 3), ("wave_size", 80), ("sequencing_rationale", "Increase density while preserving entropy thresholds."), ("diversity_balancing", "recheck_sector_limits"), ("contradiction_balancing", "hold_overlap_below_0_40"), ("topology_balancing", "freeze_overconnected_nodes"), ("continuity_risk_balancing", "defer_new_fragile_nodes")]),
+        OrderedDict([("wave", 4), ("wave_size", 90), ("sequencing_rationale", "Finalize observational coverage with deferred safe promotions."), ("diversity_balancing", "final_domain_rebalance"), ("contradiction_balancing", "fill_remaining_class_gaps"), ("topology_balancing", "maintain_degree_ceiling"), ("continuity_risk_balancing", "supervisor_review_required_before_promotion")]),
+    ]
+
+
+def build_phase_a2_supervisor_review() -> OrderedDict[str, Any]:
+    subset = build_phase_a2_curated_ingestion_safe_subset()
+    return OrderedDict([
+        ("configuration", build_phase_a2_observational_expansion_configuration()),
+        ("governance_boundary", certify_phase_a_observational_expansion_boundary()),
+        ("ingestion_safe_subset_findings", subset["ingestion_safe_subset"]),
+        ("deferred_review_required_findings", subset["deferred_review_required_subset"]),
+        ("replay_density_guardrails", build_phase_a2_replay_density_guardrails()),
+        ("topology_saturation_findings", build_phase_a2_topology_saturation_review()),
+        ("contradiction_density_findings", build_phase_a2_contradiction_density_review()),
+        ("propagation_diversity_findings", build_phase_a2_propagation_diversity_review()),
+        ("monoculture_resistance_findings", build_phase_a2_monoculture_resistance_review()),
+        ("replay_quality_preservation_findings", build_phase_a2_replay_quality_preservation_review()),
+        ("longitudinal_continuity_findings", build_phase_a2_longitudinal_continuity_review()),
+        ("structural_balance_findings", build_phase_a2_structural_balance_review()),
+        ("observational_wave_plan", build_phase_a2_observational_wave_plan()),
+    ])
+
+
+def build_phase_a2_markdown_report(review: OrderedDict[str, Any]) -> str:
+    return "\n".join([
+        "# Phase A2 Controlled 300-Stock Observational Expansion",
+        "## objective", "Create deterministic planning/review support for bounded high-density observational replay ecology expansion.",
+        "## relationship to A1E", "A2 consumes A1E governance and continuity posture while remaining observational-only and non-operational.",
+        "## observational-only boundary", str(review["governance_boundary"]),
+        "## ingestion-safe subset findings", str(review["ingestion_safe_subset_findings"][:40]),
+        "## deferred/review-required findings", str(review["deferred_review_required_findings"][:40]),
+        "## replay density guardrails", str(review["replay_density_guardrails"]),
+        "## topology saturation findings", str(review["topology_saturation_findings"]),
+        "## contradiction density findings", str(review["contradiction_density_findings"]),
+        "## propagation diversity findings", str(review["propagation_diversity_findings"]),
+        "## monoculture resistance findings", str(review["monoculture_resistance_findings"]),
+        "## replay quality preservation findings", str(review["replay_quality_preservation_findings"]),
+        "## longitudinal continuity findings", str(review["longitudinal_continuity_findings"]),
+        "## observational wave plan", str(review["observational_wave_plan"]),
+        "## governance preservation", "No replay operationalization, no topology activation, no persistence expansion, no prediction/trading.",
+        "## residual risks", "IT hub bias and contradiction overlap require sustained supervisor review before any Phase B execution.",
+        "## recommendation for Phase B1", "Proceed only with governance recertification and deterministic review artifacts; keep execution disabled.",
+    ])
