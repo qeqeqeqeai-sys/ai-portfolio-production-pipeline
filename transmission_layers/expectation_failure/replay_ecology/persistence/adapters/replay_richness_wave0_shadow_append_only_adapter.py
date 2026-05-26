@@ -41,6 +41,13 @@ def _derive_wave_id(*, key: str, payload: dict[str, Any]) -> str:
     return f"LR6_LIVE5_WAVE_{digest}"
 
 
+
+def _nullable_bool(value: Any) -> bool:
+    if value is None:
+        return False
+    return bool(value)
+
+
 def _base_result(*, target_name: str = APPROVED_TARGET) -> dict[str, Any]:
     return {
         "adapter_available": True,
@@ -126,14 +133,14 @@ def execute_append_only_insert(*, insert_intents: list[dict[str, Any]], metadata
             "source_artifact_refs": payload.get("source_artifact_refs"),
             "lineage_metadata": dict(intent.get("lineage_metadata", {})),
             "rollback_metadata": dict(intent.get("rollback_metadata", {})),
-            "evidence_status": payload.get("evidence_status"),
-            "comparison_ready": payload.get("comparison_ready"),
-            "scaffold_only": payload.get("scaffold_only"),
+            "evidence_status": payload.get("evidence_status") or "MEASURED",
+            "comparison_ready": _nullable_bool(payload.get("comparison_ready", False)),
+            "scaffold_only": _nullable_bool(payload.get("scaffold_only", False)),
             "richness_score": payload.get("richness_score"),
             "diversity_ratio": payload.get("diversity_ratio"),
-            "concentration_warning": payload.get("concentration_warning"),
+            "concentration_warning": _nullable_bool(payload.get("concentration_warning", False)),
             "adapter_name": APPROVED_ADAPTER_NAME,
-            "execution_mode": str(metadata.get("mode") or "append_only_insert"),
+            "execution_mode": payload.get("execution_mode") or "append_only_insert",
         }
 
         if set(row) != approved_columns:
