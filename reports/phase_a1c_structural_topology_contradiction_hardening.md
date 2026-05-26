@@ -1,0 +1,33 @@
+# Phase A1C Structural Topology & Contradiction Hardening
+## objective
+Harden curated structural universe before ingestion.
+## relationship to A1B
+A1C replaces placeholder naming, index adjacency, and shallow taxonomies from A1B while preserving governance boundaries.
+## observational-only boundary
+OrderedDict({'observational_expansion_only': True, 'replay_operationalization_enabled': False, 'replay_density_scaling_enabled': False, 'topology_activation_enabled': False, 'contradiction_persistence_migration_enabled': False, 'autonomous_replay_activation_enabled': False, 'prediction_enabled': False, 'trading_enabled': False, 'write_path_expansion_enabled': False, 'schema_expansion_enabled': False, 'direct_sql_allowed': False, 'append_only_required': True, 'deterministic_governance_required': True})
+## company-name hardening findings
+Counter({'REQUIRES_CURATOR_REVIEW': 238, 'VERIFIED_CURATED': 62})
+## structural adjacency class design
+hyperscaler_to_gpu, gpu_to_foundry, foundry_to_semicap, semicap_to_memory, data_center_to_power, data_center_to_cooling, power_to_grid_infrastructure, cloud_to_cybersecurity, cloud_to_enterprise_software, ai_application_to_cloud, ai_application_to_data_infrastructure, robotics_to_industrial_automation, industrial_to_logistics, defense_ai_to_satellite_comms, telecom_to_edge_compute, macro_financials_to_duration_assets, consumer_ai_to_discretionary_demand, valuation_extreme_to_liquidity_conditions, volatility_extreme_to_risk_appetite, regime_transition_to_macro_sensitive_leaders
+## structural adjacency map findings
+link_count=2333
+## contradiction taxonomy findings
+ai_monetization_fragility, hyperscaler_capex_stress, gpu_supply_vs_demand, foundry_geopolitical_dependency, semicap_cycle_reversal, memory_oversupply_risk, data_center_power_bottleneck, cooling_capacity_constraint, cloud_margin_pressure, cybersecurity_spend_resilience, enterprise_ai_roi_uncertainty, ai_application_revenue_quality, valuation_duration_fragility, liquidity_risk_appetite_reversal, industrial_cycle_slowdown, logistics_demand_normalization, defense_budget_policy_tension, telecom_monetization_weakness, edge_vs_cloud_deployment_asymmetry, macro_rates_growth_tension
+## entity contradiction profile findings
+entity_profiles=300
+## propagation taxonomy findings
+upstream_infrastructure_bottleneck, downstream_ai_beneficiary, capex_cycle_transmitter, margin_pressure_transmitter, valuation_amplifier, macro_duration_amplifier, liquidity_beta_amplifier, supply_chain_constraint_node, geopolitical_dependency_node, demand_normalization_node, policy_sensitivity_node, physical_infrastructure_anchor, software_monetization_node, data_center_dependency_node, edge_deployment_node
+## entity propagation profile findings
+entity_profiles=300
+## monoculture review findings
+OrderedDict({'monoculture_status': 'REVIEWED', 'concentration_findings': OrderedDict({'sector_concentration': OrderedDict({'Communication Services': 22, 'Consumer Discretionary': 11, 'Financials': 11, 'Industrials': 66, 'Information Technology': 157, 'Multi-Sector': 22, 'Utilities': 11}), 'domain_concentration': OrderedDict({'AI applications': 11, 'AI hyperscalers': 12, 'AI infrastructure': 12, 'AI-adjacent cyclicals': 11, 'GPU/accelerator semiconductors': 12, 'analog semiconductors': 11, 'cloud platforms': 11, 'contradiction-rich entities': 11, 'cooling/thermal infrastructure': 11, 'cybersecurity': 11, 'data-center infrastructure': 11, 'defense/AI exposure': 11, 'edge compute': 11, 'enterprise software': 11, 'industrial automation': 11, 'logistics optimization': 11, 'macro-sensitive leaders': 11, 'memory/storage': 11, 'networking': 11, 'power/grid exposure': 11, 'regime-transition-sensitive entities': 11, 'robotics': 11, 'semiconductor equipment': 11, 'semiconductor foundries': 11, 'telecom infrastructure': 11, 'valuation-extreme entities': 11, 'volatility-extreme entities': 11}), 'adjacency_class_concentration': OrderedDict({'ai_application_to_cloud': 121, 'ai_application_to_data_infrastructure': 121, 'cloud_to_cybersecurity': 121, 'cloud_to_enterprise_software': 121, 'data_center_to_cooling': 121, 'data_center_to_power': 121, 'defense_ai_to_satellite_comms': 121, 'foundry_to_semicap': 121, 'gpu_to_foundry': 132, 'hyperscaler_to_gpu': 144, 'industrial_to_logistics': 121, 'macro_financials_to_duration_assets': 121, 'power_to_grid_infrastructure': 121, 'regime_transition_to_macro_sensitive_leaders': 121, 'robotics_to_industrial_automation': 121, 'semicap_to_memory': 121, 'telecom_to_edge_compute': 121, 'valuation_extreme_to_liquidity_conditions': 121, 'volatility_extreme_to_risk_appetite': 121}), 'contradiction_class_concentration': OrderedDict({'ai_application_revenue_quality': 35, 'ai_monetization_fragility': 23, 'cloud_margin_pressure': 36, 'cooling_capacity_constraint': 18, 'cybersecurity_spend_resilience': 34, 'data_center_power_bottleneck': 33, 'defense_budget_policy_tension': 40, 'edge_vs_cloud_deployment_asymmetry': 27, 'enterprise_ai_roi_uncertainty': 26, 'foundry_geopolitical_dependency': 31, 'gpu_supply_vs_demand': 24, 'hyperscaler_capex_stress': 34, 'industrial_cycle_slowdown': 27, 'liquidity_risk_appetite_reversal': 31, 'logistics_demand_normalization': 30, 'macro_rates_growth_tension': 35, 'memory_oversupply_risk': 23, 'semicap_cycle_reversal': 32, 'telecom_monetization_weakness': 29, 'valuation_duration_fragility': 32}), 'propagation_class_concentration': OrderedDict({'capex_cycle_transmitter': 14, 'data_center_dependency_node': 11, 'demand_normalization_node': 12, 'downstream_ai_beneficiary': 20, 'edge_deployment_node': 31, 'geopolitical_dependency_node': 27, 'liquidity_beta_amplifier': 24, 'macro_duration_amplifier': 16, 'margin_pressure_transmitter': 17, 'physical_infrastructure_anchor': 26, 'policy_sensitivity_node': 17, 'software_monetization_node': 18, 'supply_chain_constraint_node': 24, 'upstream_infrastructure_bottleneck': 14, 'valuation_amplifier': 29})}), 'risk_level': 'moderate', 'recommendation': 'Retag overrepresented IT nodes and prioritize industrial/power/cooling replacement candidates in A1D.'})
+## low-information node review findings
+Counter({'REQUIRES_CURATOR_REVIEW': 238, 'HIGH_INFORMATION_NODE': 52, 'MODERATE_INFORMATION_NODE': 10})
+## replacement review findings
+Counter({'REQUIRES_CURATOR_REVIEW': 238, 'RETAG': 33, 'KEEP': 29})
+## governance preservation
+All Phase A1/A1B governance boundary flags preserved exactly.
+## residual risks
+Some unmapped names require curator review; IT concentration remains structurally elevated.
+## recommendation for A1D / Phase B
+Prioritize curator mapping completion and rebalance replacements before any ingestion or topology activation.
