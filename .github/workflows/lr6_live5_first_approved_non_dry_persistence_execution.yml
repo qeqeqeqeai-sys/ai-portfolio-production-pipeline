@@ -1,0 +1,78 @@
+name: LR6-LIVE5 First Approved Non-Dry Persistence Execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      approval_phrase:
+        description: "Exact LIVE5 approval phrase"
+        required: true
+        type: string
+      non_dry_execution_token:
+        description: "Approved non-dry execution token"
+        required: true
+        type: string
+      max_entities:
+        description: "Maximum entities (must be <= 5)"
+        required: true
+        type: string
+      metric_target:
+        description: "Must be replay_richness"
+        required: true
+        type: string
+      persistence_target:
+        description: "Must be isolated shadow target only"
+        required: true
+        type: string
+      append_only_confirmation:
+        description: "Must be true"
+        required: true
+        type: boolean
+      rollback_confirmation:
+        description: "Must be true"
+        required: true
+        type: boolean
+      lineage_confirmation:
+        description: "Must be true"
+        required: true
+        type: boolean
+
+jobs:
+  live5-first-approved-non-dry-execution:
+    runs-on: ubuntu-latest
+    env:
+      LIVE5_APPROVAL_PHRASE: ${{ github.event.inputs.approval_phrase }}
+      LIVE5_NON_DRY_EXECUTION_TOKEN: ${{ github.event.inputs.non_dry_execution_token }}
+      LIVE5_MAX_ENTITIES: ${{ github.event.inputs.max_entities }}
+      LIVE5_METRIC_TARGET: ${{ github.event.inputs.metric_target }}
+      LIVE5_PERSISTENCE_TARGET: ${{ github.event.inputs.persistence_target }}
+      LIVE5_APPEND_ONLY_CONFIRMATION: ${{ github.event.inputs.append_only_confirmation }}
+      LIVE5_ROLLBACK_CONFIRMATION: ${{ github.event.inputs.rollback_confirmation }}
+      LIVE5_LINEAGE_CONFIRMATION: ${{ github.event.inputs.lineage_confirmation }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Execute approved LIVE5 non-dry path (fail closed)
+        run: |
+          python scripts/run_lr6_live5_first_approved_non_dry_persistence_execution.py
+
+      - name: Upload LIVE5 execution artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lr6-live5-first-approved-non-dry-execution
+          path: |
+            outputs/lr6_live5_first_approved_non_dry_persistence_execution_result.json
+            reports/lr6_live5_first_approved_non_dry_persistence_execution.md
+          if-no-files-found: error
