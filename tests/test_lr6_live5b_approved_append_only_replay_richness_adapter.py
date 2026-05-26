@@ -77,6 +77,45 @@ def test_success_and_duplicate_reporting():
 
 
 
+def test_stable_row_defaults_required_fields_and_metric_constants():
+    m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    c = FakeClient()
+    intent = _intent("key-wave-default")
+    intent["payload"].pop("wave_id", None)
+    intent["payload"]["metric_dimension"] = "other_metric"
+    r = adapter.execute_append_only_insert(insert_intents=[intent], metadata=m, client=c)
+    assert r["halt_triggered"] is False
+    row = c.t.rows[0]
+    assert row["wave_id"].startswith("LR6_LIVE5_WAVE_")
+    assert row["entity_id"] == "E1"
+    assert row["metric_target"] == "replay_richness"
+    assert row["metric_dimension"] == "replay_richness"
+    assert row["duplicate_prevention_key"] == "key-wave-default"
+
+
+def test_missing_entity_or_duplicate_prevention_key_fails_closed():
+    c = FakeClient()
+    common = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    missing_entity = _intent("k-entity")
+    missing_entity["payload"]["entity_id"] = ""
+    assert adapter.execute_append_only_insert(insert_intents=[missing_entity], metadata=common, client=c)["halt_reason"] == "missing_entity_id"
+
+    missing_key = _intent("")
+    assert adapter.execute_append_only_insert(insert_intents=[missing_key], metadata=common, client=c)["halt_reason"] == "missing_duplicate_prevention_key"
+
+
+def test_fake_insert_rows_cover_required_not_null_stable_fields():
+    m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
+    c = FakeClient()
+    r = adapter.execute_append_only_insert(insert_intents=[_intent("required-k1"), _intent("required-k2")], metadata=m, client=c)
+    assert r["inserted_rows"] == 2
+    required = {"wave_id", "entity_id", "metric_target", "metric_dimension", "duplicate_prevention_key"}
+    for row in c.t.rows:
+        for field in required:
+            assert field in row
+            assert row[field]
+
+
 def test_adapter_inserts_only_approved_top_level_columns():
     m = {"metric_target": "replay_richness", "target_name": "replay_richness_wave0_shadow", "append_only": True, "mode": "append_only_insert", "schema_confirmed": True}
     c = FakeClient()
