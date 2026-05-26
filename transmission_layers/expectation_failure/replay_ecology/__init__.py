@@ -81,3 +81,18 @@ from transmission_layers.expectation_failure.replay_ecology.lr6_obs8_governed_en
     build_lr6_obs8_verification_requirements,
     certify_lr6_obs8_governed_proposal_boundary,
 )
+from transmission_layers.expectation_failure.replay_ecology.lr6_obs9_execution_review_framework import (
+    build_lr6_obs9_confirmation_bias_safeguards,
+    build_lr6_obs9_continuation_vs_termination_logic,
+    build_lr6_obs9_contradiction_usefulness_criteria,
+    build_lr6_obs9_fail_closed_review_thresholds,
+    build_lr6_obs9_failure_criteria,
+    build_lr6_obs9_markdown_report,
+    build_lr6_obs9_replay_delta_interpretation_rules,
+    build_lr6_obs9_review_framework_context,
+    build_lr6_obs9_success_criteria,
+    build_lr6_obs9_supervisor_review,
+    build_lr6_obs9_topology_diversification_criteria,
+    build_lr6_obs9_weak_signal_success_criteria,
+    certify_lr6_obs9_review_framework_boundary,
+)
