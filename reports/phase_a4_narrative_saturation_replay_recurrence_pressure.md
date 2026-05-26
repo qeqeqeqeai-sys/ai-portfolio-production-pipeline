@@ -1,0 +1,33 @@
+# Phase A4 Narrative Saturation & Replay Recurrence Pressure
+## objective
+Add deterministic observational pressure metrics for semantic/narrative replay crowding risk before any replay operationalization.
+## relationship to A3
+A4 extends A3 by converting replay overlap and hub concentration findings into saturation/recurrence pressure measurements.
+## observational-only boundary
+OrderedDict({'observational_expansion_only': True, 'replay_operationalization_enabled': False, 'replay_density_scaling_enabled': False, 'topology_activation_enabled': False, 'contradiction_persistence_migration_enabled': False, 'autonomous_replay_activation_enabled': False, 'prediction_enabled': False, 'trading_enabled': False, 'write_path_expansion_enabled': False, 'schema_expansion_enabled': False, 'direct_sql_allowed': False, 'append_only_required': True, 'deterministic_governance_required': True})
+## measurement methodology
+All metrics are bounded [0,1], deterministic, metadata-only, and derived from curated universe plus A3 measurements.
+## narrative saturation pressure
+OrderedDict({'metric_name': 'narrative_saturation_pressure', 'deterministic_inputs_used': ['sector', 'sefi_domain', 'monoculture_risk_score', 'hub_concentration'], 'measurement_value': 0.375333, 'measurement_band': 'moderate', 'interpretation': 'Narrative concentration pressure band=moderate.', 'replay_ecology_risk': 'higher_values_raise_story_monotony_risk', 'mitigation_guidance': 'Increase domain/sector heterogeneity in next curated refresh.', 'governance_status': 'observational_only_boundary_preserved'})
+## replay recurrence pressure
+OrderedDict({'metric_name': 'replay_recurrence_pressure', 'deterministic_inputs_used': ['adjacency_richness_score', 'propagation_richness_score', 'replay_overlap_risk'], 'measurement_value': 0.576667, 'measurement_band': 'moderate', 'interpretation': 'Recurrence pressure band=moderate.', 'replay_ecology_risk': 'higher_values_imply_reused_replay_corridors', 'mitigation_guidance': 'Prefer orthogonal propagation and adjacency mixes.', 'governance_status': 'observational_only_boundary_preserved'})
+## contradiction recurrence density
+OrderedDict({'metric_name': 'contradiction_recurrence_density', 'deterministic_inputs_used': ['contradiction_richness_score', 'weak_node_amplification'], 'measurement_value': 0.316667, 'measurement_band': 'low', 'interpretation': 'Contradiction recurrence density band=low.', 'replay_ecology_risk': 'excess_density_can_recycle_identical_tension_frames', 'mitigation_guidance': 'Inject underrepresented contradiction classes in future curation.', 'governance_status': 'observational_only_boundary_preserved'})
+## semantic crowding
+OrderedDict({'metric_name': 'semantic_crowding', 'deterministic_inputs_used': ['sector', 'sefi_domain', 'hub_concentration'], 'measurement_value': 0.362222, 'measurement_band': 'moderate', 'interpretation': 'Semantic crowding band=moderate.', 'replay_ecology_risk': 'crowding_can_reduce_signal_novelty', 'mitigation_guidance': 'Increase coverage of less-dense sectors/domains.', 'governance_status': 'observational_only_boundary_preserved'})
+## novelty decay risk
+OrderedDict({'metric_name': 'novelty_decay_risk', 'deterministic_inputs_used': ['replay_ecology_richness_score', 'low_information_growth_risk_score', 'replay_overlap_risk', 'monoculture_pressure'], 'measurement_value': 0.292667, 'measurement_band': 'low', 'interpretation': 'Novelty decay risk band=low.', 'replay_ecology_risk': 'higher_values_indicate_reducing_marginal_information_gain', 'mitigation_guidance': 'Favor high-information nodes with lower overlap structure.', 'governance_status': 'observational_only_boundary_preserved'})
+## structural redundancy
+OrderedDict({'metric_name': 'structural_redundancy', 'deterministic_inputs_used': ['hub_concentration', 'replay_overlap_risk', 'structural_balance_score'], 'measurement_value': 0.430514, 'measurement_band': 'moderate', 'interpretation': 'Structural redundancy band=moderate.', 'replay_ecology_risk': 'redundancy_can_overweight_repeated_pathways', 'mitigation_guidance': 'Constrain high-centrality repeated structures in future adds.', 'governance_status': 'observational_only_boundary_preserved'})
+## replay path repetition
+OrderedDict({'metric_name': 'replay_path_repetition', 'deterministic_inputs_used': ['adjacency_richness_score', 'replay_ecology_richness_score', 'replay_overlap_risk'], 'measurement_value': 0.576667, 'measurement_band': 'moderate', 'interpretation': 'Replay path repetition band=moderate.', 'replay_ecology_risk': 'repetition_can_accelerate_replay_lock_in', 'mitigation_guidance': 'Diversify path structures before any governed replay scaling.', 'governance_status': 'observational_only_boundary_preserved'})
+## contradiction exhaustion risk
+OrderedDict({'metric_name': 'contradiction_exhaustion_risk', 'deterministic_inputs_used': ['contradiction_richness_score', 'weak_node_amplification'], 'measurement_value': 0.218333, 'measurement_band': 'low', 'interpretation': 'Contradiction exhaustion risk band=low.', 'replay_ecology_risk': 'exhaustion_risk_can_flatten_future_contradiction_yield', 'mitigation_guidance': 'Increase contradiction spread across buckets/domains.', 'governance_status': 'observational_only_boundary_preserved'})
+## saturation recurrence composite score
+OrderedDict({'score': 0.393634, 'band': 'moderate', 'strongest_pressure_dimension': 'replay_recurrence_pressure', 'weakest_pressure_dimension': 'contradiction_exhaustion_risk', 'caveats': ['metadata_only_derivation', 'no_historical_ingestion', 'higher_score_means_higher_pressure'], 'recommended_next_phase_action': 'Proceed to Phase A5 with anti-recurrence curation guardrails; keep operational replay disabled.', 'subcomponent_scores': OrderedDict({'narrative_saturation_pressure': 0.375333, 'replay_recurrence_pressure': 0.576667, 'contradiction_recurrence_density': 0.316667, 'semantic_crowding': 0.362222, 'novelty_decay_risk': 0.292667, 'structural_redundancy': 0.430514, 'replay_path_repetition': 0.576667, 'contradiction_exhaustion_risk': 0.218333})})
+## governance preservation
+All Phase A boundary flags remain unchanged; no writes, schema paths, SQL paths, prediction, trading, or topology activation.
+## residual risks
+Metadata-only derivation may under-represent latent semantic drift until future governed phases.
+## recommendation for Phase A5 or B1
+Proceed to Phase A5 with anti-recurrence curation guardrails; keep operational replay disabled.
