@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 APPROVED_ADAPTER_NAME = "replay_richness_wave0_shadow_append_only_adapter"
@@ -30,6 +31,14 @@ APPROVED_TOP_LEVEL_COLUMNS = (
 
 def approved_adapter_available() -> bool:
     return True
+
+
+def _derive_wave_id(*, key: str, payload: dict[str, Any]) -> str:
+    payload_wave = payload.get("wave_id")
+    if isinstance(payload_wave, str) and payload_wave.strip():
+        return payload_wave.strip()
+    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:12].upper()
+    return f"LR6_LIVE5_WAVE_{digest}"
 
 
 def _base_result(*, target_name: str = APPROVED_TARGET) -> dict[str, Any]:
@@ -78,9 +87,6 @@ def execute_append_only_insert(*, insert_intents: list[dict[str, Any]], metadata
 
     for intent in insert_intents:
         payload = intent.get("payload", {})
-        if payload.get("metric_dimension") != APPROVED_METRIC:
-            result.update({"halt_triggered": True, "halt_reason": "payload_metric_mismatch", "rejected_rows": len(insert_intents), "duplicate_prevented": False})
-            return result
         if not payload.get("source_artifact_refs"):
             result.update({"halt_triggered": True, "halt_reason": "missing_source_artifact_refs", "rejected_rows": len(insert_intents), "duplicate_prevented": False})
             return result
@@ -94,6 +100,10 @@ def execute_append_only_insert(*, insert_intents: list[dict[str, Any]], metadata
         if not isinstance(key, str) or not key.strip():
             result.update({"halt_triggered": True, "halt_reason": "missing_duplicate_prevention_key", "rejected_rows": len(insert_intents), "duplicate_prevented": False})
             return result
+        entity_id = payload.get("entity_id")
+        if not isinstance(entity_id, str) or not entity_id.strip():
+            result.update({"halt_triggered": True, "halt_reason": "missing_entity_id", "rejected_rows": len(insert_intents), "duplicate_prevented": False})
+            return result
 
     seen: set[str] = set()
     rows: list[dict[str, Any]] = []
@@ -105,11 +115,12 @@ def execute_append_only_insert(*, insert_intents: list[dict[str, Any]], metadata
         seen.add(key)
 
         payload = dict(intent.get("payload", {}))
+        stable_wave_id = _derive_wave_id(key=key, payload=payload)
         row = {
-            "wave_id": payload.get("wave_id"),
-            "entity_id": payload.get("entity_id"),
-            "metric_target": str(metadata.get("metric_target") or APPROVED_METRIC),
-            "metric_dimension": payload.get("metric_dimension"),
+            "wave_id": stable_wave_id,
+            "entity_id": str(payload.get("entity_id")).strip(),
+            "metric_target": APPROVED_METRIC,
+            "metric_dimension": APPROVED_METRIC,
             "duplicate_prevention_key": key,
             "payload": payload,
             "source_artifact_refs": payload.get("source_artifact_refs"),
