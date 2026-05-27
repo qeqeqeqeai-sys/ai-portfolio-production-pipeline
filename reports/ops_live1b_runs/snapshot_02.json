@@ -1,0 +1,78 @@
+{
+  "status": "ok",
+  "ops_live1b_payload": {
+    "snapshot_id": "ops-live1b-2",
+    "snapshot_ts": "2026-05-02T00:00:00Z",
+    "observation_mode": "controlled_operational_observation",
+    "governance_boundaries": {
+      "safe": true
+    },
+    "canonical_tables": {
+      "snapshot_metadata_rows": [
+        {
+          "snapshot_id": "ops-live1b-2",
+          "snapshot_ts": "2026-05-02T00:00:00Z",
+          "universe_checksum": "abc123",
+          "universe_size": 50
+        }
+      ],
+      "symbol_snapshot_rows": [],
+      "sector_summary_rows": [],
+      "pressure_rows": [
+        {
+          "symbol": "AAPL",
+          "structural_pressure_score": 72
+        }
+      ],
+      "resilience_rows": [
+        {
+          "symbol": "MSFT",
+          "profitability_structure": 78
+        }
+      ],
+      "fragmentation_rows": [
+        {
+          "symbol": "NVDA",
+          "breadth_dispersion_structure": 62
+        }
+      ],
+      "continuity_rows": [],
+      "integrity_rows": [],
+      "governance_rows": [],
+      "compression_rows": []
+    },
+    "streamlit_payloads": {
+      "streamlit_summary_cards": [
+        {
+          "label": "posture",
+          "value": "stress"
+        }
+      ],
+      "streamlit_sector_summary": [],
+      "streamlit_pressure_table": [],
+      "streamlit_resilience_table": [],
+      "streamlit_fragmentation_table": [],
+      "streamlit_continuity_panel": [],
+      "streamlit_integrity_panel": [],
+      "streamlit_governance_panel": [],
+      "streamlit_snapshot_metadata": []
+    },
+    "diagnostics": {
+      "normalization_completeness_percentage": 100.0,
+      "data_completeness_summary": 100.0,
+      "symbols_successfully_normalized": 50,
+      "symbols_failed_closed": 0,
+      "invalid_values": 0,
+      "missing_fields": 0,
+      "null_fields": 0,
+      "fallback_usage_percentage": 0.0,
+      "compression_ratio": 1.0,
+      "sector_distribution": [
+        {
+          "sector": "Tech",
+          "count": 30
+        }
+      ]
+    }
+  }
+}
