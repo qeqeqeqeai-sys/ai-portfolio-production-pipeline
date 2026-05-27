@@ -1,4 +1,5 @@
 import io
+from urllib.parse import parse_qs, urlparse
 import re
 from urllib.error import HTTPError
 
@@ -16,7 +17,24 @@ from transmission_layers.expectation_failure.real_data.ops_hist1_controlled_hist
     load_ops_hist1_snapshots,
     render_ops_hist1_observation_review_markdown,
     run_ops_hist1_historical_backfill,
+    _build_fmp_url,
+    FMP_STABLE_HISTORICAL_PRICE_URL,
 )
+
+
+def test_build_fmp_url_for_stable_historical_price_shape():
+    url = _build_fmp_url(
+        FMP_STABLE_HISTORICAL_PRICE_URL,
+        {"symbol": "AAPL", "from": "2026-05-27", "to": "2026-05-27", "apikey": "abc"},
+    )
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+    assert "stable/historical-price-eod/full" in url
+    assert qs["symbol"] == ["AAPL"]
+    assert qs["from"] == ["2026-05-27"]
+    assert qs["to"] == ["2026-05-27"]
+    assert qs["apikey"] == ["abc"]
+    assert "?hp_d" not in url
 
 
 def _fetcher(batch):
@@ -147,8 +165,8 @@ def test_profile_403_non_fatal_with_unknown_fallback(monkeypatch):
         if "stable/profile" in url:
             calls["profile"] += 1
             raise HTTPError(url, 403, "Forbidden", {}, io.BytesIO(b""))
-        if "historical-price-full" in url:
-            return _Resp(b'{"historical":[{"adjClose":101.5,"volume":10}]}')
+        if "stable/historical-price-eod/full" in url:
+            return _Resp(b'[{"date":"2026-05-27","adjClose":101.5,"volume":10}]')
         if "historical-market-capitalization" in url:
             return _Resp(b'[{"marketCap":1234}]')
         raise AssertionError(url)
@@ -182,8 +200,8 @@ def test_profile_cache_reused_for_same_symbol_across_dates(monkeypatch):
         if "stable/profile" in url:
             calls["profile"] += 1
             return _Resp(b'[{"symbol":"AAPL","sector":"Tech","industry":"Software"}]')
-        if "historical-price-full" in url:
-            return _Resp(b'{"historical":[{"adjClose":101.5,"volume":10}]}')
+        if "stable/historical-price-eod/full" in url:
+            return _Resp(b'{"historical":[{"date":"2026-05-26","adjClose":101.5,"volume":10}]}')
         if "historical-market-capitalization" in url:
             return _Resp(b'[{"marketCap":1234}]')
         raise AssertionError(url)
@@ -191,8 +209,31 @@ def test_profile_cache_reused_for_same_symbol_across_dates(monkeypatch):
     monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
     fetcher = build_historical_fmp_fetcher("test_key")
     fetcher(["AAPL"], "2026-05-26")
-    fetcher(["AAPL"], "2026-05-27")
+    with pytest.raises(RuntimeError):
+        fetcher(["AAPL"], "2026-05-27")
     assert calls["profile"] == 1
+
+
+def test_historical_price_single_symbol_403_all_fail_closed(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/historical-price-eod/full" in url:
+            raise HTTPError(url, 403, "Forbidden", {}, io.BytesIO(b""))
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":1234}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Software"}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    with pytest.raises(RuntimeError):
+        fetcher(["AAPL"], "2026-05-27")
 
 
 def test_profile_failure_diagnostics_do_not_leak_api_key(tmp_path):

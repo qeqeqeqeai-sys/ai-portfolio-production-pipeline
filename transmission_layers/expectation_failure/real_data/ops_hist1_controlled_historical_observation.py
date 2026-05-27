@@ -28,6 +28,14 @@ MAX_SNAPSHOTS_PER_RUN = 90
 OPS_HIST1_SCHEMA_VERSION = "ops_hist1_v1"
 OPS_HIST1_OBSERVATION_MODE = "controlled_historical_observation"
 
+FMP_STABLE_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/stable/historical-price-eod/full"
+FMP_LEGACY_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}"
+FMP_LEGACY_HISTORICAL_MARKET_CAP_URL = "https://financialmodelingprep.com/api/v3/historical-market-capitalization/{symbol}"
+
+
+def _build_fmp_url(base_url: str, params: dict[str, str]) -> str:
+    return f"{base_url}?{urlencode(params)}"
+
 
 def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str], Iterable[dict]]:
     if not api_key:
@@ -79,9 +87,22 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
 
     def _fetch(symbols: Sequence[str], snapshot_date: str) -> list[dict]:
         run_diag: dict[str, Any] = {
-            "fmp_endpoint_family_used": "historical-price-full + historical-market-capitalization + stable/profile",
+            "fmp_endpoint_family_used": "stable/historical-price-eod/full + legacy/historical-market-capitalization + stable/profile",
+            "historical_price_endpoint_family": "stable_historical_price_eod_full",
+            "primary_endpoint_family": "stable_historical_price_eod_full",
+            "fallback_endpoint_family": "legacy_historical_price_full",
+            "historical_price_url_shape_valid": True,
+            "historical_price_query_parameters_present": True,
             "historical_price_endpoint_status": "ok",
             "historical_market_cap_endpoint_status": "ok",
+            "historical_price_http_status_counts": {},
+            "historical_price_failure_reasons": {},
+            "historical_price_records_requested": 0,
+            "historical_price_records_returned": 0,
+            "historical_price_records_matched_to_snapshot_date": 0,
+            "historical_price_symbols_succeeded": 0,
+            "historical_price_symbols_failed": 0,
+            "sample_historical_price_raw_keys_observed": [],
             "profile_endpoint_status": "ok",
             "profile_enrichment_status": "ok",
             "profile_records_requested": 0,
@@ -90,18 +111,68 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             "profile_fetch_failure_reasons": {},
             "sector_industry_fallback_used": False,
         }
+        def _record_price_failure(reason: str, http_status: int | None = None) -> None:
+            run_diag["historical_price_failure_reasons"][reason] = run_diag["historical_price_failure_reasons"].get(reason, 0) + 1
+            if http_status is not None:
+                key = f"HTTP_{http_status}"
+                run_diag["historical_price_http_status_counts"][key] = run_diag["historical_price_http_status_counts"].get(key, 0) + 1
+
+        def _bounded_http_reason(exc: Exception) -> str:
+            if isinstance(exc, HTTPError):
+                return f"HTTP_{exc.code}"
+            if isinstance(exc, URLError):
+                return "URL_ERROR"
+            if isinstance(exc, TimeoutError):
+                return "TIMEOUT"
+            return "UNEXPECTED_ERROR"
+
+        def _parse_price_records(payload: Any) -> list[dict[str, Any]]:
+            if isinstance(payload, list):
+                return [row for row in payload if isinstance(row, dict)]
+            if isinstance(payload, dict):
+                if isinstance(payload.get("historical"), list):
+                    return [row for row in payload.get("historical", []) if isinstance(row, dict)]
+                return [payload]
+            return []
+
         rows: list[dict] = []
         for symbol in symbols:
             sym = str(symbol).upper()
-            hp_q = urlencode({"from": snapshot_date, "to": snapshot_date, "apikey": api_key})
-            with urlopen(f"https://financialmodelingprep.com/api/v3/historical-price-full/{sym}?{hp_q}", timeout=20) as resp:
-                hp = json.loads(resp.read().decode("utf-8"))
-            prices = (hp or {}).get("historical", []) if isinstance(hp, dict) else []
-            price_row = prices[0] if prices else {}
-            mc_q = urlencode({"from": snapshot_date, "to": snapshot_date, "limit": 1, "apikey": api_key})
-            with urlopen(f"https://financialmodelingprep.com/api/v3/historical-market-capitalization/{sym}?{mc_q}", timeout=20) as resp:
-                mc = json.loads(resp.read().decode("utf-8"))
-            mc_row = mc[0] if isinstance(mc, list) and mc else {}
+            run_diag["historical_price_records_requested"] += 1
+            params = {"symbol": sym, "from": snapshot_date, "to": snapshot_date, "apikey": api_key}
+            stable_url = _build_fmp_url(FMP_STABLE_HISTORICAL_PRICE_URL, params)
+            run_diag["historical_price_query_parameters_present"] = run_diag["historical_price_query_parameters_present"] and all(k in stable_url for k in ["symbol=", "from=", "to=", "apikey="])
+            run_diag["historical_price_url_shape_valid"] = run_diag["historical_price_url_shape_valid"] and ("?hp_d" not in stable_url and "stable/historical-price-eod/full" in stable_url)
+            price_row: dict[str, Any] = {}
+            try:
+                with urlopen(stable_url, timeout=20) as resp:
+                    hp = json.loads(resp.read().decode("utf-8"))
+                prices = _parse_price_records(hp)
+            except Exception as exc:
+                run_diag["historical_price_endpoint_status"] = "degraded"
+                _record_price_failure(_bounded_http_reason(exc), getattr(exc, "code", None))
+                prices = []
+            run_diag["historical_price_records_returned"] += len(prices)
+            exact = [p for p in prices if str(p.get("date", "")) == snapshot_date]
+            if exact:
+                price_row = exact[0]
+                run_diag["historical_price_records_matched_to_snapshot_date"] += 1
+                run_diag["historical_price_symbols_succeeded"] += 1
+                run_diag["sample_historical_price_raw_keys_observed"] = sorted(set((run_diag["sample_historical_price_raw_keys_observed"] + [k for k in price_row.keys() if "key" not in k.lower()])[:20]))
+            else:
+                run_diag["historical_price_symbols_failed"] += 1
+                reason = "missing_exact_historical_date" if prices else "MALFORMED_RESPONSE"
+                _record_price_failure(reason)
+
+            mc_q = {"from": snapshot_date, "to": snapshot_date, "limit": "1", "apikey": api_key}
+            mc_url = _build_fmp_url(FMP_LEGACY_HISTORICAL_MARKET_CAP_URL.format(symbol=sym), mc_q)
+            try:
+                with urlopen(mc_url, timeout=20) as resp:
+                    mc = json.loads(resp.read().decode("utf-8"))
+                mc_row = mc[0] if isinstance(mc, list) and mc else {}
+            except Exception:
+                run_diag["historical_market_cap_endpoint_status"] = "degraded"
+                mc_row = {}
             profile = _fetch_profile(sym, run_diag)
             rows.append({
                 "symbol": sym,
@@ -113,6 +184,8 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 "industry": profile.get("industry", "unknown") or "unknown",
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
             })
+        if run_diag["historical_price_symbols_succeeded"] == 0:
+            raise RuntimeError("OPS-HIST-1 fails closed: all symbols failed historical price fetch")
         if run_diag["profile_fetch_failure_count"] > 0:
             run_diag["profile_endpoint_status"] = "degraded"
         _fetch.last_profile_diagnostics = run_diag
@@ -313,7 +386,20 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         "top_normalization_failure_reasons": [r for r, _ in Counter(failures).most_common(5)],
         "sample_raw_keys_observed": sample_keys,
         "historical_adapter_mode": "real_ops_hist1_historical_adapter",
+        "historical_price_endpoint_family": profile_diag.get("historical_price_endpoint_family", "stable_historical_price_eod_full"),
+        "primary_endpoint_family": profile_diag.get("primary_endpoint_family", "stable_historical_price_eod_full"),
+        "fallback_endpoint_family": profile_diag.get("fallback_endpoint_family", "legacy_historical_price_full"),
+        "historical_price_url_shape_valid": bool(profile_diag.get("historical_price_url_shape_valid", True)),
+        "historical_price_query_parameters_present": bool(profile_diag.get("historical_price_query_parameters_present", True)),
         "historical_price_endpoint_status": profile_diag.get("historical_price_endpoint_status", "ok"),
+        "historical_price_http_status_counts": dict(profile_diag.get("historical_price_http_status_counts", {})),
+        "historical_price_failure_reasons": dict(profile_diag.get("historical_price_failure_reasons", {})),
+        "historical_price_records_requested": int(profile_diag.get("historical_price_records_requested", 0)),
+        "historical_price_records_returned": int(profile_diag.get("historical_price_records_returned", 0)),
+        "historical_price_records_matched_to_snapshot_date": int(profile_diag.get("historical_price_records_matched_to_snapshot_date", 0)),
+        "historical_price_symbols_succeeded": int(profile_diag.get("historical_price_symbols_succeeded", 0)),
+        "historical_price_symbols_failed": int(profile_diag.get("historical_price_symbols_failed", 0)),
+        "sample_historical_price_raw_keys_observed": list(profile_diag.get("sample_historical_price_raw_keys_observed", [])),
         "historical_market_cap_endpoint_status": profile_diag.get("historical_market_cap_endpoint_status", "ok"),
         "profile_endpoint_status": profile_diag.get("profile_endpoint_status", "ok"),
         "profile_enrichment_status": profile_diag.get("profile_enrichment_status", "ok"),
