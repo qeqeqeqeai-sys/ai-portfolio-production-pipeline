@@ -1,0 +1,543 @@
+{
+  "data_quality_rows": [
+    {
+      "data_completeness_summary": 100.0,
+      "fallback_usage_percentage": 0.0,
+      "missing_fields": 0,
+      "null_fields": 0,
+      "snapshot_id": "ops-live1b-1"
+    },
+    {
+      "data_completeness_summary": 100.0,
+      "fallback_usage_percentage": 0.0,
+      "missing_fields": 0,
+      "null_fields": 0,
+      "snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "data_quality_table": [
+    {
+      "invalid_values": 0,
+      "normalization_completeness_percentage": 100.0,
+      "snapshot_id": "ops-live1b-1",
+      "symbols_failed_closed": 0
+    },
+    {
+      "invalid_values": 0,
+      "normalization_completeness_percentage": 100.0,
+      "snapshot_id": "ops-live1b-2",
+      "symbols_failed_closed": 0
+    }
+  ],
+  "fragmentation_change_rows": [
+    {
+      "fragmentation": [
+        [
+          "NVDA",
+          61
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1"
+    },
+    {
+      "fragmentation": [
+        [
+          "NVDA",
+          62
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "fragmentation_drift_table": [
+    {
+      "fragmentation_hotspot": [
+        [
+          "NVDA",
+          61
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1"
+    },
+    {
+      "fragmentation_hotspot": [
+        [
+          "NVDA",
+          62
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "governance_consistency_rows": [
+    {
+      "consistent": true,
+      "no_autonomous_replay": true,
+      "no_graph_execution_engines": true,
+      "no_high_frequency_streaming": true,
+      "no_prediction_or_trading_execution": true,
+      "no_recursive_replay_operationalization": true,
+      "no_self_modifying_pathways": true,
+      "no_topology_activation": true,
+      "observational_only": true
+    }
+  ],
+  "governance_flags": {
+    "no_autonomous_replay": true,
+    "no_graph_execution_engines": true,
+    "no_high_frequency_streaming": true,
+    "no_prediction_or_trading_execution": true,
+    "no_recursive_replay_operationalization": true,
+    "no_self_modifying_pathways": true,
+    "no_topology_activation": true,
+    "observational_only": true
+  },
+  "governance_panel": {
+    "consistent": true,
+    "no_autonomous_replay": true,
+    "no_graph_execution_engines": true,
+    "no_high_frequency_streaming": true,
+    "no_prediction_or_trading_execution": true,
+    "no_recursive_replay_operationalization": true,
+    "no_self_modifying_pathways": true,
+    "no_topology_activation": true,
+    "observational_only": true
+  },
+  "posture_drift_table": [
+    {
+      "changed": true,
+      "from_snapshot_id": "ops-live1b-1",
+      "posture_from": "calm",
+      "posture_to": "stress",
+      "to_snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "posture_transition_rows": [
+    {
+      "changed": true,
+      "from_snapshot_id": "ops-live1b-1",
+      "posture_from": "calm",
+      "posture_to": "stress",
+      "to_snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "pressure_change_rows": [
+    {
+      "pressure": [
+        [
+          "AAPL",
+          71
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1"
+    },
+    {
+      "pressure": [
+        [
+          "AAPL",
+          72
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "pressure_drift_table": [
+    {
+      "dominant_pressure": [
+        [
+          "AAPL",
+          71
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1"
+    },
+    {
+      "dominant_pressure": [
+        [
+          "AAPL",
+          72
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "readiness_classification": "ready_for_controlled_300_symbol_probe",
+  "readiness_panel": {
+    "classification": "ready_for_controlled_300_symbol_probe",
+    "repeated_problematic_symbols": []
+  },
+  "readiness_rows": [
+    {
+      "average_normalization_completeness": 100.0,
+      "classification": "ready_for_controlled_300_symbol_probe"
+    }
+  ],
+  "resilience_change_rows": [
+    {
+      "resilience": [
+        [
+          "MSFT",
+          79
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1"
+    },
+    {
+      "resilience": [
+        [
+          "MSFT",
+          78
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2"
+    }
+  ],
+  "resilience_drift_table": [
+    {
+      "snapshot_id": "ops-live1b-1",
+      "strongest_resilience": [
+        [
+          "MSFT",
+          79
+        ]
+      ]
+    },
+    {
+      "snapshot_id": "ops-live1b-2",
+      "strongest_resilience": [
+        [
+          "MSFT",
+          78
+        ]
+      ]
+    }
+  ],
+  "review_summary_cards": {
+    "average_normalization_completeness": 100.0,
+    "readiness": "ready_for_controlled_300_symbol_probe"
+  },
+  "reviewed_snapshot_count": 2,
+  "reviewed_snapshot_rows": [
+    {
+      "canonical_keys": [
+        "compression_rows",
+        "continuity_rows",
+        "fragmentation_rows",
+        "governance_rows",
+        "integrity_rows",
+        "pressure_rows",
+        "resilience_rows",
+        "sector_summary_rows",
+        "snapshot_metadata_rows",
+        "symbol_snapshot_rows"
+      ],
+      "compression_ratio": 1.0,
+      "data_completeness_summary": 100.0,
+      "fallback_usage_percentage": 0.0,
+      "fragmentation": [
+        [
+          "NVDA",
+          61
+        ]
+      ],
+      "governance_boundaries": {
+        "safe": true
+      },
+      "invalid_values": 0,
+      "missing_fields": 0,
+      "normalization_completeness_percentage": 100.0,
+      "null_fields": 0,
+      "observation_mode": "controlled_operational_observation",
+      "posture": "calm",
+      "pressure": [
+        [
+          "AAPL",
+          71
+        ]
+      ],
+      "resilience": [
+        [
+          "MSFT",
+          79
+        ]
+      ],
+      "sector_distribution": [
+        [
+          "Tech",
+          30
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1",
+      "snapshot_ts": "2026-05-01T00:00:00Z",
+      "source_file": "snapshot_01.json",
+      "status": "ok",
+      "streamlit_keys": [
+        "streamlit_continuity_panel",
+        "streamlit_fragmentation_table",
+        "streamlit_governance_panel",
+        "streamlit_integrity_panel",
+        "streamlit_pressure_table",
+        "streamlit_resilience_table",
+        "streamlit_sector_summary",
+        "streamlit_snapshot_metadata",
+        "streamlit_summary_cards"
+      ],
+      "summary_items": 1,
+      "symbol_rows": 0,
+      "symbols_failed_closed": 0,
+      "symbols_successfully_normalized": 50,
+      "universe_checksum": "abc123",
+      "universe_size": 50
+    },
+    {
+      "canonical_keys": [
+        "compression_rows",
+        "continuity_rows",
+        "fragmentation_rows",
+        "governance_rows",
+        "integrity_rows",
+        "pressure_rows",
+        "resilience_rows",
+        "sector_summary_rows",
+        "snapshot_metadata_rows",
+        "symbol_snapshot_rows"
+      ],
+      "compression_ratio": 1.0,
+      "data_completeness_summary": 100.0,
+      "fallback_usage_percentage": 0.0,
+      "fragmentation": [
+        [
+          "NVDA",
+          62
+        ]
+      ],
+      "governance_boundaries": {
+        "safe": true
+      },
+      "invalid_values": 0,
+      "missing_fields": 0,
+      "normalization_completeness_percentage": 100.0,
+      "null_fields": 0,
+      "observation_mode": "controlled_operational_observation",
+      "posture": "stress",
+      "pressure": [
+        [
+          "AAPL",
+          72
+        ]
+      ],
+      "resilience": [
+        [
+          "MSFT",
+          78
+        ]
+      ],
+      "sector_distribution": [
+        [
+          "Tech",
+          30
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2",
+      "snapshot_ts": "2026-05-02T00:00:00Z",
+      "source_file": "snapshot_02.json",
+      "status": "ok",
+      "streamlit_keys": [
+        "streamlit_continuity_panel",
+        "streamlit_fragmentation_table",
+        "streamlit_governance_panel",
+        "streamlit_integrity_panel",
+        "streamlit_pressure_table",
+        "streamlit_resilience_table",
+        "streamlit_sector_summary",
+        "streamlit_snapshot_metadata",
+        "streamlit_summary_cards"
+      ],
+      "summary_items": 1,
+      "symbol_rows": 0,
+      "symbols_failed_closed": 0,
+      "symbols_successfully_normalized": 50,
+      "universe_checksum": "abc123",
+      "universe_size": 50
+    }
+  ],
+  "snapshot_timeline_table": [
+    {
+      "canonical_keys": [
+        "compression_rows",
+        "continuity_rows",
+        "fragmentation_rows",
+        "governance_rows",
+        "integrity_rows",
+        "pressure_rows",
+        "resilience_rows",
+        "sector_summary_rows",
+        "snapshot_metadata_rows",
+        "symbol_snapshot_rows"
+      ],
+      "compression_ratio": 1.0,
+      "data_completeness_summary": 100.0,
+      "fallback_usage_percentage": 0.0,
+      "fragmentation": [
+        [
+          "NVDA",
+          61
+        ]
+      ],
+      "governance_boundaries": {
+        "safe": true
+      },
+      "invalid_values": 0,
+      "missing_fields": 0,
+      "normalization_completeness_percentage": 100.0,
+      "null_fields": 0,
+      "observation_mode": "controlled_operational_observation",
+      "posture": "calm",
+      "pressure": [
+        [
+          "AAPL",
+          71
+        ]
+      ],
+      "resilience": [
+        [
+          "MSFT",
+          79
+        ]
+      ],
+      "sector_distribution": [
+        [
+          "Tech",
+          30
+        ]
+      ],
+      "snapshot_id": "ops-live1b-1",
+      "snapshot_ts": "2026-05-01T00:00:00Z",
+      "source_file": "snapshot_01.json",
+      "status": "ok",
+      "streamlit_keys": [
+        "streamlit_continuity_panel",
+        "streamlit_fragmentation_table",
+        "streamlit_governance_panel",
+        "streamlit_integrity_panel",
+        "streamlit_pressure_table",
+        "streamlit_resilience_table",
+        "streamlit_sector_summary",
+        "streamlit_snapshot_metadata",
+        "streamlit_summary_cards"
+      ],
+      "summary_items": 1,
+      "symbol_rows": 0,
+      "symbols_failed_closed": 0,
+      "symbols_successfully_normalized": 50,
+      "universe_checksum": "abc123",
+      "universe_size": 50
+    },
+    {
+      "canonical_keys": [
+        "compression_rows",
+        "continuity_rows",
+        "fragmentation_rows",
+        "governance_rows",
+        "integrity_rows",
+        "pressure_rows",
+        "resilience_rows",
+        "sector_summary_rows",
+        "snapshot_metadata_rows",
+        "symbol_snapshot_rows"
+      ],
+      "compression_ratio": 1.0,
+      "data_completeness_summary": 100.0,
+      "fallback_usage_percentage": 0.0,
+      "fragmentation": [
+        [
+          "NVDA",
+          62
+        ]
+      ],
+      "governance_boundaries": {
+        "safe": true
+      },
+      "invalid_values": 0,
+      "missing_fields": 0,
+      "normalization_completeness_percentage": 100.0,
+      "null_fields": 0,
+      "observation_mode": "controlled_operational_observation",
+      "posture": "stress",
+      "pressure": [
+        [
+          "AAPL",
+          72
+        ]
+      ],
+      "resilience": [
+        [
+          "MSFT",
+          78
+        ]
+      ],
+      "sector_distribution": [
+        [
+          "Tech",
+          30
+        ]
+      ],
+      "snapshot_id": "ops-live1b-2",
+      "snapshot_ts": "2026-05-02T00:00:00Z",
+      "source_file": "snapshot_02.json",
+      "status": "ok",
+      "streamlit_keys": [
+        "streamlit_continuity_panel",
+        "streamlit_fragmentation_table",
+        "streamlit_governance_panel",
+        "streamlit_integrity_panel",
+        "streamlit_pressure_table",
+        "streamlit_resilience_table",
+        "streamlit_sector_summary",
+        "streamlit_snapshot_metadata",
+        "streamlit_summary_cards"
+      ],
+      "summary_items": 1,
+      "symbol_rows": 0,
+      "symbols_failed_closed": 0,
+      "symbols_successfully_normalized": 50,
+      "universe_checksum": "abc123",
+      "universe_size": 50
+    }
+  ],
+  "stability_check_rows": [
+    {
+      "check": "status_consistent_ok",
+      "value": true
+    },
+    {
+      "check": "snapshot_id_presence",
+      "value": true
+    },
+    {
+      "check": "universe_checksum_stable",
+      "value": true
+    },
+    {
+      "check": "universe_size_stable",
+      "value": true
+    },
+    {
+      "check": "observation_mode_consistent",
+      "value": true
+    },
+    {
+      "check": "governance_boundary_consistent",
+      "value": true
+    },
+    {
+      "check": "payload_schema_stable",
+      "value": true
+    },
+    {
+      "check": "streamlit_payload_stable",
+      "value": true
+    }
+  ],
+  "status": "ok"
+}
