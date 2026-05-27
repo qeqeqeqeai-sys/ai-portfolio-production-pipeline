@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from copy import deepcopy
 from datetime import date, timedelta
 from hashlib import sha256
@@ -27,6 +28,9 @@ MAX_HIST_WINDOW_DAYS = 90
 MAX_SNAPSHOTS_PER_RUN = 90
 OPS_HIST1_SCHEMA_VERSION = "ops_hist1_v1"
 OPS_HIST1_OBSERVATION_MODE = "controlled_historical_observation"
+PROGRESS_INTERVAL_DEFAULT = 5
+PROGRESS_INTERVAL_MIN = 1
+PROGRESS_INTERVAL_MAX = 20
 
 FMP_STABLE_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/stable/historical-price-eod/full"
 FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL = "https://financialmodelingprep.com/stable/historical-price-eod/light"
@@ -314,6 +318,26 @@ def _parse_date(d: str) -> date:
     return date.fromisoformat(d)
 
 
+def _emit_ops_hist1_progress(lines: dict[str, Any]) -> None:
+    print("[OPS-HIST-1]", flush=True)
+    for key, value in lines.items():
+        print(f"{key}={value}", flush=True)
+
+
+def _emit_endpoint_summary(success_counts: dict[str, int], failure_counts: dict[str, int]) -> None:
+    print("[OPS-HIST-1][historical_price]", flush=True)
+    print(f"endpoint_success_counts={dict(sorted(success_counts.items()))}", flush=True)
+    print(f"endpoint_failure_counts={dict(sorted(failure_counts.items()))}", flush=True)
+
+
+def _bounded_progress_interval(progress_interval: int) -> int:
+    if progress_interval < PROGRESS_INTERVAL_MIN:
+        return PROGRESS_INTERVAL_MIN
+    if progress_interval > PROGRESS_INTERVAL_MAX:
+        return PROGRESS_INTERVAL_MAX
+    return progress_interval
+
+
 def deterministic_historical_window_dates(snapshot_date: str, window_days: int) -> list[str]:
     if window_days > MAX_HIST_WINDOW_DAYS:
         raise ValueError(f"historical window {window_days} exceeds max {MAX_HIST_WINDOW_DAYS}")
@@ -511,7 +535,7 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         "empty_snapshot_fail_closed": len(normalized_rows) == 0 or all(r.get("price") is None for r in raw_rows),
     }
 
-def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None) -> dict[str, Any]:
+def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None, progress_interval: int = PROGRESS_INTERVAL_DEFAULT) -> dict[str, Any]:
     if fetch_batch is None:
         api_key = os.getenv("FMP_API_KEY", "")
         if not api_key:
@@ -525,7 +549,19 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     snapshots = []
+    progress_interval = _bounded_progress_interval(progress_interval)
+    run_start = time.monotonic()
+    endpoint_success_counts: Counter[str] = Counter()
+    endpoint_failure_counts: Counter[str] = Counter()
+    exact_date_matches = 0
+    reconciled_prior_dates = 0
+    missing_dates = 0
+    normalized_total = 0
+    partial_total = 0
+    failed_total = 0
+    snapshot_durations: list[float] = []
     for d in window_dates:
+        snapshot_started = time.monotonic()
         raw_rows = _fetch_with_optional_date(fetch_batch, universe, d)
         result = ingest_controlled_daily_snapshot(universe, d, lambda batch, _raw=raw_rows: _raw)
         profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
@@ -538,8 +574,76 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         snap["adapter_diagnostics"] = diag
         Path(out_dir / f"ops_hist1_{d}.json").write_text(json.dumps(snap, indent=2, sort_keys=True), encoding="utf-8")
         snapshots.append(snap)
+        normalized_count = int(diag.get("symbol_count_normalized", 0))
+        requested_count = int(diag.get("symbol_count_requested", len(universe)))
+        failed_count = max(0, requested_count - normalized_count)
+        partial_count = 1 if 0 < normalized_count < requested_count else 0
+        normalized_total += normalized_count
+        partial_total += partial_count
+        failed_total += failed_count
+        for symbol_diag in profile_diag.get("historical_price_symbol_diagnostics", []):
+            attempts = symbol_diag.get("endpoint_attempts", [])
+            if not attempts:
+                continue
+            success_attempt = next((a for a in attempts if a.get("failure_reason") is None), None)
+            if success_attempt:
+                endpoint_success_counts[str(success_attempt.get("endpoint_family", "unknown"))] += 1
+                if success_attempt.get("exact_date_match_found"):
+                    exact_date_matches += 1
+                elif success_attempt.get("date_reconciliation_used"):
+                    reconciled_prior_dates += 1
+                else:
+                    missing_dates += 1
+            else:
+                missing_dates += 1
+                endpoint_failure_counts[str(attempts[-1].get("failure_reason") or "unknown")] += 1
+            for attempt in attempts:
+                reason = attempt.get("failure_reason")
+                if reason:
+                    endpoint_failure_counts[str(reason)] += 1
+        snapshot_durations.append(time.monotonic() - snapshot_started)
+        snapshot_index = len(snapshots)
+        if snapshot_index % progress_interval == 0 or snapshot_index == len(window_dates):
+            elapsed_seconds = int(time.monotonic() - run_start)
+            avg_snapshot_seconds = sum(snapshot_durations) / max(len(snapshot_durations), 1)
+            remaining_snapshots = len(window_dates) - snapshot_index
+            eta_minutes = round((avg_snapshot_seconds * remaining_snapshots) / 60.0, 2)
+            _emit_ops_hist1_progress(
+                {
+                    "snapshot": f"{snapshot_index}/{len(window_dates)}",
+                    "date": d,
+                    "elapsed_seconds": elapsed_seconds,
+                    "normalized_symbols": normalized_count,
+                    "partial_symbols": partial_count,
+                    "failed_symbols": failed_count,
+                    "exact_date_matches": exact_date_matches,
+                    "reconciled_prior_dates": reconciled_prior_dates,
+                    "missing_dates": missing_dates,
+                    "estimated_remaining_snapshots": remaining_snapshots,
+                    "estimated_remaining_minutes": eta_minutes,
+                }
+            )
+            _emit_endpoint_summary(dict(endpoint_success_counts), dict(endpoint_failure_counts))
     continuity_rows = _continuity_observation_rows(snapshots)
-    return {"status": "ok", "schema_version": OPS_HIST1_SCHEMA_VERSION, "snapshot_count": len(snapshots), "output_dir": str(out_dir), "continuity_rows": continuity_rows, "governance_metadata": _governance_flags()}
+    return {
+        "status": "ok",
+        "schema_version": OPS_HIST1_SCHEMA_VERSION,
+        "snapshot_count": len(snapshots),
+        "output_dir": str(out_dir),
+        "continuity_rows": continuity_rows,
+        "governance_metadata": _governance_flags(),
+        "telemetry_summary": {
+            "elapsed_seconds": int(time.monotonic() - run_start),
+            "normalized_symbol_total": normalized_total,
+            "partial_symbol_total": partial_total,
+            "failed_symbol_total": failed_total,
+            "exact_date_matches": exact_date_matches,
+            "reconciled_prior_dates": reconciled_prior_dates,
+            "missing_dates": missing_dates,
+            "endpoint_success_counts": dict(sorted(endpoint_success_counts.items())),
+            "endpoint_failure_counts": dict(sorted(endpoint_failure_counts.items())),
+        },
+    }
 
 
 def load_ops_hist1_snapshots(input_dir: str) -> list[dict[str, Any]]:

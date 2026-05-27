@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from copy import deepcopy
 from datetime import date, timedelta
 from hashlib import sha256
@@ -97,7 +98,13 @@ def _deterministic_fixture_snapshots(dates: list[str], symbol_count: int) -> lis
     return out
 
 
-def run_hist_density1(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count: int = DEFAULT_SYMBOL_COUNT, end_date: str | None = None, start_date: str | None = None, output_root: str = "reports/hist_density1", density_mode: Literal["real_ops_hist1", "synthetic_fixture"] = DENSITY_MODE_REAL, fetch_batch: Callable[[Sequence[str]], Iterable[dict[str, Any]]] | None = None) -> dict[str, Any]:
+def _emit_hist_density_progress(lines: dict[str, Any], header: str = "[HIST-DENSITY-1]") -> None:
+    print(header, flush=True)
+    for key, value in lines.items():
+        print(f"{key}={value}", flush=True)
+
+
+def run_hist_density1(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count: int = DEFAULT_SYMBOL_COUNT, end_date: str | None = None, start_date: str | None = None, output_root: str = "reports/hist_density1", density_mode: Literal["real_ops_hist1", "synthetic_fixture"] = DENSITY_MODE_REAL, fetch_batch: Callable[[Sequence[str]], Iterable[dict[str, Any]]] | None = None, progress_interval: int = 5) -> dict[str, Any]:
     if trading_days > MAX_TRADING_DAYS or trading_days > MAX_DAILY_SNAPSHOTS_PER_RUN:
         raise ValueError("HIST-DENSITY-1 fails closed: trading day limit exceeded")
     if symbol_count > MAX_SYMBOL_COUNT:
@@ -118,9 +125,34 @@ def run_hist_density1(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
         (root / p).mkdir(parents=True, exist_ok=True)
 
     ops_hist1_chunks = _chunk_dates(dates, MAX_HIST_WINDOW_DAYS)
+    run_started = time.monotonic()
+    _emit_hist_density_progress({
+        "mode": density_mode,
+        "trading_days": len(dates),
+        "symbol_count": symbol_count,
+        "chunk_count": len(ops_hist1_chunks),
+        "output_root": output_root,
+    })
+    ops_hist1_telemetry: dict[str, Any] = {}
     if density_mode == DENSITY_MODE_REAL:
-        for chunk in ops_hist1_chunks:
-            run_ops_hist1_historical_backfill(snapshot_date=chunk[-1], output_dir=str(snapshots_dir), window_days=len(chunk), fetch_batch=fetch_batch)
+        for chunk_index, chunk in enumerate(ops_hist1_chunks, start=1):
+            chunk_started = time.monotonic()
+            _emit_hist_density_progress({
+                "chunk": f"{chunk_index}/{len(ops_hist1_chunks)}",
+                "window": f"{chunk[0]}→{chunk[-1]}",
+                "window_days": len(chunk),
+            })
+            ops_hist1_telemetry = run_ops_hist1_historical_backfill(
+                snapshot_date=chunk[-1],
+                output_dir=str(snapshots_dir),
+                window_days=len(chunk),
+                fetch_batch=fetch_batch,
+                progress_interval=progress_interval,
+            ).get("telemetry_summary", {})
+            _emit_hist_density_progress({
+                "chunk": f"{chunk_index} complete",
+                "elapsed_seconds": int(time.monotonic() - chunk_started),
+            })
         snaps = load_ops_hist1_snapshots(str(snapshots_dir))
         by_key = {(s.get("snapshot_date", ""), s.get("snapshot_id", "")): s for s in snaps}
         snaps = [by_key[k] for k in sorted(by_key)]
@@ -131,11 +163,17 @@ def run_hist_density1(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
 
     hist1 = build_ops_hist1_observation_review(snaps)
     hist2 = build_ops_hist2_continuity_intelligence(snaps)
+    _emit_hist_density_progress({"complete": "OPS-HIST-2", "elapsed_seconds": int(time.monotonic() - run_started), "artifact_count": len(hist2.get("historical_continuity_rows", []))}, header="[OPS-HIST-2]")
     hist3 = build_ops_hist3_historical_continuity_archetypes(hist2)
+    _emit_hist_density_progress({"complete": "OPS-HIST-3", "elapsed_seconds": int(time.monotonic() - run_started), "artifact_count": len(hist3.get("archetype_transition_rows", []))}, header="[OPS-HIST-3]")
     hist4 = build_ops_hist4_archetype_recurrence_ecology(hist3)
+    _emit_hist_density_progress({"complete": "OPS-HIST-4", "elapsed_seconds": int(time.monotonic() - run_started), "artifact_count": len(hist4.get("recurrence_rows", []))}, header="[OPS-HIST-4]")
     hist5 = build_ops_hist5_temporal_continuity_regimes(hist4)
+    _emit_hist_density_progress({"complete": "OPS-HIST-5", "elapsed_seconds": int(time.monotonic() - run_started), "artifact_count": len(hist5.get("temporal_regime_rows", []))}, header="[OPS-HIST-5]")
     hist6 = build_ops_hist6_regime_morphology_observation(hist5)
+    _emit_hist_density_progress({"complete": "OPS-HIST-6", "elapsed_seconds": int(time.monotonic() - run_started), "artifact_count": len(hist6.get("morphology_rows", []))}, header="[OPS-HIST-6]")
     hist7 = build_ops_hist7_regime_ecology_saturation(hist6)
+    _emit_hist_density_progress({"complete": "OPS-HIST-7", "elapsed_seconds": int(time.monotonic() - run_started), "artifact_count": len(hist7.get("saturation_rows", []))}, header="[OPS-HIST-7]")
 
     gov = _governance_metadata()
     execution_id = "HIST_DENSITY1_" + sha256(json.dumps({"dates": dates, "symbol_count": symbol_count, "schema": HIST_DENSITY1_SCHEMA_VERSION, "density_mode": density_mode}, sort_keys=True).encode()).hexdigest()[:16]
@@ -177,6 +215,19 @@ def run_hist_density1(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
     (root / "morphology" / "ops_hist6_regime_morphology_observation.json").write_text(json.dumps(hist6, indent=2, sort_keys=True), encoding="utf-8")
     (root / "saturation" / "ops_hist7_regime_ecology_saturation.json").write_text(json.dumps(hist7, indent=2, sort_keys=True), encoding="utf-8")
     (root / "manifests" / "density_summary.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    _emit_hist_density_progress({
+        "elapsed_seconds": int(time.monotonic() - run_started),
+        "snapshots_generated": len(snaps),
+        "normalized_symbol_total": int(ops_hist1_telemetry.get("normalized_symbol_total", 0)),
+        "partial_symbol_total": int(ops_hist1_telemetry.get("partial_symbol_total", 0)),
+        "failed_symbol_total": int(ops_hist1_telemetry.get("failed_symbol_total", 0)),
+        "ops_hist2_artifacts": len(hist2.get("historical_continuity_rows", [])),
+        "ops_hist3_artifacts": len(hist3.get("archetype_transition_rows", [])),
+        "ops_hist4_artifacts": len(hist4.get("recurrence_rows", [])),
+        "ops_hist5_artifacts": len(hist5.get("temporal_regime_rows", [])),
+        "ops_hist6_artifacts": len(hist6.get("morphology_rows", [])),
+        "ops_hist7_artifacts": len(hist7.get("saturation_rows", [])),
+    }, header="[HIST-DENSITY-1][summary]")
     return payload
 
 

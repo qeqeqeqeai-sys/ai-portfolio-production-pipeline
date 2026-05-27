@@ -1,4 +1,5 @@
 import io
+import contextlib
 from urllib.parse import parse_qs, urlparse
 import re
 from urllib.error import HTTPError
@@ -284,6 +285,32 @@ def test_response_shape_data_and_reconciliation(monkeypatch):
     attempt = fetcher.last_profile_diagnostics["historical_price_symbol_diagnostics"][0]["endpoint_attempts"][0]
     assert attempt["date_reconciliation_used"] is True
     assert attempt["date_reconciliation_distance_days"] == 1
+
+
+def test_bounded_snapshot_telemetry_interval_and_no_secret_leak(tmp_path):
+    calls = []
+    def fetcher(batch, snapshot_date):
+        calls.append(snapshot_date)
+        return [{"symbol": sym, "date": snapshot_date, "price": 101.0, "marketCap": 1000.0, "sector": "Tech", "industry": "Soft"} for sym in batch]
+
+    capture = io.StringIO()
+    with contextlib.redirect_stdout(capture):
+        out = run_ops_hist1_historical_backfill(
+            snapshot_date="2026-05-27",
+            output_dir=str(tmp_path),
+            window_days=6,
+            fetch_batch=fetcher,
+            progress_interval=5,
+        )
+    text = capture.getvalue()
+    assert out["status"] == "ok"
+    assert text.count("[OPS-HIST-1]") >= 2
+    assert "snapshot=5/6" in text
+    assert "snapshot=6/6" in text
+    assert "estimated_remaining_minutes=" in text
+    assert "[OPS-HIST-1][historical_price]" in text
+    assert "apikey" not in text.lower()
+    assert len(text) < 20000
 
 
 def test_runtime_error_contains_bounded_summary(monkeypatch):
