@@ -1,4 +1,6 @@
+import io
 import re
+from urllib.error import HTTPError
 
 import pytest
 
@@ -7,6 +9,7 @@ from transmission_layers.expectation_failure.real_data.ops_hist1_controlled_hist
     MAX_HIST_WINDOW_DAYS,
     MAX_SNAPSHOTS_PER_RUN,
     OPS_HIST1_SCHEMA_VERSION,
+    build_historical_fmp_fetcher,
     build_ops_hist1_observation_review,
     deterministic_historical_window_dates,
     historical_window_checksum,
@@ -125,3 +128,89 @@ def test_all_symbol_failure_fails_closed(tmp_path):
         return [{"symbol": sym, "date": snapshot_date, "price": None, "sector": "Tech", "industry": "Soft"} for sym in batch]
     with pytest.raises(RuntimeError):
         run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher)
+
+
+def test_profile_403_non_fatal_with_unknown_fallback(monkeypatch):
+    calls = {"profile": 0}
+
+    class _Resp:
+        def __init__(self, payload):
+            self.payload = payload
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/profile" in url:
+            calls["profile"] += 1
+            raise HTTPError(url, 403, "Forbidden", {}, io.BytesIO(b""))
+        if "historical-price-full" in url:
+            return _Resp(b'{"historical":[{"adjClose":101.5,"volume":10}]}')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":1234}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    rows = fetcher(["AAPL"], "2026-05-27")
+    assert rows[0]["price"] == 101.5
+    assert rows[0]["sector"] == "unknown"
+    assert rows[0]["industry"] == "unknown"
+    diag = fetcher.last_profile_diagnostics
+    assert diag["profile_enrichment_status"] == "failed"
+    assert diag["profile_fetch_failure_reasons"] == {"HTTP_403": 1}
+    assert calls["profile"] == 1
+
+
+def test_profile_cache_reused_for_same_symbol_across_dates(monkeypatch):
+    calls = {"profile": 0}
+
+    class _Resp:
+        def __init__(self, payload):
+            self.payload = payload
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/profile" in url:
+            calls["profile"] += 1
+            return _Resp(b'[{"symbol":"AAPL","sector":"Tech","industry":"Software"}]')
+        if "historical-price-full" in url:
+            return _Resp(b'{"historical":[{"adjClose":101.5,"volume":10}]}')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":1234}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    fetcher(["AAPL"], "2026-05-26")
+    fetcher(["AAPL"], "2026-05-27")
+    assert calls["profile"] == 1
+
+
+def test_profile_failure_diagnostics_do_not_leak_api_key(tmp_path):
+    api_key = "super_secret_key"
+
+    def fetcher(batch, snapshot_date):
+        fetcher.last_profile_diagnostics = {
+            "profile_enrichment_status": "failed",
+            "profile_fetch_failure_reasons": {"HTTP_403": 1},
+            "profile_fetch_failure_count": 1,
+            "profile_records_requested": len(batch),
+            "profile_records_returned": 0,
+            "sector_industry_fallback_used": True,
+        }
+        return [{"symbol": sym, "date": snapshot_date, "price": 101.0, "marketCap": 1000.0, "sector": "unknown", "industry": "unknown"} for sym in batch]
+
+    fetcher.last_profile_diagnostics = {}
+    run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher)
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    serialized = str(snap)
+    assert api_key not in serialized
