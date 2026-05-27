@@ -62,6 +62,20 @@ from .phase_a5_certainty_fragility import (
 )
 
 __all__ = [
+    "build_phase_a11_markdown_report",
+    "build_phase_a11_supervisor_review",
+    "build_phase_a11_cascade_interaction_scorecard",
+    "build_phase_a11_recursive_cascade_risk_review",
+    "build_phase_a11_nonlinear_cascade_synchronization_model",
+    "build_phase_a11_stabilization_exhaustion_model",
+    "build_phase_a11_topology_memory_accumulation_model",
+    "build_phase_a11_propagation_recursion_model",
+    "build_phase_a11_basin_interference_model",
+    "build_phase_a11_attractor_competition_model",
+    "build_phase_a11_secondary_cascade_formation_model",
+    "build_phase_a11_wavefront_competition_model",
+    "build_phase_a11_recursive_cascade_propagation_model",
+    "build_phase_a11_recursive_cascade_configuration",
     "build_phase_a10_markdown_report",
     "build_phase_a10_supervisor_review",
     "build_phase_a10_transition_dynamics_scorecard",
@@ -1128,4 +1142,21 @@ from .phase_a10_replay_ecology_transition_dynamics_cascade_propagation_research 
     build_phase_a10_transition_dynamics_scorecard,
     build_phase_a10_supervisor_review,
     build_phase_a10_markdown_report,
+)
+
+from .phase_a11_recursive_replay_ecology_cascade_interaction_wavefront_competition_research import (
+    build_phase_a11_recursive_cascade_configuration,
+    build_phase_a11_recursive_cascade_propagation_model,
+    build_phase_a11_wavefront_competition_model,
+    build_phase_a11_secondary_cascade_formation_model,
+    build_phase_a11_attractor_competition_model,
+    build_phase_a11_basin_interference_model,
+    build_phase_a11_propagation_recursion_model,
+    build_phase_a11_topology_memory_accumulation_model,
+    build_phase_a11_stabilization_exhaustion_model,
+    build_phase_a11_nonlinear_cascade_synchronization_model,
+    build_phase_a11_recursive_cascade_risk_review,
+    build_phase_a11_cascade_interaction_scorecard,
+    build_phase_a11_supervisor_review,
+    build_phase_a11_markdown_report,
 )
