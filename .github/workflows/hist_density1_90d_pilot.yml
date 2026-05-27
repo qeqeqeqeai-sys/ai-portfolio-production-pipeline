@@ -1,0 +1,88 @@
+name: HIST-DENSITY-1 90D Pilot
+
+on:
+  # Governance: manual-only execution; no push/PR/schedule automation.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-hist-density1-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Verify FMP API key is configured (fail closed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${FMP_API_KEY:-}" ]; then
+            echo "FMP_API_KEY is required via GitHub repository secrets." >&2
+            exit 1
+          fi
+          echo "FMP_API_KEY presence check passed."
+
+      - name: Run HIST-DENSITY-1 controlled historical density pilot
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python scripts/run_hist_density1_controlled_historical_density.py \
+            --density-mode real_ops_hist1 \
+            --trading-days 90 \
+            --symbol-count 50 \
+            --output-root reports/hist_density1_pilot_90d
+
+      - name: Report artifact counts (local-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="reports/hist_density1_pilot_90d"
+          test -d "$ROOT"
+
+          count_files() {
+            local dir="$1"
+            if [ -d "$dir" ]; then
+              find "$dir" -type f | wc -l | tr -d ' '
+            else
+              echo 0
+            fi
+          }
+
+          echo "snapshots=$(count_files "$ROOT/snapshots")"
+          echo "continuity=$(count_files "$ROOT/continuity")"
+          echo "archetypes=$(count_files "$ROOT/archetypes")"
+          echo "recurrence=$(count_files "$ROOT/recurrence")"
+          echo "regimes=$(count_files "$ROOT/regimes")"
+          echo "morphology=$(count_files "$ROOT/morphology")"
+          echo "saturation=$(count_files "$ROOT/saturation")"
+          echo "manifests=$(count_files "$ROOT/manifests")"
+
+      # Governance: local artifact generation only; no persistence writeback.
+      # Governance: no replay/topology/prediction/trading execution activation.
+      - name: Upload pilot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hist-density1-90d-pilot-${{ github.run_id }}
+          if-no-files-found: error
+          path: reports/hist_density1_pilot_90d
