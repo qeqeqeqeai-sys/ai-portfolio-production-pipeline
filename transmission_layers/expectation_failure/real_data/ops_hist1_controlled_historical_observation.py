@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 from urllib.parse import urlencode
 from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
 import inspect
 from collections import Counter
 
@@ -32,11 +33,63 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
     if not api_key:
         raise RuntimeError("FMP_API_KEY is required for historical mode")
 
+    profile_cache: dict[str, dict[str, str]] = {}
+
+    def _bounded_profile_failure_reason(exc: Exception) -> str:
+        if isinstance(exc, HTTPError):
+            return f"HTTP_{exc.code}"
+        if isinstance(exc, URLError):
+            return "URL_ERROR"
+        if isinstance(exc, TimeoutError):
+            return "TIMEOUT"
+        return "UNEXPECTED_ERROR"
+
+    def _fetch_profile(symbol: str, diagnostics: dict[str, Any]) -> dict[str, str]:
+        sym = str(symbol).upper()
+        if sym in profile_cache:
+            return profile_cache[sym]
+        profile_q = urlencode({"symbol": sym, "apikey": api_key})
+        try:
+            with urlopen(f"https://financialmodelingprep.com/stable/profile?{profile_q}", timeout=20) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            diagnostics["profile_records_requested"] += 1
+            if isinstance(payload, list) and payload:
+                row = payload[0] if isinstance(payload[0], dict) else {}
+            elif isinstance(payload, dict):
+                row = payload
+            else:
+                row = {}
+            sector = str(row.get("sector") or "unknown")
+            industry = str(row.get("industry") or "unknown")
+            profile = {"sector": sector, "industry": industry}
+            if sector != "unknown" or industry != "unknown":
+                diagnostics["profile_records_returned"] += 1
+            profile_cache[sym] = profile
+            return profile
+        except Exception as exc:  # best effort only
+            diagnostics["profile_records_requested"] += 1
+            diagnostics["profile_fetch_failure_count"] += 1
+            reason = _bounded_profile_failure_reason(exc)
+            diagnostics["profile_fetch_failure_reasons"][reason] = diagnostics["profile_fetch_failure_reasons"].get(reason, 0) + 1
+            diagnostics["profile_enrichment_status"] = "failed"
+            diagnostics["sector_industry_fallback_used"] = True
+            profile = {"sector": "unknown", "industry": "unknown"}
+            profile_cache[sym] = profile
+            return profile
+
     def _fetch(symbols: Sequence[str], snapshot_date: str) -> list[dict]:
-        profiles_q = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
-        with urlopen("https://financialmodelingprep.com/api/v3/profile/" + ",".join(symbols) + "?" + profiles_q, timeout=20) as resp:
-            profiles = json.loads(resp.read().decode("utf-8"))
-        profile_by_symbol = {str(r.get("symbol", "")).upper(): r for r in (profiles if isinstance(profiles, list) else [])}
+        run_diag: dict[str, Any] = {
+            "fmp_endpoint_family_used": "historical-price-full + historical-market-capitalization + stable/profile",
+            "historical_price_endpoint_status": "ok",
+            "historical_market_cap_endpoint_status": "ok",
+            "profile_endpoint_status": "ok",
+            "profile_enrichment_status": "ok",
+            "profile_records_requested": 0,
+            "profile_records_returned": 0,
+            "profile_fetch_failure_count": 0,
+            "profile_fetch_failure_reasons": {},
+            "sector_industry_fallback_used": False,
+        }
         rows: list[dict] = []
         for symbol in symbols:
             sym = str(symbol).upper()
@@ -49,20 +102,25 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             with urlopen(f"https://financialmodelingprep.com/api/v3/historical-market-capitalization/{sym}?{mc_q}", timeout=20) as resp:
                 mc = json.loads(resp.read().decode("utf-8"))
             mc_row = mc[0] if isinstance(mc, list) and mc else {}
-            profile = profile_by_symbol.get(sym, {})
+            profile = _fetch_profile(sym, run_diag)
             rows.append({
                 "symbol": sym,
                 "date": snapshot_date,
                 "price": price_row.get("adjClose", price_row.get("close")),
                 "volume": price_row.get("volume"),
                 "marketCap": mc_row.get("marketCap"),
-                "sector": profile.get("sector", "UNKNOWN") or "UNKNOWN",
-                "industry": profile.get("industry", "UNKNOWN") or "UNKNOWN",
+                "sector": profile.get("sector", "unknown") or "unknown",
+                "industry": profile.get("industry", "unknown") or "unknown",
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
             })
+        if run_diag["profile_fetch_failure_count"] > 0:
+            run_diag["profile_endpoint_status"] = "degraded"
+        _fetch.last_profile_diagnostics = run_diag
         return rows
 
+    _fetch.last_profile_diagnostics = {}
     return _fetch
+
 
 
 def _governance_flags() -> dict[str, Any]:
@@ -232,7 +290,7 @@ def _fetch_with_optional_date(fetch_batch: Callable[..., Iterable[dict]], symbol
     return list(fetch_batch(symbols))
 
 
-def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[dict], universe: Sequence[str], snapshot_date: str) -> dict[str, Any]:
+def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[dict], universe: Sequence[str], snapshot_date: str, profile_diag: dict[str, Any] | None = None) -> dict[str, Any]:
     failures: list[str] = []
     for r in raw_rows:
         if not r.get("symbol"):
@@ -242,8 +300,11 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         if r.get("price") is None:
             failures.append("missing_price")
     sample_keys = sorted({k for row in list(raw_rows)[:5] for k in row.keys() if "key" not in k.lower() and "token" not in k.lower()})[:20]
+    profile_diag = profile_diag or {}
+    sector_unknown_count = sum(1 for r in raw_rows if str(r.get("sector", "unknown")).lower() == "unknown")
+    industry_unknown_count = sum(1 for r in raw_rows if str(r.get("industry", "unknown")).lower() == "unknown")
     return {
-        "fmp_endpoint_family_used": "historical-price-full + historical-market-capitalization + profile",
+        "fmp_endpoint_family_used": profile_diag.get("fmp_endpoint_family_used", "historical-price-full + historical-market-capitalization + stable/profile"),
         "historical_date_requested": snapshot_date,
         "symbol_count_requested": len(universe),
         "symbol_count_returned_raw": len(raw_rows),
@@ -252,6 +313,17 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         "top_normalization_failure_reasons": [r for r, _ in Counter(failures).most_common(5)],
         "sample_raw_keys_observed": sample_keys,
         "historical_adapter_mode": "real_ops_hist1_historical_adapter",
+        "historical_price_endpoint_status": profile_diag.get("historical_price_endpoint_status", "ok"),
+        "historical_market_cap_endpoint_status": profile_diag.get("historical_market_cap_endpoint_status", "ok"),
+        "profile_endpoint_status": profile_diag.get("profile_endpoint_status", "ok"),
+        "profile_enrichment_status": profile_diag.get("profile_enrichment_status", "ok"),
+        "profile_records_requested": int(profile_diag.get("profile_records_requested", 0)),
+        "profile_records_returned": int(profile_diag.get("profile_records_returned", 0)),
+        "profile_fetch_failure_count": int(profile_diag.get("profile_fetch_failure_count", 0)),
+        "profile_fetch_failure_reasons": dict(profile_diag.get("profile_fetch_failure_reasons", {})),
+        "sector_unknown_count": sector_unknown_count,
+        "industry_unknown_count": industry_unknown_count,
+        "sector_industry_fallback_used": bool(profile_diag.get("sector_industry_fallback_used", sector_unknown_count > 0 or industry_unknown_count > 0)),
         "empty_snapshot_fail_closed": len(normalized_rows) == 0 or all(r.get("price") is None for r in raw_rows),
     }
 
@@ -272,7 +344,8 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     for d in window_dates:
         raw_rows = _fetch_with_optional_date(fetch_batch, universe, d)
         result = ingest_controlled_daily_snapshot(universe, d, lambda batch, _raw=raw_rows: _raw)
-        diag = _historical_diagnostics(raw_rows, result.get("rows", []), universe, d)
+        profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
+        diag = _historical_diagnostics(raw_rows, result.get("rows", []), universe, d, profile_diag)
         if diag["empty_snapshot_fail_closed"]:
             raise RuntimeError(f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; reasons={diag['top_normalization_failure_reasons']}")
         result["surfaces"] = build_normalized_operational_surfaces(result.get("rows", []), result.get("snapshot_ts", ""), result.get("snapshot_identity", {}))
