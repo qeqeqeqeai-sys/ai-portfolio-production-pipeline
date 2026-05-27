@@ -62,6 +62,21 @@ from .phase_a5_certainty_fragility import (
 )
 
 __all__ = [
+    "build_phase_a14_markdown_report",
+    "build_phase_a14_supervisor_review",
+    "build_phase_a14_topology_fitness_scorecard",
+    "build_phase_a14_fitness_ecosystem_risk_review",
+    "build_phase_a14_fitness_reversibility_constraint_model",
+    "build_phase_a14_nonlinear_topology_evolutionary_pressure_model",
+    "build_phase_a14_recursive_ecosystem_collapse_rebirth_model",
+    "build_phase_a14_topology_ecological_succession_model",
+    "build_phase_a14_stabilization_fitness_collapse_model",
+    "build_phase_a14_attractor_predation_ecosystem_model",
+    "build_phase_a14_adaptive_mutation_reproduction_model",
+    "build_phase_a14_recursive_extinction_replacement_model",
+    "build_phase_a14_lineage_survival_competition_model",
+    "build_phase_a14_topology_fitness_selection_model",
+    "build_phase_a14_fitness_ecosystem_configuration",
     "build_phase_a13_markdown_report",
     "build_phase_a13_supervisor_review",
     "build_phase_a13_lineage_evolution_scorecard",
@@ -1189,6 +1204,24 @@ from .phase_a11_recursive_replay_ecology_cascade_interaction_wavefront_competiti
     build_phase_a11_cascade_interaction_scorecard,
     build_phase_a11_supervisor_review,
     build_phase_a11_markdown_report,
+)
+
+from .phase_a14_recursive_replay_ecology_evolutionary_selection_topology_fitness_ecosystem_research import (
+    build_phase_a14_fitness_ecosystem_configuration,
+    build_phase_a14_topology_fitness_selection_model,
+    build_phase_a14_lineage_survival_competition_model,
+    build_phase_a14_recursive_extinction_replacement_model,
+    build_phase_a14_adaptive_mutation_reproduction_model,
+    build_phase_a14_attractor_predation_ecosystem_model,
+    build_phase_a14_stabilization_fitness_collapse_model,
+    build_phase_a14_topology_ecological_succession_model,
+    build_phase_a14_recursive_ecosystem_collapse_rebirth_model,
+    build_phase_a14_nonlinear_topology_evolutionary_pressure_model,
+    build_phase_a14_fitness_reversibility_constraint_model,
+    build_phase_a14_fitness_ecosystem_risk_review,
+    build_phase_a14_topology_fitness_scorecard,
+    build_phase_a14_supervisor_review,
+    build_phase_a14_markdown_report,
 )
 
 from .phase_a13_recursive_replay_ecology_mutation_inheritance_adaptive_topology_lineage_research import (
