@@ -62,6 +62,21 @@ from .phase_a5_certainty_fragility import (
 )
 
 __all__ = [
+    "build_phase_a13_markdown_report",
+    "build_phase_a13_supervisor_review",
+    "build_phase_a13_lineage_evolution_scorecard",
+    "build_phase_a13_mutation_lineage_risk_review",
+    "build_phase_a13_lineage_reversibility_constraint_model",
+    "build_phase_a13_nonlinear_mutation_ecosystem_model",
+    "build_phase_a13_topology_evolutionary_drift_model",
+    "build_phase_a13_stabilization_extinction_model",
+    "build_phase_a13_recursive_corridor_speciation_model",
+    "build_phase_a13_adaptive_attractor_ecosystem_model",
+    "build_phase_a13_mutation_selection_pressure_model",
+    "build_phase_a13_propagation_lineage_branching_model",
+    "build_phase_a13_topology_lineage_evolution_model",
+    "build_phase_a13_recursive_mutation_inheritance_model",
+    "build_phase_a13_mutation_lineage_configuration",
     "build_phase_a12_markdown_report",
     "build_phase_a12_supervisor_review",
     "build_phase_a12_evolution_mutation_scorecard",
@@ -1174,6 +1189,24 @@ from .phase_a11_recursive_replay_ecology_cascade_interaction_wavefront_competiti
     build_phase_a11_cascade_interaction_scorecard,
     build_phase_a11_supervisor_review,
     build_phase_a11_markdown_report,
+)
+
+from .phase_a13_recursive_replay_ecology_mutation_inheritance_adaptive_topology_lineage_research import (
+    build_phase_a13_mutation_lineage_configuration,
+    build_phase_a13_recursive_mutation_inheritance_model,
+    build_phase_a13_topology_lineage_evolution_model,
+    build_phase_a13_propagation_lineage_branching_model,
+    build_phase_a13_mutation_selection_pressure_model,
+    build_phase_a13_adaptive_attractor_ecosystem_model,
+    build_phase_a13_recursive_corridor_speciation_model,
+    build_phase_a13_stabilization_extinction_model,
+    build_phase_a13_topology_evolutionary_drift_model,
+    build_phase_a13_nonlinear_mutation_ecosystem_model,
+    build_phase_a13_lineage_reversibility_constraint_model,
+    build_phase_a13_mutation_lineage_risk_review,
+    build_phase_a13_lineage_evolution_scorecard,
+    build_phase_a13_supervisor_review,
+    build_phase_a13_markdown_report,
 )
 
 from .phase_a12_adaptive_recursive_replay_ecology_evolution_structural_mutation_research import (
