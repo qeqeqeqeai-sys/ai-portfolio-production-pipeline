@@ -62,6 +62,19 @@ from .phase_a5_certainty_fragility import (
 )
 
 __all__ = [
+    "build_phase_a9_markdown_report",
+    "build_phase_a9_supervisor_review",
+    "build_phase_a9_phase_state_scorecard",
+    "build_phase_a9_regime_transition_risk_review",
+    "build_phase_a9_phase_boundary_analysis",
+    "build_phase_a9_post_equilibrium_degradation_model",
+    "build_phase_a9_metastability_model",
+    "build_phase_a9_density_triggered_regime_switch_model",
+    "build_phase_a9_topology_bifurcation_model",
+    "build_phase_a9_attractor_basin_model",
+    "build_phase_a9_regime_transition_model",
+    "build_phase_a9_replay_phase_state_taxonomy",
+    "build_phase_a9_phase_state_configuration",
     "build_phase_a8_markdown_report",
     "build_phase_a8_supervisor_review",
     "build_phase_a8_ecology_equilibrium_scorecard",
@@ -1070,3 +1083,18 @@ from .phase_a8_adaptive_replay_ecology_equilibrium_research import (
     build_phase_a8_markdown_report,
 )
 
+from .phase_a9_replay_ecology_phase_state_regime_transition_research import (
+    build_phase_a9_phase_state_configuration,
+    build_phase_a9_replay_phase_state_taxonomy,
+    build_phase_a9_regime_transition_model,
+    build_phase_a9_attractor_basin_model,
+    build_phase_a9_topology_bifurcation_model,
+    build_phase_a9_density_triggered_regime_switch_model,
+    build_phase_a9_metastability_model,
+    build_phase_a9_post_equilibrium_degradation_model,
+    build_phase_a9_phase_boundary_analysis,
+    build_phase_a9_regime_transition_risk_review,
+    build_phase_a9_phase_state_scorecard,
+    build_phase_a9_supervisor_review,
+    build_phase_a9_markdown_report,
+)
