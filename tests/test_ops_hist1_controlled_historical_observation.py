@@ -209,8 +209,8 @@ def test_profile_cache_reused_for_same_symbol_across_dates(monkeypatch):
     monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
     fetcher = build_historical_fmp_fetcher("test_key")
     fetcher(["AAPL"], "2026-05-26")
-    with pytest.raises(RuntimeError):
-        fetcher(["AAPL"], "2026-05-27")
+    rows = fetcher(["AAPL"], "2026-05-27")
+    assert rows[0]["price"] == 101.5
     assert calls["profile"] == 1
 
 
@@ -234,6 +234,79 @@ def test_historical_price_single_symbol_403_all_fail_closed(monkeypatch):
     fetcher = build_historical_fmp_fetcher("test_key")
     with pytest.raises(RuntimeError):
         fetcher(["AAPL"], "2026-05-27")
+
+
+def test_endpoint_fallback_full_to_light(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/historical-price-eod/full" in url:
+            raise HTTPError(url, 403, "Forbidden", {}, io.BytesIO(b""))
+        if "stable/historical-price-eod/light" in url:
+            return _Resp(b'[{"date":"2026-05-27","close":111.0}]')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":1234}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Software"}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    rows = fetcher(["AAPL"], "2026-05-27")
+    assert rows[0]["price"] == 111.0
+    assert any(a["endpoint_family"] == "stable_historical_price_eod_light" and a["failure_reason"] is None for a in fetcher.last_profile_diagnostics["historical_price_symbol_diagnostics"][0]["endpoint_attempts"])
+
+
+def test_response_shape_data_and_reconciliation(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/historical-price-eod/full" in url:
+            return _Resp(b'{"data":[{"date":"2026-05-26","adjClose":109.0}]}')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":1234}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Software"}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    rows = fetcher(["AAPL"], "2026-05-27")
+    assert rows[0]["price"] == 109.0
+    attempt = fetcher.last_profile_diagnostics["historical_price_symbol_diagnostics"][0]["endpoint_attempts"][0]
+    assert attempt["date_reconciliation_used"] is True
+    assert attempt["date_reconciliation_distance_days"] == 1
+
+
+def test_runtime_error_contains_bounded_summary(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+    def fake_urlopen(url, timeout=20):
+        if "historical-price" in url:
+            return _Resp(b'{"foo":"bar"}')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[]')
+        if "stable/profile" in url:
+            return _Resp(b'[]')
+        raise AssertionError(url)
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    with pytest.raises(RuntimeError) as exc:
+        fetcher(["AAPL"], "2026-05-27")
+    msg = str(exc.value)
+    assert "endpoint_status_counts=" in msg and "top_failure_reasons=" in msg
+    assert "test_key" not in msg
 
 
 def test_profile_failure_diagnostics_do_not_leak_api_key(tmp_path):

@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 import inspect
@@ -29,6 +29,7 @@ OPS_HIST1_SCHEMA_VERSION = "ops_hist1_v1"
 OPS_HIST1_OBSERVATION_MODE = "controlled_historical_observation"
 
 FMP_STABLE_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/stable/historical-price-eod/full"
+FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL = "https://financialmodelingprep.com/stable/historical-price-eod/light"
 FMP_LEGACY_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}"
 FMP_LEGACY_HISTORICAL_MARKET_CAP_URL = "https://financialmodelingprep.com/api/v3/historical-market-capitalization/{symbol}"
 
@@ -86,6 +87,8 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             return profile
 
     def _fetch(symbols: Sequence[str], snapshot_date: str) -> list[dict]:
+        snapshot_dt = date.fromisoformat(snapshot_date)
+        lookback_from = (snapshot_dt - timedelta(days=7)).isoformat()
         run_diag: dict[str, Any] = {
             "fmp_endpoint_family_used": "stable/historical-price-eod/full + legacy/historical-market-capitalization + stable/profile",
             "historical_price_endpoint_family": "stable_historical_price_eod_full",
@@ -103,6 +106,8 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             "historical_price_symbols_succeeded": 0,
             "historical_price_symbols_failed": 0,
             "sample_historical_price_raw_keys_observed": [],
+            "historical_price_endpoint_status_counts": {},
+            "historical_price_symbol_diagnostics": [],
             "profile_endpoint_status": "ok",
             "profile_enrichment_status": "ok",
             "profile_records_requested": 0,
@@ -132,37 +137,125 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             if isinstance(payload, dict):
                 if isinstance(payload.get("historical"), list):
                     return [row for row in payload.get("historical", []) if isinstance(row, dict)]
-                return [payload]
+                for k in ("data", "results"):
+                    if isinstance(payload.get(k), list):
+                        return [row for row in payload.get(k, []) if isinstance(row, dict)]
+                for v in payload.values():
+                    if isinstance(v, list) and all(isinstance(x, dict) for x in v):
+                        return [row for row in v if isinstance(row, dict)]
+                if any(k in payload for k in ("date", "close", "adjClose", "price")):
+                    return [payload]
             return []
 
+        def _top_level_shape(payload: Any) -> tuple[str, list[str]]:
+            if isinstance(payload, list):
+                return "list", []
+            if isinstance(payload, dict):
+                return "dict", list(payload.keys())[:10]
+            return "other", []
+
+        def _select_price_row(prices: list[dict[str, Any]], requested: str) -> tuple[dict[str, Any], dict[str, Any]]:
+            meta = {
+                "requested_snapshot_date": requested,
+                "exact_date_match_found": False,
+                "selected_record_date": None,
+                "date_reconciliation_used": False,
+                "date_reconciliation_distance_days": None,
+                "date_reconciliation_policy": None,
+            }
+            exact = [p for p in prices if str(p.get("date", "")) == requested]
+            if exact:
+                meta["exact_date_match_found"] = True
+                meta["selected_record_date"] = requested
+                return exact[0], meta
+            requested_dt = date.fromisoformat(requested)
+            prior_candidates: list[tuple[int, dict[str, Any]]] = []
+            for p in prices:
+                ds = str(p.get("date", ""))
+                try:
+                    dt = date.fromisoformat(ds)
+                except Exception:
+                    continue
+                diff = (requested_dt - dt).days
+                if 0 < diff <= 5:
+                    prior_candidates.append((diff, p))
+            if prior_candidates:
+                prior_candidates.sort(key=lambda x: x[0])
+                diff, row = prior_candidates[0]
+                meta["selected_record_date"] = row.get("date")
+                meta["date_reconciliation_used"] = True
+                meta["date_reconciliation_distance_days"] = diff
+                meta["date_reconciliation_policy"] = "nearest_prior_within_5_calendar_days"
+                return row, meta
+            return {}, meta
+
         rows: list[dict] = []
+        endpoint_candidates = (
+            ("stable_historical_price_eod_full", FMP_STABLE_HISTORICAL_PRICE_URL, False),
+            ("stable_historical_price_eod_light", FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL, False),
+            ("legacy_historical_price_full", FMP_LEGACY_HISTORICAL_PRICE_URL, True),
+        )
         for symbol in symbols:
             sym = str(symbol).upper()
             run_diag["historical_price_records_requested"] += 1
-            params = {"symbol": sym, "from": snapshot_date, "to": snapshot_date, "apikey": api_key}
-            stable_url = _build_fmp_url(FMP_STABLE_HISTORICAL_PRICE_URL, params)
-            run_diag["historical_price_query_parameters_present"] = run_diag["historical_price_query_parameters_present"] and all(k in stable_url for k in ["symbol=", "from=", "to=", "apikey="])
-            run_diag["historical_price_url_shape_valid"] = run_diag["historical_price_url_shape_valid"] and ("?hp_d" not in stable_url and "stable/historical-price-eod/full" in stable_url)
+            sym_diag: dict[str, Any] = {"symbol": sym, "requested_snapshot_date": snapshot_date, "endpoint_attempts": []}
             price_row: dict[str, Any] = {}
-            try:
-                with urlopen(stable_url, timeout=20) as resp:
-                    hp = json.loads(resp.read().decode("utf-8"))
-                prices = _parse_price_records(hp)
-            except Exception as exc:
-                run_diag["historical_price_endpoint_status"] = "degraded"
-                _record_price_failure(_bounded_http_reason(exc), getattr(exc, "code", None))
-                prices = []
-            run_diag["historical_price_records_returned"] += len(prices)
-            exact = [p for p in prices if str(p.get("date", "")) == snapshot_date]
-            if exact:
-                price_row = exact[0]
-                run_diag["historical_price_records_matched_to_snapshot_date"] += 1
-                run_diag["historical_price_symbols_succeeded"] += 1
-                run_diag["sample_historical_price_raw_keys_observed"] = sorted(set((run_diag["sample_historical_price_raw_keys_observed"] + [k for k in price_row.keys() if "key" not in k.lower()])[:20]))
-            else:
+            sel_meta: dict[str, Any] = {}
+            for endpoint_family, endpoint_url, symbol_in_path in endpoint_candidates:
+                params = {"from": lookback_from, "to": snapshot_date, "apikey": api_key}
+                if not symbol_in_path:
+                    params["symbol"] = sym
+                url = _build_fmp_url(endpoint_url.format(symbol=quote(sym, safe="")), params)
+                run_diag["historical_price_query_parameters_present"] = run_diag["historical_price_query_parameters_present"] and all(k in url for k in ["from=", "to=", "apikey="])
+                payload = None
+                status = "ok"
+                try:
+                    with urlopen(url, timeout=20) as resp:
+                        payload = json.loads(resp.read().decode("utf-8"))
+                except Exception as exc:
+                    status = _bounded_http_reason(exc)
+                    run_diag["historical_price_endpoint_status"] = "degraded"
+                    _record_price_failure(status, getattr(exc, "code", None))
+                shape_type, shape_keys = _top_level_shape(payload)
+                prices = _parse_price_records(payload)
+                run_diag["historical_price_records_returned"] += len(prices)
+                sample_record_keys = list(prices[0].keys())[:10] if prices else []
+                sample_dates = [str(r.get("date")) for r in prices if r.get("date")][:5]
+                selected, sel_meta = _select_price_row(prices, snapshot_date)
+                attempt_diag = {
+                    "endpoint_family": endpoint_family,
+                    "http_status": status,
+                    "response_top_level_type": shape_type,
+                    "response_top_level_keys": shape_keys,
+                    "record_count_returned": len(prices),
+                    "sample_record_keys": sample_record_keys,
+                    "sample_returned_dates": sample_dates,
+                    **sel_meta,
+                    "failure_reason": None,
+                }
+                if status != "ok":
+                    attempt_diag["failure_reason"] = status
+                elif not prices:
+                    attempt_diag["failure_reason"] = "zero_records_returned"
+                elif not selected:
+                    attempt_diag["failure_reason"] = "missing_reconciled_historical_date"
+                elif selected.get("adjClose") is None and selected.get("close") is None and selected.get("price") is None:
+                    attempt_diag["failure_reason"] = "missing_price_field"
+                if attempt_diag["failure_reason"] is None:
+                    sym_diag["endpoint_attempts"].append(attempt_diag)
+                    price_row = selected
+                    run_diag["historical_price_symbols_succeeded"] += 1
+                    run_diag["historical_price_endpoint_family"] = endpoint_family
+                    run_diag["historical_price_records_matched_to_snapshot_date"] += 1 if sel_meta["exact_date_match_found"] else 0
+                    break
+                _record_price_failure(attempt_diag["failure_reason"])
+                sym_diag["endpoint_attempts"].append(attempt_diag)
+                run_diag["historical_price_endpoint_status_counts"][f"{endpoint_family}:{status}"] = run_diag["historical_price_endpoint_status_counts"].get(f"{endpoint_family}:{status}", 0) + 1
+            if not price_row:
                 run_diag["historical_price_symbols_failed"] += 1
-                reason = "missing_exact_historical_date" if prices else "MALFORMED_RESPONSE"
-                _record_price_failure(reason)
+            if len(sym_diag["endpoint_attempts"]) > 3:
+                sym_diag["endpoint_attempts"] = sym_diag["endpoint_attempts"][:3]
+            run_diag["historical_price_symbol_diagnostics"].append(sym_diag)
 
             mc_q = {"from": snapshot_date, "to": snapshot_date, "limit": "1", "apikey": api_key}
             mc_url = _build_fmp_url(FMP_LEGACY_HISTORICAL_MARKET_CAP_URL.format(symbol=sym), mc_q)
@@ -177,7 +270,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             rows.append({
                 "symbol": sym,
                 "date": snapshot_date,
-                "price": price_row.get("adjClose", price_row.get("close")),
+                "price": price_row.get("adjClose", price_row.get("close", price_row.get("price"))),
                 "volume": price_row.get("volume"),
                 "marketCap": mc_row.get("marketCap"),
                 "sector": profile.get("sector", "unknown") or "unknown",
@@ -185,7 +278,12 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
             })
         if run_diag["historical_price_symbols_succeeded"] == 0:
-            raise RuntimeError("OPS-HIST-1 fails closed: all symbols failed historical price fetch")
+            top_reasons = Counter(run_diag["historical_price_failure_reasons"]).most_common(3)
+            raise RuntimeError(
+                "OPS-HIST-1 fails closed: all symbols failed historical price fetch; "
+                f"endpoint_status_counts={run_diag['historical_price_endpoint_status_counts']}; "
+                f"top_failure_reasons={top_reasons}"
+            )
         if run_diag["profile_fetch_failure_count"] > 0:
             run_diag["profile_endpoint_status"] = "degraded"
         _fetch.last_profile_diagnostics = run_diag
