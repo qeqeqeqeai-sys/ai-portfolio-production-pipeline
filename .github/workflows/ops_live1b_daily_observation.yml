@@ -21,18 +21,13 @@ jobs:
 
     env:
       FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-
       OBSERVATION_MODE: controlled_operational_observation
       OPS_PHASE: OPS_LIVE_1B_DAILY
       GOVERNANCE_MODE: observational_only
-
       SNAPSHOT_OUTPUT_DIR: reports/ops_live1b_runs
-
       REVIEW_JSON_PATH: reports/ops_live1b_snapshot_observation_review.json
       REVIEW_MD_PATH: reports/ops_live1b_snapshot_observation_review.md
-
       MANIFEST_PATH: reports/ops_live1b_daily_artifact_manifest.json
-
       ARTIFACT_RETENTION_DAYS: "14"
 
     steps:
@@ -48,7 +43,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           python -m pip install --upgrade pip
 
           if [ -f requirements.txt ]; then
@@ -74,7 +68,6 @@ jobs:
           fi
 
           echo "SNAPSHOT_DATE=$SNAPSHOT_DATE" >> "$GITHUB_ENV"
-
           echo "SNAPSHOT_OUTPUT_PATH=$SNAPSHOT_OUTPUT_DIR/ops_live1b_${SNAPSHOT_DATE}.json" >> "$GITHUB_ENV"
 
           mkdir -p "$SNAPSHOT_OUTPUT_DIR"
@@ -147,7 +140,6 @@ jobs:
           name: ops-live1b-daily-observation-${{ github.run_id }}
           if-no-files-found: error
           retention-days: 14
-
           path: |
             ${{ env.SNAPSHOT_OUTPUT_PATH }}
             ${{ env.REVIEW_JSON_PATH }}
