@@ -103,3 +103,25 @@ def test_anti_prediction_trading_vocabulary_guard(tmp_path):
         assert word not in payload_text
     assert "no_prediction_or_trading_execution" in payload_text
     assert "no replay/topology/prediction/trading" in md
+
+
+
+def test_historical_fetcher_receives_snapshot_date_and_partial_normalization(tmp_path):
+    calls = []
+    def fetcher(batch, snapshot_date):
+        calls.append(snapshot_date)
+        return [{"symbol": sym, "date": snapshot_date, "price": 101.0, "marketCap": 1000.0, "sector": "Tech", "industry": "Soft"} for sym in batch]
+
+    out = run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=2, fetch_batch=fetcher)
+    assert out["status"] == "ok"
+    assert set(calls)
+    snaps = load_ops_hist1_snapshots(str(tmp_path))
+    assert all(s["operational_diagnostics"]["symbols_successfully_normalized"] > 0 for s in snaps)
+    assert all("adapter_diagnostics" in s for s in snaps)
+
+
+def test_all_symbol_failure_fails_closed(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": sym, "date": snapshot_date, "price": None, "sector": "Tech", "industry": "Soft"} for sym in batch]
+    with pytest.raises(RuntimeError):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher)

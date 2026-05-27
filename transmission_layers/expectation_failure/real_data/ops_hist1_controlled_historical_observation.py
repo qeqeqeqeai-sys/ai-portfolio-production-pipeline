@@ -7,6 +7,10 @@ from datetime import date, timedelta
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
+from urllib.parse import urlencode
+from urllib.request import urlopen
+import inspect
+from collections import Counter
 
 from transmission_layers.expectation_failure.real_data.ops_live1_controlled_ecosystem_ingestion import (
     GOVERNANCE_BOUNDARIES,
@@ -22,6 +26,43 @@ MAX_HIST_WINDOW_DAYS = 90
 MAX_SNAPSHOTS_PER_RUN = 90
 OPS_HIST1_SCHEMA_VERSION = "ops_hist1_v1"
 OPS_HIST1_OBSERVATION_MODE = "controlled_historical_observation"
+
+
+def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str], Iterable[dict]]:
+    if not api_key:
+        raise RuntimeError("FMP_API_KEY is required for historical mode")
+
+    def _fetch(symbols: Sequence[str], snapshot_date: str) -> list[dict]:
+        profiles_q = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
+        with urlopen("https://financialmodelingprep.com/api/v3/profile/" + ",".join(symbols) + "?" + profiles_q, timeout=20) as resp:
+            profiles = json.loads(resp.read().decode("utf-8"))
+        profile_by_symbol = {str(r.get("symbol", "")).upper(): r for r in (profiles if isinstance(profiles, list) else [])}
+        rows: list[dict] = []
+        for symbol in symbols:
+            sym = str(symbol).upper()
+            hp_q = urlencode({"from": snapshot_date, "to": snapshot_date, "apikey": api_key})
+            with urlopen(f"https://financialmodelingprep.com/api/v3/historical-price-full/{sym}?{hp_q}", timeout=20) as resp:
+                hp = json.loads(resp.read().decode("utf-8"))
+            prices = (hp or {}).get("historical", []) if isinstance(hp, dict) else []
+            price_row = prices[0] if prices else {}
+            mc_q = urlencode({"from": snapshot_date, "to": snapshot_date, "limit": 1, "apikey": api_key})
+            with urlopen(f"https://financialmodelingprep.com/api/v3/historical-market-capitalization/{sym}?{mc_q}", timeout=20) as resp:
+                mc = json.loads(resp.read().decode("utf-8"))
+            mc_row = mc[0] if isinstance(mc, list) and mc else {}
+            profile = profile_by_symbol.get(sym, {})
+            rows.append({
+                "symbol": sym,
+                "date": snapshot_date,
+                "price": price_row.get("adjClose", price_row.get("close")),
+                "volume": price_row.get("volume"),
+                "marketCap": mc_row.get("marketCap"),
+                "sector": profile.get("sector", "UNKNOWN") or "UNKNOWN",
+                "industry": profile.get("industry", "UNKNOWN") or "UNKNOWN",
+                "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
+            })
+        return rows
+
+    return _fetch
 
 
 def _governance_flags() -> dict[str, Any]:
@@ -182,12 +223,44 @@ def _snapshot_payload(snapshot_date: str, ingest_result: dict[str, Any], univers
     }
 
 
+
+
+def _fetch_with_optional_date(fetch_batch: Callable[..., Iterable[dict]], symbols: Sequence[str], snapshot_date: str) -> list[dict]:
+    params = inspect.signature(fetch_batch).parameters
+    if len(params) >= 2:
+        return list(fetch_batch(symbols, snapshot_date))
+    return list(fetch_batch(symbols))
+
+
+def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[dict], universe: Sequence[str], snapshot_date: str) -> dict[str, Any]:
+    failures: list[str] = []
+    for r in raw_rows:
+        if not r.get("symbol"):
+            failures.append("missing_symbol")
+        if not r.get("date"):
+            failures.append("missing_date")
+        if r.get("price") is None:
+            failures.append("missing_price")
+    sample_keys = sorted({k for row in list(raw_rows)[:5] for k in row.keys() if "key" not in k.lower() and "token" not in k.lower()})[:20]
+    return {
+        "fmp_endpoint_family_used": "historical-price-full + historical-market-capitalization + profile",
+        "historical_date_requested": snapshot_date,
+        "symbol_count_requested": len(universe),
+        "symbol_count_returned_raw": len(raw_rows),
+        "symbol_count_normalized": len(normalized_rows),
+        "normalization_failure_count": max(0, len(raw_rows) - len(normalized_rows)),
+        "top_normalization_failure_reasons": [r for r, _ in Counter(failures).most_common(5)],
+        "sample_raw_keys_observed": sample_keys,
+        "historical_adapter_mode": "real_ops_hist1_historical_adapter",
+        "empty_snapshot_fail_closed": len(normalized_rows) == 0 or all(r.get("price") is None for r in raw_rows),
+    }
+
 def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None) -> dict[str, Any]:
     if fetch_batch is None:
         api_key = os.getenv("FMP_API_KEY", "")
         if not api_key:
             raise RuntimeError("FMP_API_KEY missing; OPS-HIST-1 fails closed")
-        fetch_batch = build_live_fmp_fetcher(api_key)
+        fetch_batch = build_historical_fmp_fetcher(api_key)
 
     window_dates = deterministic_historical_window_dates(snapshot_date, window_days)
     if len(window_dates) > MAX_SNAPSHOTS_PER_RUN:
@@ -197,10 +270,15 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     out_dir.mkdir(parents=True, exist_ok=True)
     snapshots = []
     for d in window_dates:
-        result = ingest_controlled_daily_snapshot(universe, d, fetch_batch)
+        raw_rows = _fetch_with_optional_date(fetch_batch, universe, d)
+        result = ingest_controlled_daily_snapshot(universe, d, lambda batch, _raw=raw_rows: _raw)
+        diag = _historical_diagnostics(raw_rows, result.get("rows", []), universe, d)
+        if diag["empty_snapshot_fail_closed"]:
+            raise RuntimeError(f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; reasons={diag['top_normalization_failure_reasons']}")
         result["surfaces"] = build_normalized_operational_surfaces(result.get("rows", []), result.get("snapshot_ts", ""), result.get("snapshot_identity", {}))
         result["operator_payload"] = build_operator_payloads(result["surfaces"])
         snap = _snapshot_payload(d, result, universe, window_dates)
+        snap["adapter_diagnostics"] = diag
         Path(out_dir / f"ops_hist1_{d}.json").write_text(json.dumps(snap, indent=2, sort_keys=True), encoding="utf-8")
         snapshots.append(snap)
     continuity_rows = _continuity_observation_rows(snapshots)
