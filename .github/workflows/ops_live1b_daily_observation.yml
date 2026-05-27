@@ -1,0 +1,133 @@
+name: OPS-LIVE-1B Daily Observation
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_date:
+        description: "UTC snapshot date override (YYYY-MM-DD). Leave blank to use current UTC date."
+        required: false
+        type: string
+  schedule:
+    - cron: "20 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-daily-observation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+      OBSERVATION_MODE: controlled_operational_observation
+      OPS_PHASE: OPS_LIVE_1B_DAILY
+      GOVERNANCE_MODE: observational_only
+      SNAPSHOT_OUTPUT_DIR: reports/ops_live1b_runs
+      REVIEW_JSON_PATH: reports/ops_live1b_snapshot_observation_review.json
+      REVIEW_MD_PATH: reports/ops_live1b_snapshot_observation_review.md
+      MANIFEST_PATH: reports/ops_live1b_daily_artifact_manifest.json
+      ARTIFACT_RETENTION_DAYS: "14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Resolve snapshot date (UTC)
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_DATE="${{ github.event.inputs.snapshot_date }}"
+          if [ -n "${INPUT_DATE}" ]; then
+            SNAPSHOT_DATE="${INPUT_DATE}"
+          else
+            SNAPSHOT_DATE="$(date -u +%F)"
+          fi
+          if ! [[ "${SNAPSHOT_DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "Invalid SNAPSHOT_DATE format: ${SNAPSHOT_DATE}" >&2
+            exit 1
+          fi
+          echo "SNAPSHOT_DATE=${SNAPSHOT_DATE}" >> "$GITHUB_ENV"
+          mkdir -p "$SNAPSHOT_OUTPUT_DIR"
+
+      - name: Run OPS-LIVE-1B controlled 50-symbol ingest
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${FMP_API_KEY}" ]; then
+            echo "FMP_API_KEY is required via repository secrets." >&2
+            exit 1
+          fi
+          PYTHONPATH=. python scripts/run_ops_live1b_50_symbol_operational_ingest.py \
+            --snapshot-date "$SNAPSHOT_DATE" \
+            --output "$SNAPSHOT_OUTPUT_DIR/ops_live1b_${SNAPSHOT_DATE}.json"
+
+      - name: Run OPS-LIVE-1B snapshot observation review
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python scripts/run_ops_live1b_snapshot_observation_review.py \
+            --input-dir "$SNAPSHOT_OUTPUT_DIR" \
+            --json-output "$REVIEW_JSON_PATH" \
+            --md-output "$REVIEW_MD_PATH"
+
+      - name: Build OPS-LIVE-1B daily artifact manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          SNAPSHOT_OUTPUT_PATH="$SNAPSHOT_OUTPUT_DIR/ops_live1b_${SNAPSHOT_DATE}.json"
+          python - <<'PY'
+import json
+import os
+
+manifest = {
+    "workflow_name": os.getenv("GITHUB_WORKFLOW", "OPS-LIVE-1B Daily Observation"),
+    "ops_phase": os.environ["OPS_PHASE"],
+    "observation_mode": os.environ["OBSERVATION_MODE"],
+    "governance_mode": os.environ["GOVERNANCE_MODE"],
+    "snapshot_date": os.environ["SNAPSHOT_DATE"],
+    "generated_artifact_paths": [
+        os.environ["SNAPSHOT_OUTPUT_PATH"],
+        os.environ["REVIEW_JSON_PATH"],
+        os.environ["REVIEW_MD_PATH"],
+        os.environ["MANIFEST_PATH"],
+    ],
+    "snapshot_output_path": os.environ["SNAPSHOT_OUTPUT_PATH"],
+    "review_json_path": os.environ["REVIEW_JSON_PATH"],
+    "review_markdown_path": os.environ["REVIEW_MD_PATH"],
+    "retention_guidance": f"GitHub artifact retention is bounded to {os.environ['ARTIFACT_RETENTION_DAYS']} days.",
+    "no_supabase_write": True,
+    "no_repo_writeback": True,
+    "no_replay": True,
+    "no_topology_activation": True,
+    "no_prediction_or_trading_execution": True,
+    "no_streaming": True,
+}
+with open(os.environ["MANIFEST_PATH"], "w", encoding="utf-8") as f:
+    json.dump(manifest, f, indent=2, sort_keys=True)
+    f.write("\n")
+PY
+        env:
+          SNAPSHOT_OUTPUT_PATH: ${{ env.SNAPSHOT_OUTPUT_DIR }}/ops_live1b_${{ env.SNAPSHOT_DATE }}.json
+
+      - name: Upload OPS-LIVE-1B observation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-live1b-daily-observation-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ env.SNAPSHOT_OUTPUT_DIR }}/ops_live1b_${{ env.SNAPSHOT_DATE }}.json
+            ${{ env.REVIEW_JSON_PATH }}
+            ${{ env.REVIEW_MD_PATH }}
+            ${{ env.MANIFEST_PATH }}
