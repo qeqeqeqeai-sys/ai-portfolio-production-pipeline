@@ -139,3 +139,5 @@ from .t6_temporal_evolution_certification_closeout import (
     certify_temporal_evolution_closeout,
     validate_temporal_evolution_closeout_inputs,
 )
+
+from .ops_live1_controlled_ecosystem_ingestion import ingest_controlled_daily_snapshot
