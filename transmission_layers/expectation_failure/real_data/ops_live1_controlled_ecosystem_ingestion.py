@@ -441,3 +441,149 @@ def build_operator_payloads(surfaces: dict) -> dict:
             "summary_items_emitted": len(top_pressure),
         },
     }
+
+
+OPS_LIVE1B_UNIVERSE = (
+    "AAPL","MSFT","NVDA","GOOGL","AMZN","META","ORCL","CRM","CSCO","ADBE",
+    "JPM","BAC","WFC","GS","MS","BLK",
+    "UNH","JNJ","PFE","MRK","ABBV","TMO",
+    "XOM","CVX","SLB","NEE","DUK","SO",
+    "CAT","DE","GE","HON","BA","LMT",
+    "WMT","COST","PG","KO","PEP","MCD",
+    "AMT","PLD","SPG","LIN","SHW","FCX","NEM","UPS","FDX","DIS",
+)
+OPS_LIVE1B_UNIVERSE_CAP = 50
+OPS_LIVE1B_OBSERVATION_MODE = "controlled_operational_observation"
+
+
+def get_ops_live1b_controlled_universe() -> list[str]:
+    ordered = sorted(set(OPS_LIVE1B_UNIVERSE))
+    return ordered[:OPS_LIVE1B_UNIVERSE_CAP]
+
+
+def _compute_universe_metadata(rows: Sequence[dict], symbols: Sequence[str]) -> dict:
+    sector_counts = {}
+    subsector_counts = {}
+    for r in rows:
+        sector = str(r.get("sector", "UNKNOWN"))
+        subsector = str(r.get("subsector", "UNKNOWN"))
+        sector_counts[sector] = sector_counts.get(sector, 0) + 1
+        subsector_counts[subsector] = subsector_counts.get(subsector, 0) + 1
+    ordered_symbols = list(symbols)
+    checksum = sha256("|".join(ordered_symbols).encode("utf-8")).hexdigest()[:16]
+    return {
+        "universe_size": len(ordered_symbols),
+        "sector_coverage": [{"sector": k, "count": sector_counts[k]} for k in sorted(sector_counts)],
+        "subsector_coverage": [{"subsector": k, "count": subsector_counts[k]} for k in sorted(subsector_counts)],
+        "universe_checksum": checksum,
+        "observation_mode": OPS_LIVE1B_OBSERVATION_MODE,
+    }
+
+
+def build_ops_live1b_canonical_payload(ingest_result: dict, universe_symbols: Sequence[str]) -> dict:
+    rows = sorted(deepcopy(ingest_result.get("rows", [])), key=lambda r: r["symbol"])
+    snapshot_ts = ingest_result.get("snapshot_ts")
+    snapshot_id = ingest_result.get("snapshot_identity", {}).get("snapshot_id", "")
+    universe_metadata = _compute_universe_metadata(rows, universe_symbols)
+    sector_rollup = {}
+    for r in rows:
+        sector = r["sector"]
+        entry = sector_rollup.setdefault(sector, {"symbols": 0, "avg_volatility": 0.0, "avg_resilience_gap": 0.0})
+        entry["symbols"] += 1
+        entry["avg_volatility"] += r["volatility_structure"]
+        entry["avg_resilience_gap"] += (r["profitability_structure"] - r["leverage_liquidity_structure"])
+    sector_summary_rows = []
+    for sector in sorted(sector_rollup):
+        c = sector_rollup[sector]["symbols"]
+        sector_summary_rows.append({
+            "snapshot_id": snapshot_id,
+            "snapshot_ts": snapshot_ts,
+            "sector": sector,
+            "symbol_count": c,
+            "avg_volatility": round(sector_rollup[sector]["avg_volatility"] / max(c,1), 6),
+            "avg_resilience_gap": round(sector_rollup[sector]["avg_resilience_gap"] / max(c,1), 6),
+        })
+    op = ingest_result.get("operator_payload", {})
+    diagnostics = {
+        "symbols_requested": len(universe_symbols),
+        "symbols_successfully_normalized": len(rows),
+        "symbols_failed_closed": max(0, len(universe_symbols) - len(rows)),
+        "missing_fields": len(ingest_result.get("integrity", {}).get("missing_required_fields", [])),
+        "null_fields": 0,
+        "fallback_fields_used": 0,
+        "invalid_values": len(ingest_result.get("integrity", {}).get("invalid_numeric_values", [])) + len(ingest_result.get("integrity", {}).get("invalid_financial_values", [])),
+        "compression_ratio": op.get("compression_observability", {}).get("compression_ratio", 0.0),
+        "payload_row_counts": {
+            "symbol_snapshot_rows": len(rows),
+            "sector_summary_rows": len(sector_summary_rows),
+            "pressure_rows": len(op.get("dominant_structural_pressures", [])),
+            "resilience_rows": len(op.get("strongest_resilience_pathways", [])),
+        },
+        "sector_distribution": universe_metadata["sector_coverage"],
+        "data_completeness_summary": round((len(rows)/max(len(universe_symbols),1))*100.0,6),
+        "normalization_completeness_percentage": round((len(rows)/max(len(universe_symbols),1))*100.0,6),
+        "fallback_usage_percentage": 0.0,
+    }
+    snapshot_metadata_rows = [{"snapshot_id": snapshot_id, "snapshot_ts": snapshot_ts, **universe_metadata}]
+    symbol_snapshot_rows = [{"snapshot_id": snapshot_id, **r} for r in rows]
+    integrity_rows = [{"snapshot_id": snapshot_id, "status": ingest_result.get("status"), "row_count": len(rows), "is_valid": ingest_result.get("integrity", {}).get("is_valid", False)}]
+    governance_rows = [{"snapshot_id": snapshot_id, **deepcopy(GOVERNANCE_BOUNDARIES)}]
+    compression_rows = [{"snapshot_id": snapshot_id, **deepcopy(op.get("compression_observability", {}))}]
+    canonical = {
+        "snapshot_metadata_rows": snapshot_metadata_rows,
+        "symbol_snapshot_rows": symbol_snapshot_rows,
+        "sector_summary_rows": sector_summary_rows,
+        "pressure_rows": [{"snapshot_id": snapshot_id, **r} for r in op.get("dominant_structural_pressures", [])],
+        "resilience_rows": [{"snapshot_id": snapshot_id, **r} for r in op.get("strongest_resilience_pathways", [])],
+        "fragmentation_rows": [{"snapshot_id": snapshot_id, **r} for r in op.get("fragmentation_hotspots", [])],
+        "continuity_rows": [{"snapshot_id": snapshot_id, **r} for r in op.get("continuity_summaries", [])],
+        "integrity_rows": integrity_rows,
+        "governance_rows": governance_rows,
+        "compression_rows": compression_rows,
+    }
+    streamlit = {
+        "streamlit_summary_cards": [{"label": "posture", "value": op.get("daily_ecosystem_posture", [{}])[0].get("posture", "unknown")}, {"label": "symbols", "value": len(rows)}],
+        "streamlit_sector_summary": sector_summary_rows,
+        "streamlit_pressure_table": canonical["pressure_rows"],
+        "streamlit_resilience_table": canonical["resilience_rows"],
+        "streamlit_fragmentation_table": canonical["fragmentation_rows"],
+        "streamlit_continuity_panel": canonical["continuity_rows"],
+        "streamlit_integrity_panel": integrity_rows,
+        "streamlit_governance_panel": governance_rows,
+        "streamlit_snapshot_metadata": snapshot_metadata_rows,
+    }
+    return {
+        "snapshot_id": snapshot_id,
+        "snapshot_ts": snapshot_ts,
+        "observation_mode": OPS_LIVE1B_OBSERVATION_MODE,
+        "supabase_write_enabled": False,
+        "scheduling_enabled": False,
+        "orchestration_enabled": False,
+        "streaming_enabled": False,
+        "canonical_tables": canonical,
+        "streamlit_payloads": streamlit,
+        "diagnostics": diagnostics,
+        "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
+    }
+
+
+def run_ops_live1b_controlled_50_symbol_operational_ingest(*, snapshot_date: str, output_path: str, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None) -> dict:
+    universe = get_ops_live1b_controlled_universe()
+    if fetch_batch is None:
+        api_key = os.getenv("FMP_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("FMP_API_KEY missing; OPS-LIVE-1B fails closed")
+        fetch_batch = build_live_fmp_fetcher(api_key)
+    ingest_result = ingest_controlled_daily_snapshot(universe, snapshot_date, fetch_batch)
+    payload = build_ops_live1b_canonical_payload(ingest_result, universe)
+    report = {
+        "status": ingest_result.get("status"),
+        "snapshot_identity": ingest_result.get("snapshot_identity", {}),
+        "universe": universe,
+        "universe_metadata": _compute_universe_metadata(ingest_result.get("rows", []), universe),
+        "ops_live1b_payload": payload,
+        "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
+    }
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    return report
