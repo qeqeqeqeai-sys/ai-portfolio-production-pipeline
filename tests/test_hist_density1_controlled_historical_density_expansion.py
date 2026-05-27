@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import io
+import contextlib
 
 import pytest
 
@@ -80,3 +82,22 @@ def test_local_paths_payload_schemas_and_governance(tmp_path):
     assert out["schema_version"] == HIST_DENSITY1_SCHEMA_VERSION
     md = render_hist_density1_markdown(out).lower()
     assert "density mode" in md
+
+
+def test_chunk_and_layer_telemetry_emitted_in_fixture_mode(tmp_path):
+    capture = io.StringIO()
+    with contextlib.redirect_stdout(capture):
+        out = run_hist_density1(
+            trading_days=5,
+            symbol_count=50,
+            end_date="2026-05-27",
+            output_root=str(tmp_path / "telemetry"),
+            density_mode=DENSITY_MODE_FIXTURE,
+        )
+    text = capture.getvalue()
+    assert out["status"] == "ok"
+    assert "[HIST-DENSITY-1]" in text
+    assert "chunk_count=1" in text
+    assert "[OPS-HIST-2]" in text
+    assert "[OPS-HIST-7]" in text
+    assert "[HIST-DENSITY-1][summary]" in text
