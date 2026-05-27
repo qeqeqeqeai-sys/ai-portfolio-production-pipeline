@@ -62,6 +62,20 @@ from .phase_a5_certainty_fragility import (
 )
 
 __all__ = [
+    "build_phase_a10_markdown_report",
+    "build_phase_a10_supervisor_review",
+    "build_phase_a10_transition_dynamics_scorecard",
+    "build_phase_a10_cascade_propagation_risk_review",
+    "build_phase_a10_recovery_asymmetry_model",
+    "build_phase_a10_irreversible_topology_drift_model",
+    "build_phase_a10_attractor_recapture_model",
+    "build_phase_a10_stabilization_latency_model",
+    "build_phase_a10_collapse_wavefront_model",
+    "build_phase_a10_bifurcation_acceleration_model",
+    "build_phase_a10_cascade_topology_sequence_model",
+    "build_phase_a10_metastability_decay_model",
+    "build_phase_a10_transition_velocity_model",
+    "build_phase_a10_transition_dynamics_configuration",
     "build_phase_a9_markdown_report",
     "build_phase_a9_supervisor_review",
     "build_phase_a9_phase_state_scorecard",
@@ -1097,4 +1111,21 @@ from .phase_a9_replay_ecology_phase_state_regime_transition_research import (
     build_phase_a9_phase_state_scorecard,
     build_phase_a9_supervisor_review,
     build_phase_a9_markdown_report,
+)
+
+from .phase_a10_replay_ecology_transition_dynamics_cascade_propagation_research import (
+    build_phase_a10_transition_dynamics_configuration,
+    build_phase_a10_transition_velocity_model,
+    build_phase_a10_metastability_decay_model,
+    build_phase_a10_cascade_topology_sequence_model,
+    build_phase_a10_bifurcation_acceleration_model,
+    build_phase_a10_collapse_wavefront_model,
+    build_phase_a10_stabilization_latency_model,
+    build_phase_a10_attractor_recapture_model,
+    build_phase_a10_irreversible_topology_drift_model,
+    build_phase_a10_recovery_asymmetry_model,
+    build_phase_a10_cascade_propagation_risk_review,
+    build_phase_a10_transition_dynamics_scorecard,
+    build_phase_a10_supervisor_review,
+    build_phase_a10_markdown_report,
 )
