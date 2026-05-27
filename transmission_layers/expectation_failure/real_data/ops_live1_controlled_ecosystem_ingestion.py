@@ -8,8 +8,13 @@ from __future__ import annotations
 
 from copy import deepcopy
 from hashlib import sha256
+import json
 import math
+import os
+from pathlib import Path
 from typing import Callable, Iterable, Sequence
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 MAX_INGESTION_BATCH_SIZE = 50
 MAX_SNAPSHOT_ROWS = 300
@@ -17,6 +22,8 @@ MAX_CONTINUITY_WINDOW_DAYS = 90
 MAX_DASHBOARD_PAYLOAD_ROWS = 120
 MAX_STRUCTURAL_SUMMARY_ITEMS = 12
 MAX_RETRY_ATTEMPTS = 2
+DEFAULT_PROBE_UNIVERSE = ("AAPL", "MSFT", "JPM", "XOM", "UNH", "PG", "NEM", "NEE")
+MAX_PROBE_UNIVERSE_SIZE = 10
 
 GOVERNANCE_BOUNDARIES = {
     "observational_only": True,
@@ -59,6 +66,125 @@ def _normalize_row(row: dict, snapshot_ts: str) -> dict:
         "breadth_dispersion_structure": _bounded_float(row.get("breadthDispersion", row.get("dispersion"))),
         "ecosystem_continuity_ts": snapshot_ts,
     }
+
+
+def _normalize_probe_symbols(symbols: Sequence[str] | None = None, max_size: int = MAX_PROBE_UNIVERSE_SIZE) -> list[str]:
+    bounded = symbols or DEFAULT_PROBE_UNIVERSE
+    return sorted(set(str(s).upper() for s in bounded if str(s).strip()))[: max(1, min(max_size, MAX_PROBE_UNIVERSE_SIZE))]
+
+
+def _fmp_to_ops_mapping_diagnostics(raw: dict, normalized: dict) -> dict:
+    mappings = {
+        "price_state": ("price",),
+        "market_cap": ("marketCap",),
+        "sector": ("sector",),
+        "subsector": ("subsector", "industry"),
+        "volatility_structure": ("volatility", "beta"),
+        "valuation_structure": ("valuation", "pe"),
+        "profitability_structure": ("profitability", "roe"),
+        "leverage_liquidity_structure": ("leverageLiquidity", "debtToEquity"),
+        "breadth_dispersion_structure": ("breadthDispersion", "dispersion"),
+    }
+    fields_mapped, missing_fields, null_fields, fallback_fields_used = [], [], [], []
+    for target, candidates in mappings.items():
+        selected = next((f for f in candidates if f in raw), None)
+        if selected is None:
+            missing_fields.append(target)
+            continue
+        value = raw.get(selected)
+        if value is None:
+            null_fields.append(target)
+        if len(candidates) > 1 and selected != candidates[0]:
+            fallback_fields_used.append({"target": target, "fallback_source": selected})
+        fields_mapped.append({"target": target, "source": selected, "normalized_value": normalized.get(target)})
+    return {
+        "fields_mapped": fields_mapped,
+        "missing_fields": sorted(missing_fields),
+        "null_fields": sorted(null_fields),
+        "fallback_fields_used": fallback_fields_used,
+    }
+
+
+def _raw_required_field_violations(raw_rows: Sequence[dict], expected_symbols: Sequence[str]) -> list[dict]:
+    violations = []
+    required = ("price", "marketCap", "sector")
+    for symbol in expected_symbols:
+        raw = next((r for r in raw_rows if str(r.get("symbol", "")).upper() == symbol), None)
+        if raw is None:
+            violations.append({"symbol": symbol, "missing_raw_fields": ["symbol_record_missing"]})
+            continue
+        missing = [f for f in required if f not in raw or raw.get(f) is None]
+        if (raw.get("industry") is None) and (raw.get("subsector") is None):
+            missing.append("industry_or_subsector")
+        if missing:
+            violations.append({"symbol": symbol, "missing_raw_fields": missing})
+    return violations
+
+
+def build_live_fmp_fetcher(api_key: str) -> Callable[[Sequence[str]], Iterable[dict]]:
+    if not api_key:
+        raise RuntimeError("FMP_API_KEY is required for live probe mode")
+
+    def _fetch(symbols: Sequence[str]) -> list[dict]:
+        query = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
+        with urlopen(f"https://financialmodelingprep.com/api/v3/quote/{','.join(symbols)}?{query}", timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        if not isinstance(payload, list):
+            raise RuntimeError("Invalid FMP payload shape")
+        return payload
+
+    return _fetch
+
+
+def run_ops_live1a_controlled_fmp_probe(
+    *,
+    snapshot_date: str,
+    output_path: str,
+    symbols: Sequence[str] | None = None,
+    fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None,
+) -> dict:
+    probe_symbols = _normalize_probe_symbols(symbols)
+    if fetch_batch is None:
+        api_key = os.getenv("FMP_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("FMP_API_KEY missing; probe fails closed")
+        fetch_batch = build_live_fmp_fetcher(api_key)
+
+    raw_rows = list(fetch_controlled_fmp_snapshot_batch(probe_symbols, fetch_batch))
+    raw_required_violations = _raw_required_field_violations(raw_rows, probe_symbols)
+    if raw_required_violations:
+        result = {"status": "failed_closed", "integrity": {"raw_required_field_violations": raw_required_violations}}
+    else:
+        result = ingest_controlled_daily_snapshot(probe_symbols, snapshot_date, fetch_batch)
+    symbol_to_raw = {str(r.get("symbol", "")).upper(): r for r in raw_rows}
+    diagnostics = {
+        "symbols_failed_closed": result.get("integrity", {}).get("missing_symbols", []) if result.get("status") != "ok" else [],
+        "symbols_successfully_normalized": [r["symbol"] for r in result.get("rows", [])],
+        "invalid_values": result.get("integrity", {}).get("invalid_numeric_values", []) + result.get("integrity", {}).get("invalid_financial_values", []),
+        "field_mapping": [],
+    }
+    for row in result.get("rows", []):
+        raw = symbol_to_raw.get(row["symbol"], {})
+        diagnostics["field_mapping"].append({"symbol": row["symbol"], **_fmp_to_ops_mapping_diagnostics(raw, row)})
+
+    probe_report = {
+        "probe_universe": probe_symbols,
+        "probe_size": len(probe_symbols),
+        "bounded_probe_only": True,
+        "dry_run_local_output_only": True,
+        "supabase_write_enabled": False,
+        "snapshot_identity": result.get("snapshot_identity", {}),
+        "payload_shape": {k: result.get("operator_payload", {}).get(k) for k in (
+            "daily_ecosystem_posture", "dominant_structural_pressures", "strongest_resilience_pathways", "fragmentation_hotspots",
+            "transition_state_summaries", "continuity_summaries", "normalization_observations", "compression_observability"
+        )},
+        "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
+        "status": result.get("status"),
+        "diagnostics": diagnostics,
+    }
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).write_text(json.dumps(probe_report, indent=2, sort_keys=True), encoding="utf-8")
+    return probe_report
 
 
 def _compute_snapshot_identity(rows: Sequence[dict], snapshot_ts: str) -> dict:
