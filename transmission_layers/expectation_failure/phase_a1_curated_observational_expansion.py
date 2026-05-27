@@ -327,6 +327,115 @@ def build_phase_a1d_data_coverage_gap_review() -> OrderedDict[str, Any]:
     ])
 
 
+OBS300_1C_BRIDGE_ROLES = [
+    "ai_infrastructure_bridge","macro_liquidity_bridge","consumer_demand_bridge","commodity_transmission_bridge",
+    "infrastructure_dependency_bridge","credit_stress_bridge","power_demand_bridge","supply_chain_bridge","defensive_rotation_bridge",
+]
+OBS300_1C_REGIME_TRANSITION_EXPOSURES = [
+    "risk_on_to_risk_off","inflation_to_disinflation","tightening_to_liquidity_expansion","growth_to_stagflation",
+    "capex_expansion_to_margin_pressure","consumer_strength_to_credit_stress","energy_shock_to_margin_compression",
+]
+
+
+def _obs300_1c_bridge_role_for(row: dict[str, Any]) -> str:
+    idx=(sum(map(ord,row["ticker"])) + len(row["sector"]) + len(row["sefi_domain"])) % len(OBS300_1C_BRIDGE_ROLES)
+    return OBS300_1C_BRIDGE_ROLES[idx]
+
+
+def _obs300_1c_exposures_for(row: dict[str, Any]) -> list[str]:
+    base=(sum(map(ord,row["ticker"])) + len(row["subsector"])) % len(OBS300_1C_REGIME_TRANSITION_EXPOSURES)
+    return sorted({
+        OBS300_1C_REGIME_TRANSITION_EXPOSURES[base],
+        OBS300_1C_REGIME_TRANSITION_EXPOSURES[(base + 3) % len(OBS300_1C_REGIME_TRANSITION_EXPOSURES)],
+    })
+
+
+def build_obs300_1c_propagation_adjacency_intelligence() -> OrderedDict[str, Any]:
+    universe=build_phase_a1b_real_curated_structural_universe()
+    entities=[]
+    for row in universe:
+        entities.append(OrderedDict([
+            ("ticker", row["ticker"]),
+            ("sector", row["sector"]),
+            ("subsector", row["subsector"]),
+            ("sefi_domain", row["sefi_domain"]),
+            ("bridge_role", _obs300_1c_bridge_role_for(row)),
+            ("regime_transition_exposures", _obs300_1c_exposures_for(row)),
+            ("propagation_vectors", sorted(set(row["macro_sensitivity_tags"] + row["contradiction_tags"]))),
+        ]))
+    entities=sorted(entities, key=lambda x: x["ticker"])
+
+    by_ticker={x["ticker"]:x for x in entities}
+    links=[]
+    for i,src in enumerate(entities):
+        for offset in (1, 13, 29):
+            tgt=entities[(i + offset) % len(entities)]
+            if src["ticker"] == tgt["ticker"]:
+                continue
+            shared_themes=len(set([src["sefi_domain"], src["subsector"]]) & set([tgt["sefi_domain"], tgt["subsector"]]))
+            shared_vectors=len(set(src["propagation_vectors"]) & set(tgt["propagation_vectors"]))
+            shared_regime=len(set(src["regime_transition_exposures"]) & set(tgt["regime_transition_exposures"]))
+            bridge_overlap=1 if src["bridge_role"] == tgt["bridge_role"] else 0
+            cross_sector=1 if src["sector"] != tgt["sector"] else 0
+            score=min(1.0, round(0.25*shared_themes + 0.20*shared_vectors + 0.20*shared_regime + 0.15*bridge_overlap + 0.20*cross_sector, 4))
+            links.append(OrderedDict([
+                ("source_ticker", src["ticker"]),
+                ("target_ticker", tgt["ticker"]),
+                ("adjacency_weight", score),
+                ("cross_sector", bool(cross_sector)),
+            ]))
+    links=sorted(links, key=lambda x: (x["source_ticker"], -x["adjacency_weight"], x["target_ticker"]))
+
+    bridge_dist=OrderedDict(sorted(Counter(x["bridge_role"] for x in entities).items()))
+    exposure_dist=OrderedDict(sorted(Counter(e for x in entities for e in x["regime_transition_exposures"]).items()))
+    top_vectors=OrderedDict(sorted(Counter(v for x in entities for v in x["propagation_vectors"]).items(), key=lambda kv: (-kv[1], kv[0]))[:8])
+    cross_sector_candidates=[x for x in links if x["cross_sector"]][:40]
+    sector_map=OrderedDict()
+    for x in links:
+        s=by_ticker[x["source_ticker"]]["sector"]; t=by_ticker[x["target_ticker"]]["sector"]
+        key=(s,t)
+        sector_map[key]=max(sector_map.get(key, 0.0), x["adjacency_weight"])
+    sector_to_sector=[OrderedDict([("source_sector",k[0]),("target_sector",k[1]),("max_weight",round(v,4))]) for k,v in sorted(sector_map.items(), key=lambda kv:(kv[0][0],kv[0][1]))]
+    total_vector_mentions=max(1, sum(top_vectors.values()))
+    saturation_density=round(sum(v*v for v in top_vectors.values())/(total_vector_mentions*total_vector_mentions), 6)
+    congestion=round(sum(1 for x in links if x["adjacency_weight"] >= 0.65)/len(links), 6)
+    warnings=[]
+    if saturation_density >= 0.02: warnings.append("thematic_saturation_elevated")
+    if congestion >= 0.25: warnings.append("propagation_congestion_elevated")
+    if max(bridge_dist.values())/len(entities) >= 0.25: warnings.append("bridge_role_concentration_pressure")
+
+    summary=OrderedDict([
+        ("total_entities_inspected", len(entities)),
+        ("bridge_role_distribution", bridge_dist),
+        ("regime_transition_exposure_distribution", exposure_dist),
+        ("top_propagation_vectors", top_vectors),
+        ("adjacency_richness_score", round(sum(x["adjacency_weight"] for x in links)/len(links), 6)),
+        ("saturation_warnings", warnings),
+        ("cross_sector_propagation_candidates", cross_sector_candidates[:20]),
+        ("governance_certification", OrderedDict([
+            ("observational_only", True),
+            ("no_recursive_replay_operationalization", True),
+            ("no_autonomous_replay", True),
+            ("no_topology_activation", True),
+            ("no_self_modifying_pathways", True),
+            ("no_prediction_or_trading_execution", True),
+            ("no_sql_write_introduction", True),
+        ])),
+    ])
+    return OrderedDict([
+        ("entities", entities),
+        ("weighted_adjacency", links),
+        ("propagation_pathway_summaries", links[:30]),
+        ("cross_sector_transmission_candidates", cross_sector_candidates),
+        ("bridge_entity_summaries", entities[:60]),
+        ("adjacency_richness_summaries", OrderedDict([("mean_weight", summary["adjacency_richness_score"]), ("max_weight", max(x["adjacency_weight"] for x in links))])),
+        ("diffusion_bridge_summaries", OrderedDict([("bridge_role_distribution", bridge_dist), ("top_bridge_roles", sorted(bridge_dist.items(), key=lambda kv:(-kv[1], kv[0]))[:5])])),
+        ("topology_pressure_summaries", OrderedDict([("thematic_saturation_density", saturation_density), ("propagation_congestion_indicator", congestion), ("narrative_dominance_summary", list(top_vectors.keys())[:5]), ("concentration_pressure_warnings", warnings), ("monoculture_pressure_indicator", max(bridge_dist.values())/len(entities))])),
+        ("sector_to_sector_propagation_map", sector_to_sector),
+        ("operator_summary", summary),
+    ])
+
+
 def build_phase_a1d_replay_ecology_data_viability_classification() -> OrderedDict[str, Any]:
     gaps=build_phase_a1d_data_coverage_gap_review(); total=len(build_phase_a1b_real_curated_structural_universe())
     risk_ratio=(gaps['fragile_nodes']+gaps['non_viable_candidates']+gaps['live_probe_required_nodes'])/total
