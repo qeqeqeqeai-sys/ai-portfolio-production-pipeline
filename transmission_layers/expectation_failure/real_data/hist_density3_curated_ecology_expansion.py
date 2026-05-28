@@ -97,17 +97,25 @@ def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: 
 
     run_start = time.monotonic()
     chunk_results = []
-    aggregate_telemetry = {"chunks": len(symbol_chunks), "rows": 0}
+    aggregate_telemetry = {"chunks": len(symbol_chunks), "rows": 0, "missing_record_sample_count": 0, "endpoint_failure_sample_count": 0, "affected_symbol_count": 0, "affected_date_count": 0}
+    aggregate_failure_reasons: dict[str, int] = {}
     for idx, chunk in enumerate(symbol_chunks, start=1):
         chunk_root = root / f"chunk_{idx:02d}"
         out = run_hist_density2(trading_days=trading_days, symbol_count=len(chunk), end_date=end_date, output_root=str(chunk_root), density_mode=density_mode, raw_cache_enabled=raw_cache_enabled, raw_cache_write_enabled=raw_cache_write_enabled, cache_validation_mode=cache_validation_mode, cache_only_validation=cache_only_validation, symbol_universe_override=chunk)
         t = out["density_summary"]["telemetry_summary"]
         chunk_digest = sha256("|".join(chunk).encode("utf-8")).hexdigest()[:16]
-        chunk_results.append({"chunk_index": idx, "chunk_symbol_count": len(chunk), "chunk_symbols": chunk, "chunk_symbol_digest": chunk_digest, "telemetry": t})
+        for fr in t.get("top_failure_reasons", []):
+            rk = str(fr.get("reason", "unknown"))
+            aggregate_failure_reasons[rk] = aggregate_failure_reasons.get(rk, 0) + int(fr.get("count", 0))
+        chunk_results.append({"chunk_index": idx, "chunk_symbol_count": len(chunk), "chunk_symbols": chunk, "chunk_symbol_digest": chunk_digest, "telemetry": t, "missing_record_samples": t.get("missing_record_samples", []), "endpoint_failure_samples": t.get("endpoint_failure_samples", [])})
         aggregate_telemetry["rows"] += len(dates) * len(chunk)
+        aggregate_telemetry["missing_record_sample_count"] += int(t.get("missing_record_sample_count", 0))
+        aggregate_telemetry["endpoint_failure_sample_count"] += int(t.get("endpoint_failure_sample_count", 0))
+        aggregate_telemetry["affected_symbol_count"] += int(t.get("affected_symbol_count", 0))
+        aggregate_telemetry["affected_date_count"] += int(t.get("affected_date_count", 0))
         print(f"[HIST-DENSITY-3] chunk={idx}/{len(symbol_chunks)} symbols={len(chunk)} elapsed={int(time.monotonic()-run_start)}", flush=True)
 
-    summary = {"status": "ok", "schema_version": HIST_DENSITY3_SCHEMA_VERSION, "sde2_universe_version": SDE2_VERSION, "universe_telemetry": universe_tel, "chunking_configuration": {"symbol_chunk_size": symbol_chunk_size, "chunk_count": len(symbol_chunks), "max_symbols": max_symbols, "trading_days": len(dates)}, "cache_telemetry": aggregate_telemetry, "ops_hist_artifact_summary": {"chunk_results": chunk_results}, "governance_certification": _gov(), "runtime_summary": {"elapsed_seconds": int(time.monotonic()-run_start)}, "next_phase_recommendation": "Proceed staged runs after dry-run and cache validation."}
+    summary = {"status": "ok", "schema_version": HIST_DENSITY3_SCHEMA_VERSION, "sde2_universe_version": SDE2_VERSION, "universe_telemetry": universe_tel, "chunking_configuration": {"symbol_chunk_size": symbol_chunk_size, "chunk_count": len(symbol_chunks), "max_symbols": max_symbols, "trading_days": len(dates)}, "cache_telemetry": aggregate_telemetry, "ops_hist_artifact_summary": {"chunk_results": chunk_results, "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(aggregate_failure_reasons.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]}, "governance_certification": _gov(), "runtime_summary": {"elapsed_seconds": int(time.monotonic()-run_start)}, "next_phase_recommendation": "Proceed staged runs after dry-run and cache validation."}
     (root / "hist_density3_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     (root / "hist_density3_summary.md").write_text("# HIST-DENSITY-3 Curated 241 Symbol Summary\n\n" + json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary

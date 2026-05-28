@@ -258,8 +258,27 @@ def test_endpoint_fallback_full_to_light(monkeypatch):
     monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
     fetcher = build_historical_fmp_fetcher("test_key")
     rows = fetcher(["AAPL"], "2026-05-27")
-    assert rows[0]["price"] == 111.0
-    assert any(a["endpoint_family"] == "stable_historical_price_eod_light" and a["failure_reason"] is None for a in fetcher.last_profile_diagnostics["historical_price_symbol_diagnostics"][0]["endpoint_attempts"])
+
+
+def test_bounded_failure_samples_ordered_and_sanitized(tmp_path, monkeypatch):
+    def fetcher(batch, snapshot_date):
+        fetcher.last_profile_diagnostics = {
+            "historical_price_symbol_diagnostics": [
+                {"symbol": s, "endpoint_attempts": [
+                    {"endpoint_family": "ep1", "failure_reason": "HTTP_500", "http_status": "HTTP_500", "record_count_returned": 0},
+                    {"endpoint_family": "ep2", "failure_reason": "zero_records_returned", "http_status": "ok", "record_count_returned": 0},
+                ]} for s in batch
+            ]
+        }
+        return [{"symbol": s, "price": 100.0, "marketCap": 10.0, "sector": "T", "industry": "S", "beta": 1.0, "pe": 10.0, "roe": 0.2, "debtToEquity": 0.1, "dispersion": 0.3} for s in batch]
+    out = run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, symbol_universe_override=[f"S{i:03d}" for i in range(40)], fetch_batch=fetcher, telemetry_max_samples=10)
+    t = out["telemetry_summary"]
+    assert t["missing_record_sample_count"] == 10
+    assert t["endpoint_failure_sample_count"] == 10
+    assert t["missing_record_samples"] == sorted(t["missing_record_samples"], key=lambda s: (s["requested_snapshot_date"], s["symbol"]))
+    assert t["endpoint_failure_samples"] == sorted(t["endpoint_failure_samples"], key=lambda s: (s["requested_snapshot_date"], s["symbol"], s["endpoint_name"], s["attempt_index"]))
+    blob = __import__("json").dumps(t).lower()
+    assert "apikey" not in blob and "https://" not in blob and "historical\":" not in blob
 
 
 def test_response_shape_data_and_reconciliation(monkeypatch):

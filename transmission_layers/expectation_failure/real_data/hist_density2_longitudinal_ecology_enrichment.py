@@ -18,6 +18,8 @@ from transmission_layers.expectation_failure.real_data.hist_density1_controlled_
     _deterministic_fixture_snapshots,
 )
 from transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation import (
+    DEFAULT_TELEMETRY_MAX_SAMPLES,
+    TELEMETRY_MAX_SAMPLES_HARD_CAP,
     MAX_HIST_WINDOW_DAYS,
     build_ops_hist1_observation_review,
     load_ops_hist1_snapshots,
@@ -75,7 +77,7 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
 
     chunks = _chunk_dates(dates, MAX_HIST_WINDOW_DAYS)
     run_start = time.monotonic()
-    telemetry = {"normalized": 0, "partial": 0, "failed": 0, "exact": 0, "reconciled": 0, "missing": 0, "endpoint_status_counts": {}}
+    telemetry = {"normalized": 0, "partial": 0, "failed": 0, "exact": 0, "reconciled": 0, "missing": 0, "endpoint_status_counts": {}, "missing_record_samples": [], "endpoint_failure_samples": [], "failure_reasons": {}}
     cache_telemetry = {"cache_hits":0,"cache_misses":0,"cache_rows_written":0,"cache_read_failures":0,"cache_write_failures":0,"requested_symbol_dates_count":0,"cache_lookup_attempted_count":0,"valid_cached_rows_count":0,"malformed_cached_rows_count":0,"missing_symbol_dates_count":0,"fetched_symbol_dates_count":0,"write_attempted_rows_count":0,"write_success_rows_count":0,"write_failed_rows_count":0}
     _emit({"pilot_id": PILOT_ID, "mode": density_mode, "requested_trading_days": trading_days, "resolved_trading_days": len(dates), "symbol_count": symbol_count, "chunk_count": len(chunks), "raw_cache_enabled": raw_cache_enabled, "raw_cache_write_enabled": raw_cache_write_enabled, "cache_validation_mode": cache_validation_mode, "cache_only_validation": cache_only_validation})
 
@@ -96,12 +98,22 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
                 cache_telemetry[ck] += int(t.get(ck, 0) or 0)
             for k, v in {**t.get("endpoint_success_counts", {}), **t.get("endpoint_failure_counts", {})}.items():
                 telemetry["endpoint_status_counts"][k] = telemetry["endpoint_status_counts"].get(k, 0) + int(v)
+            telemetry["missing_record_samples"].extend(t.get("missing_record_samples", []))
+            telemetry["endpoint_failure_samples"].extend(t.get("endpoint_failure_samples", []))
+            for r in t.get("top_failure_reasons", []):
+                reason = str(r.get("reason", "unknown"))
+                telemetry["failure_reasons"][reason] = telemetry["failure_reasons"].get(reason, 0) + int(r.get("count", 0))
             _emit({"current_snapshot_index": i * len(chunk), "elapsed_seconds": int(time.monotonic()-run_start), "estimated_remaining_snapshots": len(dates) - min(i * MAX_HIST_WINDOW_DAYS, len(dates)), "estimated_remaining_minutes": 0})
         if cache_only_validation and cache_telemetry["missing_symbol_dates_count"] > 0:
             raise RuntimeError("HIST-DENSITY-2 cache-only validation failed closed: missing cache coverage")
         snaps = load_ops_hist1_snapshots(str(snaps_dir))
     else:
         snaps = _deterministic_fixture_snapshots(dates, symbol_count)
+    sample_limit = max(1, min(DEFAULT_TELEMETRY_MAX_SAMPLES, TELEMETRY_MAX_SAMPLES_HARD_CAP))
+    missing_samples = sorted(telemetry["missing_record_samples"], key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", ""))))[:sample_limit]
+    endpoint_samples = sorted(telemetry["endpoint_failure_samples"], key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", "")), str(s.get("endpoint_name", "")), int(s.get("attempt_index", 0))))[:sample_limit]
+    affected_symbols = sorted({str(s.get("symbol", "")) for s in (missing_samples + endpoint_samples) if str(s.get("symbol", ""))})
+    affected_dates = sorted({str(s.get("requested_snapshot_date", "")) for s in (missing_samples + endpoint_samples) if str(s.get("requested_snapshot_date", ""))})
 
     hist1 = build_ops_hist1_observation_review(snaps)
     hist2 = build_ops_hist2_continuity_intelligence(snaps)
@@ -134,6 +146,13 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
             "reconciled_prior_dates": telemetry["reconciled"],
             "missing_dates": telemetry["missing"],
             "endpoint_status_counts": dict(sorted(telemetry["endpoint_status_counts"].items())),
+            "missing_record_samples": missing_samples,
+            "endpoint_failure_samples": endpoint_samples,
+            "missing_record_sample_count": len(missing_samples),
+            "endpoint_failure_sample_count": len(endpoint_samples),
+            "affected_symbol_count": len(affected_symbols),
+            "affected_date_count": len(affected_dates),
+            "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(telemetry["failure_reasons"].items(), key=lambda kv: (-kv[1], kv[0]))[:5]],
             "estimated_remaining_snapshots": 0,
             "estimated_remaining_minutes": 0,
             **cache_telemetry,

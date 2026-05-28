@@ -66,3 +66,13 @@ def test_dry_run_and_real_chunk_routing_match(monkeypatch, tmp_path):
     monkeypatch.setattr('transmission_layers.expectation_failure.real_data.hist_density3_curated_ecology_expansion.run_hist_density2', _fake_run_hist_density2)
     run_hist_density3(output_root=str(tmp_path / 'real'), dry_run_config_only=False, max_symbols=80, symbol_chunk_size=50, trading_days=1)
     assert seen == dry_chunks
+
+
+def test_chunk_result_includes_failure_samples_and_aggregate_reasons(monkeypatch, tmp_path):
+    def _fake_run_hist_density2(**kwargs):
+        return {"density_summary": {"telemetry_summary": {"missing_record_sample_count": 1, "endpoint_failure_sample_count": 1, "affected_symbol_count": 1, "affected_date_count": 1, "top_failure_reasons": [{"reason": "HTTP_500", "count": 2}], "missing_record_samples": [{"symbol":"AAA","requested_snapshot_date":"2026-05-27"}], "endpoint_failure_samples": [{"symbol":"AAA","requested_snapshot_date":"2026-05-27","endpoint_name":"ep","attempt_index":1}]}}}
+    monkeypatch.setattr('transmission_layers.expectation_failure.real_data.hist_density3_curated_ecology_expansion.run_hist_density2', _fake_run_hist_density2)
+    out = run_hist_density3(output_root=str(tmp_path / "real"), dry_run_config_only=False, max_symbols=55, symbol_chunk_size=50, trading_days=1)
+    assert out["cache_telemetry"]["missing_record_sample_count"] == 2
+    assert out["ops_hist_artifact_summary"]["chunk_results"][0]["missing_record_samples"]
+    assert out["ops_hist_artifact_summary"]["top_failure_reasons"][0]["reason"] == "HTTP_500"
