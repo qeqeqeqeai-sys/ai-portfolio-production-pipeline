@@ -12,7 +12,7 @@ MAX_UNIVERSE_SIZE = 300
 CATEGORY_SYMBOLS: "OrderedDict[str, list[str]]" = OrderedDict([
     ("mega_cap_ai_technology", "AAPL MSFT GOOGL AMZN META NVDA TSLA ORCL IBM ADBE CRM SAP NOW".split()),
     ("semiconductors", "AMD AVGO QCOM MU INTC TXN AMAT LRCX KLAC MCHP MPWR ADI MRVL ON NXPI ASML TSM ARM GFS UMC".split()),
-    ("cloud_software_infrastructure", "SNOW PANW CRWD FTNT ZS OKTA NET DDOG MDB ESTC HUBS TEAM SHOP WDAY DOCU CFLT PLTR DT".split()),
+    ("cloud_software_infrastructure", "SNOW PANW CRWD FTNT ZS OKTA NET DDOG MDB ESTC HUBS TEAM SHOP WDAY DOCU DDOG PLTR DT".split()),
     ("ai_infrastructure_suppliers", "SMCI ANET CSCO HPE DELL HPQ WDC STX TER SWKS QRVO JBL FLEX APH GLW".split()),
     ("cybersecurity", "PANW CRWD FTNT ZS OKTA CHKP GEN S SENT CYBR VRNS TENB".split()),
     ("industrials_automation", "GE HON EMR ETN ROK PH ITW JCI CARR OTIS MMM CAT DE URI GWW FAST PWR".split()),
