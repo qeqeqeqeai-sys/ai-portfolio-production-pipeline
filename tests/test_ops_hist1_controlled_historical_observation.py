@@ -910,3 +910,47 @@ def test_hist_boundary_snapshot_date_preserved_when_provided(tmp_path):
     assert snap["adapter_diagnostics"]["downstream_snapshot_identity_missing_count"] == 0
     assert snap["adapter_diagnostics"]["downstream_snapshot_identity_unique_count"] == 1
     assert sample == [] or sample[0]["final_row_core_values"]["snapshot_date"] == "2026-05-26"
+
+
+def test_ops_hist_boundary_canonicalized_batch_and_rows_match_deterministically(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [
+            {"symbol": f" {s.lower()} ", "date": snapshot_date, "price": 280.14, "marketCap": 1, "sector": "Technology", "industry": "Consumer Electronics"}
+            for s in batch
+        ]
+
+    run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-01",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=[" aapl ", "MsFt"],
+    )
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    diagnostics = snap["adapter_diagnostics"]
+
+    assert diagnostics["normalization_retained_row_count"] == 2
+    assert diagnostics["canonicalized_batch_symbols_sample"] == ["AAPL", "MSFT"]
+    assert diagnostics["canonicalized_row_symbols_sample"] == ["AAPL", "MSFT"]
+    assert diagnostics["dropped_due_to_batch_filter_count"] == 0
+    assert diagnostics["duplicate_elision_count"] == 0
+
+
+def test_valid_historical_rows_survive_normalization_path_after_canonicalization(tmp_path):
+    def fetcher(_batch, snapshot_date):
+        return [{"symbol": " aapl ", "date": snapshot_date, "price": 280.14, "marketCap": None, "sector": "Technology", "industry": "Consumer Electronics"}]
+
+    run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-01",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL"],
+    )
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    diagnostics = snap["adapter_diagnostics"]
+
+    assert diagnostics["normalization_retained_row_count"] == 1
+    assert diagnostics["ops_live_normalization_acceptance_count"] == 1
+    assert diagnostics["ops_live_normalization_rejection_count"] == 0
+    assert diagnostics["market_cap_missing_does_not_block_historical_observation"] is True

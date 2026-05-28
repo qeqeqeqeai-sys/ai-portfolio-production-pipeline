@@ -51,9 +51,14 @@ def _bounded_float(value: object, default: float = 0.0) -> float:
     return float(value)
 
 
+def canonicalize_symbol(symbol: object) -> str:
+    """Single-source symbol canonicalization for OPS ingestion boundaries."""
+    return str(symbol).strip().upper()
+
+
 def _normalize_row(row: dict, snapshot_ts: str) -> dict:
     return {
-        "symbol": str(row.get("symbol", "")).upper(),
+        "symbol": canonicalize_symbol(row.get("symbol", "")),
         "snapshot_ts": snapshot_ts,
         "price_state": _bounded_float(row.get("price")),
         "market_cap": _bounded_float(row.get("marketCap")),
@@ -70,7 +75,7 @@ def _normalize_row(row: dict, snapshot_ts: str) -> dict:
 
 def _normalize_probe_symbols(symbols: Sequence[str] | None = None, max_size: int = MAX_PROBE_UNIVERSE_SIZE) -> list[str]:
     bounded = symbols or DEFAULT_PROBE_UNIVERSE
-    return sorted(set(str(s).upper() for s in bounded if str(s).strip()))[: max(1, min(max_size, MAX_PROBE_UNIVERSE_SIZE))]
+    return sorted({canonicalize_symbol(s) for s in bounded if canonicalize_symbol(s)})[: max(1, min(max_size, MAX_PROBE_UNIVERSE_SIZE))]
 
 
 def _fmp_to_ops_mapping_diagnostics(raw: dict, normalized: dict) -> dict:
@@ -109,7 +114,7 @@ def _raw_required_field_violations(raw_rows: Sequence[dict], expected_symbols: S
     violations = []
     required = ("price", "marketCap", "sector")
     for symbol in expected_symbols:
-        raw = next((r for r in raw_rows if str(r.get("symbol", "")).upper() == symbol), None)
+        raw = next((r for r in raw_rows if canonicalize_symbol(r.get("symbol", "")) == canonicalize_symbol(symbol)), None)
         if raw is None:
             violations.append({"symbol": symbol, "missing_raw_fields": ["symbol_record_missing"]})
             continue
@@ -156,7 +161,7 @@ def run_ops_live1a_controlled_fmp_probe(
         result = {"status": "failed_closed", "integrity": {"raw_required_field_violations": raw_required_violations}}
     else:
         result = ingest_controlled_daily_snapshot(probe_symbols, snapshot_date, fetch_batch)
-    symbol_to_raw = {str(r.get("symbol", "")).upper(): r for r in raw_rows}
+    symbol_to_raw = {canonicalize_symbol(r.get("symbol", "")): r for r in raw_rows}
     diagnostics = {
         "symbols_failed_closed": result.get("integrity", {}).get("missing_symbols", []) if result.get("status") != "ok" else [],
         "symbols_successfully_normalized": [r["symbol"] for r in result.get("rows", [])],
@@ -204,7 +209,7 @@ def _compute_snapshot_identity(rows: Sequence[dict], snapshot_ts: str) -> dict:
 def _integrity_validate(rows: Sequence[dict], expected_symbols: Sequence[str]) -> dict:
     symbols = [r.get("symbol") for r in rows]
     unique = sorted(set(symbols))
-    expected = sorted(set(s.upper() for s in expected_symbols))
+    expected = sorted({canonicalize_symbol(s) for s in expected_symbols})
     missing = [s for s in expected if s not in unique]
     duplicates = len(symbols) - len(unique)
     malformed_symbols = sorted(
@@ -273,10 +278,29 @@ def _integrity_validate(rows: Sequence[dict], expected_symbols: Sequence[str]) -
     }
 
 
+def _normalized_duplicate_identity(row: dict) -> tuple[object, ...]:
+    return (
+        row.get("price_state"),
+        row.get("market_cap"),
+        row.get("sector"),
+        row.get("subsector"),
+        row.get("volatility_structure"),
+        row.get("valuation_structure"),
+        row.get("profitability_structure"),
+        row.get("leverage_liquidity_structure"),
+        row.get("breadth_dispersion_structure"),
+        row.get("ecosystem_continuity_ts"),
+    )
+
+
+def _bounded_symbol_sample(symbols: Iterable[str], limit: int = 25) -> list[str]:
+    return sorted({s for s in symbols if s})[:limit]
+
+
 def fetch_controlled_fmp_snapshot_batch(
     symbols: Sequence[str], fetch_batch: Callable[[Sequence[str]], Iterable[dict]]
 ) -> list[dict]:
-    bounded_symbols = list(symbols)[:MAX_INGESTION_BATCH_SIZE]
+    bounded_symbols = [canonicalize_symbol(s) for s in symbols if canonicalize_symbol(s)][:MAX_INGESTION_BATCH_SIZE]
     return list(fetch_batch(bounded_symbols))
 
 
@@ -285,19 +309,54 @@ def ingest_controlled_daily_snapshot(
     snapshot_date: str,
     fetch_batch: Callable[[Sequence[str]], Iterable[dict]],
 ) -> dict:
-    ordered_symbols = sorted(set(s.upper() for s in symbols))[:MAX_SNAPSHOT_ROWS]
+    ordered_symbols = sorted({canonicalize_symbol(s) for s in symbols})[:MAX_SNAPSHOT_ROWS]
     snapshot_ts = _deterministic_snapshot_timestamp(snapshot_date)
     batches = _chunked(ordered_symbols, MAX_INGESTION_BATCH_SIZE)
 
     raw_rows: list[dict] = []
+    filtered_rows: list[dict] = []
     attempts = 0
+    dropped_due_to_batch_filter_count = 0
+    duplicate_elision_count = 0
+    canonicalized_batch_symbols: set[str] = set()
+    canonicalized_row_symbols: set[str] = set()
+    rejected_row_reasons: list[dict[str, str]] = []
+    normalized_by_symbol: dict[str, tuple[object, ...]] = {}
+
     for batch in batches:
         batch_success = False
+        canonical_batch = [canonicalize_symbol(s) for s in batch if canonicalize_symbol(s)]
+        canonical_batch_set = set(canonical_batch)
+        canonicalized_batch_symbols.update(canonical_batch_set)
         for _ in range(MAX_RETRY_ATTEMPTS):
             attempts += 1
             try:
-                batch_rows = fetch_controlled_fmp_snapshot_batch(batch, fetch_batch)
+                batch_rows = fetch_controlled_fmp_snapshot_batch(canonical_batch, fetch_batch)
                 raw_rows.extend(deepcopy(batch_rows))
+                for row in batch_rows:
+                    row_symbol = canonicalize_symbol(row.get("symbol", ""))
+                    if row_symbol:
+                        canonicalized_row_symbols.add(row_symbol)
+                    if not row_symbol or row_symbol not in canonical_batch_set:
+                        dropped_due_to_batch_filter_count += 1
+                        if len(rejected_row_reasons) < 25:
+                            rejected_row_reasons.append({
+                                "symbol": row_symbol,
+                                "rejection_reason": "symbol_not_in_canonicalized_batch",
+                            })
+                        continue
+                    normalized_candidate = _normalize_row(row, snapshot_ts)
+                    duplicate_identity = _normalized_duplicate_identity(normalized_candidate)
+                    if row_symbol in normalized_by_symbol and normalized_by_symbol[row_symbol] == duplicate_identity:
+                        duplicate_elision_count += 1
+                        if len(rejected_row_reasons) < 25:
+                            rejected_row_reasons.append({
+                                "symbol": row_symbol,
+                                "rejection_reason": "duplicate_symbol_after_canonicalization",
+                            })
+                        continue
+                    normalized_by_symbol.setdefault(row_symbol, duplicate_identity)
+                    filtered_rows.append(row)
                 batch_success = True
                 break
             except Exception:
@@ -308,10 +367,24 @@ def ingest_controlled_daily_snapshot(
                 "snapshot_ts": snapshot_ts,
                 "attempts": attempts,
                 "batches": len(batches),
+                "ingestion_boundary_diagnostics": {
+                    "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
+                    "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
+                    "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
+                    "duplicate_elision_count": duplicate_elision_count,
+                    "rejected_row_reasons": rejected_row_reasons,
+                },
                 "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
             }
 
-    normalized = [_normalize_row(r, snapshot_ts) for r in raw_rows if r.get("symbol")]
+    ingestion_boundary_diagnostics = {
+        "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
+        "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
+        "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
+        "duplicate_elision_count": duplicate_elision_count,
+        "rejected_row_reasons": rejected_row_reasons,
+    }
+    normalized = [_normalize_row(r, snapshot_ts) for r in filtered_rows if canonicalize_symbol(r.get("symbol", ""))]
     normalized = sorted(normalized, key=lambda r: r["symbol"])[:MAX_SNAPSHOT_ROWS]
     integrity = _integrity_validate(normalized, ordered_symbols)
     if not integrity["is_valid"]:
@@ -321,6 +394,7 @@ def ingest_controlled_daily_snapshot(
             "attempts": attempts,
             "batches": len(batches),
             "integrity": integrity,
+            "ingestion_boundary_diagnostics": ingestion_boundary_diagnostics,
             "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
         }
 
@@ -333,6 +407,7 @@ def ingest_controlled_daily_snapshot(
         "attempts": attempts,
         "batches": len(batches),
         "integrity": integrity,
+        "ingestion_boundary_diagnostics": ingestion_boundary_diagnostics,
         "snapshot_identity": snapshot_identity,
         "rows": normalized,
         "surfaces": surfaces,
