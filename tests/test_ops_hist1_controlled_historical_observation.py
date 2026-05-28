@@ -384,6 +384,48 @@ def test_market_cap_reconciliation_debug_sample_emitted(monkeypatch):
     assert samples[0]["reconciled_market_cap_value"] == 1500
 
 
+
+
+def test_reconciled_market_cap_propagates_to_final_row_and_preflight(monkeypatch, tmp_path):
+    def fetcher(batch, snapshot_date):
+        fetcher.last_profile_diagnostics = {
+            "market_cap_reconciliation_debug_samples": [
+                {"symbol": "AAPL", "selected_market_cap_date": snapshot_date, "reconciled_market_cap_value": 111.0}
+            ]
+        }
+        return [{"symbol": "AAPL", "date": snapshot_date, "price": 101.0, "sector": "Tech", "industry": "Soft", "reconciled_market_cap_value": 111.0}]
+
+    fetcher.last_profile_diagnostics = {}
+    out = run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL"],
+    )
+    assert out["status"] == "ok"
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    sample = snap["adapter_diagnostics"]["downstream_market_cap_debug_samples"][0]
+    assert sample["reconciled_market_cap_value"] == 111.0
+    assert sample["final_row_marketCap_value"] == 111.0
+    assert "missing_market_cap" not in sample["downstream_preflight_reasons"]
+
+
+def test_true_missing_market_cap_still_fail_closed(tmp_path):
+    def fetcher(batch, snapshot_date):
+        fetcher.last_profile_diagnostics = {"market_cap_reconciliation_debug_samples": []}
+        return [{"symbol": "AAPL", "date": snapshot_date, "price": 101.0, "sector": "Tech", "industry": "Soft"}]
+
+    fetcher.last_profile_diagnostics = {}
+    with pytest.raises(RuntimeError, match="missing_market_cap"):
+        run_ops_hist1_historical_backfill(
+            snapshot_date="2026-05-27",
+            output_dir=str(tmp_path),
+            window_days=1,
+            fetch_batch=fetcher,
+            symbol_universe_override=["AAPL"],
+        )
+
 def test_market_cap_missing_outside_window_preserves_fail_closed(tmp_path):
     def fetcher(batch, snapshot_date):
         return [{

@@ -476,13 +476,15 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 run_diag["historical_market_cap_endpoint_status"] = "degraded"
             if mc_meta.get("market_cap_missing_after_reconciliation"):
                 run_diag["historical_market_cap_endpoint_status"] = "degraded"
+            reconciled_market_cap_value = mc_row.get("marketCap")
             profile = _fetch_profile(sym, run_diag)
             rows.append({
                 "symbol": sym,
                 "date": snapshot_date,
                 "price": price_row.get("adjClose", price_row.get("close", price_row.get("price"))),
                 "volume": price_row.get("volume"),
-                "marketCap": mc_row.get("marketCap"),
+                "marketCap": reconciled_market_cap_value,
+                "reconciled_market_cap_value": reconciled_market_cap_value,
                 "sector": profile.get("sector", "unknown") or "unknown",
                 "industry": profile.get("industry", "unknown") or "unknown",
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
@@ -853,6 +855,8 @@ def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], u
             # Deterministic one-boundary alias normalization before downstream preflight.
             if patched_row.get("marketCap") is None and patched_row.get("market_cap") is not None:
                 patched_row["marketCap"] = patched_row.get("market_cap")
+            if patched_row.get("marketCap") is None and patched_row.get("reconciled_market_cap_value") is not None:
+                patched_row["marketCap"] = patched_row.get("reconciled_market_cap_value")
             if not str(patched_row.get("date", "")).strip():
                 patched_row["date"] = snapshot_date
             if not str(row.get("symbol", "")).strip():
@@ -1040,6 +1044,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         secret_key_fragments = ("apikey", "api_key", "token", "raw_payload", "raw payload")
         for sym in [str(s).upper() for s in universe if str(s).strip()][:3]:
             source_row = next((r for r in valid_rows if str(r.get("symbol", "")).upper() == sym), None)
+            downstream_row = next((r for r in downstream_rows if str(r.get("symbol", "")).upper() == sym), None)
             dbg = reconciliation_debug_by_symbol.get(sym, {})
             safe_row_keys = []
             if source_row is not None:
@@ -1052,7 +1057,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                     "symbol": sym,
                     "selected_market_cap_date": dbg.get("selected_market_cap_date"),
                     "reconciled_market_cap_value": dbg.get("reconciled_market_cap_value"),
-                    "final_row_marketCap_value": None if source_row is None else source_row.get("marketCap", source_row.get("market_cap")),
+                    "final_row_marketCap_value": None if downstream_row is None else downstream_row.get("marketCap", downstream_row.get("market_cap")),
                     "final_row_keys": safe_row_keys,
                     "downstream_preflight_reasons": downstream_failures_by_symbol.get(sym, []),
                     "market_cap_exact_match_found": dbg.get("market_cap_exact_match_found"),
