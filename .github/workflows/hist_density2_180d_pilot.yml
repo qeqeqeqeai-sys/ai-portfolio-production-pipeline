@@ -7,6 +7,16 @@ on:
         description: "Optional ISO date"
         required: false
         type: string
+      trading_days:
+        description: "Trading days window (1-180)"
+        required: false
+        default: "180"
+        type: string
+      symbol_count:
+        description: "Symbol count (1-50)"
+        required: false
+        default: "50"
+        type: string
       raw_cache_enabled:
         description: "Enable raw FMP cache reads"
         required: false
@@ -45,10 +55,25 @@ jobs:
         env:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           INPUT_END_DATE: ${{ github.event.inputs.end_date }}
+          INPUT_TRADING_DAYS: ${{ github.event.inputs.trading_days }}
+          INPUT_SYMBOL_COUNT: ${{ github.event.inputs.symbol_count }}
           INPUT_RAW_CACHE_ENABLED: ${{ github.event.inputs.raw_cache_enabled }}
           INPUT_RAW_CACHE_WRITE_ENABLED: ${{ github.event.inputs.raw_cache_write_enabled }}
           INPUT_CACHE_VALIDATION_MODE: ${{ github.event.inputs.cache_validation_mode }}
           INPUT_CACHE_ONLY_VALIDATION: ${{ github.event.inputs.cache_only_validation }}
         run: |
-          PYTHONPATH=. python scripts/run_hist_density_2_180d_pilot.py --density-mode real_ops_hist1 --trading-days 180 --symbol-count 50 --output-root reports/hist_density2_pilot_180d ${INPUT_END_DATE:+--end-date "$INPUT_END_DATE"} ${INPUT_RAW_CACHE_ENABLED:+$( [ "$INPUT_RAW_CACHE_ENABLED" = "true" ] && echo --raw-cache-enabled )} ${INPUT_RAW_CACHE_WRITE_ENABLED:+$( [ "$INPUT_RAW_CACHE_WRITE_ENABLED" = "true" ] && echo --raw-cache-write-enabled )} ${INPUT_CACHE_VALIDATION_MODE:+$( [ "$INPUT_CACHE_VALIDATION_MODE" = "true" ] && echo --cache-validation-mode )} ${INPUT_CACHE_ONLY_VALIDATION:+$( [ "$INPUT_CACHE_ONLY_VALIDATION" = "true" ] && echo --cache-only-validation )}
+          TRADING_DAYS="${INPUT_TRADING_DAYS:-180}"
+          SYMBOL_COUNT="${INPUT_SYMBOL_COUNT:-50}"
+
+          if ! [[ "$TRADING_DAYS" =~ ^[0-9]+$ ]] || [ "$TRADING_DAYS" -lt 1 ] || [ "$TRADING_DAYS" -gt 180 ]; then
+            echo "Invalid trading_days: $TRADING_DAYS (must be an integer between 1 and 180)." >&2
+            exit 1
+          fi
+
+          if ! [[ "$SYMBOL_COUNT" =~ ^[0-9]+$ ]] || [ "$SYMBOL_COUNT" -lt 1 ] || [ "$SYMBOL_COUNT" -gt 50 ]; then
+            echo "Invalid symbol_count: $SYMBOL_COUNT (must be an integer between 1 and 50)." >&2
+            exit 1
+          fi
+
+          PYTHONPATH=. python scripts/run_hist_density_2_180d_pilot.py --density-mode real_ops_hist1 --trading-days "$TRADING_DAYS" --symbol-count "$SYMBOL_COUNT" --output-root reports/hist_density2_pilot_180d ${INPUT_END_DATE:+--end-date "$INPUT_END_DATE"} ${INPUT_RAW_CACHE_ENABLED:+$( [ "$INPUT_RAW_CACHE_ENABLED" = "true" ] && echo --raw-cache-enabled )} ${INPUT_RAW_CACHE_WRITE_ENABLED:+$( [ "$INPUT_RAW_CACHE_WRITE_ENABLED" = "true" ] && echo --raw-cache-write-enabled )} ${INPUT_CACHE_VALIDATION_MODE:+$( [ "$INPUT_CACHE_VALIDATION_MODE" = "true" ] && echo --cache-validation-mode )} ${INPUT_CACHE_ONLY_VALIDATION:+$( [ "$INPUT_CACHE_ONLY_VALIDATION" = "true" ] && echo --cache-only-validation )}
           
