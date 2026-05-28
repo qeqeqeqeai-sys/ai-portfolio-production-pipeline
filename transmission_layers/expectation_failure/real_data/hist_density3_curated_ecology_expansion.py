@@ -22,7 +22,7 @@ HIST_DENSITY3_SCHEMA_VERSION = "hist_density3_v1"
 DEFAULT_TRADING_DAYS = 180
 DEFAULT_MAX_SYMBOLS = 241
 DEFAULT_SYMBOL_CHUNK_SIZE = 50
-REPLACEMENTS = {"RBT": "ROK", "FANUY": "ABB", "SENT": "CHKP"}
+REPLACEMENTS = {"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW"}
 
 
 def _gov() -> dict[str, Any]:
@@ -51,16 +51,15 @@ def _effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, app
                 excluded.append(s)
             continue
         out.append(s)
-    dedup = list(dict.fromkeys(out))
     tel = {
         "original_symbol_count": len(picked),
-        "effective_symbol_count": len(dedup),
+        "effective_symbol_count": len(out),
         "high_risk_symbols_detected": detected,
         "replacements_applied": replacements_applied,
         "excluded_symbols": excluded,
         "effective_universe_version": f"{SDE2_VERSION}_effective",
     }
-    return dedup, tel
+    return out, tel
 
 
 def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, output_root: str = "reports/hist_density3_curated_241", density_mode: str = DENSITY_MODE_FIXTURE, raw_cache_enabled: bool = True, raw_cache_write_enabled: bool = True, cache_validation_mode: bool = True, cache_only_validation: bool = False, include_high_risk_symbols: bool = False, apply_sde2_replacements: bool = True, dry_run_config_only: bool = False, end_date: str | None = None) -> dict[str, Any]:

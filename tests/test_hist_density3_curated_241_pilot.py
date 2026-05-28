@@ -11,7 +11,9 @@ def test_dry_run_uses_sde2_and_replacements(tmp_path):
     symbols = out["config_preview"]["effective_symbols"]
     assert len(get_sde2_curated_symbol_universe()) == 241
     assert "RBT" not in symbols and "FANUY" not in symbols and "SENT" not in symbols
-    assert "ROK" in symbols and "ABB" in symbols and "CHKP" in symbols
+    assert "RBT" not in symbols and "FANUY" not in symbols and "SENT" not in symbols and "CYBR" not in symbols
+    assert "ROK" in symbols and "ETN" in symbols and "CHKP" in symbols and "PANW" in symbols
+    assert "ABB" in get_sde2_curated_symbol_universe() and "CYBR" in get_sde2_curated_symbol_universe()
 
 
 def test_cache_flags_default_off_from_runner_workflow_text():
@@ -76,3 +78,16 @@ def test_chunk_result_includes_failure_samples_and_aggregate_reasons(monkeypatch
     assert out["cache_telemetry"]["missing_record_sample_count"] == 2
     assert out["ops_hist_artifact_summary"]["chunk_results"][0]["missing_record_samples"]
     assert out["ops_hist_artifact_summary"]["top_failure_reasons"][0]["reason"] == "HTTP_500"
+
+
+def test_universe_replacements_preserve_count_and_version(tmp_path):
+    out = run_hist_density3(output_root=str(tmp_path), dry_run_config_only=True)
+    preview = out["config_preview"]
+    base = get_sde2_curated_symbol_universe()
+    assert len(base) == 241
+    assert len(preview["effective_symbols"]) == len(base)
+    assert preview["universe_telemetry"]["effective_universe_version"].endswith("_effective")
+    assert preview["sde2_universe_version"].startswith("SDE2_CURATED_SYMBOL_ECOLOGY")
+    assert "ABB" in base and "CYBR" in base
+    assert "ETN" in preview["effective_symbols"] and "PANW" in preview["effective_symbols"]
+    assert "ABB" not in preview["effective_symbols"] and "CYBR" not in preview["effective_symbols"]
