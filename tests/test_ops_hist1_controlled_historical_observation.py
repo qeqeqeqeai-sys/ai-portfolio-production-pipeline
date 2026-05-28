@@ -455,6 +455,84 @@ def test_runtime_error_contains_bounded_summary(monkeypatch):
     assert "test_key" not in msg
 
 
+def test_fail_closed_includes_market_cap_debug_samples(monkeypatch, tmp_path):
+    def fetcher(batch, snapshot_date):
+        fetcher.last_profile_diagnostics = {
+            "market_cap_reconciliation_debug_samples": [
+                {
+                    "symbol": "AAPL",
+                    "selected_market_cap_date": snapshot_date,
+                    "reconciled_market_cap_value": 111.0,
+                    "market_cap_exact_match_found": True,
+                    "market_cap_reconciled_prior_date": False,
+                    "market_cap_reconciliation_distance_days": 0,
+                    "market_cap_missing_after_reconciliation": False,
+                }
+            ]
+        }
+        return [{"symbol": "AAPL", "date": snapshot_date, "price": 101.0, "sector": "Tech", "industry": "Soft"}]
+
+    fetcher.last_profile_diagnostics = {}
+    with pytest.raises(RuntimeError) as exc:
+        run_ops_hist1_historical_backfill(
+            snapshot_date="2026-05-27",
+            output_dir=str(tmp_path),
+            window_days=1,
+            fetch_batch=fetcher,
+            symbol_universe_override=["AAPL"],
+        )
+    msg = str(exc.value)
+    assert "downstream_market_cap_debug_samples=" in msg
+    assert '"symbol":"AAPL"' in msg
+    assert '"final_row_keys"' in msg
+    assert '"downstream_preflight_reasons":["missing_market_cap"]' in msg
+
+
+def test_fail_closed_market_cap_debug_samples_bounded_and_sanitized(tmp_path):
+    symbols = ["AAA", "BBB", "CCC", "DDD"]
+
+    def fetcher(batch, snapshot_date):
+        fetcher.last_profile_diagnostics = {
+            "market_cap_reconciliation_debug_samples": [
+                {"symbol": sym, "selected_market_cap_date": snapshot_date, "reconciled_market_cap_value": 100.0 + i}
+                for i, sym in enumerate(symbols)
+            ]
+        }
+        rows = []
+        for sym in batch:
+            rows.append(
+                {
+                    "symbol": sym,
+                    "date": snapshot_date,
+                    "price": 99.0,
+                    "sector": "Tech",
+                    "industry": "Soft",
+                    "apikey": "secret",
+                    "api_key": "secret2",
+                    "token": "secret3",
+                    "raw payload": "secret4",
+                }
+            )
+        return rows
+
+    fetcher.last_profile_diagnostics = {}
+    with pytest.raises(RuntimeError) as exc:
+        run_ops_hist1_historical_backfill(
+            snapshot_date="2026-05-27",
+            output_dir=str(tmp_path),
+            window_days=1,
+            fetch_batch=fetcher,
+            symbol_universe_override=symbols,
+        )
+    msg = str(exc.value)
+    assert msg.count('"symbol":"') <= 3
+    lower = msg.lower()
+    assert "apikey" not in lower
+    assert "api_key" not in lower
+    assert "token" not in lower
+    assert "raw payload" not in lower
+
+
 def test_profile_failure_diagnostics_do_not_leak_api_key(tmp_path):
     api_key = "super_secret_key"
 

@@ -1037,17 +1037,28 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             if str(s.get("symbol", "")).strip()
         }
         preflight_debug_samples: list[dict[str, Any]] = []
+        secret_key_fragments = ("apikey", "api_key", "token", "raw_payload", "raw payload")
         for sym in [str(s).upper() for s in universe if str(s).strip()][:3]:
             source_row = next((r for r in valid_rows if str(r.get("symbol", "")).upper() == sym), None)
             dbg = reconciliation_debug_by_symbol.get(sym, {})
+            safe_row_keys = []
+            if source_row is not None:
+                safe_row_keys = [
+                    k for k in sorted([str(k) for k in source_row.keys()])[:30]
+                    if all(fragment not in str(k).lower() for fragment in secret_key_fragments)
+                ]
             preflight_debug_samples.append(
                 {
                     "symbol": sym,
                     "selected_market_cap_date": dbg.get("selected_market_cap_date"),
                     "reconciled_market_cap_value": dbg.get("reconciled_market_cap_value"),
                     "final_row_marketCap_value": None if source_row is None else source_row.get("marketCap", source_row.get("market_cap")),
-                    "final_row_keys": [] if source_row is None else sorted([str(k) for k in source_row.keys()])[:30],
+                    "final_row_keys": safe_row_keys,
                     "downstream_preflight_reasons": downstream_failures_by_symbol.get(sym, []),
+                    "market_cap_exact_match_found": dbg.get("market_cap_exact_match_found"),
+                    "market_cap_reconciled_prior_date": dbg.get("market_cap_reconciled_prior_date"),
+                    "market_cap_reconciliation_distance_days": dbg.get("market_cap_reconciliation_distance_days"),
+                    "market_cap_missing_after_reconciliation": dbg.get("market_cap_missing_after_reconciliation"),
                 }
             )
         valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in downstream_rows if str(r.get("symbol", "")).strip()})
@@ -1099,11 +1110,26 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             diag["empty_snapshot_stage"] = empty_stage
             diag["top_normalization_failure_reasons"] = list(diag.get("top_normalization_failure_reasons") or []) or [empty_reason]
         if preserved == 0:
-            raise RuntimeError(
+            include_market_cap_debug = (
+                diag.get("empty_snapshot_reason_class") == "downstream_preflight_schema_mismatch"
+                or "missing_market_cap" in (diag.get("downstream_preflight_failure_reason_counts") or {})
+            )
+            error_message = (
                 f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; "
                 f"stage={diag.get('empty_snapshot_stage')}; class={diag.get('empty_snapshot_reason_class')}; "
                 f"reasons={diag['top_normalization_failure_reasons']}; "
                 f"downstream_preflight_top_reasons={list((downstream_reason_counts or Counter()).keys())[:5]}"
+            )
+            if include_market_cap_debug:
+                debug_samples = diag.get("downstream_market_cap_debug_samples", [])
+                if not isinstance(debug_samples, list):
+                    debug_samples = []
+                error_message += (
+                    "; downstream_market_cap_debug_samples="
+                    f"{json.dumps(debug_samples[:3], sort_keys=True, separators=(',', ':'))}"
+                )
+            raise RuntimeError(
+                error_message
             )
         if normalized_ratio < minimum_safe_ratio:
             raise RuntimeError(
