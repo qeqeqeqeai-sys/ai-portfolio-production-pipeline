@@ -14,8 +14,10 @@ def main() -> None:
     p.add_argument("--end-date", default=None)
     p.add_argument("--output-root", default="reports/hist_density2_pilot_180d")
     p.add_argument("--density-mode", choices=[DENSITY_MODE_REAL, DENSITY_MODE_FIXTURE], default=DENSITY_MODE_REAL)
+    p.add_argument("--raw-cache-enabled", action="store_true")
+    p.add_argument("--raw-cache-write-enabled", action="store_true")
     args = p.parse_args()
-    payload = run_hist_density2(trading_days=args.trading_days, symbol_count=args.symbol_count, end_date=args.end_date, output_root=args.output_root, density_mode=args.density_mode)
+    payload = run_hist_density2(trading_days=args.trading_days, symbol_count=args.symbol_count, end_date=args.end_date, output_root=args.output_root, density_mode=args.density_mode, raw_cache_enabled=args.raw_cache_enabled, raw_cache_write_enabled=args.raw_cache_write_enabled)
     print(json.dumps({"status": payload["status"], "execution_id": payload["execution_id"]}, sort_keys=True))
 
 

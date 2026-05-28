@@ -405,3 +405,41 @@ def test_snapshot_heartbeat_and_stuck_diagnostics_bounded(tmp_path, monkeypatch)
     assert "current_symbol_index=1/50" in text
     assert "elapsed_seconds_in_snapshot=61" in text
     assert "endpoint_family=stable_historical_price_eod_full" in text
+
+def test_cached_rows_preferred_over_fmp_calls(monkeypatch):
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_ENABLED", "true")
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "false")
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.read_cached_historical_prices", lambda symbols, dates: ([{"symbol":"AAPL","price_date":"2026-05-27","adj_close":123.0,"source":"fmp"}], 0))
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.write_raw_historical_prices", lambda rows: (0,0))
+
+    fetcher = build_historical_fmp_fetcher("test_key")
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no fmp price call expected")) if "historical-price" in str(a[0]) else type("R", (), {"__enter__":lambda s:s, "__exit__":lambda *x:False, "read":lambda s:b'[{"marketCap":1}]' if "market-cap" in str(a[0]) else b'[{"sector":"Tech","industry":"Soft"}]'})())
+    rows = fetcher(["AAPL"], "2026-05-27")
+    assert rows[0]["price"] == 123.0
+    assert fetcher.last_profile_diagnostics["cache_hits"] == 1
+
+
+def test_cache_write_only_when_enabled(monkeypatch):
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_ENABLED", "true")
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "true")
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.read_cached_historical_prices", lambda symbols, dates: ([], 0))
+    called = {"n": 0}
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.write_raw_historical_prices", lambda rows: (called.__setitem__("n", len(rows)) or len(rows), 0))
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+    def fake_urlopen(url, timeout=20):
+        if "historical-price" in url:
+            return _Resp(b'[{"date":"2026-05-27","adjClose":111.0,"volume":1}]')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":123}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Soft"}]')
+        raise AssertionError(url)
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    fetcher(["AAPL"], "2026-05-27")
+    assert called["n"] >= 1
+    assert fetcher.last_profile_diagnostics["cache_rows_written"] >= 1

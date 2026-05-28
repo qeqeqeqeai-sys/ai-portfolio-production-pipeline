@@ -53,7 +53,7 @@ def _emit(lines: dict[str, Any], header: str = "[HIST-DENSITY-2]") -> None:
         print(f"{k}={v}", flush=True)
 
 
-def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count: int = DEFAULT_SYMBOL_COUNT, end_date: str | None = None, output_root: str = "reports/hist_density2", density_mode: Literal["real_ops_hist1", "synthetic_fixture"] = DENSITY_MODE_REAL, fetch_batch: Callable[[Sequence[str]], Iterable[dict[str, Any]]] | None = None, progress_interval: int = 5) -> dict[str, Any]:
+def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count: int = DEFAULT_SYMBOL_COUNT, end_date: str | None = None, output_root: str = "reports/hist_density2", density_mode: Literal["real_ops_hist1", "synthetic_fixture"] = DENSITY_MODE_REAL, fetch_batch: Callable[[Sequence[str]], Iterable[dict[str, Any]]] | None = None, progress_interval: int = 5, raw_cache_enabled: bool = False, raw_cache_write_enabled: bool = False) -> dict[str, Any]:
     if trading_days > MAX_TRADING_DAYS:
         raise ValueError("HIST-DENSITY-2 fails closed: trading day limit exceeded")
     if symbol_count != DEFAULT_SYMBOL_COUNT or symbol_count > MAX_SYMBOL_COUNT:
@@ -72,9 +72,12 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
     chunks = _chunk_dates(dates, MAX_HIST_WINDOW_DAYS)
     run_start = time.monotonic()
     telemetry = {"normalized": 0, "partial": 0, "failed": 0, "exact": 0, "reconciled": 0, "missing": 0, "endpoint_status_counts": {}}
-    _emit({"pilot_id": PILOT_ID, "mode": density_mode, "requested_trading_days": trading_days, "resolved_trading_days": len(dates), "symbol_count": symbol_count, "chunk_count": len(chunks)})
+    _emit({"pilot_id": PILOT_ID, "mode": density_mode, "requested_trading_days": trading_days, "resolved_trading_days": len(dates), "symbol_count": symbol_count, "chunk_count": len(chunks), "raw_cache_enabled": raw_cache_enabled, "raw_cache_write_enabled": raw_cache_write_enabled})
 
     if density_mode == DENSITY_MODE_REAL:
+        import os
+        os.environ["OPS_HIST_RAW_CACHE_ENABLED"] = "true" if raw_cache_enabled else "false"
+        os.environ["OPS_HIST_RAW_CACHE_WRITE_ENABLED"] = "true" if raw_cache_write_enabled else "false"
         for i, chunk in enumerate(chunks, start=1):
             t = run_ops_hist1_historical_backfill(snapshot_date=chunk[-1], output_dir=str(snaps_dir), window_days=len(chunk), fetch_batch=fetch_batch, progress_interval=progress_interval).get("telemetry_summary", {})
             telemetry["normalized"] += int(t.get("normalized_symbol_total", 0))
@@ -144,7 +147,7 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
         "## OPS-HIST-1 → OPS-HIST-7 Artifact Summary", f"ops_hist1={len(snaps)}, ops_hist2={len(hist2.get('historical_continuity_rows', []))}, ops_hist3={len(hist3.get('archetype_transition_rows', []))}, ops_hist4={len(hist4.get('recurrence_rows', []))}, ops_hist5={len(hist5.get('temporal_regime_rows', []))}, ops_hist6={len(hist6.get('morphology_rows', []))}, ops_hist7={len(hist7.get('saturation_rows', []))}.",
         "## Observed Ecology Changes Versus HIST-DENSITY-1", "Comparison unavailable: HIST-DENSITY-1 comparison artifacts not found in this execution context.",
         "## Limitations", "Observational enrichment only; no prediction/trading/replay/topology/autonomous orchestration.",
-        "## Governance Certification", "Certified observational-only, fail-closed, local-artifacts-only execution with no Supabase persistence.",
+        "## Governance Certification", "Certified observational-only execution. Optional raw FMP cache stores raw external input only when explicitly enabled; no cognition/replay/topology/prediction/trading outputs are persisted.",
         "## Recommendation for Next Phase", "Proceed to bounded comparative multi-wave enrichment after operator review.",
     ])
     Path("reports").mkdir(exist_ok=True)
