@@ -359,6 +359,31 @@ def test_market_cap_nearest_prior_within_5_days_reconciliation(monkeypatch):
     assert row["market_cap_missing_after_reconciliation"] is False
 
 
+def test_market_cap_reconciliation_debug_sample_emitted(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/historical-price-eod/full" in url:
+            return _Resp(b'[{"date":"2026-05-27","adjClose":109.0}]')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"date":"2026-05-26","marketCap":1500}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Software"}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    _ = fetcher(["AAPL"], "2026-05-27")
+    samples = fetcher.last_profile_diagnostics["market_cap_reconciliation_debug_samples"]
+    assert samples[0]["symbol"] == "AAPL"
+    assert samples[0]["selected_market_cap_date"] == "2026-05-26"
+    assert samples[0]["reconciled_market_cap_value"] == 1500
+
+
 def test_market_cap_missing_outside_window_preserves_fail_closed(tmp_path):
     def fetcher(batch, snapshot_date):
         return [{
@@ -665,6 +690,21 @@ def test_downstream_preflight_schema_mismatch_fail_closed(tmp_path):
         return [{"symbol": s, "date": snapshot_date, "price": 101.0, "marketCap": 1, "sector": "", "industry": ""} for s in batch]
     with pytest.raises(RuntimeError, match="class=downstream_preflight_schema_mismatch"):
         run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT"])
+
+
+def test_downstream_preflight_accepts_single_market_cap_alias_boundary(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": 101.0, "market_cap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+
+    run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL"],
+    )
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    assert snap["adapter_diagnostics"]["downstream_preflight_failure_reason_counts"] == {}
 
 
 def test_downstream_ingestion_contract_mismatch_classified(tmp_path, monkeypatch):

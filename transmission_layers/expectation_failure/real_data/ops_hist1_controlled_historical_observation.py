@@ -324,6 +324,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             return {}, meta
 
         rows: list[dict] = []
+        market_cap_reconciliation_debug_samples: list[dict[str, Any]] = []
         requested_total = len([s for s in symbols if str(s).strip()])
         run_diag["requested_symbol_dates_count"] = requested_total
         run_diag["cache_lookup_attempted_count"] = requested_total
@@ -487,6 +488,16 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
                 **mc_meta,
             })
+            if len(market_cap_reconciliation_debug_samples) < 3:
+                selected_market_cap_date = snapshot_date if mc_meta.get("market_cap_exact_match_found") else mc_meta.get("market_cap_reconciled_prior_date")
+                market_cap_reconciliation_debug_samples.append(
+                    {
+                        "symbol": sym,
+                        "selected_market_cap_date": selected_market_cap_date,
+                        "reconciled_market_cap_value": mc_row.get("marketCap"),
+                        "market_cap_missing_after_reconciliation": bool(mc_meta.get("market_cap_missing_after_reconciliation", True)),
+                    }
+                )
             normalized_cache_row = normalize_fmp_historical_price_row({"symbol": sym, "date": snapshot_date, "open": price_row.get("open"), "high": price_row.get("high"), "low": price_row.get("low"), "close": price_row.get("close"), "adjClose": price_row.get("adjClose", price_row.get("price")), "volume": price_row.get("volume")}, endpoint_family=run_diag.get("historical_price_endpoint_family"))
             if normalized_cache_row is not None and sym in missing_map:
                 fresh_cache_candidates.append(normalized_cache_row)
@@ -523,6 +534,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             )
         if run_diag["profile_fetch_failure_count"] > 0:
             run_diag["profile_endpoint_status"] = "degraded"
+        run_diag["market_cap_reconciliation_debug_samples"] = market_cap_reconciliation_debug_samples
         _fetch.last_profile_diagnostics = run_diag
         return rows
 
@@ -838,6 +850,9 @@ def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], u
             reasons.append("missing_post_fetch_row")
         else:
             patched_row = dict(row)
+            # Deterministic one-boundary alias normalization before downstream preflight.
+            if patched_row.get("marketCap") is None and patched_row.get("market_cap") is not None:
+                patched_row["marketCap"] = patched_row.get("market_cap")
             if not str(patched_row.get("date", "")).strip():
                 patched_row["date"] = snapshot_date
             if not str(row.get("symbol", "")).strip():
@@ -1011,14 +1026,33 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                 }
             )
         raw_rows = _fetch_with_optional_date(fetch_batch, universe, d, progress_callback=_snapshot_heartbeat)
+        profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
         fetched_row_count = len(raw_rows)
         valid_rows, failures_by_symbol, isolation_reason_counts = _partition_normalization_candidates(raw_rows, universe)
         pre_normalization_row_count = len(valid_rows)
         downstream_rows, downstream_failures_by_symbol, downstream_reason_counts = _partition_downstream_ingestion_candidates(valid_rows, universe, d)
+        reconciliation_debug_by_symbol = {
+            str(s.get("symbol", "")).upper(): s
+            for s in (profile_diag.get("market_cap_reconciliation_debug_samples", []) if isinstance(profile_diag, dict) else [])
+            if str(s.get("symbol", "")).strip()
+        }
+        preflight_debug_samples: list[dict[str, Any]] = []
+        for sym in [str(s).upper() for s in universe if str(s).strip()][:3]:
+            source_row = next((r for r in valid_rows if str(r.get("symbol", "")).upper() == sym), None)
+            dbg = reconciliation_debug_by_symbol.get(sym, {})
+            preflight_debug_samples.append(
+                {
+                    "symbol": sym,
+                    "selected_market_cap_date": dbg.get("selected_market_cap_date"),
+                    "reconciled_market_cap_value": dbg.get("reconciled_market_cap_value"),
+                    "final_row_marketCap_value": None if source_row is None else source_row.get("marketCap", source_row.get("market_cap")),
+                    "final_row_keys": [] if source_row is None else sorted([str(k) for k in source_row.keys()])[:30],
+                    "downstream_preflight_reasons": downstream_failures_by_symbol.get(sym, []),
+                }
+            )
         valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in downstream_rows if str(r.get("symbol", "")).strip()})
         reconciliation_retained_row_count = len(valid_symbols)
         result = ingest_controlled_daily_snapshot(valid_symbols, d, lambda batch, _raw=downstream_rows: [r for r in _raw if str(r.get("symbol", "")).upper() in set(batch)]) if valid_symbols else {"rows": [], "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"), "snapshot_identity": {}, "status": "failed_closed"}
-        profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
         for k in list(cache_totals.keys()):
             v = profile_diag.get(k, 0)
             if v is None:
@@ -1044,6 +1078,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["downstream_preflight_failed_symbol_count"] = len(downstream_failures_by_symbol)
         diag["downstream_preflight_failure_reason_counts"] = dict(sorted((downstream_reason_counts or Counter()).items()))
         diag["downstream_preflight_failure_symbol_samples"] = [{"symbol": s, "reasons": downstream_failures_by_symbol.get(s, [])} for s in sorted(downstream_failures_by_symbol.keys())[:sample_limit]]
+        diag["downstream_market_cap_debug_samples"] = preflight_debug_samples
         diag["reconciliation_retained_row_count"] = reconciliation_retained_row_count
         diag["normalization_retained_row_count"] = preserved
         diag["final_preserved_symbol_count"] = preserved
