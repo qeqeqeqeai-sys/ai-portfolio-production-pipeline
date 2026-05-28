@@ -137,3 +137,41 @@ def test_hist_long4_fail_closed_guards():
     with pytest.raises(ValueError, match="raw cache writes"):
         build_hist_long4_orchestration_plan(raw_cache_write_enabled=True)
     assert build_hist_long4_orchestration_plan()["windows"] == list(REQUIRED_WINDOWS)
+
+
+def test_hist_long4_manual_workflow_is_bounded_and_secret_scoped():
+    workflow = Path(".github/workflows/hist_long4_real_multi_window_ecology.yml")
+    text = workflow.read_text(encoding="utf-8")
+
+    assert "on:\n  workflow_dispatch:" in text
+    assert "push:" not in text
+    assert "pull_request:" not in text
+    assert "schedule:" not in text
+    assert "FMP_API_KEY: ${{ secrets.FMP_API_KEY }}" in text
+    assert "${FMP_API_KEY:-}" in text
+    assert "FMP_API_KEY is required via GitHub repository secrets." in text
+    assert "echo ${FMP_API_KEY}" not in text
+    assert "echo \"${FMP_API_KEY}" not in text
+
+    assert 'HIST_LONG4_WINDOWS: "20,60,120"' in text
+    assert 'HIST_LONG4_MAX_SYMBOLS: "241"' in text
+    assert 'HIST_LONG4_SYMBOL_CHUNK_SIZE: "50"' in text
+    assert 'HIST_LONG4_EXPECTED_CHUNK_COUNT: "5"' in text
+    assert 'if [ "${HIST_LONG4_WINDOWS}" != "20,60,120" ]; then' in text
+    assert "if (( HIST_LONG4_MAX_SYMBOLS > 241 )); then" in text
+    assert "if (( HIST_LONG4_SYMBOL_CHUNK_SIZE != 50 )); then" in text
+    assert "if (( HIST_LONG4_EXPECTED_CHUNK_COUNT != 5 )); then" in text
+
+    assert "supabase_write_enabled=false" in text
+    assert "raw_cache_write_enabled=false" in text
+    assert "replay_activation_enabled=false" in text
+    assert "topology_persistence_enabled=false" in text
+    assert "--raw-cache" not in text
+    assert "--supabase" not in text
+    assert "--replay" not in text
+    assert "--topology" not in text
+
+    assert "python scripts/run_hist_long4_real_multi_window_ecology.py" in text
+    assert "reports/hist_long4_real_multi_window_ecology_review.md" in text
+    assert "artifacts/hist_long4_real_multi_window_ecology_review.json" in text
+    assert "actions/upload-artifact@v4" in text
