@@ -1,0 +1,104 @@
+name: HIST-LONG-4 Real Multi-Window Ecology
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hist-long4-real-multi-window-ecology:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+      HIST_LONG4_WINDOWS: "20,60,120"
+      HIST_LONG4_MAX_SYMBOLS: "241"
+      HIST_LONG4_SYMBOL_CHUNK_SIZE: "50"
+      HIST_LONG4_EXPECTED_CHUNK_COUNT: "5"
+      HIST_LONG4_OUTPUT_ROOT: reports/hist_long4_windows
+      HIST_LONG4_REPORT_PATH: reports/hist_long4_real_multi_window_ecology_review.md
+      HIST_LONG4_ARTIFACT_PATH: artifacts/hist_long4_real_multi_window_ecology_review.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Preflight bounded HIST-LONG-4 controls
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ "${HIST_LONG4_WINDOWS}" != "20,60,120" ]; then
+            echo "HIST-LONG-4 windows must be exactly 20,60,120; got ${HIST_LONG4_WINDOWS}." >&2
+            exit 1
+          fi
+
+          for value_name in HIST_LONG4_MAX_SYMBOLS HIST_LONG4_SYMBOL_CHUNK_SIZE HIST_LONG4_EXPECTED_CHUNK_COUNT; do
+            value="${!value_name}"
+            if ! [[ "${value}" =~ ^[0-9]+$ ]]; then
+              echo "${value_name} must be an integer, got: ${value}" >&2
+              exit 1
+            fi
+          done
+
+          if (( HIST_LONG4_MAX_SYMBOLS > 241 )); then
+            echo "HIST_LONG4_MAX_SYMBOLS must be <= 241; got ${HIST_LONG4_MAX_SYMBOLS}." >&2
+            exit 1
+          fi
+          if (( HIST_LONG4_SYMBOL_CHUNK_SIZE != 50 )); then
+            echo "HIST_LONG4_SYMBOL_CHUNK_SIZE must equal 50; got ${HIST_LONG4_SYMBOL_CHUNK_SIZE}." >&2
+            exit 1
+          fi
+          if (( HIST_LONG4_EXPECTED_CHUNK_COUNT != 5 )); then
+            echo "HIST_LONG4_EXPECTED_CHUNK_COUNT must equal 5; got ${HIST_LONG4_EXPECTED_CHUNK_COUNT}." >&2
+            exit 1
+          fi
+          if [ -z "${FMP_API_KEY:-}" ]; then
+            echo "FMP_API_KEY is required via GitHub repository secrets." >&2
+            exit 1
+          fi
+
+          echo "hist_long4_windows=${HIST_LONG4_WINDOWS}"
+          echo "hist_long4_max_symbols=${HIST_LONG4_MAX_SYMBOLS}"
+          echo "hist_long4_symbol_chunk_size=${HIST_LONG4_SYMBOL_CHUNK_SIZE}"
+          echo "hist_long4_expected_chunk_count=${HIST_LONG4_EXPECTED_CHUNK_COUNT}"
+          echo "fmp_api_key_present=true"
+          echo "supabase_write_enabled=false"
+          echo "raw_cache_write_enabled=false"
+          echo "replay_activation_enabled=false"
+          echo "topology_persistence_enabled=false"
+
+      - name: Run HIST-LONG-4 real multi-window ecology
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long4_real_multi_window_ecology.py \
+            --windows "${HIST_LONG4_WINDOWS}" \
+            --max-symbols "${HIST_LONG4_MAX_SYMBOLS}" \
+            --symbol-chunk-size "${HIST_LONG4_SYMBOL_CHUNK_SIZE}" \
+            --expected-chunk-count "${HIST_LONG4_EXPECTED_CHUNK_COUNT}" \
+            --output-root "${HIST_LONG4_OUTPUT_ROOT}" \
+            --report-path "${HIST_LONG4_REPORT_PATH}" \
+            --artifact-path "${HIST_LONG4_ARTIFACT_PATH}"
+
+      - name: Upload HIST-LONG-4 generated artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hist-long4-real-multi-window-ecology
+          if-no-files-found: warn
+          path: |
+            reports/hist_long4_real_multi_window_ecology_review.md
+            artifacts/hist_long4_real_multi_window_ecology_review.json
+            reports/hist_long4_windows/**
+            artifacts/hist_long4_window_*_completed_bundle.zip
