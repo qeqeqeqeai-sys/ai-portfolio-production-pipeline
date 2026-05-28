@@ -864,6 +864,8 @@ def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], u
                 patched_row["date"] = str(patched_row.get("snapshot_date"))
             if not str(patched_row.get("date", "")).strip():
                 patched_row["date"] = snapshot_date
+            if not str(patched_row.get("snapshot_date", "")).strip() and str(patched_row.get("date", "")).strip():
+                patched_row["snapshot_date"] = str(patched_row.get("date"))
             if not str(row.get("symbol", "")).strip():
                 reasons.append("missing_symbol")
             if not str(patched_row.get("date", "")).strip():
@@ -900,6 +902,10 @@ def _build_downstream_normalization_contract_debug_samples(
     required_raw_fields = ("symbol", "price", "marketCap", "sector")
     samples: list[dict[str, Any]] = []
     for row in list(rows)[: max(1, sample_size)]:
+        canonical_symbol = str(row.get("symbol", "")).strip().upper()
+        canonical_date = str(row.get("date", "")).strip()
+        canonical_snapshot_date = str(row.get("snapshot_date", "")).strip()
+        snapshot_identity = f"{canonical_symbol}|{canonical_snapshot_date or canonical_date}"
         safe_keys = sorted(
             k for k in row.keys()
             if not any(token in str(k).lower() for token in ("api", "token", "secret", "payload"))
@@ -933,11 +939,14 @@ def _build_downstream_normalization_contract_debug_samples(
             rejection_reasons.append("missing_sector_for_live_normalization")
         if "industry_or_subsector" in missing:
             rejection_reasons.append("missing_subsector_for_live_normalization")
-        if not rejection_reasons and str(row.get("symbol", "")).strip():
+        if not canonical_snapshot_date:
+            rejection_reasons.append("missing_snapshot_date_for_identity")
+        if not rejection_reasons and canonical_symbol:
             rejection_reasons.append("likely_symbol_batch_filter_mismatch_or_duplicate_elision")
         samples.append(
             {
-                "symbol": str(row.get("symbol", "")).strip().upper(),
+                "symbol": canonical_symbol,
+                "snapshot_identity": snapshot_identity,
                 "final_row_keys": safe_keys,
                 "final_row_core_values": core_values,
                 "ops_live_required_missing_fields": sorted(set(missing)),
@@ -1157,6 +1166,19 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["pre_normalization_row_count"] = pre_normalization_row_count
         diag["downstream_preflight_retained_row_count"] = len(downstream_rows)
         diag["downstream_preflight_failed_symbol_count"] = len(downstream_failures_by_symbol)
+        diag["downstream_snapshot_identity_missing_count"] = sum(
+            1 for row in downstream_rows if not str(row.get("snapshot_date", "")).strip()
+        )
+        diag["downstream_snapshot_identity_unique_count"] = len(
+            {
+                (
+                    f"{str(row.get('symbol', '')).strip().upper()}|"
+                    f"{str(row.get('snapshot_date', '')).strip() or str(row.get('date', '')).strip()}"
+                )
+                for row in downstream_rows
+                if str(row.get("symbol", "")).strip()
+            }
+        )
         diag["downstream_preflight_failure_reason_counts"] = dict(sorted((downstream_reason_counts or Counter()).items()))
         diag["downstream_preflight_failure_symbol_samples"] = [{"symbol": s, "reasons": downstream_failures_by_symbol.get(s, [])} for s in sorted(downstream_failures_by_symbol.keys())[:sample_limit]]
         diag["downstream_market_cap_debug_samples"] = preflight_debug_samples
@@ -1178,6 +1200,8 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         ) if downstream_rows else 0.0
         diag["reconciliation_retained_row_count"] = reconciliation_retained_row_count
         diag["normalization_retained_row_count"] = preserved
+        diag["ops_live_normalization_acceptance_count"] = preserved
+        diag["ops_live_normalization_rejection_count"] = max(0, len(downstream_rows) - preserved)
         diag["final_preserved_symbol_count"] = preserved
         diag["fetch_empty_response_detected"] = fetched_row_count == 0
         diag["reconciliation_full_filter_detected"] = pre_normalization_row_count > 0 and reconciliation_retained_row_count == 0
