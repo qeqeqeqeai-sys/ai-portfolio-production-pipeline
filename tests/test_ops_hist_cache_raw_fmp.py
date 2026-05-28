@@ -2,6 +2,7 @@ from pathlib import Path
 
 from transmission_layers.expectation_failure.real_data.ops_hist_cache_raw_fmp import (
     build_cache_key,
+    cached_row_to_historical_input_row,
     compute_payload_hash,
     identify_missing_symbol_dates,
     normalize_fmp_historical_price_row,
@@ -26,3 +27,20 @@ def test_identify_missing_symbol_dates_and_normalization_fail_closed():
     assert normalize_fmp_historical_price_row({"symbol": "AAPL", "date": "bad-date", "adjClose": 10}) is None
     missing = identify_missing_symbol_dates(["AAPL", "MSFT"], ["2026-05-27"], [row])
     assert missing == {"MSFT": ["2026-05-27"]}
+
+
+def test_cached_close_maps_to_ops_hist_canonical_price_shape():
+    cached = {
+        "symbol": "AAPL",
+        "price_date": "2026-05-28",
+        "close": 123.45,
+        "adj_close": None,
+        "volume": 1000,
+    }
+    row = cached_row_to_historical_input_row(cached, snapshot_date="2026-05-28", sector="Tech", industry="Software")
+    assert row["symbol"] == "AAPL"
+    assert row["date"] == "2026-05-28"
+    assert row["price"] == 123.45
+    assert row["close"] == 123.45
+    assert row["adjClose"] is None
+    assert row["adj_close"] is None
