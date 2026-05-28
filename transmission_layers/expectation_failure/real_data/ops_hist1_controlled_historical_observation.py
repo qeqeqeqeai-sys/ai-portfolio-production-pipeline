@@ -181,6 +181,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             "historical_price_query_parameters_present": True,
             "historical_price_endpoint_status": "ok",
             "historical_market_cap_endpoint_status": "ok",
+            "historical_market_cap_reconciliation_policy": "exact_or_nearest_prior_within_5_calendar_days",
             "historical_price_http_status_counts": {},
             "historical_price_failure_reasons": {},
             "historical_price_records_requested": 0,
@@ -271,6 +272,54 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 meta["date_reconciliation_used"] = True
                 meta["date_reconciliation_distance_days"] = diff
                 meta["date_reconciliation_policy"] = "nearest_prior_within_5_calendar_days"
+                return row, meta
+            return {}, meta
+
+        def _parse_market_cap_records(payload: Any) -> list[dict[str, Any]]:
+            if isinstance(payload, list):
+                return [row for row in payload if isinstance(row, dict)]
+            if isinstance(payload, dict):
+                if isinstance(payload.get("historical"), list):
+                    return [row for row in payload.get("historical", []) if isinstance(row, dict)]
+                for k in ("data", "results"):
+                    if isinstance(payload.get(k), list):
+                        return [row for row in payload.get(k, []) if isinstance(row, dict)]
+                if "marketCap" in payload:
+                    return [payload]
+            return []
+
+        def _select_market_cap_row(records: list[dict[str, Any]], requested: str) -> tuple[dict[str, Any], dict[str, Any]]:
+            meta = {
+                "market_cap_exact_match_found": False,
+                "market_cap_reconciled_prior_date": None,
+                "market_cap_reconciliation_distance_days": None,
+                "market_cap_reconciliation_policy": "exact_or_nearest_prior_within_5_calendar_days",
+                "market_cap_missing_after_reconciliation": True,
+            }
+            exact = [r for r in records if str(r.get("date", "")) == requested and r.get("marketCap") is not None]
+            if exact:
+                meta["market_cap_exact_match_found"] = True
+                meta["market_cap_missing_after_reconciliation"] = False
+                return exact[0], meta
+            requested_dt = date.fromisoformat(requested)
+            prior_candidates: list[tuple[int, dict[str, Any]]] = []
+            for r in records:
+                if r.get("marketCap") is None:
+                    continue
+                ds = str(r.get("date", ""))
+                try:
+                    dt = date.fromisoformat(ds)
+                except Exception:
+                    continue
+                diff = (requested_dt - dt).days
+                if 0 < diff <= 5:
+                    prior_candidates.append((diff, r))
+            if prior_candidates:
+                prior_candidates.sort(key=lambda x: x[0])
+                diff, row = prior_candidates[0]
+                meta["market_cap_reconciled_prior_date"] = row.get("date")
+                meta["market_cap_reconciliation_distance_days"] = diff
+                meta["market_cap_missing_after_reconciliation"] = False
                 return row, meta
             return {}, meta
 
@@ -401,8 +450,16 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 sym_diag["endpoint_attempts"] = sym_diag["endpoint_attempts"][:3]
             run_diag["historical_price_symbol_diagnostics"].append(sym_diag)
 
-            mc_q = {"from": snapshot_date, "to": snapshot_date, "limit": "1", "apikey": api_key}
+            mc_q = {"from": lookback_from, "to": snapshot_date, "apikey": api_key}
             mc_url = _build_fmp_url(FMP_LEGACY_HISTORICAL_MARKET_CAP_URL.format(symbol=sym), mc_q)
+            mc_row: dict[str, Any] = {}
+            mc_meta: dict[str, Any] = {
+                "market_cap_exact_match_found": False,
+                "market_cap_reconciled_prior_date": None,
+                "market_cap_reconciliation_distance_days": None,
+                "market_cap_reconciliation_policy": "exact_or_nearest_prior_within_5_calendar_days",
+                "market_cap_missing_after_reconciliation": True,
+            }
             try:
                 mc = _request_json_with_retries(
                     url=mc_url,
@@ -410,12 +467,14 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                     symbol=sym,
                     snapshot_date=snapshot_date,
                 )
-                mc_row = mc[0] if isinstance(mc, list) and mc else {}
+                mc_records = _parse_market_cap_records(mc)
+                mc_row, mc_meta = _select_market_cap_row(mc_records, snapshot_date)
             except Exception as exc:
                 if isinstance(exc, TimeoutError) and "request retries exhausted" in str(exc):
                     raise RuntimeError(str(exc))
                 run_diag["historical_market_cap_endpoint_status"] = "degraded"
-                mc_row = {}
+            if mc_meta.get("market_cap_missing_after_reconciliation"):
+                run_diag["historical_market_cap_endpoint_status"] = "degraded"
             profile = _fetch_profile(sym, run_diag)
             rows.append({
                 "symbol": sym,
@@ -426,6 +485,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 "sector": profile.get("sector", "unknown") or "unknown",
                 "industry": profile.get("industry", "unknown") or "unknown",
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
+                **mc_meta,
             })
             normalized_cache_row = normalize_fmp_historical_price_row({"symbol": sym, "date": snapshot_date, "open": price_row.get("open"), "high": price_row.get("high"), "low": price_row.get("low"), "close": price_row.get("close"), "adjClose": price_row.get("adjClose", price_row.get("price")), "volume": price_row.get("volume")}, endpoint_family=run_diag.get("historical_price_endpoint_family"))
             if normalized_cache_row is not None and sym in missing_map:
