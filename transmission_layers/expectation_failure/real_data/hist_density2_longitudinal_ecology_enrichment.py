@@ -79,6 +79,7 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
         import os
         os.environ["OPS_HIST_RAW_CACHE_ENABLED"] = "true" if raw_cache_enabled else "false"
         os.environ["OPS_HIST_RAW_CACHE_WRITE_ENABLED"] = "true" if raw_cache_write_enabled else "false"
+        os.environ["OPS_HIST_CACHE_ONLY_VALIDATION"] = "true" if cache_only_validation else "false"
         for i, chunk in enumerate(chunks, start=1):
             t = run_ops_hist1_historical_backfill(snapshot_date=chunk[-1], output_dir=str(snaps_dir), window_days=len(chunk), fetch_batch=fetch_batch, progress_interval=progress_interval).get("telemetry_summary", {})
             telemetry["normalized"] += int(t.get("normalized_symbol_total", 0))

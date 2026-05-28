@@ -15,6 +15,7 @@ import inspect
 from collections import Counter
 
 from transmission_layers.expectation_failure.real_data.ops_hist_cache_raw_fmp import (
+    cached_row_to_historical_input_row,
     identify_missing_symbol_dates,
     normalize_fmp_historical_price_row,
     raw_cache_write_readiness,
@@ -183,6 +184,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             "sector_industry_fallback_used": False,
             "current_snapshot_date": snapshot_date,
         }
+        cache_only_validation = str(os.getenv("OPS_HIST_CACHE_ONLY_VALIDATION", "false")).lower() == "true"
         def _record_price_failure(reason: str, http_status: int | None = None) -> None:
             run_diag["historical_price_failure_reasons"][reason] = run_diag["historical_price_failure_reasons"].get(reason, 0) + 1
             if http_status is not None:
@@ -296,10 +298,21 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 if sym in cached_by_symbol:
                     c = cached_by_symbol[sym]
                     run_diag["cache_hits"] += 1
-                    profile = _fetch_profile(sym, run_diag)
-                    rows.append({"symbol": sym, "date": snapshot_date, "price": c.get("adj_close", c.get("close")), "volume": c.get("volume"), "marketCap": None, "sector": profile.get("sector", "unknown") or "unknown", "industry": profile.get("industry", "unknown") or "unknown", "historical_adapter_mode": "fmp_historical_price_plus_market_cap"})
+                    profile = {"sector": "unknown", "industry": "unknown"} if cache_only_validation else _fetch_profile(sym, run_diag)
+                    rows.append(
+                        cached_row_to_historical_input_row(
+                            c,
+                            snapshot_date=snapshot_date,
+                            sector=profile.get("sector", "unknown") or "unknown",
+                            industry=profile.get("industry", "unknown") or "unknown",
+                        )
+                    )
                     continue
                 run_diag["cache_misses"] += 1
+                if cache_only_validation:
+                    raise RuntimeError(
+                        f"OPS-HIST-1 fails closed: cache-only validation missing cached row for symbol={sym} snapshot_date={snapshot_date}"
+                    )
                 run_diag["fetched_symbol_dates_count"] += 1
                 if sym == trace_symbol:
                     run_diag["sample_symbol_date_trace"]["fetched_from_fmp"] = True

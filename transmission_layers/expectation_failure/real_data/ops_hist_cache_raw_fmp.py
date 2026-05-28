@@ -41,6 +41,39 @@ def normalize_fmp_historical_price_row(row: Mapping[str, Any], *, endpoint_famil
     return normalized
 
 
+def _first_present_numeric(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def cached_row_to_historical_input_row(
+    row: Mapping[str, Any],
+    *,
+    snapshot_date: str,
+    sector: str = "unknown",
+    industry: str = "unknown",
+) -> dict[str, Any]:
+    close = row.get("close")
+    adj_close = _first_present_numeric(row.get("adj_close"), row.get("adjClose"))
+    price = _first_present_numeric(row.get("price"), adj_close, close)
+    symbol = str(row.get("symbol") or "").strip().upper()
+    return {
+        "symbol": symbol,
+        "date": snapshot_date,
+        "price": price,
+        "close": close,
+        "adjClose": adj_close,
+        "adj_close": adj_close,
+        "volume": row.get("volume"),
+        "marketCap": row.get("marketCap"),
+        "sector": sector or "unknown",
+        "industry": industry or "unknown",
+        "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
+    }
+
+
 def _cache_enabled() -> bool:
     return str(os.getenv("OPS_HIST_RAW_CACHE_ENABLED", "false")).lower() == "true"
 

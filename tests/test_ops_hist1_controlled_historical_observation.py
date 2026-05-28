@@ -419,6 +419,24 @@ def test_cached_rows_preferred_over_fmp_calls(monkeypatch):
     assert fetcher.last_profile_diagnostics["cache_hits"] == 1
 
 
+def test_cache_only_validation_uses_cached_rows_without_any_fmp_calls(monkeypatch):
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_ENABLED", "true")
+    monkeypatch.setenv("OPS_HIST_CACHE_ONLY_VALIDATION", "true")
+    monkeypatch.setattr(
+        "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.read_cached_historical_prices",
+        lambda symbols, dates: ([{"symbol": str(s).upper(), "price_date": dates[0], "close": 123.0, "adj_close": None, "source": "fmp"} for s in symbols], 0),
+    )
+    monkeypatch.setattr(
+        "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no FMP calls expected in cache-only validation mode")),
+    )
+    fetcher = build_historical_fmp_fetcher("test_key")
+    rows = fetcher(["AAPL"], "2026-05-28")
+    assert rows[0]["price"] == 123.0
+    assert fetcher.last_profile_diagnostics["cache_hits"] == 1
+    assert fetcher.last_profile_diagnostics["cache_misses"] == 0
+
+
 def test_cache_write_only_when_enabled(monkeypatch):
     monkeypatch.setenv("OPS_HIST_RAW_CACHE_ENABLED", "true")
     monkeypatch.setenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "true")
