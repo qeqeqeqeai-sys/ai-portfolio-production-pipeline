@@ -8,7 +8,7 @@
   "chunk_plan": {
     "symbol_chunk_count": 5,
     "symbol_chunk_size": 50,
-    "trading_days": 180
+    "trading_days": 20
   },
   "chunk_symbols": [
     [
@@ -52,6 +52,7 @@
       "ZS",
       "OKTA",
       "NET",
+      "AKAM",
       "DDOG",
       "MDB",
       "ESTC",
@@ -60,7 +61,6 @@
       "SHOP",
       "WDAY",
       "DOCU",
-      "CFLT",
       "PLTR"
     ],
     [
@@ -83,7 +83,8 @@
       "CHKP",
       "GEN",
       "S",
-      "CYBR",
+      "RBRK",
+      "SAIL",
       "VRNS",
       "TENB",
       "GE",
@@ -105,17 +106,19 @@
       "PWR",
       "IR",
       "SYM",
-      "ABB",
+      "ZBRA",
+      "GEV",
+      "NVT",
       "ISRG",
       "XOM",
       "CVX",
       "COP",
-      "EOG",
-      "OXY",
-      "SLB",
-      "HAL"
+      "EOG"
     ],
     [
+      "OXY",
+      "SLB",
+      "HAL",
       "BKR",
       "NEE",
       "SO",
@@ -162,12 +165,12 @@
       "HYG",
       "JNK",
       "LQD",
-      "KRE",
-      "KBE",
-      "IWM",
-      "IYR"
+      "KRE"
     ],
     [
+      "KBE",
+      "IWM",
+      "IYR",
       "VNQ",
       "TLT",
       "UNH",
@@ -214,12 +217,12 @@
       "VZ",
       "TMUS",
       "SPOT",
-      "ROKU",
-      "ZM",
-      "PARA",
-      "WBD"
+      "ROKU"
     ],
     [
+      "ZM",
+      "FOXA",
+      "WBD",
       "UPS",
       "FDX",
       "UNP",
@@ -301,6 +304,7 @@
     "ZS",
     "OKTA",
     "NET",
+    "AKAM",
     "DDOG",
     "MDB",
     "ESTC",
@@ -309,7 +313,6 @@
     "SHOP",
     "WDAY",
     "DOCU",
-    "CFLT",
     "PLTR",
     "DT",
     "SMCI",
@@ -330,7 +333,8 @@
     "CHKP",
     "GEN",
     "S",
-    "CYBR",
+    "RBRK",
+    "SAIL",
     "VRNS",
     "TENB",
     "GE",
@@ -352,7 +356,9 @@
     "PWR",
     "IR",
     "SYM",
-    "ABB",
+    "ZBRA",
+    "GEV",
+    "NVT",
     "ISRG",
     "XOM",
     "CVX",
@@ -459,7 +465,7 @@
     "SPOT",
     "ROKU",
     "ZM",
-    "PARA",
+    "FOXA",
     "WBD",
     "UPS",
     "FDX",
@@ -500,14 +506,40 @@
     "ICLN",
     "TAN"
   ],
-  "estimated_symbol_date_rows": 42840,
+  "estimated_symbol_date_rows": 4820,
   "governance_certification": {
     "governance_mode": "observational_only",
     "no_cognition_replay_topology_persistence": true,
     "no_prediction_or_trading_execution": true,
     "persistence": "local_artifacts_only",
     "raw_input_cache_persistence_controlled_separately": true,
-    "replay_execution_enabled": false
+    "replay_execution_enabled": false,
+    "topology_activation_enabled": false
+  },
+  "preflight_validation": {
+    "chunk_count": 5,
+    "chunk_sizes": [
+      50,
+      50,
+      50,
+      50,
+      41
+    ],
+    "cognition_replay_topology_persistence_disabled": true,
+    "effective_symbol_count": 241,
+    "expected_chunk_count": 5,
+    "raw_cache_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replacement_map_applied": {
+      "ABB": "GEV",
+      "CYBR": "SAIL",
+      "FANUY": "NVT",
+      "RBT": "ZBRA",
+      "SENT": "RBRK"
+    },
+    "replay_execution_enabled": false,
+    "requested_max_symbols": 241,
+    "topology_activation_enabled": false
   },
   "schema_version": "hist_density3_v1",
   "sde2_categories": {
@@ -547,6 +579,7 @@
       "ZS",
       "OKTA",
       "NET",
+      "AKAM",
       "DDOG",
       "MDB",
       "ESTC",
@@ -555,7 +588,6 @@
       "SHOP",
       "WDAY",
       "DOCU",
-      "CFLT",
       "PLTR",
       "DT"
     ],
@@ -588,7 +620,7 @@
       "SPOT",
       "ROKU",
       "ZM",
-      "PARA",
+      "FOXA",
       "WBD"
     ],
     "consumer_discretionary": [
@@ -890,6 +922,12 @@
       "primary_category": "bubble_sensitive_momentum_entities",
       "secondary_categories": []
     },
+    "AKAM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
     "ALB": {
       "category_overlap_count": 1,
       "fmp_availability_risk": "low",
@@ -1064,12 +1102,6 @@
       "category_overlap_count": 1,
       "fmp_availability_risk": "low",
       "primary_category": "commodities",
-      "secondary_categories": []
-    },
-    "CFLT": {
-      "category_overlap_count": 1,
-      "fmp_availability_risk": "low",
-      "primary_category": "cloud_software_infrastructure",
       "secondary_categories": []
     },
     "CHKP": {
@@ -1311,6 +1343,12 @@
       "category_overlap_count": 1,
       "fmp_availability_risk": "low",
       "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "FOXA": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
       "secondary_categories": []
     },
     "FTNT": {
@@ -1801,12 +1839,6 @@
       "secondary_categories": [
         "cybersecurity"
       ]
-    },
-    "PARA": {
-      "category_overlap_count": 1,
-      "fmp_availability_risk": "low",
-      "primary_category": "communication_platforms",
-      "secondary_categories": []
     },
     "PFE": {
       "category_overlap_count": 1,
@@ -2348,19 +2380,24 @@
   },
   "sde2_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2",
   "universe_telemetry": {
-    "effective_symbol_count": 238,
+    "duplicate_guard_substitutions": {},
+    "effective_symbol_count": 241,
     "effective_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2_effective",
     "excluded_symbols": [],
     "high_risk_symbols_detected": [
       "SENT",
+      "CYBR",
       "RBT",
+      "ABB",
       "FANUY"
     ],
     "original_symbol_count": 241,
     "replacements_applied": {
-      "FANUY": "ABB",
-      "RBT": "ROK",
-      "SENT": "CHKP"
+      "ABB": "GEV",
+      "CYBR": "SAIL",
+      "FANUY": "NVT",
+      "RBT": "ZBRA",
+      "SENT": "RBRK"
     }
   }
 }

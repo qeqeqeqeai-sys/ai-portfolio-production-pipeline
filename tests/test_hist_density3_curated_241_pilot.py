@@ -14,6 +14,7 @@ def test_dry_run_uses_sde2_and_replacements(tmp_path):
     assert "RBT" not in symbols and "FANUY" not in symbols and "SENT" not in symbols and "CYBR" not in symbols
     assert "ROK" in symbols and "ETN" in symbols and "CHKP" in symbols and "PANW" in symbols
     assert "ABB" in get_sde2_curated_symbol_universe() and "CYBR" in get_sde2_curated_symbol_universe()
+    assert "PARA" not in get_sde2_curated_symbol_universe() and "FOXA" in get_sde2_curated_symbol_universe()
 
 
 def test_cache_flags_default_off_from_runner_workflow_text():
@@ -90,9 +91,30 @@ def test_universe_replacements_preserve_count_and_version(tmp_path):
     assert len(preview["effective_symbols"]) == len(base)
     assert preview["universe_telemetry"]["effective_universe_version"].endswith("_effective")
     assert preview["sde2_universe_version"].startswith("SDE2_CURATED_SYMBOL_ECOLOGY")
-    assert "ABB" in base and "CYBR" in base and "CFLT" in base
-    assert "ETN" in preview["effective_symbols"] and "PANW" in preview["effective_symbols"] and "DDOG" in preview["effective_symbols"]
-    assert "ABB" not in preview["effective_symbols"] and "CYBR" not in preview["effective_symbols"] and "CFLT" not in preview["effective_symbols"]
+    assert "ABB" in base and "CYBR" in base and "CFLT" not in base and "PARA" not in base
+    assert "DDOG" in preview["effective_symbols"] and "FOXA" in preview["effective_symbols"]
+    assert "ABB" not in preview["effective_symbols"] and "CYBR" not in preview["effective_symbols"] and "CFLT" not in preview["effective_symbols"] and "PARA" not in preview["effective_symbols"]
+    assert preview["effective_symbols"].count("FOXA") == 1
+    assert len(preview["effective_symbols"]) == len(set(preview["effective_symbols"]))
+
+
+def test_effective_universe_duplicate_guard_and_para_replacement(tmp_path):
+    out = run_hist_density3(output_root=str(tmp_path), dry_run_config_only=True)
+    preview = out["config_preview"]
+    symbols = preview["effective_symbols"]
+    assert "PARA" not in symbols
+    assert symbols.count("FOXA") == 1
+    assert len(symbols) == len(set(symbols))
+    assert preview["universe_telemetry"]["duplicate_guard_substitutions"] == {}
+
+
+def test_replacement_map_records_wbd_first_rejection_for_para():
+    from transmission_layers.expectation_failure.real_data.hist_density3_curated_ecology_expansion import REPLACEMENT_CANDIDATES, REPLACEMENTS
+
+    base = get_sde2_curated_symbol_universe()
+    assert "WBD" in base
+    assert REPLACEMENTS["PARA"] == "FOXA"
+    assert REPLACEMENT_CANDIDATES["PARA"] == ["FOXA", "NWSA", "LYV", "SPOT", "NFLX"]
 
 
 def test_stage5_preflight_and_fail_closed_raw_cache_writes(tmp_path):

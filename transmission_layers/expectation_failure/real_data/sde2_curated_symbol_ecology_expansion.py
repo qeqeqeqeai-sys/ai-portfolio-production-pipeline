@@ -12,7 +12,7 @@ MAX_UNIVERSE_SIZE = 300
 CATEGORY_SYMBOLS: "OrderedDict[str, list[str]]" = OrderedDict([
     ("mega_cap_ai_technology", "AAPL MSFT GOOGL AMZN META NVDA TSLA ORCL IBM ADBE CRM SAP NOW".split()),
     ("semiconductors", "AMD AVGO QCOM MU INTC TXN AMAT LRCX KLAC MCHP MPWR ADI MRVL ON NXPI ASML TSM ARM GFS UMC".split()),
-    ("cloud_software_infrastructure", "SNOW PANW CRWD FTNT ZS OKTA NET CFLT DDOG MDB ESTC HUBS TEAM SHOP WDAY DOCU DDOG PLTR DT".split()),
+    ("cloud_software_infrastructure", "SNOW PANW CRWD FTNT ZS OKTA NET AKAM DDOG MDB ESTC HUBS TEAM SHOP WDAY DOCU PLTR DT".split()),
     ("ai_infrastructure_suppliers", "SMCI ANET CSCO HPE DELL HPQ WDC STX TER SWKS QRVO JBL FLEX APH GLW".split()),
     ("cybersecurity", "PANW CRWD FTNT ZS OKTA CHKP GEN S SENT CYBR VRNS TENB".split()),
     ("industrials_automation", "GE HON EMR ETN ROK PH ITW JCI CARR OTIS MMM CAT DE URI GWW FAST PWR".split()),
@@ -23,7 +23,7 @@ CATEGORY_SYMBOLS: "OrderedDict[str, list[str]]" = OrderedDict([
     ("credit_sensitive_entities", "HYG JNK LQD KRE KBE IWM IYR VNQ TLT".split()),
     ("healthcare_biotech", "UNH ELV CI HUM CVS ABBV JNJ MRK PFE BMY LLY AMGN GILD REGN BIIB VRTX MRNA".split()),
     ("consumer_discretionary", "WMT COST TGT HD LOW SBUX MCD CMG NKE LULU ROST TJX BKNG EXPE MAR HLT RCL CCL NCLH".split()),
-    ("communication_platforms", "NFLX DIS CMCSA CHTR T VZ TMUS SPOT ROKU ZM PARA WBD".split()),
+    ("communication_platforms", "NFLX DIS CMCSA CHTR T VZ TMUS SPOT ROKU ZM FOXA WBD".split()),
     ("transportation_logistics", "UPS FDX UNP CSX NSC DAL UAL AAL LUV JBHT ODFL XPO CHRW".split()),
     ("macro_sensitive_etfs", "SPY QQQ IWM DIA XLF XLK XLE XLU XLI XLY XLV XLB XLP".split()),
     ("volatility_defensive_assets", "VIXY SHY IEF TIP UUP GLD SLV XLU XLP".split()),
@@ -43,8 +43,8 @@ CATEGORY_TO_SECTOR = {
 }
 
 # bounded deterministic overrides
-EXCLUSION_REPLACEMENT_MAP = OrderedDict({"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW"})
-FMP_AVAILABILITY_RISK_OVERRIDES = {"FANUY": "high", "RBT": "high", "SENT": "high", "VIXY": "medium", "ARKK": "medium"}
+EXCLUSION_REPLACEMENT_MAP = OrderedDict({"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW", "CFLT": "DDOG", "PARA": "FOXA"})
+FMP_AVAILABILITY_RISK_OVERRIDES = {"FANUY": "high", "RBT": "high", "SENT": "high", "PARA": "high", "VIXY": "medium", "ARKK": "medium"}
 
 
 def _membership_index() -> dict[str, list[str]]:
@@ -160,7 +160,7 @@ def build_sde2_artifacts(output_root: str = "reports/sde2") -> dict[str, str]:
             f"- Universe size: {len(symbols)}",
             "- GOOG/GOOGL handling: GOOG excluded; GOOGL retained as canonical share class to avoid dual counting.",
             "", "## FMP availability risk",
-            "- High-risk focus: FANUY, RBT, SENT (flagged for deterministic review and bounded replacement mapping).",
+            "- High-risk focus: FANUY, RBT, SENT, PARA (flagged for deterministic review and bounded replacement mapping).",
             "", "## Governance certification",
             "- observational-only semantics", "- no prediction/trading logic", "- no replay activation", "- no topology activation", "- no autonomous orchestration", "- no cognition persistence introduced",
         ]) + "\n",

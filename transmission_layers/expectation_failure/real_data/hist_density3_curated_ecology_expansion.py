@@ -24,7 +24,17 @@ STAGE5_TRADING_DAYS = 20
 DEFAULT_MAX_SYMBOLS = 241
 DEFAULT_SYMBOL_CHUNK_SIZE = 50
 STAGE5_MAX_CHUNKS = 5
-REPLACEMENTS = {"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW", "CFLT": "DDOG"}
+REPLACEMENTS = {"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW", "CFLT": "DDOG", "PARA": "FOXA"}
+REPLACEMENT_CANDIDATES = {
+    "RBT": ["ROK", "ZBRA", "TER", "ISRG", "SYM"],
+    "FANUY": ["ETN", "NVT", "PH", "EMR", "HON"],
+    "SENT": ["CHKP", "RBRK", "TENB", "VRNS", "GEN"],
+    "ABB": ["ETN", "GEV", "PH", "EMR", "HON"],
+    "CYBR": ["PANW", "SAIL", "RBRK", "TENB", "VRNS", "FTNT"],
+    "CFLT": ["DDOG", "AKAM", "NET", "ESTC", "MDB"],
+    "PARA": ["FOXA", "NWSA", "LYV", "SPOT", "NFLX"],
+}
+DUPLICATE_GUARD_FILLERS = ["NWSA", "LYV", "ZBRA", "NVT", "GEV", "RBRK", "SAIL", "PAYX", "VRSN", "IAC"]
 
 
 def _gov() -> dict[str, Any]:
@@ -39,26 +49,43 @@ def _gov() -> dict[str, Any]:
     }
 
 
+def _select_unique_symbol(candidates: list[str], seen: set[str], reserved: set[str] | None = None) -> str:
+    reserved = reserved or set()
+    for candidate in candidates + DUPLICATE_GUARD_FILLERS:
+        if candidate and candidate not in seen and candidate not in reserved:
+            return candidate
+    raise ValueError("HIST-DENSITY-3 fails closed: no unique replacement candidate available")
+
+
 def _effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, apply_sde2_replacements: bool) -> tuple[list[str], dict[str, Any]]:
     picked = get_sde2_curated_symbol_universe()[:max_symbols]
     detected = [s for s in picked if s in REPLACEMENTS]
     replacements_applied: dict[str, str] = {}
     excluded: list[str] = []
+    duplicate_guard_substitutions: dict[str, str] = {}
     out: list[str] = []
+    seen: set[str] = set()
+    reserved = set(picked) - set(REPLACEMENTS)
     for s in picked:
+        selected = s
         if s in REPLACEMENTS and not include_high_risk_symbols:
             if apply_sde2_replacements:
-                replacements_applied[s] = REPLACEMENTS[s]
-                out.append(REPLACEMENTS[s])
+                selected = _select_unique_symbol(REPLACEMENT_CANDIDATES.get(s, [REPLACEMENTS[s]]), seen, reserved)
+                replacements_applied[s] = selected
             else:
                 excluded.append(s)
-            continue
-        out.append(s)
+                continue
+        elif selected in seen:
+            selected = _select_unique_symbol([], seen, reserved)
+            duplicate_guard_substitutions[s] = selected
+        out.append(selected)
+        seen.add(selected)
     tel = {
         "original_symbol_count": len(picked),
         "effective_symbol_count": len(out),
         "high_risk_symbols_detected": detected,
         "replacements_applied": replacements_applied,
+        "duplicate_guard_substitutions": duplicate_guard_substitutions,
         "excluded_symbols": excluded,
         "effective_universe_version": f"{SDE2_VERSION}_effective",
     }

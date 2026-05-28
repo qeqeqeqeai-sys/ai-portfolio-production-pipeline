@@ -64,5 +64,18 @@ def test_cflt_replaced_with_ddog_and_count_stable():
     categories = get_sde2_symbol_categories()
     assert "CFLT" not in symbols
     assert "DDOG" in symbols
+    assert "AKAM" in symbols
     assert len(categories["cloud_software_infrastructure"]) == 18
+
+
+def test_para_replaced_with_wbd_first_preference_fallback_to_foxa():
+    symbols = get_sde2_curated_symbol_universe()
+    categories = get_sde2_symbol_categories()
+    communication = categories["communication_platforms"]
+    assert "WBD" in symbols
+    assert "PARA" not in symbols
+    assert "FOXA" in symbols
+    assert communication[communication.index("FOXA")] == "FOXA"
+    assert symbols.count("FOXA") == 1
+    assert len(symbols) == len(set(symbols))
 
