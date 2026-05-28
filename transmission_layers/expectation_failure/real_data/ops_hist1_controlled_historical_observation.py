@@ -14,6 +14,13 @@ from urllib.error import HTTPError, URLError
 import inspect
 from collections import Counter
 
+from transmission_layers.expectation_failure.real_data.ops_hist_cache_raw_fmp import (
+    identify_missing_symbol_dates,
+    normalize_fmp_historical_price_row,
+    read_cached_historical_prices,
+    write_raw_historical_prices,
+)
+
 from transmission_layers.expectation_failure.real_data.ops_live1_controlled_ecosystem_ingestion import (
     GOVERNANCE_BOUNDARIES,
     build_live_fmp_fetcher,
@@ -126,6 +133,14 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
         snapshot_dt = date.fromisoformat(snapshot_date)
         lookback_from = (snapshot_dt - timedelta(days=7)).isoformat()
         run_diag: dict[str, Any] = {
+            "cache_enabled": str(os.getenv("OPS_HIST_RAW_CACHE_ENABLED", "false")).lower() == "true",
+            "cache_write_enabled": str(os.getenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "false")).lower() == "true",
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "cache_rows_written": 0,
+            "cache_read_failures": 0,
+            "cache_write_failures": 0,
+
             "fmp_endpoint_family_used": "stable/historical-price-eod/full + legacy/historical-market-capitalization + stable/profile",
             "historical_price_endpoint_family": "stable_historical_price_eod_full",
             "primary_endpoint_family": "stable_historical_price_eod_full",
@@ -227,12 +242,26 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             return {}, meta
 
         rows: list[dict] = []
+        cached_rows, cache_read_failures = read_cached_historical_prices(symbols, [snapshot_date])
+        run_diag["cache_read_failures"] = int(cache_read_failures)
+        cached_by_symbol = {str(r.get("symbol", "")).upper(): r for r in cached_rows if str(r.get("price_date", "")) == snapshot_date}
+        missing_map = identify_missing_symbol_dates(symbols, [snapshot_date], cached_rows)
+
         endpoint_candidates = (
             ("stable_historical_price_eod_full", FMP_STABLE_HISTORICAL_PRICE_URL, False),
             ("stable_historical_price_eod_light", FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL, False),
             ("legacy_historical_price_full", FMP_LEGACY_HISTORICAL_PRICE_URL, True),
         )
+        fresh_cache_candidates: list[dict[str, Any]] = []
         for symbol_index, symbol in enumerate(symbols, start=1):
+            if sym := str(symbol).upper():
+                if sym in cached_by_symbol:
+                    c = cached_by_symbol[sym]
+                    run_diag["cache_hits"] += 1
+                    profile = _fetch_profile(sym, run_diag)
+                    rows.append({"symbol": sym, "date": snapshot_date, "price": c.get("adj_close", c.get("close")), "volume": c.get("volume"), "marketCap": None, "sector": profile.get("sector", "unknown") or "unknown", "industry": profile.get("industry", "unknown") or "unknown", "historical_adapter_mode": "fmp_historical_price_plus_market_cap"})
+                    continue
+                run_diag["cache_misses"] += 1
             sym = str(symbol).upper()
             run_diag["historical_price_records_requested"] += 1
             sym_diag: dict[str, Any] = {"symbol": sym, "requested_snapshot_date": snapshot_date, "endpoint_attempts": []}
@@ -328,7 +357,17 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 "industry": profile.get("industry", "unknown") or "unknown",
                 "historical_adapter_mode": "fmp_historical_price_plus_market_cap",
             })
-        if run_diag["historical_price_symbols_succeeded"] == 0:
+            normalized_cache_row = normalize_fmp_historical_price_row({"symbol": sym, "date": snapshot_date, "open": price_row.get("open"), "high": price_row.get("high"), "low": price_row.get("low"), "close": price_row.get("close"), "adjClose": price_row.get("adjClose", price_row.get("price")), "volume": price_row.get("volume")}, endpoint_family=run_diag.get("historical_price_endpoint_family"))
+            if normalized_cache_row is not None and sym in missing_map:
+                fresh_cache_candidates.append(normalized_cache_row)
+        if fresh_cache_candidates and run_diag.get("cache_write_enabled"):
+            written, write_failures = write_raw_historical_prices(fresh_cache_candidates)
+            run_diag["cache_rows_written"] = int(written)
+            run_diag["cache_write_failures"] = int(write_failures)
+        requested_total = run_diag["cache_hits"] + run_diag["cache_misses"]
+        run_diag["cache_hit_ratio"] = round((run_diag["cache_hits"] / requested_total), 6) if requested_total else 0.0
+        run_diag["fmp_requests_avoided_estimate"] = int(run_diag["cache_hits"])
+        if run_diag["historical_price_symbols_succeeded"] == 0 and run_diag["cache_hits"] == 0:
             top_reasons = Counter(run_diag["historical_price_failure_reasons"]).most_common(3)
             raise RuntimeError(
                 "OPS-HIST-1 fails closed: all symbols failed historical price fetch; "
