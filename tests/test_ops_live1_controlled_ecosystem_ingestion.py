@@ -183,3 +183,63 @@ def test_posture_classification_is_deterministic_and_explainable():
     assert posture["drivers"]["reasons"]
     out2 = ingest_controlled_daily_snapshot(_symbols(12), "2026-05-27", _fetcher_ok)
     assert posture == out2["surfaces"]["ecosystem_posture_snapshot"][0]
+
+
+def test_canonicalized_ingest_boundary_accepts_mixed_case_whitespace_symbols():
+    def mixed_fetcher(_batch):
+        return [
+            {"symbol": " aapl ", "price": 280.14, "marketCap": 1, "sector": "Technology", "industry": "Consumer Electronics"},
+            {"symbol": "msft", "price": 420.0, "marketCap": 2, "sector": "Technology", "industry": "Software"},
+        ]
+
+    out = ingest_controlled_daily_snapshot([" AAPL ", "msft"], "2026-05-01", mixed_fetcher)
+
+    assert out["status"] == "ok"
+    assert [r["symbol"] for r in out["rows"]] == ["AAPL", "MSFT"]
+    assert out["ingestion_boundary_diagnostics"]["canonicalized_batch_symbols_sample"] == ["AAPL", "MSFT"]
+    assert out["ingestion_boundary_diagnostics"]["canonicalized_row_symbols_sample"] == ["AAPL", "MSFT"]
+
+
+def test_ingest_boundary_drops_rows_not_in_canonicalized_batch_with_reason():
+    def noisy_fetcher(batch):
+        rows = list(_fetcher_ok(batch))
+        rows.append({"symbol": " TSLA ", "price": 1.0, "marketCap": 1, "sector": "Auto", "industry": "EV"})
+        return rows
+
+    out = ingest_controlled_daily_snapshot([" aapl "], "2026-05-01", noisy_fetcher)
+
+    assert out["status"] == "ok"
+    diagnostics = out["ingestion_boundary_diagnostics"]
+    assert diagnostics["canonicalized_batch_symbols_sample"] == ["AAPL"]
+    assert diagnostics["canonicalized_row_symbols_sample"] == ["AAPL", "TSLA"]
+    assert diagnostics["dropped_due_to_batch_filter_count"] == 1
+    assert diagnostics["rejected_row_reasons"] == [{"symbol": "TSLA", "rejection_reason": "symbol_not_in_canonicalized_batch"}]
+
+
+def test_duplicate_elision_only_removes_true_duplicates_after_canonicalization():
+    def duplicate_fetcher(_batch):
+        row = {"price": 280.14, "marketCap": 1, "sector": "Technology", "industry": "Consumer Electronics"}
+        return [{"symbol": " AAPL ", **row}, {"symbol": "aapl", **row}]
+
+    out = ingest_controlled_daily_snapshot(["AAPL"], "2026-05-01", duplicate_fetcher)
+
+    assert out["status"] == "ok"
+    assert len(out["rows"]) == 1
+    assert out["rows"][0]["symbol"] == "AAPL"
+    diagnostics = out["ingestion_boundary_diagnostics"]
+    assert diagnostics["duplicate_elision_count"] == 1
+    assert diagnostics["rejected_row_reasons"] == [{"symbol": "AAPL", "rejection_reason": "duplicate_symbol_after_canonicalization"}]
+
+
+def test_conflicting_duplicate_after_canonicalization_still_fails_closed():
+    def conflicting_duplicate_fetcher(_batch):
+        return [
+            {"symbol": " AAPL ", "price": 280.14, "marketCap": 1, "sector": "Technology", "industry": "Consumer Electronics"},
+            {"symbol": "aapl", "price": 281.14, "marketCap": 1, "sector": "Technology", "industry": "Consumer Electronics"},
+        ]
+
+    out = ingest_controlled_daily_snapshot(["AAPL"], "2026-05-01", conflicting_duplicate_fetcher)
+
+    assert out["status"] == "failed_closed"
+    assert out["integrity"]["duplicate_count"] == 1
+    assert out["ingestion_boundary_diagnostics"]["duplicate_elision_count"] == 0

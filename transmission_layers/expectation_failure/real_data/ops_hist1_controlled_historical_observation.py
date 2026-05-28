@@ -26,6 +26,7 @@ from transmission_layers.expectation_failure.real_data.ops_hist_cache_raw_fmp im
 
 from transmission_layers.expectation_failure.real_data.ops_live1_controlled_ecosystem_ingestion import (
     GOVERNANCE_BOUNDARIES,
+    canonicalize_symbol,
     build_live_fmp_fetcher,
     build_normalized_operational_surfaces,
     build_operator_payloads,
@@ -112,7 +113,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
         return "UNEXPECTED_ERROR"
 
     def _fetch_profile(symbol: str, diagnostics: dict[str, Any]) -> dict[str, str]:
-        sym = str(symbol).upper()
+        sym = canonicalize_symbol(symbol)
         if sym in profile_cache:
             return profile_cache[sym]
         profile_q = urlencode({"symbol": sym, "apikey": api_key})
@@ -333,10 +334,10 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
         valid_cached_rows = [r for r in cached_rows if str(r.get("price_date", "")) == snapshot_date]
         run_diag["valid_cached_rows_count"] = len(valid_cached_rows)
         run_diag["malformed_cached_rows_count"] = max(0, len(cached_rows) - len(valid_cached_rows))
-        cached_by_symbol = {str(r.get("symbol", "")).upper(): r for r in valid_cached_rows}
+        cached_by_symbol = {canonicalize_symbol(r.get("symbol", "")): r for r in valid_cached_rows}
         missing_map = identify_missing_symbol_dates(symbols, [snapshot_date], valid_cached_rows)
         run_diag["missing_symbol_dates_count"] = sum(len(v) for v in missing_map.values())
-        trace_symbol = str(symbols[0]).upper() if symbols else ""
+        trace_symbol = canonicalize_symbol(symbols[0]) if symbols else ""
         trace = {"cache_key": f"fmp|{trace_symbol}|{snapshot_date}", "read_before_fetch": "miss", "fetched_from_fmp": False, "write_attempted": False, "write_confirmed": None, "read_after_write": "not_attempted"}
         if trace_symbol in cached_by_symbol:
             trace["read_before_fetch"] = "hit"
@@ -360,7 +361,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
         )
         fresh_cache_candidates: list[dict[str, Any]] = []
         for symbol_index, symbol in enumerate(symbols, start=1):
-            if sym := str(symbol).upper():
+            if sym := canonicalize_symbol(symbol):
                 if sym in cached_by_symbol:
                     c = cached_by_symbol[sym]
                     run_diag["cache_hits"] += 1
@@ -382,7 +383,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 run_diag["fetched_symbol_dates_count"] += 1
                 if sym == trace_symbol:
                     run_diag["sample_symbol_date_trace"]["fetched_from_fmp"] = True
-            sym = str(symbol).upper()
+            sym = canonicalize_symbol(symbol)
             run_diag["historical_price_records_requested"] += 1
             sym_diag: dict[str, Any] = {"symbol": sym, "requested_snapshot_date": snapshot_date, "endpoint_attempts": []}
             price_row: dict[str, Any] = {}
@@ -807,11 +808,11 @@ def _minimum_safe_normalized_ratio() -> float:
 
 
 def _partition_normalization_candidates(raw_rows: Sequence[dict[str, Any]], universe: Sequence[str]) -> tuple[list[dict[str, Any]], dict[str, list[str]], Counter[str]]:
-    by_symbol = {str(r.get("symbol", "")).strip().upper(): r for r in raw_rows if str(r.get("symbol", "")).strip()}
+    by_symbol = {canonicalize_symbol(r.get("symbol", "")): r for r in raw_rows if str(r.get("symbol", "")).strip()}
     failures_by_symbol: dict[str, list[str]] = {}
     reason_counts: Counter[str] = Counter()
     valid_rows: list[dict[str, Any]] = []
-    for sym in [str(s).upper() for s in universe if str(s).strip()]:
+    for sym in [canonicalize_symbol(s) for s in universe if str(s).strip()]:
         row = by_symbol.get(sym)
         reasons: list[str] = []
         if row is None:
@@ -841,18 +842,18 @@ def _partition_normalization_candidates(raw_rows: Sequence[dict[str, Any]], univ
 
 
 def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], universe: Sequence[str], snapshot_date: str) -> tuple[list[dict[str, Any]], dict[str, list[str]], Counter[str]]:
-    by_symbol = {str(r.get("symbol", "")).strip().upper(): r for r in rows if str(r.get("symbol", "")).strip()}
+    by_symbol = {canonicalize_symbol(r.get("symbol", "")): r for r in rows if str(r.get("symbol", "")).strip()}
     failures_by_symbol: dict[str, list[str]] = {}
     reason_counts: Counter[str] = Counter()
     valid_rows: list[dict[str, Any]] = []
-    for sym in [str(s).upper() for s in universe if str(s).strip()]:
+    for sym in [canonicalize_symbol(s) for s in universe if str(s).strip()]:
         row = by_symbol.get(sym)
         reasons: list[str] = []
         if row is None:
             reasons.append("missing_post_fetch_row")
         else:
             patched_row = dict(row)
-            patched_row["symbol"] = str(patched_row.get("symbol", "")).strip().upper()
+            patched_row["symbol"] = canonicalize_symbol(patched_row.get("symbol", ""))
             # Deterministic one-boundary alias normalization before downstream preflight.
             if patched_row.get("price") is None and patched_row.get("close") is not None:
                 patched_row["price"] = patched_row.get("close")
@@ -902,7 +903,7 @@ def _build_downstream_normalization_contract_debug_samples(
     required_raw_fields = ("symbol", "price", "marketCap", "sector")
     samples: list[dict[str, Any]] = []
     for row in list(rows)[: max(1, sample_size)]:
-        canonical_symbol = str(row.get("symbol", "")).strip().upper()
+        canonical_symbol = canonicalize_symbol(row.get("symbol", ""))
         canonical_date = str(row.get("date", "")).strip()
         canonical_snapshot_date = str(row.get("snapshot_date", "")).strip()
         snapshot_identity = f"{canonical_symbol}|{canonical_snapshot_date or canonical_date}"
@@ -954,6 +955,15 @@ def _build_downstream_normalization_contract_debug_samples(
             }
         )
     return samples
+
+
+def _filter_rows_for_canonical_batch(rows: Sequence[dict[str, Any]], batch: Sequence[str]) -> list[dict[str, Any]]:
+    canonical_batch = {canonicalize_symbol(s) for s in batch if canonicalize_symbol(s)}
+    return [
+        r
+        for r in rows
+        if canonicalize_symbol(r.get("symbol", "")) in canonical_batch
+    ]
 
 
 def _fetch_with_optional_date(
@@ -1062,7 +1072,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     window_dates = deterministic_historical_window_dates(snapshot_date, window_days)
     if len(window_dates) > MAX_SNAPSHOTS_PER_RUN:
         raise ValueError("OPS-HIST-1 fails closed: snapshot count exceeds MAX_SNAPSHOTS_PER_RUN")
-    universe = [str(s).upper() for s in (symbol_universe_override or get_ops_live1b_controlled_universe()) if str(s).strip()]
+    universe = sorted({canonicalize_symbol(s) for s in (symbol_universe_override or get_ops_live1b_controlled_universe()) if canonicalize_symbol(s)})
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     snapshots = []
@@ -1110,15 +1120,15 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         pre_normalization_row_count = len(valid_rows)
         downstream_rows, downstream_failures_by_symbol, downstream_reason_counts = _partition_downstream_ingestion_candidates(valid_rows, universe, d)
         reconciliation_debug_by_symbol = {
-            str(s.get("symbol", "")).upper(): s
+            canonicalize_symbol(s.get("symbol", "")): s
             for s in (profile_diag.get("market_cap_reconciliation_debug_samples", []) if isinstance(profile_diag, dict) else [])
             if str(s.get("symbol", "")).strip()
         }
         preflight_debug_samples: list[dict[str, Any]] = []
         secret_key_fragments = ("apikey", "api_key", "token", "raw_payload", "raw payload")
-        for sym in [str(s).upper() for s in universe if str(s).strip()][:3]:
-            source_row = next((r for r in valid_rows if str(r.get("symbol", "")).upper() == sym), None)
-            downstream_row = next((r for r in downstream_rows if str(r.get("symbol", "")).upper() == sym), None)
+        for sym in [canonicalize_symbol(s) for s in universe if str(s).strip()][:3]:
+            source_row = next((r for r in valid_rows if canonicalize_symbol(r.get("symbol", "")) == sym), None)
+            downstream_row = next((r for r in downstream_rows if canonicalize_symbol(r.get("symbol", "")) == sym), None)
             dbg = reconciliation_debug_by_symbol.get(sym, {})
             safe_row_keys = []
             if source_row is not None:
@@ -1140,9 +1150,22 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                     "market_cap_missing_after_reconciliation": dbg.get("market_cap_missing_after_reconciliation"),
                 }
             )
-        valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in downstream_rows if str(r.get("symbol", "")).strip()})
+        valid_symbols = sorted({canonicalize_symbol(r.get("symbol", "")) for r in downstream_rows if canonicalize_symbol(r.get("symbol", ""))})
         reconciliation_retained_row_count = len(valid_symbols)
-        result = ingest_controlled_daily_snapshot(valid_symbols, d, lambda batch, _raw=downstream_rows: [r for r in _raw if str(r.get("symbol", "")).upper() in set(batch)]) if valid_symbols else {"rows": [], "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"), "snapshot_identity": {}, "status": "failed_closed"}
+        result = (
+            ingest_controlled_daily_snapshot(
+                valid_symbols,
+                d,
+                lambda batch, _raw=downstream_rows: _filter_rows_for_canonical_batch(_raw, batch),
+            )
+            if valid_symbols
+            else {
+                "rows": [],
+                "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"),
+                "snapshot_identity": {},
+                "status": "failed_closed",
+            }
+        )
         for k in list(cache_totals.keys()):
             v = profile_diag.get(k, 0)
             if v is None:
@@ -1172,7 +1195,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["downstream_snapshot_identity_unique_count"] = len(
             {
                 (
-                    f"{str(row.get('symbol', '')).strip().upper()}|"
+                    f"{canonicalize_symbol(row.get('symbol', ''))}|"
                     f"{str(row.get('snapshot_date', '')).strip() or str(row.get('date', '')).strip()}"
                 )
                 for row in downstream_rows
@@ -1198,6 +1221,12 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             (market_cap_available_count / len(downstream_rows)),
             6,
         ) if downstream_rows else 0.0
+        boundary_diag = result.get("ingestion_boundary_diagnostics", {}) if isinstance(result, dict) else {}
+        diag["canonicalized_batch_symbols_sample"] = list(boundary_diag.get("canonicalized_batch_symbols_sample", valid_symbols[:sample_limit]))
+        diag["canonicalized_row_symbols_sample"] = list(boundary_diag.get("canonicalized_row_symbols_sample", []))
+        diag["dropped_due_to_batch_filter_count"] = int(boundary_diag.get("dropped_due_to_batch_filter_count", 0) or 0)
+        diag["duplicate_elision_count"] = int(boundary_diag.get("duplicate_elision_count", 0) or 0)
+        diag["ingest_boundary_rejected_row_reasons"] = list(boundary_diag.get("rejected_row_reasons", []))[:sample_limit]
         diag["reconciliation_retained_row_count"] = reconciliation_retained_row_count
         diag["normalization_retained_row_count"] = preserved
         diag["ops_live_normalization_acceptance_count"] = preserved
