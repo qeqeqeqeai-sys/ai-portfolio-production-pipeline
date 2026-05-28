@@ -31,6 +31,9 @@ OPS_HIST1_OBSERVATION_MODE = "controlled_historical_observation"
 PROGRESS_INTERVAL_DEFAULT = 5
 PROGRESS_INTERVAL_MIN = 1
 PROGRESS_INTERVAL_MAX = 20
+FMP_HTTP_TIMEOUT_SECONDS = 20
+FMP_HTTP_MAX_ATTEMPTS = 3
+SNAPSHOT_HEARTBEAT_SECONDS = 60
 
 FMP_STABLE_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/stable/historical-price-eod/full"
 FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL = "https://financialmodelingprep.com/stable/historical-price-eod/light"
@@ -40,6 +43,31 @@ FMP_LEGACY_HISTORICAL_MARKET_CAP_URL = "https://financialmodelingprep.com/api/v3
 
 def _build_fmp_url(base_url: str, params: dict[str, str]) -> str:
     return f"{base_url}?{urlencode(params)}"
+
+
+def _bounded_sleep_seconds(attempt_index: int) -> float:
+    return min(1.0 * attempt_index, 2.0)
+
+
+def _request_json_with_retries(*, url: str, endpoint_family: str, symbol: str, snapshot_date: str, timeout_seconds: int = FMP_HTTP_TIMEOUT_SECONDS, max_attempts: int = FMP_HTTP_MAX_ATTEMPTS) -> Any:
+    last_exc: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urlopen(url, timeout=timeout_seconds) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except HTTPError:
+            raise
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= max_attempts:
+                break
+            time.sleep(_bounded_sleep_seconds(attempt))
+    reason = "TIMEOUT" if isinstance(last_exc, TimeoutError) else ("URL_ERROR" if isinstance(last_exc, URLError) else "UNEXPECTED_ERROR")
+    raise TimeoutError(
+        "OPS-HIST-1 fails closed: request retries exhausted "
+        f"(endpoint_family={endpoint_family}, symbol={symbol}, snapshot_date={snapshot_date}, "
+        f"attempts={max_attempts}, timeout_seconds={timeout_seconds}, last_reason={reason})"
+    )
 
 
 def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str], Iterable[dict]]:
@@ -63,8 +91,12 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             return profile_cache[sym]
         profile_q = urlencode({"symbol": sym, "apikey": api_key})
         try:
-            with urlopen(f"https://financialmodelingprep.com/stable/profile?{profile_q}", timeout=20) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
+            payload = _request_json_with_retries(
+                url=f"https://financialmodelingprep.com/stable/profile?{profile_q}",
+                endpoint_family="stable_profile",
+                symbol=sym,
+                snapshot_date=diagnostics.get("current_snapshot_date", "unknown"),
+            )
             diagnostics["profile_records_requested"] += 1
             if isinstance(payload, list) and payload:
                 row = payload[0] if isinstance(payload[0], dict) else {}
@@ -90,7 +122,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             profile_cache[sym] = profile
             return profile
 
-    def _fetch(symbols: Sequence[str], snapshot_date: str) -> list[dict]:
+    def _fetch(symbols: Sequence[str], snapshot_date: str, progress_callback: Callable[[int, str, str], None] | None = None) -> list[dict]:
         snapshot_dt = date.fromisoformat(snapshot_date)
         lookback_from = (snapshot_dt - timedelta(days=7)).isoformat()
         run_diag: dict[str, Any] = {
@@ -119,6 +151,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             "profile_fetch_failure_count": 0,
             "profile_fetch_failure_reasons": {},
             "sector_industry_fallback_used": False,
+            "current_snapshot_date": snapshot_date,
         }
         def _record_price_failure(reason: str, http_status: int | None = None) -> None:
             run_diag["historical_price_failure_reasons"][reason] = run_diag["historical_price_failure_reasons"].get(reason, 0) + 1
@@ -199,13 +232,15 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             ("stable_historical_price_eod_light", FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL, False),
             ("legacy_historical_price_full", FMP_LEGACY_HISTORICAL_PRICE_URL, True),
         )
-        for symbol in symbols:
+        for symbol_index, symbol in enumerate(symbols, start=1):
             sym = str(symbol).upper()
             run_diag["historical_price_records_requested"] += 1
             sym_diag: dict[str, Any] = {"symbol": sym, "requested_snapshot_date": snapshot_date, "endpoint_attempts": []}
             price_row: dict[str, Any] = {}
             sel_meta: dict[str, Any] = {}
             for endpoint_family, endpoint_url, symbol_in_path in endpoint_candidates:
+                if progress_callback is not None:
+                    progress_callback(symbol_index, sym, endpoint_family)
                 params = {"from": lookback_from, "to": snapshot_date, "apikey": api_key}
                 if not symbol_in_path:
                     params["symbol"] = sym
@@ -214,9 +249,15 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                 payload = None
                 status = "ok"
                 try:
-                    with urlopen(url, timeout=20) as resp:
-                        payload = json.loads(resp.read().decode("utf-8"))
+                    payload = _request_json_with_retries(
+                        url=url,
+                        endpoint_family=endpoint_family,
+                        symbol=sym,
+                        snapshot_date=snapshot_date,
+                    )
                 except Exception as exc:
+                    if isinstance(exc, TimeoutError) and "request retries exhausted" in str(exc):
+                        raise RuntimeError(str(exc))
                     status = _bounded_http_reason(exc)
                     run_diag["historical_price_endpoint_status"] = "degraded"
                     _record_price_failure(status, getattr(exc, "code", None))
@@ -264,10 +305,16 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             mc_q = {"from": snapshot_date, "to": snapshot_date, "limit": "1", "apikey": api_key}
             mc_url = _build_fmp_url(FMP_LEGACY_HISTORICAL_MARKET_CAP_URL.format(symbol=sym), mc_q)
             try:
-                with urlopen(mc_url, timeout=20) as resp:
-                    mc = json.loads(resp.read().decode("utf-8"))
+                mc = _request_json_with_retries(
+                    url=mc_url,
+                    endpoint_family="legacy_historical_market_cap",
+                    symbol=sym,
+                    snapshot_date=snapshot_date,
+                )
                 mc_row = mc[0] if isinstance(mc, list) and mc else {}
-            except Exception:
+            except Exception as exc:
+                if isinstance(exc, TimeoutError) and "request retries exhausted" in str(exc):
+                    raise RuntimeError(str(exc))
                 run_diag["historical_market_cap_endpoint_status"] = "degraded"
                 mc_row = {}
             profile = _fetch_profile(sym, run_diag)
@@ -478,8 +525,15 @@ def _snapshot_payload(snapshot_date: str, ingest_result: dict[str, Any], univers
 
 
 
-def _fetch_with_optional_date(fetch_batch: Callable[..., Iterable[dict]], symbols: Sequence[str], snapshot_date: str) -> list[dict]:
+def _fetch_with_optional_date(
+    fetch_batch: Callable[..., Iterable[dict]],
+    symbols: Sequence[str],
+    snapshot_date: str,
+    progress_callback: Callable[[int, str, str], None] | None = None,
+) -> list[dict]:
     params = inspect.signature(fetch_batch).parameters
+    if "progress_callback" in params:
+        return list(fetch_batch(symbols, snapshot_date, progress_callback=progress_callback))
     if len(params) >= 2:
         return list(fetch_batch(symbols, snapshot_date))
     return list(fetch_batch(symbols))
@@ -562,7 +616,26 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     snapshot_durations: list[float] = []
     for d in window_dates:
         snapshot_started = time.monotonic()
-        raw_rows = _fetch_with_optional_date(fetch_batch, universe, d)
+        heartbeat_state = {"last_emitted_seconds": 0}
+        def _snapshot_heartbeat(symbol_index: int, symbol: str, endpoint_family: str) -> None:
+            elapsed = int(time.monotonic() - snapshot_started)
+            if elapsed < SNAPSHOT_HEARTBEAT_SECONDS:
+                return
+            if elapsed - int(heartbeat_state["last_emitted_seconds"]) < SNAPSHOT_HEARTBEAT_SECONDS:
+                return
+            heartbeat_state["last_emitted_seconds"] = elapsed
+            _emit_ops_hist1_progress(
+                {
+                    "snapshot_heartbeat": True,
+                    "snapshot_index": f"{len(snapshots) + 1}/{len(window_dates)}",
+                    "snapshot_date": d,
+                    "current_symbol_index": f"{symbol_index}/{len(universe)}",
+                    "current_symbol": symbol,
+                    "elapsed_seconds_in_snapshot": elapsed,
+                    "endpoint_family": endpoint_family,
+                }
+            )
+        raw_rows = _fetch_with_optional_date(fetch_batch, universe, d, progress_callback=_snapshot_heartbeat)
         result = ingest_controlled_daily_snapshot(universe, d, lambda batch, _raw=raw_rows: _raw)
         profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
         diag = _historical_diagnostics(raw_rows, result.get("rows", []), universe, d, profile_diag)

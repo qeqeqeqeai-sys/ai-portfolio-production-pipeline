@@ -355,3 +355,53 @@ def test_profile_failure_diagnostics_do_not_leak_api_key(tmp_path):
     snap = load_ops_hist1_snapshots(str(tmp_path))[0]
     serialized = str(snap)
     assert api_key not in serialized
+
+
+def test_historical_fetcher_retries_are_bounded(monkeypatch):
+    calls = {"count": 0}
+
+    def fake_urlopen(url, timeout=20):
+        calls["count"] += 1
+        raise TimeoutError("simulated timeout")
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    with pytest.raises(RuntimeError) as exc:
+        fetcher(["AAPL"], "2026-05-27")
+    msg = str(exc.value)
+    assert "request retries exhausted" in msg
+    assert "attempts=3" in msg
+    assert "timeout_seconds=20" in msg
+    assert calls["count"] == 3
+
+
+def test_snapshot_heartbeat_and_stuck_diagnostics_bounded(tmp_path, monkeypatch):
+    monotonic_values = iter([0.0, 0.0, 61.0, 130.0, 150.0, 151.0, 152.0, 153.0, 154.0, 155.0])
+    monkeypatch.setattr(
+        "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.time.monotonic",
+        lambda: next(monotonic_values),
+    )
+
+    def fetcher(batch, snapshot_date, progress_callback=None):
+        if progress_callback:
+            progress_callback(1, str(batch[0]), "stable_historical_price_eod_full")
+            progress_callback(2, str(batch[1]), "stable_historical_price_eod_full")
+        return [{"symbol": sym, "date": snapshot_date, "price": 101.0, "marketCap": 1000.0, "sector": "Tech", "industry": "Soft"} for sym in batch]
+
+    capture = io.StringIO()
+    with contextlib.redirect_stdout(capture):
+        out = run_ops_hist1_historical_backfill(
+            snapshot_date="2026-05-27",
+            output_dir=str(tmp_path),
+            window_days=1,
+            fetch_batch=fetcher,
+            progress_interval=1,
+        )
+    text = capture.getvalue()
+    assert out["status"] == "ok"
+    assert "snapshot_heartbeat=True" in text
+    assert "snapshot_index=1/1" in text
+    assert "snapshot_date=2026-05-27" in text
+    assert "current_symbol_index=1/50" in text
+    assert "elapsed_seconds_in_snapshot=61" in text
+    assert "endpoint_family=stable_historical_price_eod_full" in text
