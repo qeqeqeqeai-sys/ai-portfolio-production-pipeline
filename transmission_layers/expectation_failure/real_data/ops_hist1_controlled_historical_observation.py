@@ -17,6 +17,7 @@ from collections import Counter
 from transmission_layers.expectation_failure.real_data.ops_hist_cache_raw_fmp import (
     identify_missing_symbol_dates,
     normalize_fmp_historical_price_row,
+    raw_cache_write_readiness,
     read_cached_historical_prices,
     summarize_write_result,
     write_raw_historical_prices,
@@ -274,6 +275,15 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
         elif run_diag["malformed_cached_rows_count"] > 0:
             trace["read_before_fetch"] = "malformed"
         run_diag["sample_symbol_date_trace"] = trace
+        readiness = {"ready": True, "reason": "not_required"}
+        if run_diag.get("cache_write_enabled"):
+            readiness = raw_cache_write_readiness()
+        run_diag["raw_cache_readiness"] = readiness
+        if run_diag.get("cache_write_enabled") and not readiness.get("ready", False):
+            raise RuntimeError(
+                "OPS-HIST-1 fails closed: raw cache write readiness failed; "
+                f"reason={readiness.get('reason')}"
+            )
 
         endpoint_candidates = (
             ("stable_historical_price_eod_full", FMP_STABLE_HISTORICAL_PRICE_URL, False),
@@ -391,7 +401,7 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             normalized_cache_row = normalize_fmp_historical_price_row({"symbol": sym, "date": snapshot_date, "open": price_row.get("open"), "high": price_row.get("high"), "low": price_row.get("low"), "close": price_row.get("close"), "adjClose": price_row.get("adjClose", price_row.get("price")), "volume": price_row.get("volume")}, endpoint_family=run_diag.get("historical_price_endpoint_family"))
             if normalized_cache_row is not None and sym in missing_map:
                 fresh_cache_candidates.append(normalized_cache_row)
-        if fresh_cache_candidates and run_diag.get("cache_write_enabled"):
+        if run_diag.get("cache_write_enabled") and run_diag.get("cache_misses", 0) > 0:
             write_result = summarize_write_result(fresh_cache_candidates)
             run_diag["write_attempted_rows_count"] = int(write_result.get("write_attempted_rows", 0))
             run_diag["write_success_rows_count"] = write_result.get("write_success_rows")
@@ -407,6 +417,11 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             if run_diag["sample_symbol_date_trace"]["write_attempted"]:
                 post_rows, _ = read_cached_historical_prices([trace_symbol], [snapshot_date])
                 run_diag["sample_symbol_date_trace"]["read_after_write"] = "hit" if post_rows else "miss"
+            if run_diag["write_attempted_rows_count"] == 0 and run_diag.get("historical_price_symbols_succeeded", 0) > 0:
+                raise RuntimeError(
+                    "OPS-HIST-1 fails closed: cache writes enabled and misses fetched "
+                    "but no write attempts were made"
+                )
         requested_total = run_diag["cache_hits"] + run_diag["cache_misses"]
         run_diag["cache_hit_ratio"] = round((run_diag["cache_hits"] / requested_total), 6) if requested_total else 0.0
         run_diag["fmp_requests_avoided_estimate"] = int(run_diag["cache_hits"])
