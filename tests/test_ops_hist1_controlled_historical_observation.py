@@ -279,6 +279,11 @@ def test_bounded_failure_samples_ordered_and_sanitized(tmp_path, monkeypatch):
     assert t["endpoint_failure_samples"] == sorted(t["endpoint_failure_samples"], key=lambda s: (s["requested_snapshot_date"], s["symbol"], s["endpoint_name"], s["attempt_index"]))
     blob = __import__("json").dumps(t).lower()
     assert "apikey" not in blob and "https://" not in blob and "historical\":" not in blob
+    snap = __import__("json").loads((tmp_path / "ops_hist1_2026-05-27.json").read_text(encoding="utf-8"))
+    for k in ("missing_record_samples", "endpoint_failure_samples", "affected_symbol_count", "affected_date_count", "top_failure_reasons"):
+        assert k in snap
+    assert len(snap["missing_record_samples"]) <= 10
+    assert len(snap["endpoint_failure_samples"]) <= 10
 
 
 def test_response_shape_data_and_reconciliation(monkeypatch):

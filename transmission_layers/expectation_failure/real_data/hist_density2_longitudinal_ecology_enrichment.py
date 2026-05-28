@@ -153,6 +153,8 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
             "affected_symbol_count": len(affected_symbols),
             "affected_date_count": len(affected_dates),
             "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(telemetry["failure_reasons"].items(), key=lambda kv: (-kv[1], kv[0]))[:5]],
+            "telemetry_sample_limit_default": DEFAULT_TELEMETRY_MAX_SAMPLES,
+            "telemetry_sample_limit_hard_cap": TELEMETRY_MAX_SAMPLES_HARD_CAP,
             "estimated_remaining_snapshots": 0,
             "estimated_remaining_minutes": 0,
             **cache_telemetry,
