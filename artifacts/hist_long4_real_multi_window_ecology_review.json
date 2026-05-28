@@ -1,0 +1,287 @@
+{
+  "all_three_real_windows_completed": false,
+  "artifact_paths": {
+    "artifact_path": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "report_path": "reports/hist_long4_real_multi_window_ecology_review.md"
+  },
+  "bounded_diagnostics": {
+    "concentration_trend": "insufficient_windows",
+    "recurring_weak_symbols": [],
+    "replay_persistence_trend": "insufficient_windows",
+    "strongest_recurring_sectors": [],
+    "strongest_recurring_subsectors": [],
+    "window_comparison_table": []
+  },
+  "completed_artifact_bundles": [],
+  "execution_error": "FMP_API_KEY missing; OPS-HIST-1 fails closed",
+  "governance_certification": {
+    "density_mode": "real_ops_hist1",
+    "governance_mode": "observational_only",
+    "local_artifacts_only": true,
+    "observational_report_only": true,
+    "phase": "HIST-LONG-4_real_multi_window_ecology_accumulation",
+    "prediction_enabled": false,
+    "raw_cache_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "supabase_write_enabled": false,
+    "topology_activation_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "longitudinal_comparison": {
+    "completed_window_count": 0,
+    "concentration_diversity": {
+      "concentration_drift": "insufficient_windows",
+      "diversity_persistence": "blocked_no_completed_real_windows",
+      "monoculture_risk": [],
+      "sector_hhi": {
+        "trend": "insufficient_windows",
+        "values": []
+      },
+      "strongest_recurring_sectors": [],
+      "strongest_recurring_subsectors": [],
+      "subsector_hhi": {
+        "trend": "insufficient_windows",
+        "values": []
+      }
+    },
+    "concentration_trend": "insufficient_windows",
+    "ecology_stability": {
+      "contradiction_burden": {
+        "trend": "insufficient_windows",
+        "values": [],
+        "volatility": null
+      },
+      "morphology_persistence": {
+        "assessment": "blocked_no_completed_real_windows",
+        "posture_recurrence": []
+      },
+      "replay_density": {
+        "activation_status": "not_activated",
+        "trend": "insufficient_windows",
+        "values": []
+      },
+      "replay_saturation": "not_activated_density_only",
+      "temporal_persistence": "blocked_no_completed_real_windows",
+      "topology_richness": {
+        "persistence_status": "report_local_not_persisted",
+        "trend": "insufficient_windows",
+        "values": []
+      }
+    },
+    "ingestion_quality": {
+      "completeness": {
+        "trend": "insufficient_windows",
+        "values": [],
+        "volatility": null
+      },
+      "endpoint_failure_window_count": 0,
+      "exact_date_match_ratios": {
+        "trend": "insufficient_windows",
+        "values": []
+      },
+      "failed_counts": [],
+      "normalized_rows": {
+        "trend": "insufficient_windows",
+        "values": []
+      },
+      "partial_counts": [],
+      "reconciled_date_ratios": {
+        "trend": "insufficient_windows",
+        "values": []
+      }
+    },
+    "replay_persistence_trend": "insufficient_windows",
+    "structural_persistence": {
+      "decaying_structures": [],
+      "emerging_structures": [],
+      "fragility_clusters": [
+        "not_assessed"
+      ],
+      "propagation_asymmetry": "blocked_no_completed_real_windows",
+      "stable_structures": [
+        "observational_governance"
+      ]
+    },
+    "weak_symbol_analysis": {
+      "foxa_stability": {
+        "assessment": "blocked_no_completed_real_windows",
+        "present_all_windows": false,
+        "weak_windows": []
+      },
+      "new_weak_symbols": [],
+      "provider_degradation_recurrence": [],
+      "recurring_weak_symbols": [],
+      "weak_symbol_recurrence": []
+    },
+    "windows": [
+      20,
+      60,
+      120
+    ]
+  },
+  "operational_stability_assessment": {
+    "five_chunk_envelope": "preflight_only",
+    "foxa_assessment": {
+      "assessment": "blocked_no_completed_real_windows",
+      "present_all_windows": false,
+      "weak_windows": []
+    },
+    "governance_boundary": "observational_only_no_replay_no_supabase_no_raw_cache_write_no_topology_persistence",
+    "provider_degradation_trend": [],
+    "real_multi_window_status": "blocked_before_all_required_windows_completed"
+  },
+  "orchestration_plan": {
+    "apply_sde2_replacements": true,
+    "density_mode": "real_ops_hist1",
+    "effective_symbol_count": 241,
+    "end_date": "2026-05-28",
+    "expected_chunk_count": 5,
+    "foxa_present": true,
+    "governance_certification": {
+      "density_mode": "real_ops_hist1",
+      "governance_mode": "observational_only",
+      "local_artifacts_only": true,
+      "observational_report_only": true,
+      "phase": "HIST-LONG-4_real_multi_window_ecology_accumulation",
+      "prediction_enabled": false,
+      "raw_cache_enabled": false,
+      "raw_cache_write_enabled": false,
+      "replay_activation_enabled": false,
+      "replay_execution_enabled": false,
+      "supabase_write_enabled": false,
+      "topology_activation_enabled": false,
+      "topology_persistence_enabled": false,
+      "trading_execution_enabled": false
+    },
+    "include_high_risk_symbols": false,
+    "max_symbols": 241,
+    "orchestration_date": "2026-05-28",
+    "output_root": "reports/hist_long4_windows",
+    "para_present": false,
+    "schema_version": "hist_long4_v1",
+    "sector_subsector_concentration_baseline": {
+      "sector_hhi": 0.06107,
+      "strongest_sectors": [
+        {
+          "sector": "semiconductors",
+          "share": 0.082988,
+          "symbol_count": 20
+        },
+        {
+          "sector": "consumer_discretionary",
+          "share": 0.078838,
+          "symbol_count": 19
+        },
+        {
+          "sector": "cloud_software_infrastructure",
+          "share": 0.074689,
+          "symbol_count": 18
+        },
+        {
+          "sector": "energy_utilities",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "financials",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "healthcare_biotech",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "industrials_automation",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "commodities",
+          "share": 0.06639,
+          "symbol_count": 16
+        }
+      ],
+      "strongest_subsectors": [
+        {
+          "share": 0.082988,
+          "subsector": "semiconductors",
+          "symbol_count": 20
+        },
+        {
+          "share": 0.078838,
+          "subsector": "consumer_discretionary",
+          "symbol_count": 19
+        },
+        {
+          "share": 0.074689,
+          "subsector": "cloud_software_infrastructure",
+          "symbol_count": 18
+        },
+        {
+          "share": 0.070539,
+          "subsector": "energy_utilities",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.070539,
+          "subsector": "financials",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.070539,
+          "subsector": "healthcare_biotech",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.070539,
+          "subsector": "industrials_automation",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.06639,
+          "subsector": "commodities",
+          "symbol_count": 16
+        }
+      ],
+      "subsector_hhi": 0.06107
+    },
+    "status": "ok",
+    "symbol_chunk_size": 50,
+    "universe_telemetry": {
+      "duplicate_guard_substitutions": {},
+      "effective_symbol_count": 241,
+      "effective_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2_effective",
+      "excluded_symbols": [],
+      "high_risk_symbols_detected": [
+        "SENT",
+        "CYBR",
+        "RBT",
+        "ABB",
+        "FANUY"
+      ],
+      "original_symbol_count": 241,
+      "replacements_applied": {
+        "ABB": "GEV",
+        "CYBR": "SAIL",
+        "FANUY": "NVT",
+        "RBT": "ZBRA",
+        "SENT": "RBRK"
+      }
+    },
+    "windows": [
+      20,
+      60,
+      120
+    ]
+  },
+  "recommendation_for_hist_long5": "Do not proceed to HIST-LONG-5 until all three real windows complete under HIST-LONG-4 guards.",
+  "review_date": "2026-05-28",
+  "schema_version": "hist_long4_v1",
+  "status": "blocked_provider_credentials_missing_or_execution_failed",
+  "window_level_results": []
+}
