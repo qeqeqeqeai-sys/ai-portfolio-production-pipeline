@@ -884,3 +884,29 @@ def test_governance_metadata_regression_preserved(tmp_path):
     assert metadata["no_topology_activation"] is True
     assert metadata["no_prediction_or_trading_execution"] is True
     assert metadata["persistence_mode"] == "local_json_only"
+
+
+def test_hist_boundary_backfills_snapshot_date_from_date(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": 101.0, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+
+    run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    diag = snap["adapter_diagnostics"]
+    assert diag["normalization_retained_row_count"] == 1
+    assert diag["downstream_snapshot_identity_missing_count"] == 0
+    assert diag["downstream_snapshot_identity_unique_count"] == 1
+    assert diag["ops_live_normalization_acceptance_count"] == 1
+    assert diag["ops_live_normalization_rejection_count"] == 0
+
+
+def test_hist_boundary_snapshot_date_preserved_when_provided(tmp_path):
+    def fetcher(batch, _snapshot_date):
+        return [{"symbol": s, "date": "2026-05-26", "snapshot_date": "2026-05-26", "price": 101.0, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+
+    run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    sample = snap["adapter_diagnostics"]["downstream_ingestion_normalization_contract_debug_samples"] if "downstream_ingestion_normalization_contract_debug_samples" in snap["adapter_diagnostics"] else []
+    assert snap["adapter_diagnostics"]["downstream_snapshot_identity_missing_count"] == 0
+    assert snap["adapter_diagnostics"]["downstream_snapshot_identity_unique_count"] == 1
+    assert sample == [] or sample[0]["final_row_core_values"]["snapshot_date"] == "2026-05-26"
