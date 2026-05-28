@@ -44,6 +44,8 @@ PROGRESS_INTERVAL_MAX = 20
 FMP_HTTP_TIMEOUT_SECONDS = 20
 FMP_HTTP_MAX_ATTEMPTS = 3
 SNAPSHOT_HEARTBEAT_SECONDS = 60
+DEFAULT_TELEMETRY_MAX_SAMPLES = 25
+TELEMETRY_MAX_SAMPLES_HARD_CAP = 100
 
 FMP_STABLE_HISTORICAL_PRICE_URL = "https://financialmodelingprep.com/stable/historical-price-eod/full"
 FMP_STABLE_HISTORICAL_PRICE_LIGHT_URL = "https://financialmodelingprep.com/stable/historical-price-eod/light"
@@ -53,6 +55,20 @@ FMP_LEGACY_HISTORICAL_MARKET_CAP_URL = "https://financialmodelingprep.com/api/v3
 
 def _build_fmp_url(base_url: str, params: dict[str, str]) -> str:
     return f"{base_url}?{urlencode(params)}"
+
+
+def _bounded_telemetry_limit(max_samples: int | None = None) -> int:
+    requested = DEFAULT_TELEMETRY_MAX_SAMPLES if max_samples is None else int(max_samples)
+    return max(1, min(requested, TELEMETRY_MAX_SAMPLES_HARD_CAP))
+
+
+def _sort_endpoint_failure_sample(sample: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        str(sample.get("requested_snapshot_date", "")),
+        str(sample.get("symbol", "")),
+        str(sample.get("endpoint_name", "")),
+        int(sample.get("attempt_index", 0)),
+    )
 
 
 def _bounded_sleep_seconds(attempt_index: int) -> float:
@@ -699,7 +715,7 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         "empty_snapshot_fail_closed": len(normalized_rows) == 0 or all(r.get("price") is None for r in raw_rows),
     }
 
-def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None, progress_interval: int = PROGRESS_INTERVAL_DEFAULT, symbol_universe_override: Sequence[str] | None = None) -> dict[str, Any]:
+def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None, progress_interval: int = PROGRESS_INTERVAL_DEFAULT, symbol_universe_override: Sequence[str] | None = None, telemetry_max_samples: int = DEFAULT_TELEMETRY_MAX_SAMPLES) -> dict[str, Any]:
     if fetch_batch is None:
         api_key = os.getenv("FMP_API_KEY", "")
         if not api_key:
@@ -717,12 +733,16 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     run_start = time.monotonic()
     endpoint_success_counts: Counter[str] = Counter()
     endpoint_failure_counts: Counter[str] = Counter()
+    failure_reason_counts: Counter[str] = Counter()
+    missing_record_samples: list[dict[str, Any]] = []
+    endpoint_failure_samples: list[dict[str, Any]] = []
     exact_date_matches = 0
     reconciled_prior_dates = 0
     missing_dates = 0
     normalized_total = 0
     partial_total = 0
     failed_total = 0
+    sample_limit = _bounded_telemetry_limit(telemetry_max_samples)
     snapshot_durations: list[float] = []
     cache_totals = {"cache_hits": 0, "cache_misses": 0, "cache_rows_written": 0, "cache_read_failures": 0, "cache_write_failures": 0, "requested_symbol_dates_count": 0, "cache_lookup_attempted_count": 0, "valid_cached_rows_count": 0, "malformed_cached_rows_count": 0, "missing_symbol_dates_count": 0, "fetched_symbol_dates_count": 0, "write_attempted_rows_count": 0, "write_success_rows_count": 0, "write_failed_rows_count": 0}
     for d in window_dates:
@@ -790,6 +810,46 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                 reason = attempt.get("failure_reason")
                 if reason:
                     endpoint_failure_counts[str(reason)] += 1
+                    failure_reason_counts[str(reason)] += 1
+                    endpoint_failure_samples.append(
+                        {
+                            "symbol": str(symbol_diag.get("symbol", "")),
+                            "requested_snapshot_date": d,
+                            "endpoint_name": str(attempt.get("endpoint_family", "unknown")),
+                            "attempt_index": int(attempts.index(attempt)) + 1,
+                            "failure_reason": str(reason),
+                            "http_status": None if str(attempt.get("http_status")) == "ok" else str(attempt.get("http_status")),
+                            "records_returned_count": int(attempt.get("record_count_returned", 0) or 0),
+                            "terminal_failure_for_symbol_date": bool(success_attempt is None and attempt is attempts[-1]),
+                        }
+                    )
+            if success_attempt is None:
+                terminal_reason = str((attempts[-1].get("failure_reason") if attempts else "missing_reconciled_historical_date") or "missing_reconciled_historical_date")
+                failure_reason_counts[terminal_reason] += 1
+                final_attempt = attempts[-1] if attempts else {}
+                missing_record_samples.append(
+                    {
+                        "symbol": str(symbol_diag.get("symbol", "")),
+                        "requested_snapshot_date": d,
+                        "reconciliation_window_days": 5,
+                        "exact_match_found": False,
+                        "reconciled_prior_date": final_attempt.get("selected_record_date"),
+                        "final_missing_after_reconciliation": True,
+                        "final_failure_reason": terminal_reason,
+                    }
+                )
+            elif not success_attempt.get("exact_date_match_found") and not success_attempt.get("date_reconciliation_used"):
+                missing_record_samples.append(
+                    {
+                        "symbol": str(symbol_diag.get("symbol", "")),
+                        "requested_snapshot_date": d,
+                        "reconciliation_window_days": 5,
+                        "exact_match_found": False,
+                        "reconciled_prior_date": None,
+                        "final_missing_after_reconciliation": True,
+                        "final_failure_reason": "missing_reconciled_historical_date",
+                    }
+                )
         snapshot_durations.append(time.monotonic() - snapshot_started)
         snapshot_index = len(snapshots)
         if snapshot_index % progress_interval == 0 or snapshot_index == len(window_dates):
@@ -816,6 +876,10 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             _emit_ops_hist1_progress({"raw_cache": True, "cache_enabled": str(os.getenv("OPS_HIST_RAW_CACHE_ENABLED", "false")).lower() == "true", "cache_write_enabled": str(os.getenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "false")).lower() == "true", "cache_hits": cache_totals["cache_hits"], "cache_misses": cache_totals["cache_misses"], "cache_rows_written": cache_totals["cache_rows_written"], "cache_read_failures": cache_totals["cache_read_failures"], "cache_write_failures": cache_totals["cache_write_failures"], "cache_hit_ratio": round(cache_totals["cache_hits"] / requested_total, 6), "fmp_requests_avoided_estimate": cache_totals["cache_hits"]})
             _emit_endpoint_summary(dict(endpoint_success_counts), dict(endpoint_failure_counts))
     continuity_rows = _continuity_observation_rows(snapshots)
+    sorted_missing_samples = sorted(missing_record_samples, key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", ""))))[:sample_limit]
+    sorted_endpoint_failure_samples = sorted(endpoint_failure_samples, key=_sort_endpoint_failure_sample)[:sample_limit]
+    affected_symbols = sorted({str(s.get("symbol", "")) for s in (sorted_missing_samples + sorted_endpoint_failure_samples) if str(s.get("symbol", ""))})
+    affected_dates = sorted({str(s.get("requested_snapshot_date", "")) for s in (sorted_missing_samples + sorted_endpoint_failure_samples) if str(s.get("requested_snapshot_date", ""))})
     return {
         "status": "ok",
         "schema_version": OPS_HIST1_SCHEMA_VERSION,
@@ -833,6 +897,13 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             "missing_dates": missing_dates,
             "endpoint_success_counts": dict(sorted(endpoint_success_counts.items())),
             "endpoint_failure_counts": dict(sorted(endpoint_failure_counts.items())),
+            "missing_record_samples": sorted_missing_samples,
+            "endpoint_failure_samples": sorted_endpoint_failure_samples,
+            "missing_record_sample_count": len(sorted_missing_samples),
+            "endpoint_failure_sample_count": len(sorted_endpoint_failure_samples),
+            "affected_symbol_count": len(affected_symbols),
+            "affected_date_count": len(affected_dates),
+            "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in failure_reason_counts.most_common(5)],
             **cache_totals,
         },
     }
