@@ -1,5 +1,6 @@
 import io
 import contextlib
+import json
 from urllib.parse import parse_qs, urlparse
 import re
 from urllib.error import HTTPError
@@ -411,22 +412,32 @@ def test_reconciled_market_cap_propagates_to_final_row_and_preflight(monkeypatch
     assert "missing_market_cap" not in sample["downstream_preflight_reasons"]
 
 
-def test_true_missing_market_cap_still_fail_closed(tmp_path):
+def test_true_missing_market_cap_allowed_as_historical_optional_enrichment(tmp_path):
     def fetcher(batch, snapshot_date):
         fetcher.last_profile_diagnostics = {"market_cap_reconciliation_debug_samples": []}
         return [{"symbol": "AAPL", "date": snapshot_date, "price": 101.0, "sector": "Tech", "industry": "Soft"}]
 
     fetcher.last_profile_diagnostics = {}
-    with pytest.raises(RuntimeError, match="missing_market_cap"):
-        run_ops_hist1_historical_backfill(
-            snapshot_date="2026-05-27",
-            output_dir=str(tmp_path),
-            window_days=1,
-            fetch_batch=fetcher,
-            symbol_universe_override=["AAPL"],
-        )
+    out = run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL"],
+    )
+    assert out["status"] == "ok"
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    diag = snap["adapter_diagnostics"]
+    assert diag["market_cap_requirement_mode"] == "optional_historical_enrichment"
+    assert diag["market_cap_missing_does_not_block_historical_observation"] is True
+    assert diag["no_synthetic_market_cap"] is True
+    assert diag["no_live_market_cap_fallback"] is True
+    assert diag["market_cap_missing_count"] == 1
+    assert diag["market_cap_available_count"] == 0
+    assert diag["market_cap_coverage_ratio"] == 0.0
+    assert "missing_market_cap" not in diag["downstream_preflight_failure_reason_counts"]
 
-def test_market_cap_missing_outside_window_preserves_fail_closed(tmp_path):
+def test_market_cap_missing_outside_window_no_longer_fail_closed(tmp_path):
     def fetcher(batch, snapshot_date):
         return [{
             "symbol": s,
@@ -438,14 +449,14 @@ def test_market_cap_missing_outside_window_preserves_fail_closed(tmp_path):
             "market_cap_missing_after_reconciliation": True,
         } for s in batch]
 
-    with pytest.raises(RuntimeError, match="class=downstream_preflight_schema_mismatch"):
-        run_ops_hist1_historical_backfill(
-            snapshot_date="2026-05-27",
-            output_dir=str(tmp_path),
-            window_days=1,
-            fetch_batch=fetcher,
-            symbol_universe_override=["AAPL"],
-        )
+    out = run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL"],
+    )
+    assert out["status"] == "ok"
 
 
 def test_bounded_snapshot_telemetry_interval_and_no_secret_leak(tmp_path):
@@ -497,7 +508,7 @@ def test_runtime_error_contains_bounded_summary(monkeypatch):
     assert "test_key" not in msg
 
 
-def test_fail_closed_includes_market_cap_debug_samples(monkeypatch, tmp_path):
+def test_market_cap_debug_samples_retained_when_market_cap_missing(monkeypatch, tmp_path):
     def fetcher(batch, snapshot_date):
         fetcher.last_profile_diagnostics = {
             "market_cap_reconciliation_debug_samples": [
@@ -515,22 +526,22 @@ def test_fail_closed_includes_market_cap_debug_samples(monkeypatch, tmp_path):
         return [{"symbol": "AAPL", "date": snapshot_date, "price": 101.0, "sector": "Tech", "industry": "Soft"}]
 
     fetcher.last_profile_diagnostics = {}
-    with pytest.raises(RuntimeError) as exc:
-        run_ops_hist1_historical_backfill(
-            snapshot_date="2026-05-27",
-            output_dir=str(tmp_path),
-            window_days=1,
-            fetch_batch=fetcher,
-            symbol_universe_override=["AAPL"],
-        )
-    msg = str(exc.value)
-    assert "downstream_market_cap_debug_samples=" in msg
-    assert '"symbol":"AAPL"' in msg
-    assert '"final_row_keys"' in msg
-    assert '"downstream_preflight_reasons":["missing_market_cap"]' in msg
+    out = run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL"],
+    )
+    assert out["status"] == "ok"
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    samples = snap["adapter_diagnostics"]["downstream_market_cap_debug_samples"]
+    assert samples[0]["symbol"] == "AAPL"
+    assert samples[0]["final_row_marketCap_value"] is None
+    assert "missing_market_cap" not in samples[0]["downstream_preflight_reasons"]
 
 
-def test_fail_closed_market_cap_debug_samples_bounded_and_sanitized(tmp_path):
+def test_market_cap_debug_samples_bounded_and_sanitized(tmp_path):
     symbols = ["AAA", "BBB", "CCC", "DDD"]
 
     def fetcher(batch, snapshot_date):
@@ -558,21 +569,22 @@ def test_fail_closed_market_cap_debug_samples_bounded_and_sanitized(tmp_path):
         return rows
 
     fetcher.last_profile_diagnostics = {}
-    with pytest.raises(RuntimeError) as exc:
-        run_ops_hist1_historical_backfill(
-            snapshot_date="2026-05-27",
-            output_dir=str(tmp_path),
-            window_days=1,
-            fetch_batch=fetcher,
-            symbol_universe_override=symbols,
-        )
-    msg = str(exc.value)
-    assert msg.count('"symbol":"') <= 3
-    lower = msg.lower()
-    assert "apikey" not in lower
-    assert "api_key" not in lower
-    assert "token" not in lower
-    assert "raw payload" not in lower
+    out = run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=symbols,
+    )
+    assert out["status"] == "ok"
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    samples = snap["adapter_diagnostics"]["downstream_market_cap_debug_samples"]
+    assert len(samples) <= 3
+    serialized = json.dumps(samples).lower()
+    assert "apikey" not in serialized
+    assert "api_key" not in serialized
+    assert "token" not in serialized
+    assert "raw payload" not in serialized
 
 
 def test_profile_failure_diagnostics_do_not_leak_api_key(tmp_path):
