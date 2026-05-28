@@ -1,0 +1,105 @@
+{
+  "artifact_checksum": "3d3515a5b623753b362bf73a74f972e5ac97e27ecef2b4ec379207eada46078f",
+  "artifact_paths": {
+    "artifact": "artifacts/hist_long3_updated_universe_validation.json",
+    "config_preview": "reports/hist_long3_updated_universe_validation/hist_density3_config_preview.json",
+    "output_root": "reports/hist_long3_updated_universe_validation",
+    "report": "reports/hist_long3_updated_universe_validation.md",
+    "summary": null
+  },
+  "comparison_vs_para_baseline": {
+    "assessment": "comparison_pending_completed_real_window",
+    "baseline_provider_failure_total": 40,
+    "current_provider_failure_total": 0,
+    "did_any_new_weak_symbols_emerge": null,
+    "did_completeness_improve": null,
+    "did_provider_degradation_improve": null,
+    "did_weak_symbol_disappear": null
+  },
+  "execution_error": "RuntimeError: FMP_API_KEY missing; OPS-HIST-1 fails closed",
+  "foxa_validation": {
+    "endpoint_failures": [],
+    "historical_price_coverage": "not_measured_in_completed_window",
+    "missing_date_behavior": "not_measured_in_completed_window",
+    "ops_hist_snapshot_count": 0,
+    "profile_coverage": "not_measured_in_completed_window",
+    "profile_failure_reasons": {},
+    "replacement_suitability_assessment": "FOXA suitability remains unproven until a completed real 20-day window runs with provider credentials",
+    "status": "not_validated_execution_blocked"
+  },
+  "governance_certification": {
+    "governance_mode": "observational_only",
+    "local_artifacts_only": true,
+    "prediction_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "supabase_write_enabled": false,
+    "topology_activation_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "hist_long4_justified": false,
+  "ingestion_metrics": {
+    "endpoint_failures": {},
+    "exact_date_matches_total": 0,
+    "failed_count_total": 0,
+    "normalization_completeness": null,
+    "normalized_count_total": 0,
+    "partial_count_total": 0,
+    "reconciled_prior_dates_total": 0,
+    "top_failure_reasons": [],
+    "weak_symbols": []
+  },
+  "original_baseline": {
+    "failed_count_total": 20,
+    "normalized_count_total": 4700,
+    "partial_count_total": 20,
+    "provider_failures": {
+      "HTTP_403": 20,
+      "zero_records_returned": 20
+    },
+    "weak_symbols": [
+      "PARA"
+    ]
+  },
+  "output_root": "reports/hist_long3_updated_universe_validation",
+  "review_date": "2026-05-28",
+  "run_configuration": {
+    "apply_sde2_replacements": true,
+    "density_mode": "real_ops_hist1",
+    "duplicate_guard_enabled": true,
+    "expected_chunk_count": 5,
+    "include_high_risk_symbols": false,
+    "max_symbols": 241,
+    "raw_cache_write_enabled": false,
+    "replay_enabled": false,
+    "supabase_write_enabled": false,
+    "symbol_chunk_size": 50,
+    "topology_persistence_enabled": false,
+    "trading_days": 20
+  },
+  "schema_version": "hist_long3_v1",
+  "status": "blocked_provider_credentials_missing_or_execution_failed",
+  "updated_universe_validation": {
+    "chunk_count": 5,
+    "chunk_sizes": [
+      50,
+      50,
+      50,
+      50,
+      41
+    ],
+    "duplicate_symbol_count": 0,
+    "duplicate_symbols": [],
+    "effective_symbol_count": 241,
+    "expected_chunk_count": 5,
+    "expected_chunk_count_remains_5": true,
+    "foxa_count": 1,
+    "foxa_present_exactly_once": true,
+    "no_duplicate_symbols": true,
+    "para_absent": true,
+    "para_count": 0
+  },
+  "validation_status": "blocked_real_execution_failed"
+}
