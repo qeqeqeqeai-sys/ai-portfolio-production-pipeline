@@ -96,16 +96,31 @@ def identify_missing_symbol_dates(symbols: Sequence[str], requested_dates: Seque
 
 
 def write_raw_historical_prices(rows: Sequence[Mapping[str, Any]], *, client: Any | None = None, dry_run: bool = False) -> tuple[int, int]:
+    result = summarize_write_result(rows, client=client, dry_run=dry_run)
+    success_rows = result.get("write_success_rows")
+    if success_rows is None:
+        return int(result.get("write_attempted_rows", 0)), int(result.get("write_failed_rows", 0))
+    return int(success_rows), int(result.get("write_failed_rows", 0))
+
+
+def summarize_write_result(rows: Sequence[Mapping[str, Any]], *, client: Any | None = None, dry_run: bool = False) -> dict[str, Any]:
     if dry_run or not _cache_write_enabled():
-        return 0, 0
+        return {"write_attempted_rows": 0, "write_success_rows": 0, "write_failed_rows": 0, "write_status": "disabled", "write_confirmation_limited": False, "error_reason_counts": {}}
     c = client or _build_client()
     if c is None:
-        return 0, 1
+        return {"write_attempted_rows": 0, "write_success_rows": 0, "write_failed_rows": 0, "write_status": "client_unavailable", "write_confirmation_limited": False, "error_reason_counts": {"client_unavailable": 1}}
     payload = [r for r in (normalize_fmp_historical_price_row(row) for row in rows) if r is not None]
-    if not payload:
-        return 0, 0
+    attempted = len(payload)
+    if attempted == 0:
+        return {"write_attempted_rows": 0, "write_success_rows": 0, "write_failed_rows": 0, "write_status": "no_valid_rows", "write_confirmation_limited": False, "error_reason_counts": {}}
     try:
-        c.table("raw_fmp_historical_prices").upsert(payload, on_conflict="symbol,price_date,source").execute()
-        return len(payload), 0
-    except Exception:
-        return 0, 1
+        resp = c.table("raw_fmp_historical_prices").upsert(payload, on_conflict="symbol,price_date,source").execute()
+    except Exception as exc:
+        reason = type(exc).__name__[:64]
+        return {"write_attempted_rows": attempted, "write_success_rows": 0, "write_failed_rows": attempted, "write_status": "failed", "write_confirmation_limited": False, "error_reason_counts": {reason: 1}}
+    data = getattr(resp, "data", None)
+    if isinstance(data, list):
+        success = len(data)
+        failed = max(0, attempted - success)
+        return {"write_attempted_rows": attempted, "write_success_rows": success, "write_failed_rows": failed, "write_status": "confirmed", "write_confirmation_limited": False, "error_reason_counts": {}}
+    return {"write_attempted_rows": attempted, "write_success_rows": None, "write_failed_rows": 0, "write_status": "submitted_unconfirmed", "write_confirmation_limited": True, "error_reason_counts": {}}

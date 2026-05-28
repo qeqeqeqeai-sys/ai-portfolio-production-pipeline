@@ -19,6 +19,18 @@ on:
         default: "false"
         type: choice
         options: ["false", "true"]
+      cache_validation_mode:
+        description: "Enable cache validation audit artifacts"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      cache_only_validation:
+        description: "Cache-only validation (no live FMP fetches)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
 
 jobs:
   hist-density-2:
@@ -35,6 +47,8 @@ jobs:
           INPUT_END_DATE: ${{ github.event.inputs.end_date }}
           INPUT_RAW_CACHE_ENABLED: ${{ github.event.inputs.raw_cache_enabled }}
           INPUT_RAW_CACHE_WRITE_ENABLED: ${{ github.event.inputs.raw_cache_write_enabled }}
+          INPUT_CACHE_VALIDATION_MODE: ${{ github.event.inputs.cache_validation_mode }}
+          INPUT_CACHE_ONLY_VALIDATION: ${{ github.event.inputs.cache_only_validation }}
         run: |
-          PYTHONPATH=. python scripts/run_hist_density_2_180d_pilot.py --density-mode real_ops_hist1 --trading-days 180 --symbol-count 50 --output-root reports/hist_density2_pilot_180d ${INPUT_END_DATE:+--end-date "$INPUT_END_DATE"} ${INPUT_RAW_CACHE_ENABLED:+$( [ "$INPUT_RAW_CACHE_ENABLED" = "true" ] && echo --raw-cache-enabled )} ${INPUT_RAW_CACHE_WRITE_ENABLED:+$( [ "$INPUT_RAW_CACHE_WRITE_ENABLED" = "true" ] && echo --raw-cache-write-enabled )}
+          PYTHONPATH=. python scripts/run_hist_density_2_180d_pilot.py --density-mode real_ops_hist1 --trading-days 180 --symbol-count 50 --output-root reports/hist_density2_pilot_180d ${INPUT_END_DATE:+--end-date "$INPUT_END_DATE"} ${INPUT_RAW_CACHE_ENABLED:+$( [ "$INPUT_RAW_CACHE_ENABLED" = "true" ] && echo --raw-cache-enabled )} ${INPUT_RAW_CACHE_WRITE_ENABLED:+$( [ "$INPUT_RAW_CACHE_WRITE_ENABLED" = "true" ] && echo --raw-cache-write-enabled )} ${INPUT_CACHE_VALIDATION_MODE:+$( [ "$INPUT_CACHE_VALIDATION_MODE" = "true" ] && echo --cache-validation-mode )} ${INPUT_CACHE_ONLY_VALIDATION:+$( [ "$INPUT_CACHE_ONLY_VALIDATION" = "true" ] && echo --cache-only-validation )}
           

@@ -18,6 +18,7 @@ from transmission_layers.expectation_failure.real_data.ops_hist_cache_raw_fmp im
     identify_missing_symbol_dates,
     normalize_fmp_historical_price_row,
     read_cached_historical_prices,
+    summarize_write_result,
     write_raw_historical_prices,
 )
 
@@ -140,6 +141,19 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             "cache_rows_written": 0,
             "cache_read_failures": 0,
             "cache_write_failures": 0,
+            "requested_symbol_dates_count": 0,
+            "cache_lookup_attempted_count": 0,
+            "valid_cached_rows_count": 0,
+            "malformed_cached_rows_count": 0,
+            "missing_symbol_dates_count": 0,
+            "fetched_symbol_dates_count": 0,
+            "write_attempted_rows_count": 0,
+            "write_success_rows_count": 0,
+            "write_failed_rows_count": 0,
+            "cache_write_status": "not_attempted",
+            "cache_write_confirmation_limited": False,
+            "cache_write_error_reason_counts": {},
+            "sample_symbol_date_trace": {},
 
             "fmp_endpoint_family_used": "stable/historical-price-eod/full + legacy/historical-market-capitalization + stable/profile",
             "historical_price_endpoint_family": "stable_historical_price_eod_full",
@@ -242,10 +256,24 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             return {}, meta
 
         rows: list[dict] = []
+        requested_total = len([s for s in symbols if str(s).strip()])
+        run_diag["requested_symbol_dates_count"] = requested_total
+        run_diag["cache_lookup_attempted_count"] = requested_total
         cached_rows, cache_read_failures = read_cached_historical_prices(symbols, [snapshot_date])
         run_diag["cache_read_failures"] = int(cache_read_failures)
-        cached_by_symbol = {str(r.get("symbol", "")).upper(): r for r in cached_rows if str(r.get("price_date", "")) == snapshot_date}
-        missing_map = identify_missing_symbol_dates(symbols, [snapshot_date], cached_rows)
+        valid_cached_rows = [r for r in cached_rows if str(r.get("price_date", "")) == snapshot_date]
+        run_diag["valid_cached_rows_count"] = len(valid_cached_rows)
+        run_diag["malformed_cached_rows_count"] = max(0, len(cached_rows) - len(valid_cached_rows))
+        cached_by_symbol = {str(r.get("symbol", "")).upper(): r for r in valid_cached_rows}
+        missing_map = identify_missing_symbol_dates(symbols, [snapshot_date], valid_cached_rows)
+        run_diag["missing_symbol_dates_count"] = sum(len(v) for v in missing_map.values())
+        trace_symbol = str(symbols[0]).upper() if symbols else ""
+        trace = {"cache_key": f"fmp|{trace_symbol}|{snapshot_date}", "read_before_fetch": "miss", "fetched_from_fmp": False, "write_attempted": False, "write_confirmed": None, "read_after_write": "not_attempted"}
+        if trace_symbol in cached_by_symbol:
+            trace["read_before_fetch"] = "hit"
+        elif run_diag["malformed_cached_rows_count"] > 0:
+            trace["read_before_fetch"] = "malformed"
+        run_diag["sample_symbol_date_trace"] = trace
 
         endpoint_candidates = (
             ("stable_historical_price_eod_full", FMP_STABLE_HISTORICAL_PRICE_URL, False),
@@ -262,6 +290,9 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
                     rows.append({"symbol": sym, "date": snapshot_date, "price": c.get("adj_close", c.get("close")), "volume": c.get("volume"), "marketCap": None, "sector": profile.get("sector", "unknown") or "unknown", "industry": profile.get("industry", "unknown") or "unknown", "historical_adapter_mode": "fmp_historical_price_plus_market_cap"})
                     continue
                 run_diag["cache_misses"] += 1
+                run_diag["fetched_symbol_dates_count"] += 1
+                if sym == trace_symbol:
+                    run_diag["sample_symbol_date_trace"]["fetched_from_fmp"] = True
             sym = str(symbol).upper()
             run_diag["historical_price_records_requested"] += 1
             sym_diag: dict[str, Any] = {"symbol": sym, "requested_snapshot_date": snapshot_date, "endpoint_attempts": []}
@@ -361,9 +392,21 @@ def build_historical_fmp_fetcher(api_key: str) -> Callable[[Sequence[str], str],
             if normalized_cache_row is not None and sym in missing_map:
                 fresh_cache_candidates.append(normalized_cache_row)
         if fresh_cache_candidates and run_diag.get("cache_write_enabled"):
-            written, write_failures = write_raw_historical_prices(fresh_cache_candidates)
-            run_diag["cache_rows_written"] = int(written)
-            run_diag["cache_write_failures"] = int(write_failures)
+            write_result = summarize_write_result(fresh_cache_candidates)
+            run_diag["write_attempted_rows_count"] = int(write_result.get("write_attempted_rows", 0))
+            run_diag["write_success_rows_count"] = write_result.get("write_success_rows")
+            run_diag["write_failed_rows_count"] = int(write_result.get("write_failed_rows", 0))
+            run_diag["cache_rows_written"] = int(write_result.get("write_success_rows") or 0)
+            run_diag["cache_write_failures"] = int(write_result.get("write_failed_rows", 0))
+            run_diag["cache_write_status"] = str(write_result.get("write_status", "unknown"))
+            run_diag["cache_write_confirmation_limited"] = bool(write_result.get("write_confirmation_limited", False))
+            run_diag["cache_write_error_reason_counts"] = dict(write_result.get("error_reason_counts", {}))
+            run_diag["sample_symbol_date_trace"]["write_attempted"] = run_diag["write_attempted_rows_count"] > 0
+            succ = write_result.get("write_success_rows")
+            run_diag["sample_symbol_date_trace"]["write_confirmed"] = (None if succ is None else bool(succ))
+            if run_diag["sample_symbol_date_trace"]["write_attempted"]:
+                post_rows, _ = read_cached_historical_prices([trace_symbol], [snapshot_date])
+                run_diag["sample_symbol_date_trace"]["read_after_write"] = "hit" if post_rows else "miss"
         requested_total = run_diag["cache_hits"] + run_diag["cache_misses"]
         run_diag["cache_hit_ratio"] = round((run_diag["cache_hits"] / requested_total), 6) if requested_total else 0.0
         run_diag["fmp_requests_avoided_estimate"] = int(run_diag["cache_hits"])
@@ -653,6 +696,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     partial_total = 0
     failed_total = 0
     snapshot_durations: list[float] = []
+    cache_totals = {"cache_hits": 0, "cache_misses": 0, "cache_rows_written": 0, "cache_read_failures": 0, "cache_write_failures": 0, "requested_symbol_dates_count": 0, "cache_lookup_attempted_count": 0, "valid_cached_rows_count": 0, "malformed_cached_rows_count": 0, "missing_symbol_dates_count": 0, "fetched_symbol_dates_count": 0, "write_attempted_rows_count": 0, "write_success_rows_count": 0, "write_failed_rows_count": 0}
     for d in window_dates:
         snapshot_started = time.monotonic()
         heartbeat_state = {"last_emitted_seconds": 0}
@@ -677,6 +721,11 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         raw_rows = _fetch_with_optional_date(fetch_batch, universe, d, progress_callback=_snapshot_heartbeat)
         result = ingest_controlled_daily_snapshot(universe, d, lambda batch, _raw=raw_rows: _raw)
         profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
+        for k in list(cache_totals.keys()):
+            v = profile_diag.get(k, 0)
+            if v is None:
+                v = 0
+            cache_totals[k] += int(v)
         diag = _historical_diagnostics(raw_rows, result.get("rows", []), universe, d, profile_diag)
         if diag["empty_snapshot_fail_closed"]:
             raise RuntimeError(f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; reasons={diag['top_normalization_failure_reasons']}")
@@ -735,6 +784,8 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                     "estimated_remaining_minutes": eta_minutes,
                 }
             )
+            requested_total = max(cache_totals["cache_hits"] + cache_totals["cache_misses"], 1)
+            _emit_ops_hist1_progress({"raw_cache": True, "cache_enabled": str(os.getenv("OPS_HIST_RAW_CACHE_ENABLED", "false")).lower() == "true", "cache_write_enabled": str(os.getenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "false")).lower() == "true", "cache_hits": cache_totals["cache_hits"], "cache_misses": cache_totals["cache_misses"], "cache_rows_written": cache_totals["cache_rows_written"], "cache_read_failures": cache_totals["cache_read_failures"], "cache_write_failures": cache_totals["cache_write_failures"], "cache_hit_ratio": round(cache_totals["cache_hits"] / requested_total, 6), "fmp_requests_avoided_estimate": cache_totals["cache_hits"]})
             _emit_endpoint_summary(dict(endpoint_success_counts), dict(endpoint_failure_counts))
     continuity_rows = _continuity_observation_rows(snapshots)
     return {
@@ -754,6 +805,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             "missing_dates": missing_dates,
             "endpoint_success_counts": dict(sorted(endpoint_success_counts.items())),
             "endpoint_failure_counts": dict(sorted(endpoint_failure_counts.items())),
+            **cache_totals,
         },
     }
 
