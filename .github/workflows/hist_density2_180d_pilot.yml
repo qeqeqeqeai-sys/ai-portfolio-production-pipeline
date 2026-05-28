@@ -20,7 +20,7 @@ jobs:
       - name: Run HIST-DENSITY-2 pilot
         env:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-        run: |
-          PYTHONPATH=. python scripts/run_hist_density_2_180d_pilot.py --density-mode real_ops_hist1 --trading-days 180 --symbol-count 50 --output-root reports/hist_density2_pilot_180d ${INPUT_END_DATE:+--end-date "$INPUT_END_DATE"}
-        env:
           INPUT_END_DATE: ${{ github.event.inputs.end_date }}
+        run: |
+          PYTHONPATH=. python scripts/run_hist_density_2_180d_pilot.py --density-mode real_ops_hist1 --trading-days 180 --symbol-count 50 --output-root reports/hist_density2_pilot_180d ${INPUT_END_DATE:+--end-date "$INPUT_END_DATE"}     
+          
