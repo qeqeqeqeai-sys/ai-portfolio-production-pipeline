@@ -61,6 +61,23 @@ def _build_client():
     return create_client(url, key)
 
 
+def raw_cache_write_readiness(client: Any | None = None) -> dict[str, Any]:
+    url = str(os.getenv("SUPABASE_URL", "")).strip()
+    key = str(os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_KEY", "")).strip()
+    if not url:
+        return {"ready": False, "reason": "missing_supabase_url"}
+    if not key:
+        return {"ready": False, "reason": "missing_supabase_service_key"}
+    c = client or _build_client()
+    if c is None:
+        return {"ready": False, "reason": "write_adapter_unavailable"}
+    try:
+        c.table("raw_fmp_historical_prices").select("symbol").limit(1).execute()
+    except Exception as exc:
+        return {"ready": False, "reason": f"table_unreachable:{type(exc).__name__[:64]}"}
+    return {"ready": True, "reason": "ok"}
+
+
 def read_cached_historical_prices(symbols: Sequence[str], requested_dates: Sequence[str], source: str = "fmp", client: Any | None = None) -> tuple[list[dict[str, Any]], int]:
     c = client or _build_client()
     if c is None:

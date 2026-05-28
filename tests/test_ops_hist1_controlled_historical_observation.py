@@ -424,7 +424,11 @@ def test_cache_write_only_when_enabled(monkeypatch):
     monkeypatch.setenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "true")
     monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.read_cached_historical_prices", lambda symbols, dates: ([], 0))
     called = {"n": 0}
-    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.write_raw_historical_prices", lambda rows: (called.__setitem__("n", len(rows)) or len(rows), 0))
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.raw_cache_write_readiness", lambda: {"ready": True, "reason": "ok"})
+    monkeypatch.setattr(
+        "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.summarize_write_result",
+        lambda rows: {"write_attempted_rows": called.__setitem__("n", len(rows)) or len(rows), "write_success_rows": len(rows), "write_failed_rows": 0, "write_status": "confirmed", "write_confirmation_limited": False, "error_reason_counts": {}},
+    )
     class _Resp:
         def __init__(self, payload): self.payload = payload
         def __enter__(self): return self
@@ -443,3 +447,31 @@ def test_cache_write_only_when_enabled(monkeypatch):
     fetcher(["AAPL"], "2026-05-27")
     assert called["n"] >= 1
     assert fetcher.last_profile_diagnostics["cache_rows_written"] >= 1
+
+
+def test_cache_write_enabled_misses_and_fetched_rows_must_attempt_write(monkeypatch):
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_ENABLED", "true")
+    monkeypatch.setenv("OPS_HIST_RAW_CACHE_WRITE_ENABLED", "true")
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.read_cached_historical_prices", lambda symbols, dates: ([], 0))
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.raw_cache_write_readiness", lambda: {"ready": True, "reason": "ok"})
+    monkeypatch.setattr(
+        "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.summarize_write_result",
+        lambda rows: {"write_attempted_rows": 0, "write_success_rows": 0, "write_failed_rows": 0, "write_status": "disabled", "write_confirmation_limited": False, "error_reason_counts": {}},
+    )
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+    def fake_urlopen(url, timeout=20):
+        if "historical-price" in url:
+            return _Resp(b'[{"date":"2026-05-27","adjClose":111.0,"volume":1}]')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"marketCap":123}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Soft"}]')
+        raise AssertionError(url)
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    fetcher = build_historical_fmp_fetcher("test_key")
+    with pytest.raises(RuntimeError, match="no write attempts were made"):
+        fetcher(["AAPL"], "2026-05-27")
