@@ -42,6 +42,7 @@
     "ZS",
     "OKTA",
     "NET",
+    "AKAM",
     "DDOG",
     "MDB",
     "ESTC",
@@ -50,7 +51,6 @@
     "SHOP",
     "WDAY",
     "DOCU",
-    "CFLT",
     "PLTR",
     "DT",
     "SMCI",
@@ -203,7 +203,7 @@
     "SPOT",
     "ROKU",
     "ZM",
-    "PARA",
+    "FOXA",
     "WBD",
     "UPS",
     "FDX",
@@ -290,6 +290,7 @@
       "ZS",
       "OKTA",
       "NET",
+      "AKAM",
       "DDOG",
       "MDB",
       "ESTC",
@@ -298,7 +299,6 @@
       "SHOP",
       "WDAY",
       "DOCU",
-      "CFLT",
       "PLTR",
       "DT"
     ],
@@ -483,7 +483,7 @@
       "SPOT",
       "ROKU",
       "ZM",
-      "PARA",
+      "FOXA",
       "WBD"
     ],
     "transportation_logistics": [
@@ -825,6 +825,12 @@
         "high_duration_valuation_sensitive_entities"
       ]
     },
+    "AKAM": {
+      "fmp_availability_risk": "low",
+      "category_overlap_count": 1,
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
     "DDOG": {
       "fmp_availability_risk": "low",
       "category_overlap_count": 2,
@@ -872,12 +878,6 @@
       "secondary_categories": []
     },
     "DOCU": {
-      "fmp_availability_risk": "low",
-      "category_overlap_count": 1,
-      "primary_category": "cloud_software_infrastructure",
-      "secondary_categories": []
-    },
-    "CFLT": {
       "fmp_availability_risk": "low",
       "category_overlap_count": 1,
       "primary_category": "cloud_software_infrastructure",
@@ -1820,7 +1820,7 @@
       "primary_category": "communication_platforms",
       "secondary_categories": []
     },
-    "PARA": {
+    "FOXA": {
       "fmp_availability_risk": "low",
       "category_overlap_count": 1,
       "primary_category": "communication_platforms",
@@ -2094,8 +2094,12 @@
   },
   "bounded_exclusion_replacement_list": {
     "RBT": "ROK",
-    "FANUY": "ABB",
-    "SENT": "CHKP"
+    "FANUY": "ETN",
+    "SENT": "CHKP",
+    "ABB": "ETN",
+    "CYBR": "PANW",
+    "CFLT": "DDOG",
+    "PARA": "FOXA"
   },
   "topology_review_summaries": [
     "topology diversity increased materially",

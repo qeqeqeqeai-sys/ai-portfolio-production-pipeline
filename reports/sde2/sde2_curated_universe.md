@@ -4,7 +4,7 @@
 - GOOG/GOOGL handling: GOOG excluded; GOOGL retained as canonical share class to avoid dual counting.
 
 ## FMP availability risk
-- High-risk focus: FANUY, RBT, SENT (flagged for deterministic review and bounded replacement mapping).
+- High-risk focus: FANUY, RBT, SENT, PARA (flagged for deterministic review and bounded replacement mapping).
 
 ## Governance certification
 - observational-only semantics

@@ -10,7 +10,7 @@
   "chunk_plan": {
     "symbol_chunk_count": 5,
     "symbol_chunk_size": 50,
-    "trading_days": 20
+    "trading_days": 5
   },
   "chunk_symbols": [
     [
@@ -508,7 +508,7 @@
     "ICLN",
     "TAN"
   ],
-  "estimated_symbol_date_rows": 4820,
+  "estimated_symbol_date_rows": 1205,
   "governance_certification": {
     "governance_mode": "observational_only",
     "no_cognition_replay_topology_persistence": true,

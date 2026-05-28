@@ -1,0 +1,46 @@
+{
+  "symbol_replaced": "PARA",
+  "selected_replacement": "FOXA",
+  "wbd_preference_result": "rejected_already_present_in_curated_universe",
+  "reason": "PARA showed repeated HIST-DENSITY-4 FMP historical coverage failures: HTTP_403 and zero_records_returned across 20 dates.",
+  "bounded_fmp_validation": {
+    "status": "blocked_environment",
+    "trading_days_requested": 5,
+    "historical_price_endpoint": "stable/historical-price-eod/full",
+    "profile_endpoint": "stable/profile",
+    "fmp_api_key_present": false,
+    "endpoint_results": {
+      "historical_price": {
+        "status": "blocked",
+        "reason": "URLError",
+        "message": "Tunnel connection failed: 403 Forbidden"
+      },
+      "profile": {
+        "status": "blocked",
+        "reason": "URLError",
+        "message": "Tunnel connection failed: 403 Forbidden"
+      }
+    },
+    "supabase_writes": false,
+    "replay_activation": false,
+    "topology_activation": false,
+    "trading_activation": false
+  },
+  "short_validation_backfill": {
+    "status": "ok",
+    "mode": "synthetic_fixture_no_supabase_writes",
+    "trading_days": 5,
+    "max_symbols": 241,
+    "symbol_chunk_size": 50,
+    "expected_chunk_count": 5,
+    "top_failure_reasons": [],
+    "affected_symbol_count": 0,
+    "affected_date_count": 0
+  },
+  "final_universe_checks": {
+    "para_present": false,
+    "selected_replacement_count": 1,
+    "duplicate_symbols": false,
+    "governance_unchanged": true
+  }
+}
