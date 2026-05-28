@@ -1,0 +1,348 @@
+{
+  "artifact_checksum": "4c34014f2ff105acc80d531020acc35d013ab88ccaad6ff12b71b629c1e085ff",
+  "execution_mode": "completed_artifact_ingestion_only",
+  "governance_certification": {
+    "governance_mode": "observational_only",
+    "local_artifacts_only": true,
+    "observational_report_only": true,
+    "phase": "HIST-LONG-2_real_multi_window_longitudinal_ecology_accumulation",
+    "prediction_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "supabase_write_enabled": false,
+    "topology_activation_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "governance_certification_summary": "Observed only; no replay activation, prediction, trading, topology persistence, Supabase writes, or raw cache writes.",
+  "longitudinal_comparison_summary": {
+    "contradiction_persistence": {
+      "burden_values": [
+        0.012448
+      ],
+      "trend": "insufficient_windows",
+      "volatility": null
+    },
+    "foxa_validation": {
+      "foxa_present_windows": [],
+      "foxa_weak_windows": [],
+      "status": "not_validated_by_completed_real_window"
+    },
+    "historical_date_alignment": {
+      "exact_date_ratio_values": [
+        0.95
+      ],
+      "exact_trend": "insufficient_windows",
+      "reconciled_date_ratio_values": [
+        0.05
+      ],
+      "reconciled_trend": "insufficient_windows"
+    },
+    "monoculture_risk": [
+      "Chunk density concentration requires follow-up review."
+    ],
+    "morphology_persistence": {
+      "assessment": "single_window_or_mixed",
+      "posture_recurrence": [
+        {
+          "posture": "stable_single_posture",
+          "window_count": 1
+        }
+      ]
+    },
+    "normalization_completeness": {
+      "density_values": [
+        0.975104
+      ],
+      "trend": "insufficient_windows",
+      "volatility": null
+    },
+    "normalized_rows": {
+      "trend": "insufficient_windows",
+      "values": [
+        4700
+      ]
+    },
+    "partial_failed_counts": [
+      {
+        "failed_count_total": 20,
+        "missing_dates_total": 20,
+        "partial_count_total": 20
+      }
+    ],
+    "provider_degradation_recurrence": [
+      {
+        "reason": "HTTP_403",
+        "window_count": 1
+      },
+      {
+        "reason": "zero_records_returned",
+        "window_count": 1
+      }
+    ],
+    "real_completed_window_count": 1,
+    "replay_density": {
+      "activation_status": "not_activated",
+      "trend": "insufficient_windows",
+      "values": [
+        0.975104
+      ]
+    },
+    "sector_hhi_drift": {
+      "trend": "insufficient_windows",
+      "values": [
+        0.582731
+      ]
+    },
+    "subsector_hhi_drift": {
+      "trend": "insufficient_windows",
+      "values": [
+        0.582731
+      ]
+    },
+    "temporal_stability": {
+      "assessment": "insufficient_real_multi_window_evidence",
+      "density_decay": "insufficient_windows"
+    },
+    "topology_richness": {
+      "persistence_status": "report_local_not_persisted",
+      "trend": "insufficient_windows",
+      "values": [
+        2.0
+      ]
+    },
+    "weak_symbol_recurrence": [
+      {
+        "symbol": "PARA",
+        "window_count": 1
+      }
+    ],
+    "window_count": 1,
+    "windows": [
+      20
+    ]
+  },
+  "new_real_execution_run": false,
+  "operational_stability_assessment": {
+    "foxa_validation_status": "not_validated_by_completed_real_window",
+    "provider_degradation_trend": [
+      {
+        "reason": "HTTP_403",
+        "window_count": 1
+      },
+      {
+        "reason": "zero_records_returned",
+        "window_count": 1
+      }
+    ],
+    "real_multi_window_status": "only_one_completed_real_window_available",
+    "recommendation": "Run the next bounded real updated-universe 20d/60d windows before longer accumulation."
+  },
+  "orchestration_plan": {
+    "density_mode": "real_ops_hist1",
+    "effective_symbol_count": 241,
+    "end_date": "2026-05-28",
+    "expected_chunk_count": 5,
+    "governance_certification": {
+      "governance_mode": "observational_only",
+      "local_artifacts_only": true,
+      "observational_report_only": true,
+      "phase": "HIST-LONG-2_real_multi_window_longitudinal_ecology_accumulation",
+      "prediction_enabled": false,
+      "raw_cache_write_enabled": false,
+      "replay_activation_enabled": false,
+      "replay_execution_enabled": false,
+      "supabase_write_enabled": false,
+      "topology_activation_enabled": false,
+      "topology_persistence_enabled": false,
+      "trading_execution_enabled": false
+    },
+    "max_symbols": 241,
+    "orchestration_date": "2026-05-28",
+    "output_root": "reports/hist_long2_windows",
+    "raw_cache_write_enabled": false,
+    "schema_version": "hist_long2_v1",
+    "status": "ok",
+    "symbol_chunk_size": 50,
+    "universe_telemetry": {
+      "duplicate_guard_substitutions": {},
+      "effective_symbol_count": 241,
+      "effective_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2_effective",
+      "excluded_symbols": [],
+      "high_risk_symbols_detected": [
+        "SENT",
+        "CYBR",
+        "RBT",
+        "ABB",
+        "FANUY"
+      ],
+      "original_symbol_count": 241,
+      "replacements_applied": {
+        "ABB": "GEV",
+        "CYBR": "SAIL",
+        "FANUY": "NVT",
+        "RBT": "ZBRA",
+        "SENT": "RBRK"
+      }
+    },
+    "updated_universe_contains_foxa": true,
+    "updated_universe_contains_para": false,
+    "windows": [
+      20,
+      60,
+      120
+    ]
+  },
+  "real_artifact_sources": [
+    {
+      "label": "hist_density4_completed_241_symbol_20d_baseline",
+      "source_kind": "completed_review_artifact",
+      "source_path": "artifacts/hist_density4_241_symbol_findings_review.json",
+      "window_days": 20
+    }
+  ],
+  "real_completed_telemetry_used": true,
+  "recommendation_for_next_phase": "Proceed to a bounded real updated-universe validation window before 60d/120d accumulation; do not activate replay/topology/trading.",
+  "review_date": "2026-05-28",
+  "schema_version": "hist_long2_v1",
+  "status": "ok",
+  "window_level_ingestion_quality": [
+    {
+      "chunk_count": 5,
+      "completed_telemetry_mode": true,
+      "configured_symbol_count": 241,
+      "contradiction_persistence": {
+        "burden_count": 60,
+        "burden_ratio": 0.012448
+      },
+      "effective_symbol_count": 241,
+      "fixture_mode_markers": [],
+      "foxa_present": false,
+      "foxa_weak": false,
+      "historical_date_alignment": {
+        "exact_date_matches_total": 4465,
+        "exact_date_ratio": 0.95,
+        "reconciled_date_ratio": 0.05,
+        "reconciled_prior_dates_total": 235
+      },
+      "label": "hist_density4_completed_241_symbol_20d_baseline",
+      "monoculture_risk": "Chunk density concentration requires follow-up review.",
+      "morphology_persistence": {
+        "posture_counts": {
+          "pressure_building": 100
+        },
+        "posture_stability": "stable_single_posture"
+      },
+      "normalization_completeness": {
+        "chunk_density_mean": 0.975122,
+        "chunk_density_range": {
+          "max": 1.0,
+          "min": 0.92
+        },
+        "density": 0.975104
+      },
+      "normalized_rows": 4700,
+      "ops_hist_snapshot_count": 100,
+      "para_present": true,
+      "partial_failed_counts": {
+        "failed_count_total": 20,
+        "missing_dates_total": 20,
+        "partial_count_total": 20
+      },
+      "provider_degradation": {
+        "endpoint_failures": {
+          "HTTP_403": 40,
+          "zero_records_returned": 40
+        },
+        "top_failure_reasons": [
+          {
+            "count": 40,
+            "reason": "HTTP_403"
+          },
+          {
+            "count": 40,
+            "reason": "zero_records_returned"
+          }
+        ]
+      },
+      "real_completed_telemetry_used": true,
+      "replay_density": 0.975104,
+      "requested_symbol_date_capacity_total": 4820,
+      "sector_hhi": {
+        "drift_proxy": 0.582731,
+        "range": {
+          "max": 0.846731,
+          "min": 0.264
+        }
+      },
+      "source_kind": "completed_review_artifact",
+      "source_mode": "completed_artifact_bundle",
+      "source_path": "artifacts/hist_density4_241_symbol_findings_review.json",
+      "source_status": "ok",
+      "subsector_hhi": {
+        "drift_proxy": 0.582731,
+        "range": {
+          "max": 0.846731,
+          "min": 0.264
+        }
+      },
+      "temporal_stability": {
+        "assessment": "stable_single_posture",
+        "days": 20
+      },
+      "topology_richness": {
+        "chunk_richness_average": 2.0,
+        "chunk_richness_range": {
+          "max": 2.0,
+          "min": 2.0
+        },
+        "topology_persistence_enabled": false
+      },
+      "weak_symbol_details": [
+        {
+          "endpoint_failure_sample_count": 25,
+          "missing_sample_count": 20,
+          "observed_dates": [
+            "2026-05-01",
+            "2026-05-04",
+            "2026-05-05",
+            "2026-05-06",
+            "2026-05-07",
+            "2026-05-08",
+            "2026-05-11",
+            "2026-05-12",
+            "2026-05-13",
+            "2026-05-14",
+            "2026-05-15",
+            "2026-05-18",
+            "2026-05-19",
+            "2026-05-20",
+            "2026-05-21",
+            "2026-05-22",
+            "2026-05-25",
+            "2026-05-26",
+            "2026-05-27",
+            "2026-05-28"
+          ],
+          "observed_reasons": [
+            {
+              "count": 36,
+              "reason": "zero_records_returned"
+            },
+            {
+              "count": 9,
+              "reason": "HTTP_403"
+            }
+          ],
+          "replacement_review_later": true,
+          "symbol": "PARA"
+        }
+      ],
+      "weak_symbols": [
+        "PARA"
+      ],
+      "window_trading_days": 20
+    }
+  ]
+}
