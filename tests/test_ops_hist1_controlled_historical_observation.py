@@ -839,6 +839,24 @@ def test_downstream_preflight_accepts_single_market_cap_alias_boundary(tmp_path)
     assert snap["adapter_diagnostics"]["downstream_preflight_failure_reason_counts"] == {}
 
 
+def test_historical_boundary_normalizes_symbol_whitespace_and_close_alias(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [
+            {"symbol": f" {s} ", "date": snapshot_date, "price": 101.0, "market_cap": 1, "sector": "Tech", "industry": "Soft"}
+            for s in batch
+        ]
+
+    run_ops_hist1_historical_backfill(
+        snapshot_date="2026-05-27",
+        output_dir=str(tmp_path),
+        window_days=1,
+        fetch_batch=fetcher,
+        symbol_universe_override=["AAPL", "MSFT"],
+    )
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    assert snap["adapter_diagnostics"]["normalization_retained_row_count"] == 2
+
+
 def test_downstream_ingestion_contract_mismatch_classified(tmp_path, monkeypatch):
     def fetcher(batch, snapshot_date):
         return [{"symbol": s, "date": snapshot_date, "price": 101.0, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
@@ -850,7 +868,7 @@ def test_downstream_ingestion_contract_mismatch_classified(tmp_path, monkeypatch
         "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.ingest_controlled_daily_snapshot",
         fake_ingest,
     )
-    with pytest.raises(RuntimeError, match="class=downstream_ingestion_normalization_contract_mismatch"):
+    with pytest.raises(RuntimeError, match="downstream_ingestion_normalization_contract_debug_samples"):
         run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
 
 

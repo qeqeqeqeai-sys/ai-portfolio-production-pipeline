@@ -807,7 +807,7 @@ def _minimum_safe_normalized_ratio() -> float:
 
 
 def _partition_normalization_candidates(raw_rows: Sequence[dict[str, Any]], universe: Sequence[str]) -> tuple[list[dict[str, Any]], dict[str, list[str]], Counter[str]]:
-    by_symbol = {str(r.get("symbol", "")).upper(): r for r in raw_rows if str(r.get("symbol", "")).strip()}
+    by_symbol = {str(r.get("symbol", "")).strip().upper(): r for r in raw_rows if str(r.get("symbol", "")).strip()}
     failures_by_symbol: dict[str, list[str]] = {}
     reason_counts: Counter[str] = Counter()
     valid_rows: list[dict[str, Any]] = []
@@ -841,7 +841,7 @@ def _partition_normalization_candidates(raw_rows: Sequence[dict[str, Any]], univ
 
 
 def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], universe: Sequence[str], snapshot_date: str) -> tuple[list[dict[str, Any]], dict[str, list[str]], Counter[str]]:
-    by_symbol = {str(r.get("symbol", "")).upper(): r for r in rows if str(r.get("symbol", "")).strip()}
+    by_symbol = {str(r.get("symbol", "")).strip().upper(): r for r in rows if str(r.get("symbol", "")).strip()}
     failures_by_symbol: dict[str, list[str]] = {}
     reason_counts: Counter[str] = Counter()
     valid_rows: list[dict[str, Any]] = []
@@ -852,11 +852,16 @@ def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], u
             reasons.append("missing_post_fetch_row")
         else:
             patched_row = dict(row)
+            patched_row["symbol"] = str(patched_row.get("symbol", "")).strip().upper()
             # Deterministic one-boundary alias normalization before downstream preflight.
+            if patched_row.get("price") is None and patched_row.get("close") is not None:
+                patched_row["price"] = patched_row.get("close")
             if patched_row.get("marketCap") is None and patched_row.get("market_cap") is not None:
                 patched_row["marketCap"] = patched_row.get("market_cap")
             if patched_row.get("marketCap") is None and patched_row.get("reconciled_market_cap_value") is not None:
                 patched_row["marketCap"] = patched_row.get("reconciled_market_cap_value")
+            if not str(patched_row.get("date", "")).strip() and str(patched_row.get("snapshot_date", "")).strip():
+                patched_row["date"] = str(patched_row.get("snapshot_date"))
             if not str(patched_row.get("date", "")).strip():
                 patched_row["date"] = snapshot_date
             if not str(row.get("symbol", "")).strip():
@@ -885,6 +890,61 @@ def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], u
         else:
             valid_rows.append(patched_row)
     return valid_rows, failures_by_symbol, reason_counts
+
+
+def _build_downstream_normalization_contract_debug_samples(
+    rows: Sequence[dict[str, Any]],
+    snapshot_date: str,
+    sample_size: int = 3,
+) -> list[dict[str, Any]]:
+    required_raw_fields = ("symbol", "price", "marketCap", "sector")
+    samples: list[dict[str, Any]] = []
+    for row in list(rows)[: max(1, sample_size)]:
+        safe_keys = sorted(
+            k for k in row.keys()
+            if not any(token in str(k).lower() for token in ("api", "token", "secret", "payload"))
+        )[:30]
+        core_values = {
+            "symbol": row.get("symbol"),
+            "date": row.get("date"),
+            "snapshot_date": row.get("snapshot_date"),
+            "price": row.get("price"),
+            "close": row.get("close"),
+            "marketCap": row.get("marketCap"),
+            "market_cap": row.get("market_cap"),
+            "sector": row.get("sector"),
+            "industry": row.get("industry"),
+            "subsector": row.get("subsector"),
+            "volume": row.get("volume"),
+        }
+        missing = []
+        for field in required_raw_fields:
+            value = row.get(field)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                missing.append(field)
+        if row.get("industry") is None and row.get("subsector") is None:
+            missing.append("industry_or_subsector")
+        rejection_reasons: list[str] = []
+        if "symbol" in missing:
+            rejection_reasons.append("missing_symbol_for_ingest_filter")
+        if "price" in missing:
+            rejection_reasons.append("missing_price_for_live_normalization")
+        if "sector" in missing:
+            rejection_reasons.append("missing_sector_for_live_normalization")
+        if "industry_or_subsector" in missing:
+            rejection_reasons.append("missing_subsector_for_live_normalization")
+        if not rejection_reasons and str(row.get("symbol", "")).strip():
+            rejection_reasons.append("likely_symbol_batch_filter_mismatch_or_duplicate_elision")
+        samples.append(
+            {
+                "symbol": str(row.get("symbol", "")).strip().upper(),
+                "final_row_keys": safe_keys,
+                "final_row_core_values": core_values,
+                "ops_live_required_missing_fields": sorted(set(missing)),
+                "ops_live_normalization_rejection_reason": "|".join(rejection_reasons) if rejection_reasons else "undetermined",
+            }
+        )
+    return samples
 
 
 def _fetch_with_optional_date(
@@ -1123,6 +1183,10 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["reconciliation_full_filter_detected"] = pre_normalization_row_count > 0 and reconciliation_retained_row_count == 0
         diag["normalization_full_filter_detected"] = pre_normalization_row_count > 0 and preserved == 0
         diag["downstream_normalization_zero_rows"] = len(downstream_rows) > 0 and preserved == 0
+        if len(downstream_rows) > 0 and preserved == 0:
+            diag["downstream_ingestion_normalization_contract_debug_samples"] = _build_downstream_normalization_contract_debug_samples(
+                downstream_rows, d, sample_size=3
+            )
         if preserved == 0:
             empty_reason, empty_stage = _classify_empty_snapshot_cause(
                 raw_rows=raw_rows,
@@ -1152,6 +1216,14 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                     debug_samples = []
                 error_message += (
                     "; downstream_market_cap_debug_samples="
+                    f"{json.dumps(debug_samples[:3], sort_keys=True, separators=(',', ':'))}"
+                )
+            if diag.get("empty_snapshot_reason_class") == "downstream_ingestion_normalization_contract_mismatch":
+                debug_samples = diag.get("downstream_ingestion_normalization_contract_debug_samples", [])
+                if not isinstance(debug_samples, list):
+                    debug_samples = []
+                error_message += (
+                    "; downstream_ingestion_normalization_contract_debug_samples="
                     f"{json.dumps(debug_samples[:3], sort_keys=True, separators=(',', ':'))}"
                 )
             raise RuntimeError(
