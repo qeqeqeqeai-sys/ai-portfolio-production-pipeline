@@ -1,0 +1,1886 @@
+# HIST-DENSITY-3 Config Preview
+
+{
+  "cache_modes": {
+    "cache_only_validation": false,
+    "cache_validation_mode": false,
+    "raw_cache_enabled": false,
+    "raw_cache_write_enabled": false
+  },
+  "chunk_plan": {
+    "symbol_chunk_count": 1,
+    "symbol_chunk_size": 5,
+    "trading_days": 5
+  },
+  "chunk_symbols": [
+    [
+      "AAPL",
+      "MSFT",
+      "GOOGL",
+      "AMZN",
+      "META"
+    ]
+  ],
+  "effective_symbols": [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "META"
+  ],
+  "estimated_symbol_date_rows": 25,
+  "governance_certification": {
+    "governance_mode": "observational_only",
+    "no_cognition_replay_topology_persistence": true,
+    "no_prediction_or_trading_execution": true,
+    "persistence": "local_artifacts_only",
+    "raw_input_cache_persistence_controlled_separately": true,
+    "replay_execution_enabled": false
+  },
+  "schema_version": "hist_density3_v1",
+  "sde2_categories": {
+    "ai_infrastructure_suppliers": [
+      "SMCI",
+      "ANET",
+      "CSCO",
+      "HPE",
+      "DELL",
+      "HPQ",
+      "WDC",
+      "STX",
+      "TER",
+      "SWKS",
+      "QRVO",
+      "JBL",
+      "FLEX",
+      "APH",
+      "GLW"
+    ],
+    "bubble_sensitive_momentum_entities": [
+      "TSLA",
+      "PLTR",
+      "SMCI",
+      "COIN",
+      "MSTR",
+      "APP",
+      "UPST",
+      "AFRM",
+      "ROKU"
+    ],
+    "cloud_software_infrastructure": [
+      "SNOW",
+      "PANW",
+      "CRWD",
+      "FTNT",
+      "ZS",
+      "OKTA",
+      "NET",
+      "DDOG",
+      "MDB",
+      "ESTC",
+      "HUBS",
+      "TEAM",
+      "SHOP",
+      "WDAY",
+      "DOCU",
+      "CFLT",
+      "PLTR",
+      "DT"
+    ],
+    "commodities": [
+      "GLD",
+      "SLV",
+      "USO",
+      "DBA",
+      "DBC",
+      "BHP",
+      "RIO",
+      "VALE",
+      "FCX",
+      "NEM",
+      "NUE",
+      "STLD",
+      "SCCO",
+      "ALB",
+      "CF",
+      "MOS"
+    ],
+    "communication_platforms": [
+      "NFLX",
+      "DIS",
+      "CMCSA",
+      "CHTR",
+      "T",
+      "VZ",
+      "TMUS",
+      "SPOT",
+      "ROKU",
+      "ZM",
+      "PARA",
+      "WBD"
+    ],
+    "consumer_discretionary": [
+      "WMT",
+      "COST",
+      "TGT",
+      "HD",
+      "LOW",
+      "SBUX",
+      "MCD",
+      "CMG",
+      "NKE",
+      "LULU",
+      "ROST",
+      "TJX",
+      "BKNG",
+      "EXPE",
+      "MAR",
+      "HLT",
+      "RCL",
+      "CCL",
+      "NCLH"
+    ],
+    "contradictory_regime_assets": [
+      "TLT",
+      "XLE",
+      "GLD",
+      "KRE",
+      "UUP",
+      "HYG",
+      "DBA",
+      "VIXY"
+    ],
+    "credit_sensitive_entities": [
+      "HYG",
+      "JNK",
+      "LQD",
+      "KRE",
+      "KBE",
+      "IWM",
+      "IYR",
+      "VNQ",
+      "TLT"
+    ],
+    "cybersecurity": [
+      "PANW",
+      "CRWD",
+      "FTNT",
+      "ZS",
+      "OKTA",
+      "CHKP",
+      "GEN",
+      "S",
+      "SENT",
+      "CYBR",
+      "VRNS",
+      "TENB"
+    ],
+    "energy_utilities": [
+      "XOM",
+      "CVX",
+      "COP",
+      "EOG",
+      "OXY",
+      "SLB",
+      "HAL",
+      "BKR",
+      "NEE",
+      "SO",
+      "DUK",
+      "AEP",
+      "EXC",
+      "XEL",
+      "SRE",
+      "CEG",
+      "AES"
+    ],
+    "financials": [
+      "JPM",
+      "BAC",
+      "WFC",
+      "C",
+      "GS",
+      "MS",
+      "BK",
+      "USB",
+      "PNC",
+      "SCHW",
+      "BLK",
+      "BX",
+      "KKR",
+      "APO",
+      "AXP",
+      "SPGI",
+      "MCO"
+    ],
+    "healthcare_biotech": [
+      "UNH",
+      "ELV",
+      "CI",
+      "HUM",
+      "CVS",
+      "ABBV",
+      "JNJ",
+      "MRK",
+      "PFE",
+      "BMY",
+      "LLY",
+      "AMGN",
+      "GILD",
+      "REGN",
+      "BIIB",
+      "VRTX",
+      "MRNA"
+    ],
+    "high_duration_valuation_sensitive_entities": [
+      "ARKK",
+      "ICLN",
+      "TAN",
+      "SNOW",
+      "DDOG",
+      "MDB",
+      "NET",
+      "ZS",
+      "CRWD"
+    ],
+    "industrials_automation": [
+      "GE",
+      "HON",
+      "EMR",
+      "ETN",
+      "ROK",
+      "PH",
+      "ITW",
+      "JCI",
+      "CARR",
+      "OTIS",
+      "MMM",
+      "CAT",
+      "DE",
+      "URI",
+      "GWW",
+      "FAST",
+      "PWR"
+    ],
+    "macro_sensitive_etfs": [
+      "SPY",
+      "QQQ",
+      "IWM",
+      "DIA",
+      "XLF",
+      "XLK",
+      "XLE",
+      "XLU",
+      "XLI",
+      "XLY",
+      "XLV",
+      "XLB",
+      "XLP"
+    ],
+    "mega_cap_ai_technology": [
+      "AAPL",
+      "MSFT",
+      "GOOGL",
+      "AMZN",
+      "META",
+      "NVDA",
+      "TSLA",
+      "ORCL",
+      "IBM",
+      "ADBE",
+      "CRM",
+      "SAP",
+      "NOW"
+    ],
+    "robotics": [
+      "IR",
+      "SYM",
+      "RBT",
+      "ABB",
+      "FANUY",
+      "ROK",
+      "TER",
+      "ISRG",
+      "TXN",
+      "NVDA",
+      "AMZN"
+    ],
+    "semiconductors": [
+      "AMD",
+      "AVGO",
+      "QCOM",
+      "MU",
+      "INTC",
+      "TXN",
+      "AMAT",
+      "LRCX",
+      "KLAC",
+      "MCHP",
+      "MPWR",
+      "ADI",
+      "MRVL",
+      "ON",
+      "NXPI",
+      "ASML",
+      "TSM",
+      "ARM",
+      "GFS",
+      "UMC"
+    ],
+    "transportation_logistics": [
+      "UPS",
+      "FDX",
+      "UNP",
+      "CSX",
+      "NSC",
+      "DAL",
+      "UAL",
+      "AAL",
+      "LUV",
+      "JBHT",
+      "ODFL",
+      "XPO",
+      "CHRW"
+    ],
+    "volatility_defensive_assets": [
+      "VIXY",
+      "SHY",
+      "IEF",
+      "TIP",
+      "UUP",
+      "GLD",
+      "SLV",
+      "XLU",
+      "XLP"
+    ]
+  },
+  "sde2_diversity_metrics": {
+    "contradiction_diversity_ratio": 0.033195,
+    "monoculture_risk_ratio": 0.302905,
+    "propagation_pathway_diversity_ratio": 0.833333,
+    "regime_diversity_ratio": 1.0,
+    "sector_diversity_ratio": 0.7,
+    "topology_balance_ratio": 0.697095,
+    "universe_size": 241
+  },
+  "sde2_symbol_validation_metadata": {
+    "AAL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "AAPL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "ABB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "robotics",
+      "secondary_categories": []
+    },
+    "ABBV": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "ADBE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "ADI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "AEP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "AES": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "AFRM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "bubble_sensitive_momentum_entities",
+      "secondary_categories": []
+    },
+    "ALB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "AMAT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "AMD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "AMGN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "AMZN": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": [
+        "robotics"
+      ]
+    },
+    "ANET": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "APH": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "APO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "APP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "bubble_sensitive_momentum_entities",
+      "secondary_categories": []
+    },
+    "ARKK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "medium",
+      "primary_category": "high_duration_valuation_sensitive_entities",
+      "secondary_categories": []
+    },
+    "ARM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "ASML": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "AVGO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "AXP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "BAC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "BHP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "BIIB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "BK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "BKNG": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "BKR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "BLK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "BMY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "BX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "C": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "CARR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "CAT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "CCL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "CEG": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "CF": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "CFLT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "CHKP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "CHRW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "CHTR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "CI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "CMCSA": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "medium",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "CMG": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "COIN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "bubble_sensitive_momentum_entities",
+      "secondary_categories": []
+    },
+    "COP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "COST": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "CRM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "CRWD": {
+      "category_overlap_count": 3,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "cybersecurity",
+        "high_duration_valuation_sensitive_entities"
+      ]
+    },
+    "CSCO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "CSX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "CVS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "CVX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "CYBR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "DAL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "DBA": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "DBC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "DDOG": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "high_duration_valuation_sensitive_entities"
+      ]
+    },
+    "DE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "DELL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "DIA": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "DIS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "DOCU": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "DT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "DUK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "ELV": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "EMR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "EOG": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "ESTC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "ETN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "EXC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "EXPE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "FANUY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "high",
+      "primary_category": "robotics",
+      "secondary_categories": []
+    },
+    "FAST": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "FCX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "FDX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "FLEX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "FTNT": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "cybersecurity"
+      ]
+    },
+    "GE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "GEN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "GFS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "GILD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "GLD": {
+      "category_overlap_count": 3,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": [
+        "volatility_defensive_assets",
+        "contradictory_regime_assets"
+      ]
+    },
+    "GLW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "GOOGL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "medium",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "GS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "GWW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "HAL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "HD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "HLT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "HON": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "HPE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "HPQ": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "HUBS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "HUM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "HYG": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "IBM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "ICLN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "high_duration_valuation_sensitive_entities",
+      "secondary_categories": []
+    },
+    "IEF": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "volatility_defensive_assets",
+      "secondary_categories": []
+    },
+    "INTC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "IR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "robotics",
+      "secondary_categories": []
+    },
+    "ISRG": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "robotics",
+      "secondary_categories": []
+    },
+    "ITW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "IWM": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": [
+        "macro_sensitive_etfs"
+      ]
+    },
+    "IYR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": []
+    },
+    "JBHT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "JBL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "JCI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "JNJ": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "JNK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": []
+    },
+    "JPM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "KBE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": []
+    },
+    "KKR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "KLAC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "KRE": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "LLY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "LOW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "LQD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": []
+    },
+    "LRCX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "LULU": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "LUV": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "MAR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "MCD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "MCHP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "MCO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "MDB": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "high_duration_valuation_sensitive_entities"
+      ]
+    },
+    "META": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "MMM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "MOS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "MPWR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "MRK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "MRNA": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "MRVL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "MS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "MSFT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "MSTR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "bubble_sensitive_momentum_entities",
+      "secondary_categories": []
+    },
+    "MU": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "NCLH": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "NEE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "NEM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "NET": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "high_duration_valuation_sensitive_entities"
+      ]
+    },
+    "NFLX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "NKE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "NOW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "NSC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "NUE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "NVDA": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": [
+        "robotics"
+      ]
+    },
+    "NXPI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "ODFL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "OKTA": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "cybersecurity"
+      ]
+    },
+    "ON": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "ORCL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "OTIS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "OXY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "PANW": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "cybersecurity"
+      ]
+    },
+    "PARA": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "PFE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "PH": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "PLTR": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "bubble_sensitive_momentum_entities"
+      ]
+    },
+    "PNC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "PWR": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "QCOM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "QQQ": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "QRVO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "RBT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "high",
+      "primary_category": "robotics",
+      "secondary_categories": []
+    },
+    "RCL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "REGN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "RIO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "ROK": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": [
+        "robotics"
+      ]
+    },
+    "ROKU": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": [
+        "bubble_sensitive_momentum_entities"
+      ]
+    },
+    "ROST": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "S": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "SAP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": []
+    },
+    "SBUX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "SCCO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "SCHW": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "SENT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "high",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "SHOP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "SHY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "volatility_defensive_assets",
+      "secondary_categories": []
+    },
+    "SLB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "SLV": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": [
+        "volatility_defensive_assets"
+      ]
+    },
+    "SMCI": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": [
+        "bubble_sensitive_momentum_entities"
+      ]
+    },
+    "SNOW": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "high_duration_valuation_sensitive_entities"
+      ]
+    },
+    "SO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "SPGI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "SPOT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "SPY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "SRE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "STLD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "STX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "SWKS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "SYM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "robotics",
+      "secondary_categories": []
+    },
+    "T": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "TAN": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "high_duration_valuation_sensitive_entities",
+      "secondary_categories": []
+    },
+    "TEAM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "TENB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "TER": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": [
+        "robotics"
+      ]
+    },
+    "TGT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "TIP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "volatility_defensive_assets",
+      "secondary_categories": []
+    },
+    "TJX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "TLT": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "TMUS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "TSLA": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "mega_cap_ai_technology",
+      "secondary_categories": [
+        "bubble_sensitive_momentum_entities"
+      ]
+    },
+    "TSM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "TXN": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": [
+        "robotics"
+      ]
+    },
+    "UAL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "UMC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "semiconductors",
+      "secondary_categories": []
+    },
+    "UNH": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "UNP": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "UPS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "UPST": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "bubble_sensitive_momentum_entities",
+      "secondary_categories": []
+    },
+    "URI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "industrials_automation",
+      "secondary_categories": []
+    },
+    "USB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "USO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "UUP": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "volatility_defensive_assets",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "VALE": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "commodities",
+      "secondary_categories": []
+    },
+    "VIXY": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "medium",
+      "primary_category": "volatility_defensive_assets",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "VNQ": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "credit_sensitive_entities",
+      "secondary_categories": []
+    },
+    "VRNS": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cybersecurity",
+      "secondary_categories": []
+    },
+    "VRTX": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "healthcare_biotech",
+      "secondary_categories": []
+    },
+    "VZ": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "WBD": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "WDAY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": []
+    },
+    "WDC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "ai_infrastructure_suppliers",
+      "secondary_categories": []
+    },
+    "WFC": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "financials",
+      "secondary_categories": []
+    },
+    "WMT": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "consumer_discretionary",
+      "secondary_categories": []
+    },
+    "XEL": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "XLB": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "XLE": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": [
+        "contradictory_regime_assets"
+      ]
+    },
+    "XLF": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "XLI": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "XLK": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "XLP": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": [
+        "volatility_defensive_assets"
+      ]
+    },
+    "XLU": {
+      "category_overlap_count": 2,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": [
+        "volatility_defensive_assets"
+      ]
+    },
+    "XLV": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "XLY": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "macro_sensitive_etfs",
+      "secondary_categories": []
+    },
+    "XOM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "energy_utilities",
+      "secondary_categories": []
+    },
+    "XPO": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "transportation_logistics",
+      "secondary_categories": []
+    },
+    "ZM": {
+      "category_overlap_count": 1,
+      "fmp_availability_risk": "low",
+      "primary_category": "communication_platforms",
+      "secondary_categories": []
+    },
+    "ZS": {
+      "category_overlap_count": 3,
+      "fmp_availability_risk": "low",
+      "primary_category": "cloud_software_infrastructure",
+      "secondary_categories": [
+        "cybersecurity",
+        "high_duration_valuation_sensitive_entities"
+      ]
+    }
+  },
+  "sde2_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2",
+  "universe_telemetry": {
+    "effective_symbol_count": 5,
+    "effective_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2_effective",
+    "excluded_symbols": [],
+    "high_risk_symbols_detected": [],
+    "original_symbol_count": 5,
+    "replacements_applied": {}
+  }
+}
