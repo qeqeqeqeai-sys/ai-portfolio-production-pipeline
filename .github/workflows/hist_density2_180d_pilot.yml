@@ -54,9 +54,10 @@ jobs:
       - name: Run HIST-DENSITY-2 pilot
         env:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           INPUT_END_DATE: ${{ github.event.inputs.end_date }}
-          INPUT_TRADING_DAYS: ${{ github.event.inputs.trading_days }}
-          INPUT_SYMBOL_COUNT: ${{ github.event.inputs.symbol_count }}
           INPUT_RAW_CACHE_ENABLED: ${{ github.event.inputs.raw_cache_enabled }}
           INPUT_RAW_CACHE_WRITE_ENABLED: ${{ github.event.inputs.raw_cache_write_enabled }}
           INPUT_CACHE_VALIDATION_MODE: ${{ github.event.inputs.cache_validation_mode }}
