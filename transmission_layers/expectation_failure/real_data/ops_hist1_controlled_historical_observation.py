@@ -723,6 +723,48 @@ def _build_snapshot_telemetry_fields(
 
 
 
+def _minimum_safe_normalized_ratio() -> float:
+    raw = os.getenv("OPS_HIST1_MINIMUM_SAFE_RATIO", "0.5")
+    try:
+        value = float(raw)
+    except Exception:
+        value = 0.5
+    return max(0.0, min(value, 1.0))
+
+
+def _partition_normalization_candidates(raw_rows: Sequence[dict[str, Any]], universe: Sequence[str]) -> tuple[list[dict[str, Any]], dict[str, list[str]], Counter[str]]:
+    by_symbol = {str(r.get("symbol", "")).upper(): r for r in raw_rows if str(r.get("symbol", "")).strip()}
+    failures_by_symbol: dict[str, list[str]] = {}
+    reason_counts: Counter[str] = Counter()
+    valid_rows: list[dict[str, Any]] = []
+    for sym in [str(s).upper() for s in universe if str(s).strip()]:
+        row = by_symbol.get(sym)
+        reasons: list[str] = []
+        if row is None:
+            reasons.append("empty_provider_response")
+        else:
+            price = row.get("price")
+            if price is None:
+                reasons.append("missing_price")
+            else:
+                try:
+                    float(price)
+                except Exception:
+                    reasons.append("malformed_numeric_conversion")
+            market_cap = row.get("marketCap")
+            if market_cap is not None:
+                try:
+                    float(market_cap)
+                except Exception:
+                    reasons.append("malformed_numeric_conversion")
+        if reasons:
+            failures_by_symbol[sym] = sorted(set(reasons))
+            for reason in set(reasons):
+                reason_counts[reason] += 1
+        else:
+            valid_rows.append(row)
+    return valid_rows, failures_by_symbol, reason_counts
+
 
 def _fetch_with_optional_date(
     fetch_batch: Callable[..., Iterable[dict]],
@@ -840,7 +882,9 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                 }
             )
         raw_rows = _fetch_with_optional_date(fetch_batch, universe, d, progress_callback=_snapshot_heartbeat)
-        result = ingest_controlled_daily_snapshot(universe, d, lambda batch, _raw=raw_rows: _raw)
+        valid_rows, failures_by_symbol, isolation_reason_counts = _partition_normalization_candidates(raw_rows, universe)
+        valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in valid_rows if str(r.get("symbol", "")).strip()})
+        result = ingest_controlled_daily_snapshot(valid_symbols, d, lambda batch, _raw=valid_rows: [r for r in _raw if str(r.get("symbol", "")).upper() in set(batch)]) if valid_symbols else {"rows": [], "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"), "snapshot_identity": {}, "status": "failed_closed"}
         profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
         for k in list(cache_totals.keys()):
             v = profile_diag.get(k, 0)
@@ -848,8 +892,27 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                 v = 0
             cache_totals[k] += int(v)
         diag = _historical_diagnostics(raw_rows, result.get("rows", []), universe, d, profile_diag)
-        if diag["empty_snapshot_fail_closed"]:
+        requested = max(int(diag.get("symbol_count_requested", len(universe))), 1)
+        preserved = int(diag.get("symbol_count_normalized", 0))
+        isolated_failed = max(0, requested - preserved)
+        failure_ratio = round(isolated_failed / requested, 6)
+        normalized_ratio = round(preserved / requested, 6)
+        minimum_safe_ratio = _minimum_safe_normalized_ratio()
+        diag["normalization_failure_symbol_samples"] = [{"symbol": s, "reasons": failures_by_symbol.get(s, [])} for s in sorted(failures_by_symbol.keys())[:sample_limit]]
+        diag["normalization_failure_reason_counts"] = dict(sorted((isolation_reason_counts or Counter()).items()))
+        diag["normalization_failure_ratio"] = failure_ratio
+        diag["isolated_failed_symbol_count"] = isolated_failed
+        diag["preserved_normalized_symbol_count"] = preserved
+        diag["minimum_safe_ratio"] = minimum_safe_ratio
+        diag["normalization_mode"] = "isolated_symbol_failures" if isolated_failed > 0 and preserved > 0 else "all_symbols_healthy"
+        if preserved == 0:
             raise RuntimeError(f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; reasons={diag['top_normalization_failure_reasons']}")
+        if normalized_ratio < minimum_safe_ratio:
+            raise RuntimeError(
+                "OPS-HIST-1 fails closed: normalized ratio below minimum safe threshold "
+                f"for {d}; normalized_ratio={normalized_ratio}; minimum_safe_ratio={minimum_safe_ratio}; "
+                f"top_failure_reasons={diag['top_normalization_failure_reasons']}"
+            )
         result["surfaces"] = build_normalized_operational_surfaces(result.get("rows", []), result.get("snapshot_ts", ""), result.get("snapshot_identity", {}))
         result["operator_payload"] = build_operator_payloads(result["surfaces"])
         snap = _snapshot_payload(d, result, universe, window_dates)
