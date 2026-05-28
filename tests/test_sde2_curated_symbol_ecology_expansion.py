@@ -57,3 +57,12 @@ def test_artifacts_bounded_and_governance_and_metadata(tmp_path):
     assert payload["symbol_validation_metadata"]["FANUY"]["fmp_availability_risk"] == "high"
     assert len(open(out["json_path"], encoding="utf-8").read()) < 250_000
     assert len(open(out["md_path"], encoding="utf-8").read()) < 40_000
+
+
+def test_cflt_replaced_with_ddog_and_count_stable():
+    symbols = get_sde2_curated_symbol_universe()
+    categories = get_sde2_symbol_categories()
+    assert "CFLT" not in symbols
+    assert "DDOG" in symbols
+    assert len(categories["cloud_software_infrastructure"]) == 18
+
