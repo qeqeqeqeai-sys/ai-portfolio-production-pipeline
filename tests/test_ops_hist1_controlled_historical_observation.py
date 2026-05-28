@@ -517,3 +517,35 @@ def test_cache_write_enabled_misses_and_fetched_rows_must_attempt_write(monkeypa
     fetcher = build_historical_fmp_fetcher("test_key")
     with pytest.raises(RuntimeError, match="no write attempts were made"):
         fetcher(["AAPL"], "2026-05-27")
+
+
+def test_mixed_valid_invalid_symbol_batch_isolated_and_preserved(tmp_path):
+    def fetcher(batch, snapshot_date):
+        out = []
+        for sym in batch:
+            if sym == "BAD":
+                out.append({"symbol": sym, "date": snapshot_date, "price": "NaNxx", "marketCap": 1000, "sector": "Tech", "industry": "Soft"})
+            else:
+                out.append({"symbol": sym, "date": snapshot_date, "price": 101.0, "marketCap": 1000, "sector": "Tech", "industry": "Soft"})
+        return out
+    out = run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "BAD", "MSFT"])
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    assert out["status"] == "ok"
+    assert snap["adapter_diagnostics"]["preserved_normalized_symbol_count"] == 2
+    assert snap["adapter_diagnostics"]["isolated_failed_symbol_count"] == 1
+    assert "malformed_numeric_conversion" in snap["adapter_diagnostics"]["normalization_failure_reason_counts"]
+
+
+def test_empty_endpoint_payload_fail_closed(tmp_path):
+    def fetcher(_batch, _snapshot_date):
+        return []
+    with pytest.raises(RuntimeError):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT"])
+
+
+def test_safe_ratio_breach_fail_closed(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPS_HIST1_MINIMUM_SAFE_RATIO", "0.8")
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": batch[0], "date": snapshot_date, "price": 101.0, "marketCap": 1000, "sector": "Tech", "industry": "Soft"}]
+    with pytest.raises(RuntimeError):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT", "NVDA"])
