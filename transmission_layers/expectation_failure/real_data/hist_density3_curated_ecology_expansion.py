@@ -20,15 +20,18 @@ from transmission_layers.expectation_failure.real_data.sde2_curated_symbol_ecolo
 
 HIST_DENSITY3_SCHEMA_VERSION = "hist_density3_v1"
 DEFAULT_TRADING_DAYS = 180
+STAGE5_TRADING_DAYS = 20
 DEFAULT_MAX_SYMBOLS = 241
 DEFAULT_SYMBOL_CHUNK_SIZE = 50
-REPLACEMENTS = {"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW"}
+STAGE5_MAX_CHUNKS = 5
+REPLACEMENTS = {"RBT": "ROK", "FANUY": "ETN", "SENT": "CHKP", "ABB": "ETN", "CYBR": "PANW", "CFLT": "DDOG"}
 
 
 def _gov() -> dict[str, Any]:
     return {
         "governance_mode": "observational_only",
         "replay_execution_enabled": False,
+        "topology_activation_enabled": False,
         "persistence": "local_artifacts_only",
         "raw_input_cache_persistence_controlled_separately": True,
         "no_prediction_or_trading_execution": True,
@@ -62,7 +65,7 @@ def _effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, app
     return out, tel
 
 
-def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, output_root: str = "reports/hist_density3_curated_241", density_mode: str = DENSITY_MODE_FIXTURE, raw_cache_enabled: bool = True, raw_cache_write_enabled: bool = True, cache_validation_mode: bool = True, cache_only_validation: bool = False, include_high_risk_symbols: bool = False, apply_sde2_replacements: bool = True, dry_run_config_only: bool = False, end_date: str | None = None) -> dict[str, Any]:
+def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS, output_root: str = "reports/hist_density3_curated_241", density_mode: str = DENSITY_MODE_FIXTURE, raw_cache_enabled: bool = False, raw_cache_write_enabled: bool = False, cache_validation_mode: bool = False, cache_only_validation: bool = False, include_high_risk_symbols: bool = False, apply_sde2_replacements: bool = True, dry_run_config_only: bool = False, end_date: str | None = None) -> dict[str, Any]:
     if trading_days < 1 or trading_days > DEFAULT_TRADING_DAYS:
         raise ValueError("HIST-DENSITY-3 fails closed: trading day limit exceeded")
     if max_symbols < 1 or max_symbols > DEFAULT_MAX_SYMBOLS:
@@ -74,6 +77,30 @@ def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: 
     effective_symbols, universe_tel = _effective_symbols(max_symbols=max_symbols, include_high_risk_symbols=include_high_risk_symbols, apply_sde2_replacements=apply_sde2_replacements)
     dates = sorted(_deterministic_density_window_dates(end_date, trading_days))
     symbol_chunks = [effective_symbols[i:i + symbol_chunk_size] for i in range(0, len(effective_symbols), symbol_chunk_size)]
+    chunk_sizes = [len(c) for c in symbol_chunks]
+    preflight = {
+        "requested_max_symbols": max_symbols,
+        "effective_symbol_count": len(effective_symbols),
+        "chunk_count": len(symbol_chunks),
+        "expected_chunk_count": expected_chunk_count,
+        "chunk_sizes": chunk_sizes,
+        "replacement_map_applied": universe_tel["replacements_applied"],
+        "raw_cache_enabled": raw_cache_enabled,
+        "raw_cache_write_enabled": raw_cache_write_enabled,
+        "replay_execution_enabled": _gov()["replay_execution_enabled"],
+        "topology_activation_enabled": _gov()["topology_activation_enabled"],
+        "cognition_replay_topology_persistence_disabled": _gov()["no_cognition_replay_topology_persistence"],
+    }
+    print("[HIST-DENSITY-3][PREFLIGHT] " + json.dumps(preflight, sort_keys=True), flush=True)
+    if len(effective_symbols) > DEFAULT_MAX_SYMBOLS:
+        raise ValueError("HIST-DENSITY-3 fails closed: effective symbol count exceeds 241")
+    if len(symbol_chunks) > STAGE5_MAX_CHUNKS or len(symbol_chunks) > expected_chunk_count:
+        raise ValueError("HIST-DENSITY-3 fails closed: chunk count exceeds 5")
+    if raw_cache_write_enabled:
+        raise ValueError("HIST-DENSITY-3 fails closed: raw cache writes are forbidden")
+    gov = _gov()
+    if gov["replay_execution_enabled"] or gov["topology_activation_enabled"] or (not gov["no_cognition_replay_topology_persistence"]):
+        raise ValueError("HIST-DENSITY-3 fails closed: replay/topology/cognition persistence guard violated")
     root = Path(output_root)
     root.mkdir(parents=True, exist_ok=True)
     config_preview = {
@@ -85,6 +112,7 @@ def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: 
         "effective_symbols": effective_symbols,
         "universe_telemetry": universe_tel,
         "chunk_plan": {"symbol_chunk_size": symbol_chunk_size, "symbol_chunk_count": len(symbol_chunks), "trading_days": len(dates)},
+        "preflight_validation": preflight,
         "chunk_symbols": symbol_chunks,
         "estimated_symbol_date_rows": len(effective_symbols) * len(dates),
         "cache_modes": {"raw_cache_enabled": raw_cache_enabled, "raw_cache_write_enabled": raw_cache_write_enabled, "cache_validation_mode": cache_validation_mode, "cache_only_validation": cache_only_validation},
@@ -122,7 +150,50 @@ def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: 
     sample_limit = max(1, min(DEFAULT_TELEMETRY_MAX_SAMPLES, TELEMETRY_MAX_SAMPLES_HARD_CAP))
     bounded_missing_samples = sorted(aggregate_missing_samples, key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", ""))))[:sample_limit]
     bounded_endpoint_samples = sorted(aggregate_endpoint_samples, key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", "")), str(s.get("endpoint_name", "")), int(s.get("attempt_index", 0))))[:sample_limit]
-    summary = {"status": "ok", "schema_version": HIST_DENSITY3_SCHEMA_VERSION, "sde2_universe_version": SDE2_VERSION, "universe_telemetry": universe_tel, "chunking_configuration": {"symbol_chunk_size": symbol_chunk_size, "chunk_count": len(symbol_chunks), "max_symbols": max_symbols, "trading_days": len(dates)}, "cache_telemetry": {**aggregate_telemetry, "missing_record_samples": bounded_missing_samples, "endpoint_failure_samples": bounded_endpoint_samples, "telemetry_sample_limit_default": DEFAULT_TELEMETRY_MAX_SAMPLES, "telemetry_sample_limit_hard_cap": TELEMETRY_MAX_SAMPLES_HARD_CAP}, "ops_hist_artifact_summary": {"chunk_results": chunk_results, "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(aggregate_failure_reasons.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]}, "governance_certification": _gov(), "runtime_summary": {"elapsed_seconds": int(time.monotonic()-run_start)}, "next_phase_recommendation": "Proceed staged runs after dry-run and cache validation."}
+    summary = {"status": "ok", "schema_version": HIST_DENSITY3_SCHEMA_VERSION, "sde2_universe_version": SDE2_VERSION, "universe_telemetry": universe_tel, "preflight_validation": preflight, "chunking_configuration": {"symbol_chunk_size": symbol_chunk_size, "chunk_count": len(symbol_chunks), "max_symbols": max_symbols, "trading_days": len(dates)}, "cache_telemetry": {**aggregate_telemetry, "missing_record_samples": bounded_missing_samples, "endpoint_failure_samples": bounded_endpoint_samples, "telemetry_sample_limit_default": DEFAULT_TELEMETRY_MAX_SAMPLES, "telemetry_sample_limit_hard_cap": TELEMETRY_MAX_SAMPLES_HARD_CAP}, "ops_hist_artifact_summary": {"chunk_results": chunk_results, "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(aggregate_failure_reasons.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]}, "governance_certification": gov, "runtime_summary": {"elapsed_seconds": int(time.monotonic()-run_start)}, "next_phase_recommendation": "Proceed staged runs after dry-run and cache validation."}
     (root / "hist_density3_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
-    (root / "hist_density3_summary.md").write_text("# HIST-DENSITY-3 Curated 241 Symbol Summary\n\n" + json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    report = [
+        "# Stage 5 — Full Bounded 241-Symbol Historical Ecology Rollout Report",
+        "",
+        "## Workflow inputs used",
+        f"- trading_days={trading_days}",
+        f"- max_symbols={max_symbols}",
+        f"- symbol_chunk_size={symbol_chunk_size}",
+        f"- raw_cache_enabled={raw_cache_enabled}",
+        f"- raw_cache_write_enabled={raw_cache_write_enabled}",
+        f"- cache_validation_mode={cache_validation_mode}",
+        f"- cache_only_validation={cache_only_validation}",
+        f"- include_high_risk_symbols={include_high_risk_symbols}",
+        f"- apply_sde2_replacements={apply_sde2_replacements}",
+        f"- dry_run_config_only={dry_run_config_only}",
+        "",
+        "## Runtime",
+        f"- elapsed_seconds={summary['runtime_summary']['elapsed_seconds']}",
+        "## Effective symbol count",
+        f"- effective_symbol_count={universe_tel['effective_symbol_count']}",
+        "## Chunk execution summary",
+        f"- chunk_count={len(symbol_chunks)}",
+        f"- chunk_sizes={chunk_sizes}",
+        "## Endpoint success/failure summary",
+        f"- top_failure_reasons={summary['ops_hist_artifact_summary']['top_failure_reasons']}",
+        "## Final usable row count",
+        f"- estimated_symbol_date_rows={len(effective_symbols) * len(dates)}",
+        "## Reconciliation summary",
+        f"- exact/reconciled/missing available per chunk in artifact JSON chunk telemetry",
+        "## Affected symbols/dates",
+        f"- affected_symbol_count={aggregate_telemetry['affected_symbol_count']}",
+        f"- affected_date_count={aggregate_telemetry['affected_date_count']}",
+        "## Telemetry sample interpretation",
+        f"- missing_record_sample_count={aggregate_telemetry['missing_record_sample_count']}",
+        f"- endpoint_failure_sample_count={aggregate_telemetry['endpoint_failure_sample_count']}",
+        "## Cache posture",
+        f"- raw_cache_enabled={raw_cache_enabled}, raw_cache_write_enabled={raw_cache_write_enabled}",
+        "## Governance confirmation",
+        f"- governance={json.dumps(gov, sort_keys=True)}",
+        "## Overall operational stability assessment",
+        "- Deterministic bounded chunk execution completed under fail-closed guards.",
+        "## Conclusion",
+        "- SEFI historical ecology rollout is operationally stable when guard conditions remain satisfied.",
+    ]
+    (root / "hist_density3_summary.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     return summary

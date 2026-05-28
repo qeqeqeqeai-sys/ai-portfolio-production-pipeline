@@ -6,7 +6,7 @@ on:
       trading_days:
         description: "Trading days (1-180)"
         required: false
-        default: "180"
+        default: "20"
         type: string
       max_symbols:
         description: "Max symbols (1-241)"
@@ -17,6 +17,11 @@ on:
         description: "Symbol chunk size (1-60)"
         required: false
         default: "50"
+        type: string
+      expected_chunk_count:
+        description: "Expected symbol chunk count (<=5)"
+        required: false
+        default: "5"
         type: string
       raw_cache_enabled:
         description: "Enable raw FMP cache reads"
@@ -57,7 +62,7 @@ on:
       dry_run_config_only:
         description: "Dry-run config only"
         required: false
-        default: "true"
+        default: "false"
         type: choice
         options: ["false", "true"]
 
@@ -97,6 +102,7 @@ jobs:
             --trading-days "${{ github.event.inputs.trading_days }}" \
             --max-symbols "${{ github.event.inputs.max_symbols }}" \
             --symbol-chunk-size "${{ github.event.inputs.symbol_chunk_size }}" \
+            --expected-chunk-count "${{ github.event.inputs.expected_chunk_count }}" \
             --output-root reports/hist_density3_curated_241 \
             $ARGS
 

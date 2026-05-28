@@ -20,7 +20,9 @@ def test_cache_flags_default_off_from_runner_workflow_text():
     text = Path('.github/workflows/hist_density3_curated_241_pilot.yml').read_text(encoding='utf-8')
     assert 'workflow_dispatch:' in text
     assert 'push:' not in text and 'pull_request:' not in text and 'schedule:' not in text
-    assert 'dry_run_config_only: {description: "Dry-run config only", required: false, default: "true"' in text
+    assert 'default: "20"' in text
+    assert 'expected_chunk_count:' in text
+    assert 'dry_run_config_only:' in text and 'default: "false"' in text
     assert text.count('default: "false"') >= 5
 
 
@@ -88,6 +90,21 @@ def test_universe_replacements_preserve_count_and_version(tmp_path):
     assert len(preview["effective_symbols"]) == len(base)
     assert preview["universe_telemetry"]["effective_universe_version"].endswith("_effective")
     assert preview["sde2_universe_version"].startswith("SDE2_CURATED_SYMBOL_ECOLOGY")
-    assert "ABB" in base and "CYBR" in base
-    assert "ETN" in preview["effective_symbols"] and "PANW" in preview["effective_symbols"]
-    assert "ABB" not in preview["effective_symbols"] and "CYBR" not in preview["effective_symbols"]
+    assert "ABB" in base and "CYBR" in base and "CFLT" in base
+    assert "ETN" in preview["effective_symbols"] and "PANW" in preview["effective_symbols"] and "DDOG" in preview["effective_symbols"]
+    assert "ABB" not in preview["effective_symbols"] and "CYBR" not in preview["effective_symbols"] and "CFLT" not in preview["effective_symbols"]
+
+
+def test_stage5_preflight_and_fail_closed_raw_cache_writes(tmp_path):
+    out = run_hist_density3(output_root=str(tmp_path), dry_run_config_only=True, trading_days=20, max_symbols=241, symbol_chunk_size=50, expected_chunk_count=5, raw_cache_enabled=False, raw_cache_write_enabled=False, cache_validation_mode=False, cache_only_validation=False, include_high_risk_symbols=False, apply_sde2_replacements=True)
+    preflight = out["config_preview"]["preflight_validation"]
+    assert preflight["requested_max_symbols"] == 241
+    assert preflight["effective_symbol_count"] == 241
+    assert preflight["chunk_count"] == 5
+    assert preflight["chunk_sizes"] == [50, 50, 50, 50, 41]
+
+    try:
+        run_hist_density3(output_root=str(tmp_path / "bad"), dry_run_config_only=True, raw_cache_write_enabled=True)
+        assert False, "expected fail closed on raw cache writes"
+    except ValueError as exc:
+        assert "raw cache writes are forbidden" in str(exc)
