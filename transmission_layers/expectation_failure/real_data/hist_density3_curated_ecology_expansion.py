@@ -9,6 +9,7 @@ from typing import Any
 
 from transmission_layers.expectation_failure.real_data.hist_density1_controlled_historical_density_expansion import DENSITY_MODE_FIXTURE, DENSITY_MODE_REAL, _deterministic_density_window_dates
 from transmission_layers.expectation_failure.real_data.hist_density2_longitudinal_ecology_enrichment import run_hist_density2
+from transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation import DEFAULT_TELEMETRY_MAX_SAMPLES, TELEMETRY_MAX_SAMPLES_HARD_CAP
 from transmission_layers.expectation_failure.real_data.sde2_curated_symbol_ecology_expansion import (
     SDE2_VERSION,
     get_sde2_curated_symbol_universe,
@@ -99,6 +100,8 @@ def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: 
     chunk_results = []
     aggregate_telemetry = {"chunks": len(symbol_chunks), "rows": 0, "missing_record_sample_count": 0, "endpoint_failure_sample_count": 0, "affected_symbol_count": 0, "affected_date_count": 0}
     aggregate_failure_reasons: dict[str, int] = {}
+    aggregate_missing_samples: list[dict[str, Any]] = []
+    aggregate_endpoint_samples: list[dict[str, Any]] = []
     for idx, chunk in enumerate(symbol_chunks, start=1):
         chunk_root = root / f"chunk_{idx:02d}"
         out = run_hist_density2(trading_days=trading_days, symbol_count=len(chunk), end_date=end_date, output_root=str(chunk_root), density_mode=density_mode, raw_cache_enabled=raw_cache_enabled, raw_cache_write_enabled=raw_cache_write_enabled, cache_validation_mode=cache_validation_mode, cache_only_validation=cache_only_validation, symbol_universe_override=chunk)
@@ -113,9 +116,14 @@ def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: 
         aggregate_telemetry["endpoint_failure_sample_count"] += int(t.get("endpoint_failure_sample_count", 0))
         aggregate_telemetry["affected_symbol_count"] += int(t.get("affected_symbol_count", 0))
         aggregate_telemetry["affected_date_count"] += int(t.get("affected_date_count", 0))
+        aggregate_missing_samples.extend(t.get("missing_record_samples", []))
+        aggregate_endpoint_samples.extend(t.get("endpoint_failure_samples", []))
         print(f"[HIST-DENSITY-3] chunk={idx}/{len(symbol_chunks)} symbols={len(chunk)} elapsed={int(time.monotonic()-run_start)}", flush=True)
 
-    summary = {"status": "ok", "schema_version": HIST_DENSITY3_SCHEMA_VERSION, "sde2_universe_version": SDE2_VERSION, "universe_telemetry": universe_tel, "chunking_configuration": {"symbol_chunk_size": symbol_chunk_size, "chunk_count": len(symbol_chunks), "max_symbols": max_symbols, "trading_days": len(dates)}, "cache_telemetry": aggregate_telemetry, "ops_hist_artifact_summary": {"chunk_results": chunk_results, "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(aggregate_failure_reasons.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]}, "governance_certification": _gov(), "runtime_summary": {"elapsed_seconds": int(time.monotonic()-run_start)}, "next_phase_recommendation": "Proceed staged runs after dry-run and cache validation."}
+    sample_limit = max(1, min(DEFAULT_TELEMETRY_MAX_SAMPLES, TELEMETRY_MAX_SAMPLES_HARD_CAP))
+    bounded_missing_samples = sorted(aggregate_missing_samples, key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", ""))))[:sample_limit]
+    bounded_endpoint_samples = sorted(aggregate_endpoint_samples, key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", "")), str(s.get("endpoint_name", "")), int(s.get("attempt_index", 0))))[:sample_limit]
+    summary = {"status": "ok", "schema_version": HIST_DENSITY3_SCHEMA_VERSION, "sde2_universe_version": SDE2_VERSION, "universe_telemetry": universe_tel, "chunking_configuration": {"symbol_chunk_size": symbol_chunk_size, "chunk_count": len(symbol_chunks), "max_symbols": max_symbols, "trading_days": len(dates)}, "cache_telemetry": {**aggregate_telemetry, "missing_record_samples": bounded_missing_samples, "endpoint_failure_samples": bounded_endpoint_samples, "telemetry_sample_limit_default": DEFAULT_TELEMETRY_MAX_SAMPLES, "telemetry_sample_limit_hard_cap": TELEMETRY_MAX_SAMPLES_HARD_CAP}, "ops_hist_artifact_summary": {"chunk_results": chunk_results, "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in sorted(aggregate_failure_reasons.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]}, "governance_certification": _gov(), "runtime_summary": {"elapsed_seconds": int(time.monotonic()-run_start)}, "next_phase_recommendation": "Proceed staged runs after dry-run and cache validation."}
     (root / "hist_density3_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     (root / "hist_density3_summary.md").write_text("# HIST-DENSITY-3 Curated 241 Symbol Summary\n\n" + json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary

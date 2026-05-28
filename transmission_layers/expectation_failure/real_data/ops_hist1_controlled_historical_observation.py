@@ -649,6 +649,79 @@ def _snapshot_payload(snapshot_date: str, ingest_result: dict[str, Any], univers
     }
 
 
+def _build_snapshot_telemetry_fields(
+    *,
+    snapshot_date: str,
+    symbol_diagnostics: Sequence[dict[str, Any]],
+    sample_limit: int,
+) -> dict[str, Any]:
+    missing_record_samples: list[dict[str, Any]] = []
+    endpoint_failure_samples: list[dict[str, Any]] = []
+    failure_reason_counts: Counter[str] = Counter()
+    for symbol_diag in symbol_diagnostics:
+        attempts = list(symbol_diag.get("endpoint_attempts", []) or [])
+        if not attempts:
+            continue
+        success_attempt = next((a for a in attempts if a.get("failure_reason") is None), None)
+        for attempt_index, attempt in enumerate(attempts, start=1):
+            reason = attempt.get("failure_reason")
+            if not reason:
+                continue
+            failure_reason_counts[str(reason)] += 1
+            endpoint_failure_samples.append(
+                {
+                    "symbol": str(symbol_diag.get("symbol", "")),
+                    "requested_snapshot_date": snapshot_date,
+                    "endpoint_name": str(attempt.get("endpoint_family", "unknown")),
+                    "attempt_index": int(attempt_index),
+                    "failure_reason": str(reason),
+                    "http_status": None if str(attempt.get("http_status")) == "ok" else str(attempt.get("http_status")),
+                    "records_returned_count": int(attempt.get("record_count_returned", 0) or 0),
+                    "terminal_failure_for_symbol_date": bool(success_attempt is None and attempt is attempts[-1]),
+                }
+            )
+        if success_attempt is None:
+            terminal_reason = str((attempts[-1].get("failure_reason") if attempts else "missing_reconciled_historical_date") or "missing_reconciled_historical_date")
+            failure_reason_counts[terminal_reason] += 1
+            final_attempt = attempts[-1] if attempts else {}
+            missing_record_samples.append(
+                {
+                    "symbol": str(symbol_diag.get("symbol", "")),
+                    "requested_snapshot_date": snapshot_date,
+                    "reconciliation_window_days": 5,
+                    "exact_match_found": False,
+                    "reconciled_prior_date": final_attempt.get("selected_record_date"),
+                    "final_missing_after_reconciliation": True,
+                    "final_failure_reason": terminal_reason,
+                }
+            )
+        elif not success_attempt.get("exact_date_match_found") and not success_attempt.get("date_reconciliation_used"):
+            missing_record_samples.append(
+                {
+                    "symbol": str(symbol_diag.get("symbol", "")),
+                    "requested_snapshot_date": snapshot_date,
+                    "reconciliation_window_days": 5,
+                    "exact_match_found": False,
+                    "reconciled_prior_date": None,
+                    "final_missing_after_reconciliation": True,
+                    "final_failure_reason": "missing_reconciled_historical_date",
+                }
+            )
+    sorted_missing_samples = sorted(missing_record_samples, key=lambda s: (str(s.get("requested_snapshot_date", "")), str(s.get("symbol", ""))))[:sample_limit]
+    sorted_endpoint_failure_samples = sorted(endpoint_failure_samples, key=_sort_endpoint_failure_sample)[:sample_limit]
+    affected_symbols = sorted({str(s.get("symbol", "")) for s in (sorted_missing_samples + sorted_endpoint_failure_samples) if str(s.get("symbol", ""))})
+    affected_dates = sorted({str(s.get("requested_snapshot_date", "")) for s in (sorted_missing_samples + sorted_endpoint_failure_samples) if str(s.get("requested_snapshot_date", ""))})
+    return {
+        "missing_record_samples": sorted_missing_samples,
+        "endpoint_failure_samples": sorted_endpoint_failure_samples,
+        "missing_record_sample_count": len(sorted_missing_samples),
+        "endpoint_failure_sample_count": len(sorted_endpoint_failure_samples),
+        "affected_symbol_count": len(affected_symbols),
+        "affected_date_count": len(affected_dates),
+        "top_failure_reasons": [{"reason": k, "count": int(v)} for k, v in failure_reason_counts.most_common(5)],
+    }
+
+
 
 
 def _fetch_with_optional_date(
@@ -780,6 +853,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         result["surfaces"] = build_normalized_operational_surfaces(result.get("rows", []), result.get("snapshot_ts", ""), result.get("snapshot_identity", {}))
         result["operator_payload"] = build_operator_payloads(result["surfaces"])
         snap = _snapshot_payload(d, result, universe, window_dates)
+        snap.update(_build_snapshot_telemetry_fields(snapshot_date=d, symbol_diagnostics=profile_diag.get("historical_price_symbol_diagnostics", []), sample_limit=sample_limit))
         snap["adapter_diagnostics"] = diag
         Path(out_dir / f"ops_hist1_{d}.json").write_text(json.dumps(snap, indent=2, sort_keys=True), encoding="utf-8")
         snapshots.append(snap)

@@ -72,3 +72,9 @@ def test_telemetry_samples_and_counters_wired(monkeypatch, tmp_path):
     assert t["missing_record_sample_count"] >= 1
     assert t["endpoint_failure_sample_count"] >= 1
     assert "affected_symbol_count" in t and "affected_date_count" in t and "top_failure_reasons" in t
+    assert t["telemetry_sample_limit_default"] == 25
+    assert t["telemetry_sample_limit_hard_cap"] == 100
+    written = json.loads((tmp_path / "out" / "manifests" / "density_summary.json").read_text(encoding="utf-8"))
+    tw = written["density_summary"]["telemetry_summary"]
+    for k in ("missing_record_samples", "endpoint_failure_samples", "affected_symbol_count", "affected_date_count", "top_failure_reasons"):
+        assert k in tw
