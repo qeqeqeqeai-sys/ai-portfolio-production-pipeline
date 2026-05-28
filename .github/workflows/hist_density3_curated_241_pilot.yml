@@ -20,7 +20,15 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: pip install -r requirements.txt
-      - run: |
+      - name: Run HIST-DENSITY-3 curated pilot
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          if [ -z "${FMP_API_KEY:-}" ]; then
+            echo "FMP_API_KEY is required via GitHub repository secrets." >&2
+            exit 1
+          fi
+
           ARGS=""
           [ "${{ github.event.inputs.raw_cache_enabled }}" = "true" ] && ARGS="$ARGS --raw-cache-enabled"
           [ "${{ github.event.inputs.raw_cache_write_enabled }}" = "true" ] && ARGS="$ARGS --raw-cache-write-enabled"
