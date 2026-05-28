@@ -1,0 +1,1457 @@
+{
+  "artifact_checksum": "e0de670877c8001603355bff84f6d992358e68ee85f0c5bc1e27ee89bbdd6ff6",
+  "bounded_telemetry": {
+    "chunk_consistency_metrics": {
+      "consistent": true,
+      "expected_chunk_count": 5,
+      "observed_chunk_counts": [
+        5,
+        5,
+        5
+      ]
+    },
+    "longitudinal_comparison_summary": {
+      "contradiction_persistence": {
+        "burden_values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "trend": "stable",
+        "volatility": 0.0
+      },
+      "monoculture_concentration": {
+        "assessment": "bounded_diverse_universe",
+        "sector_hhi_values": [
+          0.06107,
+          0.06107,
+          0.06107
+        ],
+        "trend": "stable"
+      },
+      "normalization_completeness": {
+        "density_mean_values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "trend": "stable",
+        "volatility": 0.0
+      },
+      "provider_degradation_recurrence": [],
+      "replay_density": {
+        "trend": "stable",
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "volatility": 0.0
+      },
+      "replay_morphology_persistence": {
+        "activation_status": "not_activated",
+        "assessment": "persistent_observational_morphology"
+      },
+      "sector_subsector_hhi": {
+        "strongest_recurring_sectors": [
+          {
+            "sector": "cloud_software_infrastructure",
+            "window_count": 3
+          },
+          {
+            "sector": "consumer_discretionary",
+            "window_count": 3
+          },
+          {
+            "sector": "energy_utilities",
+            "window_count": 3
+          },
+          {
+            "sector": "financials",
+            "window_count": 3
+          },
+          {
+            "sector": "semiconductors",
+            "window_count": 3
+          }
+        ],
+        "strongest_recurring_subsectors": [
+          {
+            "subsector": "cloud_software_infrastructure",
+            "window_count": 3
+          },
+          {
+            "subsector": "consumer_discretionary",
+            "window_count": 3
+          },
+          {
+            "subsector": "energy_utilities",
+            "window_count": 3
+          },
+          {
+            "subsector": "financials",
+            "window_count": 3
+          },
+          {
+            "subsector": "semiconductors",
+            "window_count": 3
+          }
+        ]
+      },
+      "temporal_stability": {
+        "assessment": "stable_across_windows",
+        "posture_recurrence": [
+          {
+            "posture": "mixed_posture",
+            "window_count": 3
+          }
+        ]
+      },
+      "topology_richness": {
+        "persistence": "persistent",
+        "trend": "stable",
+        "values": [
+          8.0,
+          8.0,
+          8.0
+        ]
+      },
+      "weak_symbol_recurrence": [],
+      "window_count": 3,
+      "windows": [
+        20,
+        60,
+        120
+      ]
+    },
+    "per_window_summary": [
+      {
+        "chunk_count": 5,
+        "completed_telemetry_mode": true,
+        "configured_symbol_count": 241,
+        "contradiction_persistence": {
+          "burden_ratio": 0.0,
+          "failed_count_total": 0,
+          "missing_dates_total": 0,
+          "partial_count_total": 0
+        },
+        "effective_observed_count": 4820,
+        "effective_symbol_count": 241,
+        "estimated_symbol_date_rows": 4820,
+        "monoculture_concentration": {
+          "snapshot_sector_hhi_range": {
+            "max": null,
+            "min": null
+          },
+          "universe_sector_hhi": 0.06107,
+          "universe_subsector_hhi": 0.06107
+        },
+        "normalization_completeness": {
+          "chunk_density_volatility": 0.0,
+          "density_mean": 1.0,
+          "range": {
+            "max": null,
+            "min": null
+          }
+        },
+        "normalized_count_total": 0,
+        "provider_degradation": {
+          "endpoint_failures": {},
+          "top_failure_reasons": []
+        },
+        "replay_density": 1.0,
+        "replay_morphology_persistence": {
+          "dominant_chunk": null,
+          "posture": "mixed_posture",
+          "richest_chunks": [
+            {
+              "chunk_index": 1,
+              "normalization_density": 0.0,
+              "normalized_count": 0,
+              "requested_symbol_date_capacity": 1000
+            },
+            {
+              "chunk_index": 2,
+              "normalization_density": 0.0,
+              "normalized_count": 0,
+              "requested_symbol_date_capacity": 1000
+            }
+          ]
+        },
+        "requested_symbol_date_capacity_total": 4820,
+        "sector_subsector_hhi": {
+          "sector_hhi": 0.06107,
+          "strongest_sectors": [
+            {
+              "sector": "semiconductors",
+              "share": 0.082988,
+              "symbol_count": 20
+            },
+            {
+              "sector": "consumer_discretionary",
+              "share": 0.078838,
+              "symbol_count": 19
+            },
+            {
+              "sector": "cloud_software_infrastructure",
+              "share": 0.074689,
+              "symbol_count": 18
+            },
+            {
+              "sector": "energy_utilities",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "financials",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "healthcare_biotech",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "industrials_automation",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "commodities",
+              "share": 0.06639,
+              "symbol_count": 16
+            }
+          ],
+          "strongest_subsectors": [
+            {
+              "share": 0.082988,
+              "subsector": "semiconductors",
+              "symbol_count": 20
+            },
+            {
+              "share": 0.078838,
+              "subsector": "consumer_discretionary",
+              "symbol_count": 19
+            },
+            {
+              "share": 0.074689,
+              "subsector": "cloud_software_infrastructure",
+              "symbol_count": 18
+            },
+            {
+              "share": 0.070539,
+              "subsector": "energy_utilities",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "financials",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "healthcare_biotech",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "industrials_automation",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.06639,
+              "subsector": "commodities",
+              "symbol_count": 16
+            }
+          ],
+          "subsector_hhi": 0.06107
+        },
+        "source_root": "reports/hist_long1_windows/window_020d",
+        "source_status": "ok",
+        "temporal_stability": {
+          "observed_days": 20,
+          "posture_counts": {},
+          "posture_stability": "mixed_posture"
+        },
+        "topology_richness": {
+          "chunk_richness_average": 8.0,
+          "chunk_richness_range": {
+            "max": 8.0,
+            "min": 8.0
+          },
+          "topology_persistence_enabled": false
+        },
+        "weak_symbol_details": [],
+        "weak_symbols": [],
+        "window_trading_days": 20
+      },
+      {
+        "chunk_count": 5,
+        "completed_telemetry_mode": true,
+        "configured_symbol_count": 241,
+        "contradiction_persistence": {
+          "burden_ratio": 0.0,
+          "failed_count_total": 0,
+          "missing_dates_total": 0,
+          "partial_count_total": 0
+        },
+        "effective_observed_count": 14460,
+        "effective_symbol_count": 241,
+        "estimated_symbol_date_rows": 14460,
+        "monoculture_concentration": {
+          "snapshot_sector_hhi_range": {
+            "max": null,
+            "min": null
+          },
+          "universe_sector_hhi": 0.06107,
+          "universe_subsector_hhi": 0.06107
+        },
+        "normalization_completeness": {
+          "chunk_density_volatility": 0.0,
+          "density_mean": 1.0,
+          "range": {
+            "max": null,
+            "min": null
+          }
+        },
+        "normalized_count_total": 0,
+        "provider_degradation": {
+          "endpoint_failures": {},
+          "top_failure_reasons": []
+        },
+        "replay_density": 1.0,
+        "replay_morphology_persistence": {
+          "dominant_chunk": null,
+          "posture": "mixed_posture",
+          "richest_chunks": [
+            {
+              "chunk_index": 1,
+              "normalization_density": 0.0,
+              "normalized_count": 0,
+              "requested_symbol_date_capacity": 3000
+            },
+            {
+              "chunk_index": 2,
+              "normalization_density": 0.0,
+              "normalized_count": 0,
+              "requested_symbol_date_capacity": 3000
+            }
+          ]
+        },
+        "requested_symbol_date_capacity_total": 14460,
+        "sector_subsector_hhi": {
+          "sector_hhi": 0.06107,
+          "strongest_sectors": [
+            {
+              "sector": "semiconductors",
+              "share": 0.082988,
+              "symbol_count": 20
+            },
+            {
+              "sector": "consumer_discretionary",
+              "share": 0.078838,
+              "symbol_count": 19
+            },
+            {
+              "sector": "cloud_software_infrastructure",
+              "share": 0.074689,
+              "symbol_count": 18
+            },
+            {
+              "sector": "energy_utilities",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "financials",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "healthcare_biotech",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "industrials_automation",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "commodities",
+              "share": 0.06639,
+              "symbol_count": 16
+            }
+          ],
+          "strongest_subsectors": [
+            {
+              "share": 0.082988,
+              "subsector": "semiconductors",
+              "symbol_count": 20
+            },
+            {
+              "share": 0.078838,
+              "subsector": "consumer_discretionary",
+              "symbol_count": 19
+            },
+            {
+              "share": 0.074689,
+              "subsector": "cloud_software_infrastructure",
+              "symbol_count": 18
+            },
+            {
+              "share": 0.070539,
+              "subsector": "energy_utilities",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "financials",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "healthcare_biotech",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "industrials_automation",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.06639,
+              "subsector": "commodities",
+              "symbol_count": 16
+            }
+          ],
+          "subsector_hhi": 0.06107
+        },
+        "source_root": "reports/hist_long1_windows/window_060d",
+        "source_status": "ok",
+        "temporal_stability": {
+          "observed_days": 60,
+          "posture_counts": {},
+          "posture_stability": "mixed_posture"
+        },
+        "topology_richness": {
+          "chunk_richness_average": 8.0,
+          "chunk_richness_range": {
+            "max": 8.0,
+            "min": 8.0
+          },
+          "topology_persistence_enabled": false
+        },
+        "weak_symbol_details": [],
+        "weak_symbols": [],
+        "window_trading_days": 60
+      },
+      {
+        "chunk_count": 5,
+        "completed_telemetry_mode": true,
+        "configured_symbol_count": 241,
+        "contradiction_persistence": {
+          "burden_ratio": 0.0,
+          "failed_count_total": 0,
+          "missing_dates_total": 0,
+          "partial_count_total": 0
+        },
+        "effective_observed_count": 28920,
+        "effective_symbol_count": 241,
+        "estimated_symbol_date_rows": 28920,
+        "monoculture_concentration": {
+          "snapshot_sector_hhi_range": {
+            "max": null,
+            "min": null
+          },
+          "universe_sector_hhi": 0.06107,
+          "universe_subsector_hhi": 0.06107
+        },
+        "normalization_completeness": {
+          "chunk_density_volatility": 0.0,
+          "density_mean": 1.0,
+          "range": {
+            "max": null,
+            "min": null
+          }
+        },
+        "normalized_count_total": 0,
+        "provider_degradation": {
+          "endpoint_failures": {},
+          "top_failure_reasons": []
+        },
+        "replay_density": 1.0,
+        "replay_morphology_persistence": {
+          "dominant_chunk": null,
+          "posture": "mixed_posture",
+          "richest_chunks": [
+            {
+              "chunk_index": 1,
+              "normalization_density": 0.0,
+              "normalized_count": 0,
+              "requested_symbol_date_capacity": 6000
+            },
+            {
+              "chunk_index": 2,
+              "normalization_density": 0.0,
+              "normalized_count": 0,
+              "requested_symbol_date_capacity": 6000
+            }
+          ]
+        },
+        "requested_symbol_date_capacity_total": 28920,
+        "sector_subsector_hhi": {
+          "sector_hhi": 0.06107,
+          "strongest_sectors": [
+            {
+              "sector": "semiconductors",
+              "share": 0.082988,
+              "symbol_count": 20
+            },
+            {
+              "sector": "consumer_discretionary",
+              "share": 0.078838,
+              "symbol_count": 19
+            },
+            {
+              "sector": "cloud_software_infrastructure",
+              "share": 0.074689,
+              "symbol_count": 18
+            },
+            {
+              "sector": "energy_utilities",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "financials",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "healthcare_biotech",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "industrials_automation",
+              "share": 0.070539,
+              "symbol_count": 17
+            },
+            {
+              "sector": "commodities",
+              "share": 0.06639,
+              "symbol_count": 16
+            }
+          ],
+          "strongest_subsectors": [
+            {
+              "share": 0.082988,
+              "subsector": "semiconductors",
+              "symbol_count": 20
+            },
+            {
+              "share": 0.078838,
+              "subsector": "consumer_discretionary",
+              "symbol_count": 19
+            },
+            {
+              "share": 0.074689,
+              "subsector": "cloud_software_infrastructure",
+              "symbol_count": 18
+            },
+            {
+              "share": 0.070539,
+              "subsector": "energy_utilities",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "financials",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "healthcare_biotech",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.070539,
+              "subsector": "industrials_automation",
+              "symbol_count": 17
+            },
+            {
+              "share": 0.06639,
+              "subsector": "commodities",
+              "symbol_count": 16
+            }
+          ],
+          "subsector_hhi": 0.06107
+        },
+        "source_root": "reports/hist_long1_windows/window_120d",
+        "source_status": "ok",
+        "temporal_stability": {
+          "observed_days": 120,
+          "posture_counts": {},
+          "posture_stability": "mixed_posture"
+        },
+        "topology_richness": {
+          "chunk_richness_average": 8.0,
+          "chunk_richness_range": {
+            "max": 8.0,
+            "min": 8.0
+          },
+          "topology_persistence_enabled": false
+        },
+        "weak_symbol_details": [],
+        "weak_symbols": [],
+        "window_trading_days": 120
+      }
+    ],
+    "strongest_recurring_sectors": [
+      {
+        "sector": "cloud_software_infrastructure",
+        "window_count": 3
+      },
+      {
+        "sector": "consumer_discretionary",
+        "window_count": 3
+      },
+      {
+        "sector": "energy_utilities",
+        "window_count": 3
+      },
+      {
+        "sector": "financials",
+        "window_count": 3
+      },
+      {
+        "sector": "semiconductors",
+        "window_count": 3
+      }
+    ],
+    "strongest_recurring_subsectors": [
+      {
+        "subsector": "cloud_software_infrastructure",
+        "window_count": 3
+      },
+      {
+        "subsector": "consumer_discretionary",
+        "window_count": 3
+      },
+      {
+        "subsector": "energy_utilities",
+        "window_count": 3
+      },
+      {
+        "subsector": "financials",
+        "window_count": 3
+      },
+      {
+        "subsector": "semiconductors",
+        "window_count": 3
+      }
+    ],
+    "weakest_recurring_symbols": []
+  },
+  "governance_certification": {
+    "bounded_artifact_generation_only": true,
+    "governance_mode": "observational_only",
+    "local_artifacts_only": true,
+    "phase": "HIST-LONG-1_controlled_longitudinal_ecology_accumulation",
+    "prediction_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "supabase_write_enabled": false,
+    "topology_activation_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "longitudinal_comparison_summary": {
+    "contradiction_persistence": {
+      "burden_values": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "trend": "stable",
+      "volatility": 0.0
+    },
+    "monoculture_concentration": {
+      "assessment": "bounded_diverse_universe",
+      "sector_hhi_values": [
+        0.06107,
+        0.06107,
+        0.06107
+      ],
+      "trend": "stable"
+    },
+    "normalization_completeness": {
+      "density_mean_values": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "trend": "stable",
+      "volatility": 0.0
+    },
+    "provider_degradation_recurrence": [],
+    "replay_density": {
+      "trend": "stable",
+      "values": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "volatility": 0.0
+    },
+    "replay_morphology_persistence": {
+      "activation_status": "not_activated",
+      "assessment": "persistent_observational_morphology"
+    },
+    "sector_subsector_hhi": {
+      "strongest_recurring_sectors": [
+        {
+          "sector": "cloud_software_infrastructure",
+          "window_count": 3
+        },
+        {
+          "sector": "consumer_discretionary",
+          "window_count": 3
+        },
+        {
+          "sector": "energy_utilities",
+          "window_count": 3
+        },
+        {
+          "sector": "financials",
+          "window_count": 3
+        },
+        {
+          "sector": "semiconductors",
+          "window_count": 3
+        }
+      ],
+      "strongest_recurring_subsectors": [
+        {
+          "subsector": "cloud_software_infrastructure",
+          "window_count": 3
+        },
+        {
+          "subsector": "consumer_discretionary",
+          "window_count": 3
+        },
+        {
+          "subsector": "energy_utilities",
+          "window_count": 3
+        },
+        {
+          "subsector": "financials",
+          "window_count": 3
+        },
+        {
+          "subsector": "semiconductors",
+          "window_count": 3
+        }
+      ]
+    },
+    "temporal_stability": {
+      "assessment": "stable_across_windows",
+      "posture_recurrence": [
+        {
+          "posture": "mixed_posture",
+          "window_count": 3
+        }
+      ]
+    },
+    "topology_richness": {
+      "persistence": "persistent",
+      "trend": "stable",
+      "values": [
+        8.0,
+        8.0,
+        8.0
+      ]
+    },
+    "weak_symbol_recurrence": [],
+    "window_count": 3,
+    "windows": [
+      20,
+      60,
+      120
+    ]
+  },
+  "longitudinal_narrative_synthesis": {
+    "emergent_fragility_clusters": [
+      "No recurring weak-symbol fragility cluster was detected."
+    ],
+    "propagation_asymmetry": [
+      "Provider degradation recurrence: not observed.",
+      "Contradiction burden trend is stable, indicating whether longer windows amplify or absorb missing/partial evidence asymmetrically."
+    ],
+    "quick_decay_structures": [
+      "No replay activation structure is persisted; morphology observations remain report-local and decay outside the bounded artifact set.",
+      "Provider failure samples are treated as weak evidence unless recurring across more than one window."
+    ],
+    "sector_replay_persistence": [
+      "cloud_software_infrastructure recurred as a leading sector in 3 windows.",
+      "consumer_discretionary recurred as a leading sector in 3 windows.",
+      "energy_utilities recurred as a leading sector in 3 windows.",
+      "financials recurred as a leading sector in 3 windows.",
+      "semiconductors recurred as a leading sector in 3 windows."
+    ],
+    "stable_structures": [
+      "Replay density trend is stable across windows [20, 60, 120].",
+      "Temporal posture assessment is stable_across_windows.",
+      "Governance remains observational only with replay activation, trading, topology persistence, and Supabase writes disabled."
+    ]
+  },
+  "operational_stability": {
+    "historical_optional_market_cap_policy": "remains_appropriate_optional_enrichment_no_fail_closed_change_recommended",
+    "ingestion_robustness_over_longer_windows": "robust_bounded",
+    "local_artifacts_only": true,
+    "provider_sparsity_trends": "no_recurring_provider_sparsity_in_bounded_telemetry",
+    "replay_observation_continuity": "persistent_observational_morphology"
+  },
+  "orchestration_plan": {
+    "chunk_size": 50,
+    "effective_symbol_count": 241,
+    "end_date": "2026-05-28",
+    "expected_chunk_count": 5,
+    "governance_certification": {
+      "bounded_artifact_generation_only": true,
+      "governance_mode": "observational_only",
+      "local_artifacts_only": true,
+      "phase": "HIST-LONG-1_controlled_longitudinal_ecology_accumulation",
+      "prediction_enabled": false,
+      "raw_cache_write_enabled": false,
+      "replay_activation_enabled": false,
+      "replay_execution_enabled": false,
+      "supabase_write_enabled": false,
+      "topology_activation_enabled": false,
+      "topology_persistence_enabled": false,
+      "trading_execution_enabled": false
+    },
+    "max_symbols": 241,
+    "orchestration_date": "2026-05-28",
+    "output_root": "reports/hist_long1_windows",
+    "schema_version": "hist_long1_v1",
+    "sector_subsector_concentration_baseline": {
+      "sector_hhi": 0.06107,
+      "strongest_sectors": [
+        {
+          "sector": "semiconductors",
+          "share": 0.082988,
+          "symbol_count": 20
+        },
+        {
+          "sector": "consumer_discretionary",
+          "share": 0.078838,
+          "symbol_count": 19
+        },
+        {
+          "sector": "cloud_software_infrastructure",
+          "share": 0.074689,
+          "symbol_count": 18
+        },
+        {
+          "sector": "energy_utilities",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "financials",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "healthcare_biotech",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "industrials_automation",
+          "share": 0.070539,
+          "symbol_count": 17
+        },
+        {
+          "sector": "commodities",
+          "share": 0.06639,
+          "symbol_count": 16
+        }
+      ],
+      "strongest_subsectors": [
+        {
+          "share": 0.082988,
+          "subsector": "semiconductors",
+          "symbol_count": 20
+        },
+        {
+          "share": 0.078838,
+          "subsector": "consumer_discretionary",
+          "symbol_count": 19
+        },
+        {
+          "share": 0.074689,
+          "subsector": "cloud_software_infrastructure",
+          "symbol_count": 18
+        },
+        {
+          "share": 0.070539,
+          "subsector": "energy_utilities",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.070539,
+          "subsector": "financials",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.070539,
+          "subsector": "healthcare_biotech",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.070539,
+          "subsector": "industrials_automation",
+          "symbol_count": 17
+        },
+        {
+          "share": 0.06639,
+          "subsector": "commodities",
+          "symbol_count": 16
+        }
+      ],
+      "subsector_hhi": 0.06107
+    },
+    "status": "ok",
+    "universe_telemetry": {
+      "duplicate_guard_substitutions": {},
+      "effective_symbol_count": 241,
+      "effective_universe_version": "SDE2_CURATED_SYMBOL_ECOLOGY_V2_effective",
+      "excluded_symbols": [],
+      "high_risk_symbols_detected": [
+        "SENT",
+        "CYBR",
+        "RBT",
+        "ABB",
+        "FANUY"
+      ],
+      "original_symbol_count": 241,
+      "replacements_applied": {
+        "ABB": "GEV",
+        "CYBR": "SAIL",
+        "FANUY": "NVT",
+        "RBT": "ZBRA",
+        "SENT": "RBRK"
+      }
+    },
+    "windows": [
+      20,
+      60,
+      120
+    ]
+  },
+  "per_window_summary": [
+    {
+      "chunk_count": 5,
+      "completed_telemetry_mode": true,
+      "configured_symbol_count": 241,
+      "contradiction_persistence": {
+        "burden_ratio": 0.0,
+        "failed_count_total": 0,
+        "missing_dates_total": 0,
+        "partial_count_total": 0
+      },
+      "effective_observed_count": 4820,
+      "effective_symbol_count": 241,
+      "estimated_symbol_date_rows": 4820,
+      "monoculture_concentration": {
+        "snapshot_sector_hhi_range": {
+          "max": null,
+          "min": null
+        },
+        "universe_sector_hhi": 0.06107,
+        "universe_subsector_hhi": 0.06107
+      },
+      "normalization_completeness": {
+        "chunk_density_volatility": 0.0,
+        "density_mean": 1.0,
+        "range": {
+          "max": null,
+          "min": null
+        }
+      },
+      "normalized_count_total": 0,
+      "provider_degradation": {
+        "endpoint_failures": {},
+        "top_failure_reasons": []
+      },
+      "replay_density": 1.0,
+      "replay_morphology_persistence": {
+        "dominant_chunk": null,
+        "posture": "mixed_posture",
+        "richest_chunks": [
+          {
+            "chunk_index": 1,
+            "normalization_density": 0.0,
+            "normalized_count": 0,
+            "requested_symbol_date_capacity": 1000
+          },
+          {
+            "chunk_index": 2,
+            "normalization_density": 0.0,
+            "normalized_count": 0,
+            "requested_symbol_date_capacity": 1000
+          }
+        ]
+      },
+      "requested_symbol_date_capacity_total": 4820,
+      "sector_subsector_hhi": {
+        "sector_hhi": 0.06107,
+        "strongest_sectors": [
+          {
+            "sector": "semiconductors",
+            "share": 0.082988,
+            "symbol_count": 20
+          },
+          {
+            "sector": "consumer_discretionary",
+            "share": 0.078838,
+            "symbol_count": 19
+          },
+          {
+            "sector": "cloud_software_infrastructure",
+            "share": 0.074689,
+            "symbol_count": 18
+          },
+          {
+            "sector": "energy_utilities",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "financials",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "healthcare_biotech",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "industrials_automation",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "commodities",
+            "share": 0.06639,
+            "symbol_count": 16
+          }
+        ],
+        "strongest_subsectors": [
+          {
+            "share": 0.082988,
+            "subsector": "semiconductors",
+            "symbol_count": 20
+          },
+          {
+            "share": 0.078838,
+            "subsector": "consumer_discretionary",
+            "symbol_count": 19
+          },
+          {
+            "share": 0.074689,
+            "subsector": "cloud_software_infrastructure",
+            "symbol_count": 18
+          },
+          {
+            "share": 0.070539,
+            "subsector": "energy_utilities",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "financials",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "healthcare_biotech",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "industrials_automation",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.06639,
+            "subsector": "commodities",
+            "symbol_count": 16
+          }
+        ],
+        "subsector_hhi": 0.06107
+      },
+      "source_root": "reports/hist_long1_windows/window_020d",
+      "source_status": "ok",
+      "temporal_stability": {
+        "observed_days": 20,
+        "posture_counts": {},
+        "posture_stability": "mixed_posture"
+      },
+      "topology_richness": {
+        "chunk_richness_average": 8.0,
+        "chunk_richness_range": {
+          "max": 8.0,
+          "min": 8.0
+        },
+        "topology_persistence_enabled": false
+      },
+      "weak_symbol_details": [],
+      "weak_symbols": [],
+      "window_trading_days": 20
+    },
+    {
+      "chunk_count": 5,
+      "completed_telemetry_mode": true,
+      "configured_symbol_count": 241,
+      "contradiction_persistence": {
+        "burden_ratio": 0.0,
+        "failed_count_total": 0,
+        "missing_dates_total": 0,
+        "partial_count_total": 0
+      },
+      "effective_observed_count": 14460,
+      "effective_symbol_count": 241,
+      "estimated_symbol_date_rows": 14460,
+      "monoculture_concentration": {
+        "snapshot_sector_hhi_range": {
+          "max": null,
+          "min": null
+        },
+        "universe_sector_hhi": 0.06107,
+        "universe_subsector_hhi": 0.06107
+      },
+      "normalization_completeness": {
+        "chunk_density_volatility": 0.0,
+        "density_mean": 1.0,
+        "range": {
+          "max": null,
+          "min": null
+        }
+      },
+      "normalized_count_total": 0,
+      "provider_degradation": {
+        "endpoint_failures": {},
+        "top_failure_reasons": []
+      },
+      "replay_density": 1.0,
+      "replay_morphology_persistence": {
+        "dominant_chunk": null,
+        "posture": "mixed_posture",
+        "richest_chunks": [
+          {
+            "chunk_index": 1,
+            "normalization_density": 0.0,
+            "normalized_count": 0,
+            "requested_symbol_date_capacity": 3000
+          },
+          {
+            "chunk_index": 2,
+            "normalization_density": 0.0,
+            "normalized_count": 0,
+            "requested_symbol_date_capacity": 3000
+          }
+        ]
+      },
+      "requested_symbol_date_capacity_total": 14460,
+      "sector_subsector_hhi": {
+        "sector_hhi": 0.06107,
+        "strongest_sectors": [
+          {
+            "sector": "semiconductors",
+            "share": 0.082988,
+            "symbol_count": 20
+          },
+          {
+            "sector": "consumer_discretionary",
+            "share": 0.078838,
+            "symbol_count": 19
+          },
+          {
+            "sector": "cloud_software_infrastructure",
+            "share": 0.074689,
+            "symbol_count": 18
+          },
+          {
+            "sector": "energy_utilities",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "financials",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "healthcare_biotech",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "industrials_automation",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "commodities",
+            "share": 0.06639,
+            "symbol_count": 16
+          }
+        ],
+        "strongest_subsectors": [
+          {
+            "share": 0.082988,
+            "subsector": "semiconductors",
+            "symbol_count": 20
+          },
+          {
+            "share": 0.078838,
+            "subsector": "consumer_discretionary",
+            "symbol_count": 19
+          },
+          {
+            "share": 0.074689,
+            "subsector": "cloud_software_infrastructure",
+            "symbol_count": 18
+          },
+          {
+            "share": 0.070539,
+            "subsector": "energy_utilities",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "financials",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "healthcare_biotech",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "industrials_automation",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.06639,
+            "subsector": "commodities",
+            "symbol_count": 16
+          }
+        ],
+        "subsector_hhi": 0.06107
+      },
+      "source_root": "reports/hist_long1_windows/window_060d",
+      "source_status": "ok",
+      "temporal_stability": {
+        "observed_days": 60,
+        "posture_counts": {},
+        "posture_stability": "mixed_posture"
+      },
+      "topology_richness": {
+        "chunk_richness_average": 8.0,
+        "chunk_richness_range": {
+          "max": 8.0,
+          "min": 8.0
+        },
+        "topology_persistence_enabled": false
+      },
+      "weak_symbol_details": [],
+      "weak_symbols": [],
+      "window_trading_days": 60
+    },
+    {
+      "chunk_count": 5,
+      "completed_telemetry_mode": true,
+      "configured_symbol_count": 241,
+      "contradiction_persistence": {
+        "burden_ratio": 0.0,
+        "failed_count_total": 0,
+        "missing_dates_total": 0,
+        "partial_count_total": 0
+      },
+      "effective_observed_count": 28920,
+      "effective_symbol_count": 241,
+      "estimated_symbol_date_rows": 28920,
+      "monoculture_concentration": {
+        "snapshot_sector_hhi_range": {
+          "max": null,
+          "min": null
+        },
+        "universe_sector_hhi": 0.06107,
+        "universe_subsector_hhi": 0.06107
+      },
+      "normalization_completeness": {
+        "chunk_density_volatility": 0.0,
+        "density_mean": 1.0,
+        "range": {
+          "max": null,
+          "min": null
+        }
+      },
+      "normalized_count_total": 0,
+      "provider_degradation": {
+        "endpoint_failures": {},
+        "top_failure_reasons": []
+      },
+      "replay_density": 1.0,
+      "replay_morphology_persistence": {
+        "dominant_chunk": null,
+        "posture": "mixed_posture",
+        "richest_chunks": [
+          {
+            "chunk_index": 1,
+            "normalization_density": 0.0,
+            "normalized_count": 0,
+            "requested_symbol_date_capacity": 6000
+          },
+          {
+            "chunk_index": 2,
+            "normalization_density": 0.0,
+            "normalized_count": 0,
+            "requested_symbol_date_capacity": 6000
+          }
+        ]
+      },
+      "requested_symbol_date_capacity_total": 28920,
+      "sector_subsector_hhi": {
+        "sector_hhi": 0.06107,
+        "strongest_sectors": [
+          {
+            "sector": "semiconductors",
+            "share": 0.082988,
+            "symbol_count": 20
+          },
+          {
+            "sector": "consumer_discretionary",
+            "share": 0.078838,
+            "symbol_count": 19
+          },
+          {
+            "sector": "cloud_software_infrastructure",
+            "share": 0.074689,
+            "symbol_count": 18
+          },
+          {
+            "sector": "energy_utilities",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "financials",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "healthcare_biotech",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "industrials_automation",
+            "share": 0.070539,
+            "symbol_count": 17
+          },
+          {
+            "sector": "commodities",
+            "share": 0.06639,
+            "symbol_count": 16
+          }
+        ],
+        "strongest_subsectors": [
+          {
+            "share": 0.082988,
+            "subsector": "semiconductors",
+            "symbol_count": 20
+          },
+          {
+            "share": 0.078838,
+            "subsector": "consumer_discretionary",
+            "symbol_count": 19
+          },
+          {
+            "share": 0.074689,
+            "subsector": "cloud_software_infrastructure",
+            "symbol_count": 18
+          },
+          {
+            "share": 0.070539,
+            "subsector": "energy_utilities",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "financials",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "healthcare_biotech",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.070539,
+            "subsector": "industrials_automation",
+            "symbol_count": 17
+          },
+          {
+            "share": 0.06639,
+            "subsector": "commodities",
+            "symbol_count": 16
+          }
+        ],
+        "subsector_hhi": 0.06107
+      },
+      "source_root": "reports/hist_long1_windows/window_120d",
+      "source_status": "ok",
+      "temporal_stability": {
+        "observed_days": 120,
+        "posture_counts": {},
+        "posture_stability": "mixed_posture"
+      },
+      "topology_richness": {
+        "chunk_richness_average": 8.0,
+        "chunk_richness_range": {
+          "max": 8.0,
+          "min": 8.0
+        },
+        "topology_persistence_enabled": false
+      },
+      "weak_symbol_details": [],
+      "weak_symbols": [],
+      "window_trading_days": 120
+    }
+  ],
+  "readiness_assessment": {
+    "ready_for_deeper_replay_ecology_accumulation": true,
+    "recommendation": "Proceed to deeper bounded observational accumulation only; keep replay inactive and topology non-persistent.",
+    "required_constraints": [
+      "observational_only",
+      "no_replay_activation",
+      "no_trading",
+      "no_prediction",
+      "no_topology_persistence",
+      "no_supabase_writes"
+    ]
+  },
+  "review_date": "2026-05-28",
+  "schema_version": "hist_long1_v1",
+  "status": "ok"
+}
