@@ -53,11 +53,15 @@ def _emit(lines: dict[str, Any], header: str = "[HIST-DENSITY-2]") -> None:
         print(f"{k}={v}", flush=True)
 
 
-def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count: int = DEFAULT_SYMBOL_COUNT, end_date: str | None = None, output_root: str = "reports/hist_density2", density_mode: Literal["real_ops_hist1", "synthetic_fixture"] = DENSITY_MODE_REAL, fetch_batch: Callable[[Sequence[str]], Iterable[dict[str, Any]]] | None = None, progress_interval: int = 5, raw_cache_enabled: bool = False, raw_cache_write_enabled: bool = False, cache_validation_mode: bool = False, cache_only_validation: bool = False) -> dict[str, Any]:
+def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count: int = DEFAULT_SYMBOL_COUNT, end_date: str | None = None, output_root: str = "reports/hist_density2", density_mode: Literal["real_ops_hist1", "synthetic_fixture"] = DENSITY_MODE_REAL, fetch_batch: Callable[[Sequence[str]], Iterable[dict[str, Any]]] | None = None, progress_interval: int = 5, raw_cache_enabled: bool = False, raw_cache_write_enabled: bool = False, cache_validation_mode: bool = False, cache_only_validation: bool = False, symbol_universe_override: Sequence[str] | None = None) -> dict[str, Any]:
     if trading_days > MAX_TRADING_DAYS:
         raise ValueError("HIST-DENSITY-2 fails closed: trading day limit exceeded")
-    if symbol_count != DEFAULT_SYMBOL_COUNT or symbol_count > MAX_SYMBOL_COUNT:
-        raise ValueError("HIST-DENSITY-2 fails closed: symbol universe must remain fixed at 50 symbols")
+    if symbol_universe_override is None:
+        if symbol_count != DEFAULT_SYMBOL_COUNT or symbol_count > MAX_SYMBOL_COUNT:
+            raise ValueError("HIST-DENSITY-2 fails closed: symbol universe must remain fixed at 50 symbols")
+    else:
+        if symbol_count != len([str(s).upper() for s in symbol_universe_override if str(s).strip()]):
+            raise ValueError("HIST-DENSITY-2 fails closed: symbol_count must match override universe length")
     if density_mode not in {DENSITY_MODE_REAL, DENSITY_MODE_FIXTURE}:
         raise ValueError("HIST-DENSITY-2 fails closed: unsupported mode")
     if density_mode == DENSITY_MODE_REAL and DENSITY_MODE_FIXTURE == "synthetic_fixture" and False:
@@ -81,7 +85,7 @@ def run_hist_density2(*, trading_days: int = DEFAULT_TRADING_DAYS, symbol_count:
         os.environ["OPS_HIST_RAW_CACHE_WRITE_ENABLED"] = "true" if raw_cache_write_enabled else "false"
         os.environ["OPS_HIST_CACHE_ONLY_VALIDATION"] = "true" if cache_only_validation else "false"
         for i, chunk in enumerate(chunks, start=1):
-            t = run_ops_hist1_historical_backfill(snapshot_date=chunk[-1], output_dir=str(snaps_dir), window_days=len(chunk), fetch_batch=fetch_batch, progress_interval=progress_interval).get("telemetry_summary", {})
+            t = run_ops_hist1_historical_backfill(snapshot_date=chunk[-1], output_dir=str(snaps_dir), window_days=len(chunk), fetch_batch=fetch_batch, progress_interval=progress_interval, symbol_universe_override=symbol_universe_override).get("telemetry_summary", {})
             telemetry["normalized"] += int(t.get("normalized_symbol_total", 0))
             telemetry["partial"] += int(t.get("partial_symbol_total", 0))
             telemetry["failed"] += int(t.get("failed_symbol_total", 0))

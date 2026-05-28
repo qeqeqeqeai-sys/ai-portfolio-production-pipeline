@@ -699,7 +699,7 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         "empty_snapshot_fail_closed": len(normalized_rows) == 0 or all(r.get("price") is None for r in raw_rows),
     }
 
-def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None, progress_interval: int = PROGRESS_INTERVAL_DEFAULT) -> dict[str, Any]:
+def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None, progress_interval: int = PROGRESS_INTERVAL_DEFAULT, symbol_universe_override: Sequence[str] | None = None) -> dict[str, Any]:
     if fetch_batch is None:
         api_key = os.getenv("FMP_API_KEY", "")
         if not api_key:
@@ -709,7 +709,7 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
     window_dates = deterministic_historical_window_dates(snapshot_date, window_days)
     if len(window_dates) > MAX_SNAPSHOTS_PER_RUN:
         raise ValueError("OPS-HIST-1 fails closed: snapshot count exceeds MAX_SNAPSHOTS_PER_RUN")
-    universe = get_ops_live1b_controlled_universe()
+    universe = [str(s).upper() for s in (symbol_universe_override or get_ops_live1b_controlled_universe()) if str(s).strip()]
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     snapshots = []

@@ -1,0 +1,32 @@
+name: HIST-DENSITY-3 Curated 241 Pilot
+on:
+  workflow_dispatch:
+    inputs:
+      trading_days: {description: "Trading days (1-180)", required: false, default: "180", type: string}
+      max_symbols: {description: "Max symbols (1-241)", required: false, default: "241", type: string}
+      symbol_chunk_size: {description: "Symbol chunk size (1-60)", required: false, default: "50", type: string}
+      raw_cache_enabled: {description: "Enable raw FMP cache reads", required: false, default: "false", type: choice, options: ["false", "true"]}
+      raw_cache_write_enabled: {description: "Enable raw FMP cache writes", required: false, default: "false", type: choice, options: ["false", "true"]}
+      cache_validation_mode: {description: "Enable cache validation mode", required: false, default: "false", type: choice, options: ["false", "true"]}
+      cache_only_validation: {description: "Enable cache-only validation", required: false, default: "false", type: choice, options: ["false", "true"]}
+      include_high_risk_symbols: {description: "Include high-risk symbols", required: false, default: "false", type: choice, options: ["false", "true"]}
+      apply_sde2_replacements: {description: "Apply SDE-2 replacements", required: false, default: "true", type: choice, options: ["false", "true"]}
+      dry_run_config_only: {description: "Dry-run config only", required: false, default: "true", type: choice, options: ["false", "true"]}
+jobs:
+  hist-density-3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r requirements.txt
+      - run: |
+          ARGS=""
+          [ "${{ github.event.inputs.raw_cache_enabled }}" = "true" ] && ARGS="$ARGS --raw-cache-enabled"
+          [ "${{ github.event.inputs.raw_cache_write_enabled }}" = "true" ] && ARGS="$ARGS --raw-cache-write-enabled"
+          [ "${{ github.event.inputs.cache_validation_mode }}" = "true" ] && ARGS="$ARGS --cache-validation-mode"
+          [ "${{ github.event.inputs.cache_only_validation }}" = "true" ] && ARGS="$ARGS --cache-only-validation"
+          [ "${{ github.event.inputs.include_high_risk_symbols }}" = "true" ] && ARGS="$ARGS --include-high-risk-symbols"
+          [ "${{ github.event.inputs.apply_sde2_replacements }}" = "false" ] && ARGS="$ARGS --no-apply-sde2-replacements"
+          [ "${{ github.event.inputs.dry_run_config_only }}" = "true" ] && ARGS="$ARGS --dry-run-config-only"
+          PYTHONPATH=. python scripts/run_hist_density_3_curated_241_pilot.py --trading-days "${{ github.event.inputs.trading_days }}" --max-symbols "${{ github.event.inputs.max_symbols }}" --symbol-chunk-size "${{ github.event.inputs.symbol_chunk_size }}" --output-root reports/hist_density3_curated_241 $ARGS
