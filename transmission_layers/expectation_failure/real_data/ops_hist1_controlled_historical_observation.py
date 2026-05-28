@@ -766,6 +766,43 @@ def _partition_normalization_candidates(raw_rows: Sequence[dict[str, Any]], univ
     return valid_rows, failures_by_symbol, reason_counts
 
 
+def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], universe: Sequence[str], snapshot_date: str) -> tuple[list[dict[str, Any]], dict[str, list[str]], Counter[str]]:
+    by_symbol = {str(r.get("symbol", "")).upper(): r for r in rows if str(r.get("symbol", "")).strip()}
+    failures_by_symbol: dict[str, list[str]] = {}
+    reason_counts: Counter[str] = Counter()
+    valid_rows: list[dict[str, Any]] = []
+    for sym in [str(s).upper() for s in universe if str(s).strip()]:
+        row = by_symbol.get(sym)
+        reasons: list[str] = []
+        if row is None:
+            reasons.append("missing_post_fetch_row")
+        else:
+            patched_row = dict(row)
+            if not str(patched_row.get("date", "")).strip():
+                patched_row["date"] = snapshot_date
+            if not str(row.get("symbol", "")).strip():
+                reasons.append("missing_symbol")
+            if not str(patched_row.get("date", "")).strip():
+                reasons.append("missing_date")
+            try:
+                float(patched_row.get("price"))
+            except Exception:
+                reasons.append("invalid_price_numeric")
+            if patched_row.get("marketCap") is None:
+                reasons.append("missing_market_cap")
+            if not str(patched_row.get("sector", "")).strip():
+                reasons.append("missing_sector")
+            if not str(patched_row.get("industry", patched_row.get("subsector", ""))).strip():
+                reasons.append("missing_industry_or_subsector")
+        if reasons:
+            failures_by_symbol[sym] = sorted(set(reasons))
+            for reason in set(reasons):
+                reason_counts[reason] += 1
+        else:
+            valid_rows.append(patched_row)
+    return valid_rows, failures_by_symbol, reason_counts
+
+
 def _fetch_with_optional_date(
     fetch_batch: Callable[..., Iterable[dict]],
     symbols: Sequence[str],
@@ -835,6 +872,7 @@ def _classify_empty_snapshot_cause(
     *,
     raw_rows: Sequence[dict[str, Any]],
     valid_rows: Sequence[dict[str, Any]],
+    downstream_preflight_rows: Sequence[dict[str, Any]],
     normalized_rows: Sequence[dict[str, Any]],
     profile_diag: dict[str, Any],
     snapshot_date: str,
@@ -853,6 +891,10 @@ def _classify_empty_snapshot_cause(
         if any(not isinstance(r, dict) for r in raw_rows):
             return "malformed_provider_payload", "pre_normalization"
         return "all_symbols_filtered_pre_normalization", "pre_normalization"
+    if valid_rows and not downstream_preflight_rows:
+        return "downstream_preflight_schema_mismatch", "pre_normalization"
+    if downstream_preflight_rows and not normalized_rows:
+        return "downstream_ingestion_normalization_contract_mismatch", "normalization"
     if valid_rows and not normalized_rows:
         return "all_symbols_failed_normalization", "normalization"
     return "unsupported_schema", "normalization"
@@ -912,9 +954,10 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         fetched_row_count = len(raw_rows)
         valid_rows, failures_by_symbol, isolation_reason_counts = _partition_normalization_candidates(raw_rows, universe)
         pre_normalization_row_count = len(valid_rows)
-        valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in valid_rows if str(r.get("symbol", "")).strip()})
+        downstream_rows, downstream_failures_by_symbol, downstream_reason_counts = _partition_downstream_ingestion_candidates(valid_rows, universe, d)
+        valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in downstream_rows if str(r.get("symbol", "")).strip()})
         reconciliation_retained_row_count = len(valid_symbols)
-        result = ingest_controlled_daily_snapshot(valid_symbols, d, lambda batch, _raw=valid_rows: [r for r in _raw if str(r.get("symbol", "")).upper() in set(batch)]) if valid_symbols else {"rows": [], "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"), "snapshot_identity": {}, "status": "failed_closed"}
+        result = ingest_controlled_daily_snapshot(valid_symbols, d, lambda batch, _raw=downstream_rows: [r for r in _raw if str(r.get("symbol", "")).upper() in set(batch)]) if valid_symbols else {"rows": [], "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"), "snapshot_identity": {}, "status": "failed_closed"}
         profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
         for k in list(cache_totals.keys()):
             v = profile_diag.get(k, 0)
@@ -937,16 +980,22 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["normalization_mode"] = "isolated_symbol_failures" if isolated_failed > 0 and preserved > 0 else "all_symbols_healthy"
         diag["fetched_row_count"] = fetched_row_count
         diag["pre_normalization_row_count"] = pre_normalization_row_count
+        diag["downstream_preflight_retained_row_count"] = len(downstream_rows)
+        diag["downstream_preflight_failed_symbol_count"] = len(downstream_failures_by_symbol)
+        diag["downstream_preflight_failure_reason_counts"] = dict(sorted((downstream_reason_counts or Counter()).items()))
+        diag["downstream_preflight_failure_symbol_samples"] = [{"symbol": s, "reasons": downstream_failures_by_symbol.get(s, [])} for s in sorted(downstream_failures_by_symbol.keys())[:sample_limit]]
         diag["reconciliation_retained_row_count"] = reconciliation_retained_row_count
         diag["normalization_retained_row_count"] = preserved
         diag["final_preserved_symbol_count"] = preserved
         diag["fetch_empty_response_detected"] = fetched_row_count == 0
         diag["reconciliation_full_filter_detected"] = pre_normalization_row_count > 0 and reconciliation_retained_row_count == 0
         diag["normalization_full_filter_detected"] = pre_normalization_row_count > 0 and preserved == 0
+        diag["downstream_normalization_zero_rows"] = len(downstream_rows) > 0 and preserved == 0
         if preserved == 0:
             empty_reason, empty_stage = _classify_empty_snapshot_cause(
                 raw_rows=raw_rows,
                 valid_rows=valid_rows,
+                downstream_preflight_rows=downstream_rows,
                 normalized_rows=result.get("rows", []),
                 profile_diag=profile_diag,
                 snapshot_date=d,
@@ -958,7 +1007,8 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
             raise RuntimeError(
                 f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; "
                 f"stage={diag.get('empty_snapshot_stage')}; class={diag.get('empty_snapshot_reason_class')}; "
-                f"reasons={diag['top_normalization_failure_reasons']}"
+                f"reasons={diag['top_normalization_failure_reasons']}; "
+                f"downstream_preflight_top_reasons={list((downstream_reason_counts or Counter()).keys())[:5]}"
             )
         if normalized_ratio < minimum_safe_ratio:
             raise RuntimeError(

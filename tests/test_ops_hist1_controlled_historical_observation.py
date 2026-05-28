@@ -588,3 +588,39 @@ def test_all_rows_filtered_pre_normalization_classified(tmp_path):
         return [{"symbol": s, "date": snapshot_date, "price": None, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
     with pytest.raises(RuntimeError, match="class=all_symbols_filtered_pre_normalization"):
         run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT"])
+
+
+def test_downstream_preflight_schema_mismatch_fail_closed(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": 101.0, "marketCap": 1, "sector": "", "industry": ""} for s in batch]
+    with pytest.raises(RuntimeError, match="class=downstream_preflight_schema_mismatch"):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT"])
+
+
+def test_downstream_ingestion_contract_mismatch_classified(tmp_path, monkeypatch):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": 101.0, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+
+    def fake_ingest(*_args, **_kwargs):
+        return {"rows": [], "snapshot_ts": "2026-05-27T00:00:00Z", "snapshot_identity": {}, "status": "failed_closed"}
+
+    monkeypatch.setattr(
+        "transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.ingest_controlled_daily_snapshot",
+        fake_ingest,
+    )
+    with pytest.raises(RuntimeError, match="class=downstream_ingestion_normalization_contract_mismatch"):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
+
+
+def test_governance_metadata_regression_preserved(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": 100.0, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+
+    run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    metadata = snap["governance_metadata"]
+    assert metadata["supabase_write_enabled"] is False
+    assert metadata["orchestration_enabled"] is False
+    assert metadata["no_topology_activation"] is True
+    assert metadata["no_prediction_or_trading_execution"] is True
+    assert metadata["persistence_mode"] == "local_json_only"
