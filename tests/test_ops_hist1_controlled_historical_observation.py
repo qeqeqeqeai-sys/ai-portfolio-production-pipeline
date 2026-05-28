@@ -311,6 +311,76 @@ def test_response_shape_data_and_reconciliation(monkeypatch):
     assert attempt["date_reconciliation_distance_days"] == 1
 
 
+def test_market_cap_exact_match_reconciliation(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/historical-price-eod/full" in url:
+            return _Resp(b'[{"date":"2026-05-27","adjClose":109.0}]')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"date":"2026-05-27","marketCap":2000},{"date":"2026-05-26","marketCap":1000}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Software"}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    row = build_historical_fmp_fetcher("test_key")(["AAPL"], "2026-05-27")[0]
+    assert row["marketCap"] == 2000
+    assert row["market_cap_exact_match_found"] is True
+    assert row["market_cap_missing_after_reconciliation"] is False
+
+
+def test_market_cap_nearest_prior_within_5_days_reconciliation(monkeypatch):
+    class _Resp:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.payload
+
+    def fake_urlopen(url, timeout=20):
+        if "stable/historical-price-eod/full" in url:
+            return _Resp(b'[{"date":"2026-05-27","adjClose":109.0}]')
+        if "historical-market-capitalization" in url:
+            return _Resp(b'[{"date":"2026-05-25","marketCap":1500}]')
+        if "stable/profile" in url:
+            return _Resp(b'[{"sector":"Tech","industry":"Software"}]')
+        raise AssertionError(url)
+
+    monkeypatch.setattr("transmission_layers.expectation_failure.real_data.ops_hist1_controlled_historical_observation.urlopen", fake_urlopen)
+    row = build_historical_fmp_fetcher("test_key")(["AAPL"], "2026-05-27")[0]
+    assert row["marketCap"] == 1500
+    assert row["market_cap_exact_match_found"] is False
+    assert row["market_cap_reconciled_prior_date"] == "2026-05-25"
+    assert row["market_cap_reconciliation_distance_days"] == 2
+    assert row["market_cap_missing_after_reconciliation"] is False
+
+
+def test_market_cap_missing_outside_window_preserves_fail_closed(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{
+            "symbol": s,
+            "date": snapshot_date,
+            "price": 101.0,
+            "marketCap": None,
+            "sector": "Tech",
+            "industry": "Soft",
+            "market_cap_missing_after_reconciliation": True,
+        } for s in batch]
+
+    with pytest.raises(RuntimeError, match="class=downstream_preflight_schema_mismatch"):
+        run_ops_hist1_historical_backfill(
+            snapshot_date="2026-05-27",
+            output_dir=str(tmp_path),
+            window_days=1,
+            fetch_batch=fetcher,
+            symbol_universe_override=["AAPL"],
+        )
+
+
 def test_bounded_snapshot_telemetry_interval_and_no_secret_leak(tmp_path):
     calls = []
     def fetcher(batch, snapshot_date):
