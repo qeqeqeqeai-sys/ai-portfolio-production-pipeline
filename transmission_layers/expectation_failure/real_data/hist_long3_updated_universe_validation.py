@@ -55,15 +55,15 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _chunk_symbols_from_preview(preview: Mapping[str, Any] | None) -> list[list[str]]:
+def _chunk_symbols_from_preview(preview: Mapping[str, Any] | None, *, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE) -> list[list[str]]:
     if preview and preview.get("chunk_symbols"):
         return [[str(s).upper() for s in chunk] for chunk in preview.get("chunk_symbols", [])]
-    symbols, _ = _effective_symbols(max_symbols=DEFAULT_MAX_SYMBOLS, include_high_risk_symbols=False, apply_sde2_replacements=True)
-    return [symbols[i:i + DEFAULT_SYMBOL_CHUNK_SIZE] for i in range(0, len(symbols), DEFAULT_SYMBOL_CHUNK_SIZE)]
+    symbols, _ = _effective_symbols(max_symbols=max_symbols, include_high_risk_symbols=False, apply_sde2_replacements=True)
+    return [symbols[i:i + symbol_chunk_size] for i in range(0, len(symbols), symbol_chunk_size)]
 
 
-def _validate_updated_universe(preview: Mapping[str, Any] | None) -> OrderedDict[str, Any]:
-    chunks = _chunk_symbols_from_preview(preview)
+def _validate_updated_universe(preview: Mapping[str, Any] | None, *, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS) -> OrderedDict[str, Any]:
+    chunks = _chunk_symbols_from_preview(preview, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size)
     symbols = [symbol for chunk in chunks for symbol in chunk]
     counts = Counter(symbols)
     duplicate_symbols = sorted(symbol for symbol, count in counts.items() if count > 1)
@@ -76,8 +76,8 @@ def _validate_updated_universe(preview: Mapping[str, Any] | None) -> OrderedDict
         ("duplicate_symbols", duplicate_symbols),
         ("no_duplicate_symbols", not duplicate_symbols),
         ("chunk_count", len(chunks)),
-        ("expected_chunk_count", STAGE5_MAX_CHUNKS),
-        ("expected_chunk_count_remains_5", len(chunks) == STAGE5_MAX_CHUNKS),
+        ("expected_chunk_count", expected_chunk_count),
+        ("expected_chunk_count_remains_5", len(chunks) == expected_chunk_count),
         ("chunk_sizes", [len(chunk) for chunk in chunks]),
         ("effective_symbol_count", len(symbols)),
     ])
@@ -114,8 +114,8 @@ def _aggregate_from_review(review: Mapping[str, Any] | None) -> OrderedDict[str,
     ])
 
 
-def _foxa_validation(review: Mapping[str, Any] | None, preview: Mapping[str, Any] | None, execution_status: str) -> OrderedDict[str, Any]:
-    universe = _validate_updated_universe(preview)
+def _foxa_validation(review: Mapping[str, Any] | None, preview: Mapping[str, Any] | None, execution_status: str, *, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS) -> OrderedDict[str, Any]:
+    universe = _validate_updated_universe(preview, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count)
     foxa_missing_samples: list[Mapping[str, Any]] = []
     foxa_endpoint_samples: list[Mapping[str, Any]] = []
     profile_failures: dict[str, int] = {}
@@ -165,7 +165,7 @@ def _comparison(metrics: Mapping[str, Any], execution_status: str) -> OrderedDic
     ])
 
 
-def build_hist_long3_artifact(*, output_root: str = DEFAULT_OUTPUT_ROOT, execution_error: str | None = None, review_builder: ReviewBuilder = build_hist_density4_findings_review) -> OrderedDict[str, Any]:
+def build_hist_long3_artifact(*, output_root: str = DEFAULT_OUTPUT_ROOT, report_path: str = DEFAULT_REPORT_PATH, artifact_path: str = DEFAULT_ARTIFACT_PATH, execution_error: str | None = None, review_builder: ReviewBuilder = build_hist_density4_findings_review, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS) -> OrderedDict[str, Any]:
     root = Path(output_root)
     preview = _read_json(root / "hist_density3_config_preview.json")
     summary = _read_json(root / "hist_density3_summary.json")
@@ -174,12 +174,12 @@ def build_hist_long3_artifact(*, output_root: str = DEFAULT_OUTPUT_ROOT, executi
         review = review_builder(str(root))
     execution_status = "completed" if review else "blocked_real_execution_failed"
     metrics = _aggregate_from_review(review)
-    universe_validation = _validate_updated_universe(preview)
+    universe_validation = _validate_updated_universe(preview, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count)
     run_config = OrderedDict([
-        ("trading_days", DEFAULT_TRADING_DAYS),
-        ("max_symbols", DEFAULT_MAX_SYMBOLS),
-        ("symbol_chunk_size", DEFAULT_SYMBOL_CHUNK_SIZE),
-        ("expected_chunk_count", STAGE5_MAX_CHUNKS),
+        ("trading_days", trading_days),
+        ("max_symbols", max_symbols),
+        ("symbol_chunk_size", symbol_chunk_size),
+        ("expected_chunk_count", expected_chunk_count),
         ("density_mode", DENSITY_MODE_REAL),
         ("raw_cache_write_enabled", False),
         ("replay_enabled", False),
@@ -201,17 +201,17 @@ def build_hist_long3_artifact(*, output_root: str = DEFAULT_OUTPUT_ROOT, executi
         ("governance_certification", _governance()),
         ("updated_universe_validation", universe_validation),
         ("ingestion_metrics", metrics),
-        ("foxa_validation", _foxa_validation(review, preview, execution_status)),
+        ("foxa_validation", _foxa_validation(review, preview, execution_status, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count)),
         ("original_baseline", ORIGINAL_BASELINE),
         ("comparison_vs_para_baseline", _comparison(metrics, execution_status)),
         ("artifact_paths", OrderedDict([
-            ("report", DEFAULT_REPORT_PATH),
-            ("artifact", DEFAULT_ARTIFACT_PATH),
+            ("report", report_path),
+            ("artifact", artifact_path),
             ("output_root", str(root)),
             ("config_preview", str(root / "hist_density3_config_preview.json")),
             ("summary", str(root / "hist_density3_summary.json") if summary else None),
         ])),
-        ("hist_long4_justified", execution_status == "completed" and _foxa_validation(review, preview, execution_status)["status"] == "validated_suitable"),
+        ("hist_long4_justified", execution_status == "completed" and _foxa_validation(review, preview, execution_status, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count)["status"] == "validated_suitable"),
         ("artifact_checksum", sha256(checksum_input.encode("utf-8")).hexdigest()),
     ])
 
@@ -275,15 +275,15 @@ def render_hist_long3_markdown(artifact: Mapping[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_hist_long3_validation(*, output_root: str = DEFAULT_OUTPUT_ROOT, report_path: str = DEFAULT_REPORT_PATH, artifact_path: str = DEFAULT_ARTIFACT_PATH, execute_real: bool = True, density_runner: DensityRunner = run_hist_density3, review_builder: ReviewBuilder = build_hist_density4_findings_review) -> OrderedDict[str, Any]:
+def write_hist_long3_validation(*, output_root: str = DEFAULT_OUTPUT_ROOT, report_path: str = DEFAULT_REPORT_PATH, artifact_path: str = DEFAULT_ARTIFACT_PATH, execute_real: bool = True, density_runner: DensityRunner = run_hist_density3, review_builder: ReviewBuilder = build_hist_density4_findings_review, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS) -> OrderedDict[str, Any]:
     execution_error = None
     if execute_real:
         try:
             density_runner(
-                trading_days=DEFAULT_TRADING_DAYS,
-                max_symbols=DEFAULT_MAX_SYMBOLS,
-                symbol_chunk_size=DEFAULT_SYMBOL_CHUNK_SIZE,
-                expected_chunk_count=STAGE5_MAX_CHUNKS,
+                trading_days=trading_days,
+                max_symbols=max_symbols,
+                symbol_chunk_size=symbol_chunk_size,
+                expected_chunk_count=expected_chunk_count,
                 output_root=output_root,
                 density_mode=DENSITY_MODE_REAL,
                 raw_cache_enabled=False,
@@ -296,7 +296,7 @@ def write_hist_long3_validation(*, output_root: str = DEFAULT_OUTPUT_ROOT, repor
             )
         except Exception as exc:  # artifact-writing supervisor must capture fail-closed cause
             execution_error = f"{type(exc).__name__}: {exc}"
-    artifact = build_hist_long3_artifact(output_root=output_root, execution_error=execution_error, review_builder=review_builder)
+    artifact = build_hist_long3_artifact(output_root=output_root, report_path=report_path, artifact_path=artifact_path, execution_error=execution_error, review_builder=review_builder, trading_days=trading_days, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count)
     Path(artifact_path).parent.mkdir(parents=True, exist_ok=True)
     Path(report_path).parent.mkdir(parents=True, exist_ok=True)
     Path(artifact_path).write_text(json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8")

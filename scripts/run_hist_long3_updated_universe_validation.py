@@ -15,6 +15,10 @@ def main() -> None:
     parser.add_argument("--output-root", default="reports/hist_long3_updated_universe_validation")
     parser.add_argument("--report-path", default="reports/hist_long3_updated_universe_validation.md")
     parser.add_argument("--artifact-path", default="artifacts/hist_long3_updated_universe_validation.json")
+    parser.add_argument("--trading-days", type=int, default=20)
+    parser.add_argument("--max-symbols", type=int, default=241)
+    parser.add_argument("--symbol-chunk-size", type=int, default=50)
+    parser.add_argument("--expected-chunk-count", type=int, default=5)
     parser.add_argument("--no-execute-real", action="store_true", help="Build the supervisor artifact from existing local outputs only")
     args = parser.parse_args()
     artifact = write_hist_long3_validation(
@@ -22,6 +26,10 @@ def main() -> None:
         report_path=args.report_path,
         artifact_path=args.artifact_path,
         execute_real=not args.no_execute_real,
+        trading_days=args.trading_days,
+        max_symbols=args.max_symbols,
+        symbol_chunk_size=args.symbol_chunk_size,
+        expected_chunk_count=args.expected_chunk_count,
     )
     print(json.dumps({"status": artifact["status"], "validation_status": artifact["validation_status"], "hist_long4_justified": artifact["hist_long4_justified"]}, sort_keys=True))
 
