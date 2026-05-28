@@ -867,12 +867,17 @@ def _partition_downstream_ingestion_candidates(rows: Sequence[dict[str, Any]], u
                 float(patched_row.get("price"))
             except Exception:
                 reasons.append("invalid_price_numeric")
-            if patched_row.get("marketCap") is None:
-                reasons.append("missing_market_cap")
+            # OPS-HIST-1 architectural policy:
+            # historical marketCap is optional observational enrichment and must not
+            # hard-block downstream preflight in historical mode.
+            market_cap_missing = patched_row.get("marketCap") is None
             if not str(patched_row.get("sector", "")).strip():
                 reasons.append("missing_sector")
             if not str(patched_row.get("industry", patched_row.get("subsector", ""))).strip():
                 reasons.append("missing_industry_or_subsector")
+            if market_cap_missing and not reasons:
+                # retain row; capture as telemetry-only warning downstream.
+                patched_row["market_cap_optional_missing"] = True
         if reasons:
             failures_by_symbol[sym] = sorted(set(reasons))
             for reason in set(reasons):
@@ -1095,6 +1100,22 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["downstream_preflight_failure_reason_counts"] = dict(sorted((downstream_reason_counts or Counter()).items()))
         diag["downstream_preflight_failure_symbol_samples"] = [{"symbol": s, "reasons": downstream_failures_by_symbol.get(s, [])} for s in sorted(downstream_failures_by_symbol.keys())[:sample_limit]]
         diag["downstream_market_cap_debug_samples"] = preflight_debug_samples
+        market_cap_missing_count = sum(
+            1
+            for row in downstream_rows
+            if row.get("marketCap") is None
+        )
+        market_cap_available_count = max(0, len(downstream_rows) - market_cap_missing_count)
+        diag["market_cap_requirement_mode"] = "optional_historical_enrichment"
+        diag["market_cap_missing_does_not_block_historical_observation"] = True
+        diag["no_synthetic_market_cap"] = True
+        diag["no_live_market_cap_fallback"] = True
+        diag["market_cap_missing_count"] = market_cap_missing_count
+        diag["market_cap_available_count"] = market_cap_available_count
+        diag["market_cap_coverage_ratio"] = round(
+            (market_cap_available_count / len(downstream_rows)),
+            6,
+        ) if downstream_rows else 0.0
         diag["reconciliation_retained_row_count"] = reconciliation_retained_row_count
         diag["normalization_retained_row_count"] = preserved
         diag["final_preserved_symbol_count"] = preserved
