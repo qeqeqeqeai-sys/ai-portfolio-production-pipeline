@@ -1,0 +1,121 @@
+name: HIST-LONG-3 Updated Universe Real Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      trading_days:
+        description: "Trading days for this bounded validation (max 20)"
+        required: false
+        default: "20"
+        type: string
+      max_symbols:
+        description: "Max symbols for the updated universe validation (max 241)"
+        required: false
+        default: "241"
+        type: string
+      symbol_chunk_size:
+        description: "Symbol chunk size for this validation (must be 50)"
+        required: false
+        default: "50"
+        type: string
+      expected_chunk_count:
+        description: "Expected symbol chunk count for this validation (must be 5)"
+        required: false
+        default: "5"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  hist-long3-updated-universe-validation:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+      TRADING_DAYS: ${{ github.event.inputs.trading_days }}
+      MAX_SYMBOLS: ${{ github.event.inputs.max_symbols }}
+      SYMBOL_CHUNK_SIZE: ${{ github.event.inputs.symbol_chunk_size }}
+      EXPECTED_CHUNK_COUNT: ${{ github.event.inputs.expected_chunk_count }}
+      VALIDATION_PHASE: HIST-LONG-3 Updated Universe Real Validation
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Preflight bounded validation controls
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          for value_name in TRADING_DAYS MAX_SYMBOLS SYMBOL_CHUNK_SIZE EXPECTED_CHUNK_COUNT; do
+            value="${!value_name}"
+            if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+              echo "${value_name} must be an integer, got: ${value}" >&2
+              exit 1
+            fi
+          done
+
+          if (( TRADING_DAYS > 20 )); then
+            echo "trading_days must be <= 20 for this validation workflow; got ${TRADING_DAYS}." >&2
+            exit 1
+          fi
+          if (( MAX_SYMBOLS > 241 )); then
+            echo "max_symbols must be <= 241 for this validation workflow; got ${MAX_SYMBOLS}." >&2
+            exit 1
+          fi
+          if (( SYMBOL_CHUNK_SIZE != 50 )); then
+            echo "symbol_chunk_size must equal 50 for this validation workflow; got ${SYMBOL_CHUNK_SIZE}." >&2
+            exit 1
+          fi
+          if (( EXPECTED_CHUNK_COUNT != 5 )); then
+            echo "expected_chunk_count must equal 5 for this validation workflow; got ${EXPECTED_CHUNK_COUNT}." >&2
+            exit 1
+          fi
+
+          fmp_api_key_present=false
+          if [ -n "${FMP_API_KEY:-}" ]; then
+            fmp_api_key_present=true
+          fi
+
+          echo "validation_phase=${VALIDATION_PHASE}"
+          echo "trading_days=${TRADING_DAYS}"
+          echo "max_symbols=${MAX_SYMBOLS}"
+          echo "symbol_chunk_size=${SYMBOL_CHUNK_SIZE}"
+          echo "expected_chunk_count=${EXPECTED_CHUNK_COUNT}"
+          echo "fmp_api_key_present=${fmp_api_key_present}"
+
+          if [ "${fmp_api_key_present}" != "true" ]; then
+            echo "FMP_API_KEY is required via GitHub repository secrets." >&2
+            exit 1
+          fi
+
+      - name: Run HIST-LONG-3 updated universe real validation
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long3_updated_universe_validation.py \
+            --trading-days "${TRADING_DAYS}" \
+            --max-symbols "${MAX_SYMBOLS}" \
+            --symbol-chunk-size "${SYMBOL_CHUNK_SIZE}" \
+            --expected-chunk-count "${EXPECTED_CHUNK_COUNT}"
+
+      - name: Upload HIST-LONG-3 validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hist-long3-updated-universe-validation
+          if-no-files-found: warn
+          path: |
+            reports/hist_long3_updated_universe_validation.md
+            artifacts/hist_long3_updated_universe_validation.json
+            reports/hist_long3_updated_universe_validation/**
