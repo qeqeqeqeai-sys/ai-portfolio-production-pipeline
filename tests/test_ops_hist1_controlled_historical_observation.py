@@ -549,3 +549,42 @@ def test_safe_ratio_breach_fail_closed(tmp_path, monkeypatch):
         return [{"symbol": batch[0], "date": snapshot_date, "price": 101.0, "marketCap": 1000, "sector": "Tech", "industry": "Soft"}]
     with pytest.raises(RuntimeError):
         run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT", "NVDA"])
+
+
+def test_stage_telemetry_lifecycle_fields_present(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": 100.0, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+    run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT"])
+    snap = load_ops_hist1_snapshots(str(tmp_path))[0]
+    diag = snap["adapter_diagnostics"]
+    assert diag["fetched_row_count"] == 2
+    assert diag["pre_normalization_row_count"] == 2
+    assert diag["reconciliation_retained_row_count"] == 2
+    assert diag["normalization_retained_row_count"] == 2
+    assert diag["final_preserved_symbol_count"] == 2
+
+
+def test_empty_provider_payload_classified(tmp_path):
+    def fetcher(_batch, _snapshot_date):
+        return []
+    with pytest.raises(RuntimeError, match="class=provider_empty_response"):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
+
+
+def test_unavailable_trading_day_classified(tmp_path):
+    def fetcher(_batch, _snapshot_date):
+        return []
+    fetcher.last_profile_diagnostics = {
+        "historical_price_symbol_diagnostics": [
+            {"symbol": "AAPL", "endpoint_attempts": [{"failure_reason": "missing_reconciled_historical_date"}]}
+        ]
+    }
+    with pytest.raises(RuntimeError, match="class=unavailable_trading_day"):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL"])
+
+
+def test_all_rows_filtered_pre_normalization_classified(tmp_path):
+    def fetcher(batch, snapshot_date):
+        return [{"symbol": s, "date": snapshot_date, "price": None, "marketCap": 1, "sector": "Tech", "industry": "Soft"} for s in batch]
+    with pytest.raises(RuntimeError, match="class=all_symbols_filtered_pre_normalization"):
+        run_ops_hist1_historical_backfill(snapshot_date="2026-05-27", output_dir=str(tmp_path), window_days=1, fetch_batch=fetcher, symbol_universe_override=["AAPL", "MSFT"])

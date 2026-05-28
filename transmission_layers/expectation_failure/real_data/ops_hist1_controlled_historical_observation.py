@@ -830,6 +830,33 @@ def _historical_diagnostics(raw_rows: Sequence[dict], normalized_rows: Sequence[
         "empty_snapshot_fail_closed": len(normalized_rows) == 0 or all(r.get("price") is None for r in raw_rows),
     }
 
+
+def _classify_empty_snapshot_cause(
+    *,
+    raw_rows: Sequence[dict[str, Any]],
+    valid_rows: Sequence[dict[str, Any]],
+    normalized_rows: Sequence[dict[str, Any]],
+    profile_diag: dict[str, Any],
+    snapshot_date: str,
+) -> tuple[str, str]:
+    if not raw_rows:
+        symbol_diags = profile_diag.get("historical_price_symbol_diagnostics", []) or []
+        if symbol_diags:
+            attempts = [a for s in symbol_diags for a in (s.get("endpoint_attempts", []) or [])]
+            if attempts and all((a.get("failure_reason") == "missing_reconciled_historical_date") for a in attempts):
+                return "unavailable_trading_day", "reconciliation"
+            if any(str(a.get("failure_reason", "")).startswith(("HTTP_", "URL_ERROR", "TIMEOUT", "UNEXPECTED_ERROR")) for a in attempts):
+                return "upstream_fetch_failure", "fetch"
+            return "empty_batch_fetch", "fetch"
+        return "provider_empty_response", "fetch"
+    if raw_rows and not valid_rows:
+        if any(not isinstance(r, dict) for r in raw_rows):
+            return "malformed_provider_payload", "pre_normalization"
+        return "all_symbols_filtered_pre_normalization", "pre_normalization"
+    if valid_rows and not normalized_rows:
+        return "all_symbols_failed_normalization", "normalization"
+    return "unsupported_schema", "normalization"
+
 def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, window_days: int = DEFAULT_HIST_WINDOW_DAYS, fetch_batch: Callable[[Sequence[str]], Iterable[dict]] | None = None, progress_interval: int = PROGRESS_INTERVAL_DEFAULT, symbol_universe_override: Sequence[str] | None = None, telemetry_max_samples: int = DEFAULT_TELEMETRY_MAX_SAMPLES) -> dict[str, Any]:
     if fetch_batch is None:
         api_key = os.getenv("FMP_API_KEY", "")
@@ -882,8 +909,11 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
                 }
             )
         raw_rows = _fetch_with_optional_date(fetch_batch, universe, d, progress_callback=_snapshot_heartbeat)
+        fetched_row_count = len(raw_rows)
         valid_rows, failures_by_symbol, isolation_reason_counts = _partition_normalization_candidates(raw_rows, universe)
+        pre_normalization_row_count = len(valid_rows)
         valid_symbols = sorted({str(r.get("symbol", "")).upper() for r in valid_rows if str(r.get("symbol", "")).strip()})
+        reconciliation_retained_row_count = len(valid_symbols)
         result = ingest_controlled_daily_snapshot(valid_symbols, d, lambda batch, _raw=valid_rows: [r for r in _raw if str(r.get("symbol", "")).upper() in set(batch)]) if valid_symbols else {"rows": [], "snapshot_ts": _deterministic_hist_snapshot_id(d, "empty"), "snapshot_identity": {}, "status": "failed_closed"}
         profile_diag = dict(getattr(fetch_batch, "last_profile_diagnostics", {}) or {})
         for k in list(cache_totals.keys()):
@@ -905,8 +935,31 @@ def run_ops_hist1_historical_backfill(*, snapshot_date: str, output_dir: str, wi
         diag["preserved_normalized_symbol_count"] = preserved
         diag["minimum_safe_ratio"] = minimum_safe_ratio
         diag["normalization_mode"] = "isolated_symbol_failures" if isolated_failed > 0 and preserved > 0 else "all_symbols_healthy"
+        diag["fetched_row_count"] = fetched_row_count
+        diag["pre_normalization_row_count"] = pre_normalization_row_count
+        diag["reconciliation_retained_row_count"] = reconciliation_retained_row_count
+        diag["normalization_retained_row_count"] = preserved
+        diag["final_preserved_symbol_count"] = preserved
+        diag["fetch_empty_response_detected"] = fetched_row_count == 0
+        diag["reconciliation_full_filter_detected"] = pre_normalization_row_count > 0 and reconciliation_retained_row_count == 0
+        diag["normalization_full_filter_detected"] = pre_normalization_row_count > 0 and preserved == 0
         if preserved == 0:
-            raise RuntimeError(f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; reasons={diag['top_normalization_failure_reasons']}")
+            empty_reason, empty_stage = _classify_empty_snapshot_cause(
+                raw_rows=raw_rows,
+                valid_rows=valid_rows,
+                normalized_rows=result.get("rows", []),
+                profile_diag=profile_diag,
+                snapshot_date=d,
+            )
+            diag["empty_snapshot_reason_class"] = empty_reason
+            diag["empty_snapshot_stage"] = empty_stage
+            diag["top_normalization_failure_reasons"] = list(diag.get("top_normalization_failure_reasons") or []) or [empty_reason]
+        if preserved == 0:
+            raise RuntimeError(
+                f"OPS-HIST-1 fails closed: empty normalized snapshot for {d}; "
+                f"stage={diag.get('empty_snapshot_stage')}; class={diag.get('empty_snapshot_reason_class')}; "
+                f"reasons={diag['top_normalization_failure_reasons']}"
+            )
         if normalized_ratio < minimum_safe_ratio:
             raise RuntimeError(
                 "OPS-HIST-1 fails closed: normalized ratio below minimum safe threshold "
