@@ -137,3 +137,33 @@ python scripts/run_d6_real_proving_cycle.py
 ```
 
 It prints finding/narrative counts, persistence and readback verification statuses, per-table persisted counts, supervisor usefulness evaluation, and checksum continuity.
+
+## Track C-1 Streamlit Daily Briefing MVP
+
+The Daily Briefing MVP is a minimal analyst-facing Streamlit workflow over existing SEFI intelligence outputs.
+
+Launch locally:
+
+```bash
+streamlit run apps/sefi_daily_briefing.py
+```
+
+Primary workflow:
+1. **Daily Briefing** — shows briefing date, attention level, top developments, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, and confidence labels.
+2. **Investigation Queue** — shows deterministic ranked items with investigation type, priority, why each item appears, analyst value, and review questions.
+3. **Story Detail** — shows current state, historical context, similarities, differences, analyst significance, next questions, and expandable evidence drill-down.
+
+Data sources read by the MVP are local JSON artifacts only. The adapter inspects these paths in order and loads any that exist:
+
+- `artifacts/obs_query4_ecosystem_briefing.json`
+- `artifacts/obs_query4_investigation_queue.json`
+- `artifacts/obs_query3_historical_live_comparison.json`
+- `artifacts/hist_intel4_ecosystem_intelligence_synthesis.json`
+- `outputs/obs_query4_ecosystem_briefing.json`
+- `outputs/obs_query4_investigation_queue.json`
+- `outputs/obs_query3_historical_live_comparison.json`
+- `reports/hist_intel4_ecosystem_intelligence_synthesis.json`
+
+If no artifact is available for the selected date, the app shows a clear empty state, lists inspected paths, and suggests running the existing OPS-LIVE / OBS-QUERY pipeline.
+
+This MVP does **not** create schema migrations, write database rows, alter pipelines, generate new intelligence, expose raw JSON as the primary UI, add portfolio dashboards, make forecasts, or provide market action language.
