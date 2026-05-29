@@ -1,0 +1,412 @@
+{
+  "schema_version": "hist_intel3_v1",
+  "phase_id": "HIST-INTEL-3",
+  "phase_name": "HIST-INTEL-3_narrative_evolution_and_regime_transition_mapping",
+  "status": "ok",
+  "top_n": 20,
+  "fact_rows_supplied": 0,
+  "fact_rows_loaded": 266,
+  "fact_rows_considered": 266,
+  "eligible_ecosystem_fact_rows": 107,
+  "local_input_status": {
+    "path": "reports/hist_fact1_expanded_observation_facts.json",
+    "status": "loaded",
+    "row_count": 266
+  },
+  "hist_intel2_context_status": {
+    "path": "reports/hist_intel2_taxonomy_weighted_intelligence.json",
+    "status": "loaded",
+    "phase_id": "HIST-INTEL-2",
+    "source_digest": "8f900c1146cd2533",
+    "taxonomy_tier_counts": {
+      "A": 155,
+      "B": 6,
+      "C": 105
+    }
+  },
+  "source_digest": "8d9c38c4f8344ad4",
+  "governance_certification": {
+    "analysis_only": true,
+    "local_only": true,
+    "no_provider_calls": true,
+    "no_supabase_writes": true,
+    "no_prediction": true,
+    "no_trading": true,
+    "no_portfolio_recommendation": true,
+    "no_governed_activation": true
+  },
+  "transition_diagnostics": {
+    "candidate_transitions_found": 18,
+    "candidate_transitions_emitted": 0,
+    "candidate_transitions_rejected": 18,
+    "rejected_same_state_count": 8,
+    "rejected_insufficient_window_count": 7,
+    "rejected_insufficient_fact_count": 3,
+    "suppressed_same_state_examples": [
+      {
+        "narrative_id": "histintel3_6fd2b84991e13eb3b993",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "consumer_discretionary"
+        ],
+        "supporting_fact_count": 30,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.941174,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.078838,
+        "end_value": 0.022119,
+        "delta": -0.056719,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      },
+      {
+        "narrative_id": "histintel3_741cca1dfc15324b186f",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "semiconductors"
+        ],
+        "supporting_fact_count": 30,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.939683,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.082988,
+        "end_value": 0.028754,
+        "delta": -0.054234,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      },
+      {
+        "narrative_id": "histintel3_ba6e5f4d759c073f2091",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "energy_utilities"
+        ],
+        "supporting_fact_count": 27,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.923877,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.070539,
+        "end_value": 0.017923,
+        "delta": -0.052616,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      },
+      {
+        "narrative_id": "histintel3_47e97a2c6d592f80efbd",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "cloud_software_infrastructure"
+        ],
+        "supporting_fact_count": 21,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.885722,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.074689,
+        "end_value": 0.022728,
+        "delta": -0.051961,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      }
+    ]
+  },
+  "narrative_types_generated": [
+    "Stable Long-Term Narrative"
+  ],
+  "findings": {
+    "executive_narrative_summary": [
+      "Detected 0 true state transition(s), 4 stable long-term narrative(s), and 4 suppressed same-state movement(s) from local multi-window evidence.",
+      "Candidate transition review: found=18 emitted=0 rejected=18."
+    ],
+    "major_narrative_evolutions": [],
+    "regime_transition_candidates": [],
+    "persistence_evolution": [],
+    "replay_evolution": [],
+    "concentration_evolution": [],
+    "topology_evolution": [],
+    "fragility_evolution": [],
+    "stable_long_term_narratives": [
+      {
+        "narrative_id": "histintel3_2e3650c42c032b4a8e7f",
+        "narrative_type": "Stable Long-Term Narrative",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "financials"
+        ],
+        "supporting_fact_count": 21,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.883538,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.070539,
+        "end_value": 0.022218,
+        "delta": -0.048321,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "average_value": 0.039789,
+        "value_spread": 0.067649
+      },
+      {
+        "narrative_id": "histintel3_2ef00ac1964318b04e93",
+        "narrative_type": "Stable Long-Term Narrative",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "healthcare_biotech"
+        ],
+        "supporting_fact_count": 15,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.824354,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.070539,
+        "end_value": 0.02995,
+        "delta": -0.040589,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "average_value": 0.047989,
+        "value_spread": 0.067649
+      },
+      {
+        "narrative_id": "histintel3_60ff3c405ddacd8096a2",
+        "narrative_type": "Stable Long-Term Narrative",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "industrials_automation"
+        ],
+        "supporting_fact_count": 15,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.824354,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.070539,
+        "end_value": 0.02995,
+        "delta": -0.040589,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "average_value": 0.047989,
+        "value_spread": 0.067649
+      },
+      {
+        "narrative_id": "histintel3_1d50f63a0aaa1813cc9b",
+        "narrative_type": "Stable Long-Term Narrative",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "commodities"
+        ],
+        "supporting_fact_count": 6,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.65,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.06639,
+        "end_value": 0.06639,
+        "delta": 0.0,
+        "source_phases": [
+          "HIST-LONG-4"
+        ],
+        "average_value": 0.06639,
+        "value_spread": 0.0
+      }
+    ],
+    "suppressed_same_state_evolutions": [
+      {
+        "narrative_id": "histintel3_6fd2b84991e13eb3b993",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "consumer_discretionary"
+        ],
+        "supporting_fact_count": 30,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.941174,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.078838,
+        "end_value": 0.022119,
+        "delta": -0.056719,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      },
+      {
+        "narrative_id": "histintel3_741cca1dfc15324b186f",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "semiconductors"
+        ],
+        "supporting_fact_count": 30,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.939683,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.082988,
+        "end_value": 0.028754,
+        "delta": -0.054234,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      },
+      {
+        "narrative_id": "histintel3_ba6e5f4d759c073f2091",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "energy_utilities"
+        ],
+        "supporting_fact_count": 27,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.923877,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.070539,
+        "end_value": 0.017923,
+        "delta": -0.052616,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      },
+      {
+        "narrative_id": "histintel3_47e97a2c6d592f80efbd",
+        "narrative_type": "Suppressed Same-State Evolution",
+        "dimension": "concentration",
+        "starting_state": "Broad Participation",
+        "ending_state": "Broad Participation",
+        "transition_label": null,
+        "supporting_entities": [
+          "cloud_software_infrastructure"
+        ],
+        "supporting_fact_count": 21,
+        "supporting_windows": [
+          20,
+          60,
+          120
+        ],
+        "confidence_label": "MEDIUM",
+        "narrative_score": 1.885722,
+        "taxonomy_weight": 3.0,
+        "start_value": 0.074689,
+        "end_value": 0.022728,
+        "delta": -0.051961,
+        "source_phases": [
+          "HIST-LONG-4",
+          "HIST-LONG-6"
+        ],
+        "rejection_reason": "same_state_magnitude_change"
+      }
+    ]
+  },
+  "limitations": [
+    "Analysis is local-only and uses available historical fact artifacts or supplied fact rows; it does not refresh or ingest external data.",
+    "Major narrative evolutions require a true starting-state to ending-state change across at least two facts and two windows.",
+    "Same-state magnitude changes are suppressed from major transitions and reported separately as diagnostics."
+  ]
+}
