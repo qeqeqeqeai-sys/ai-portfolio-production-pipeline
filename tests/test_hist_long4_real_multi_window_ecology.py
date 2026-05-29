@@ -8,6 +8,7 @@ import pytest
 from transmission_layers.expectation_failure.real_data.hist_long4_real_multi_window_ecology import (
     REQUIRED_WINDOWS,
     build_hist_long4_orchestration_plan,
+    run_hist_long4,
     write_hist_long4_review,
 )
 
@@ -124,6 +125,8 @@ def test_hist_long4_writes_completed_review_and_bundles(tmp_path):
     assert [row["normalized_rows"] for row in artifact["window_level_results"]] == [4820, 14460, 28920]
     assert artifact["longitudinal_comparison"]["weak_symbol_analysis"]["foxa_stability"]["assessment"] == "stable_not_weak"
     assert artifact["bounded_diagnostics"]["replay_persistence_trend"] == "stable"
+    assert artifact["window_level_results"][0]["ops_hist_snapshot_summary"]["posture_counts"] == {"balanced": 5}
+    assert artifact["window_level_results"][0]["ops_hist_snapshot_summary"]["sector_transition_row_range"] == {"min": 1, "max": 1}
     assert all(Path(row["completed_bundle_path"]).exists() for row in artifact["completed_artifact_bundles"])
 
 
@@ -136,6 +139,8 @@ def test_hist_long4_fail_closed_guards():
         build_hist_long4_orchestration_plan(supabase_write_enabled=True)
     with pytest.raises(ValueError, match="raw cache writes"):
         build_hist_long4_orchestration_plan(raw_cache_write_enabled=True)
+    with pytest.raises(ValueError, match="topology persistence"):
+        run_hist_long4(topology_persistence_enabled=True)
     assert build_hist_long4_orchestration_plan()["windows"] == list(REQUIRED_WINDOWS)
 
 

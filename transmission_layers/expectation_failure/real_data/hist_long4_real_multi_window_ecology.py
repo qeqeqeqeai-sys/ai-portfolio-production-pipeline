@@ -150,7 +150,12 @@ def _parse_source_artifacts(source_root: str) -> OrderedDict[str, Any]:
     summary = _read_json(summary_path) if summary_path.exists() else {}
     preview = _read_json(preview_path) if preview_path.exists() else {}
     manifest_payloads = [_read_json(path) for path in chunk_manifest_paths]
+    snapshot_payloads = [_read_json(path) for path in snapshot_paths]
     telemetry_rows = [((payload.get("density_summary", {}) or {}).get("telemetry_summary", {}) or {}) for payload in manifest_payloads]
+    snapshot_postures = Counter(str(payload.get("posture", "unknown")) for payload in snapshot_payloads)
+    snapshot_sector_hhi = [((payload.get("operational_diagnostics", {}) or {}).get("sector_hhi")) for payload in snapshot_payloads]
+    snapshot_sector_hhi = [float(value) for value in snapshot_sector_hhi if isinstance(value, (int, float))]
+    snapshot_transition_counts = [len((((payload.get("canonical_payloads", {}) or {}).get("sector_transition_rows")) or [])) for payload in snapshot_payloads]
     return OrderedDict([
         ("hist_density3_summary_present", bool(summary)),
         ("hist_density3_config_preview_present", bool(preview)),
@@ -162,6 +167,11 @@ def _parse_source_artifacts(source_root: str) -> OrderedDict[str, Any]:
         ("density_summary", summary),
         ("config_preview", preview),
         ("telemetry_summaries", telemetry_rows),
+        ("ops_hist_snapshot_summary", OrderedDict([
+            ("posture_counts", OrderedDict(sorted(snapshot_postures.items()))),
+            ("sector_hhi_range", _range(snapshot_sector_hhi)),
+            ("sector_transition_row_range", _range(snapshot_transition_counts)),
+        ])),
     ])
 
 
@@ -205,6 +215,7 @@ def _window_summary(*, window: int, source_root: str, review: Mapping[str, Any],
         ("configured_symbol_count", int(agg.get("configured_symbol_count") or 0)),
         ("effective_symbol_count", int(agg.get("effective_symbol_count") or len(symbols) or 0)),
         ("parsed_artifact_counts", OrderedDict((k, parsed[k]) for k in ("hist_density3_summary_present", "hist_density3_config_preview_present", "chunk_manifest_count", "ops_hist_snapshot_count", "telemetry_summary_count"))),
+        ("ops_hist_snapshot_summary", parsed.get("ops_hist_snapshot_summary", {})),
         ("normalized_rows", normalized),
         ("requested_symbol_date_capacity_total", capacity),
         ("completeness", round(normalized / capacity, 6) if capacity else None),
@@ -293,12 +304,21 @@ def _validate_completed_window(row: Mapping[str, Any], plan: Mapping[str, Any]) 
         raise ValueError("HIST-LONG-4 fails closed: completed artifact does not contain five chunks")
     if row.get("completed_telemetry_mode") is not True or row.get("source_status") != "ok":
         raise ValueError("HIST-LONG-4 fails closed: all windows must complete with real telemetry")
+    parsed = row.get("parsed_artifact_counts", {}) or {}
+    if parsed.get("hist_density3_summary_present") is not True or parsed.get("hist_density3_config_preview_present") is not True:
+        raise ValueError("HIST-LONG-4 fails closed: completed density summary/config artifacts are required")
+    if int(parsed.get("chunk_manifest_count") or 0) != int(plan["expected_chunk_count"]):
+        raise ValueError("HIST-LONG-4 fails closed: completed artifact must include five chunk manifests")
+    if int(parsed.get("telemetry_summary_count") or 0) != int(plan["expected_chunk_count"]):
+        raise ValueError("HIST-LONG-4 fails closed: completed artifact must include five telemetry summaries")
+    if int(parsed.get("ops_hist_snapshot_count") or 0) < int(plan["expected_chunk_count"]):
+        raise ValueError("HIST-LONG-4 fails closed: completed artifact must include OPS-HIST snapshots for every chunk")
     if int(row.get("effective_symbol_count") or 0) > int(plan["max_symbols"]):
         raise ValueError("HIST-LONG-4 fails closed: effective symbol count exceeds cap")
 
 
-def run_hist_long4(*, windows: Sequence[int] = REQUIRED_WINDOWS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS, output_root: str = DEFAULT_OUTPUT_ROOT, end_date: str | None = None, density_runner: DensityRunner = run_hist_density3, review_builder: ReviewBuilder = build_hist_density4_findings_review, execute_real_windows: bool = True, bundle_artifact_dir: str = "artifacts") -> OrderedDict[str, Any]:
-    plan = build_hist_long4_orchestration_plan(windows=windows, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count, output_root=output_root, end_date=end_date)
+def run_hist_long4(*, windows: Sequence[int] = REQUIRED_WINDOWS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS, output_root: str = DEFAULT_OUTPUT_ROOT, end_date: str | None = None, density_runner: DensityRunner = run_hist_density3, review_builder: ReviewBuilder = build_hist_density4_findings_review, execute_real_windows: bool = True, bundle_artifact_dir: str = "artifacts", supabase_write_enabled: bool = False, replay_activation_enabled: bool = False, topology_persistence_enabled: bool = False, raw_cache_write_enabled: bool = False) -> OrderedDict[str, Any]:
+    plan = build_hist_long4_orchestration_plan(windows=windows, max_symbols=max_symbols, symbol_chunk_size=symbol_chunk_size, expected_chunk_count=expected_chunk_count, output_root=output_root, end_date=end_date, supabase_write_enabled=supabase_write_enabled, replay_activation_enabled=replay_activation_enabled, topology_persistence_enabled=topology_persistence_enabled, raw_cache_write_enabled=raw_cache_write_enabled)
     window_summaries: list[OrderedDict[str, Any]] = []
     parsed_sources: list[OrderedDict[str, Any]] = []
     if not execute_real_windows:
