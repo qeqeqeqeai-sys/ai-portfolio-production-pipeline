@@ -1,0 +1,90 @@
+name: SEFI Operational Health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 5 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  operational-telemetry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Collect read-only operational telemetry
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          from datetime import datetime, timedelta, timezone
+
+          def line(key: str, value: object) -> None:
+              print(f"{key}={value}")
+
+          line("telemetry_mode", "read_only")
+          line("persistence_enabled", "false")
+          line("schema_changes_enabled", "false")
+
+          supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+          if not os.getenv("SUPABASE_URL") or not supabase_key:
+              line("fact_count", "unavailable_supabase_credentials")
+              line("observation_growth", "unavailable_supabase_credentials")
+              line("entity_coverage", "unavailable_supabase_credentials")
+              line("sector_coverage", "unavailable_supabase_credentials")
+              line("ingestion_completeness", "unavailable_supabase_credentials")
+          else:
+              from supabase import create_client
+
+              client = create_client(os.environ["SUPABASE_URL"], supabase_key)
+              table = client.table("sefi_observation_facts")
+              total = table.select("id", count="exact").limit(1).execute().count or 0
+              line("fact_count", total)
+
+              now = datetime.now(timezone.utc)
+              recent_cutoff = (now - timedelta(days=7)).isoformat().replace("+00:00", "Z")
+              previous_cutoff = (now - timedelta(days=14)).isoformat().replace("+00:00", "Z")
+              recent = client.table("sefi_observation_facts").select("id", count="exact").gte("observed_at", recent_cutoff).limit(1).execute().count or 0
+              previous = client.table("sefi_observation_facts").select("id", count="exact").gte("observed_at", previous_cutoff).lt("observed_at", recent_cutoff).limit(1).execute().count or 0
+              line("observation_growth_7d_vs_prior_7d", recent - previous)
+
+              sample = client.table("sefi_observation_facts").select("entity_type,entity_id,metric_name,metric_value,payload_jsonb,observed_at").order("observed_at", desc=True).limit(1000).execute().data or []
+              entities = {(row.get("entity_type"), row.get("entity_id")) for row in sample if row.get("entity_id")}
+              sectors = {row.get("entity_id") for row in sample if row.get("entity_type") == "sector" and row.get("entity_id")}
+              sectors.update((row.get("payload_jsonb") or {}).get("sector") for row in sample if (row.get("payload_jsonb") or {}).get("sector"))
+              completeness = [row.get("metric_value") for row in sample if row.get("metric_name") == "live_ingestion_completeness" and row.get("metric_value") is not None]
+              provider = [row.get("metric_value") for row in sample if row.get("metric_name") == "live_provider_health" and row.get("metric_value") is not None]
+              line("entity_coverage_sample", len(entities))
+              line("sector_coverage_sample", len(sectors))
+              line("ingestion_completeness_latest", completeness[0] if completeness else "unavailable")
+              line("provider_health_latest", provider[0] if provider else "unavailable")
+
+          line("provider_health_fmp_secret_present", "true" if os.getenv("FMP_API_KEY") else "unavailable")
+          PY
