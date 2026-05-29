@@ -43,8 +43,8 @@ METRIC_GROUPS: OrderedDict[str, tuple[str, ...]] = OrderedDict([
     ("concentration_diversity", (
         "sector_hhi",
         "subsector_hhi",
-        "monoculture_risk_score",
-        "diversity_retention_score",
+        "monoculture_risk",
+        "diversity_retention",
     )),
     ("weak_symbol_provider_quality", (
         "weak_symbol_count",
@@ -122,7 +122,7 @@ def _endpoint_failure_count(value: Any) -> int:
 
 
 def _status_completed(status: Any) -> bool:
-    return str(status).lower() in {"ok", "success", "completed"}
+    return str(status).lower() in {"ok", "success"}
 
 
 def _window_id(row: Mapping[str, Any]) -> int | None:
@@ -133,33 +133,55 @@ def _window_id(row: Mapping[str, Any]) -> int | None:
         return None
 
 
-def _verification_failure(reason: str, source_path: str) -> OrderedDict[str, Any]:
-    return OrderedDict([
+def _verification_failure(reason: str, source_path: str, preflight_checks: Mapping[str, Any] | None = None) -> OrderedDict[str, Any]:
+    rows = OrderedDict([
         ("verified", False),
         ("source_path", source_path),
         ("reason", reason),
     ])
+    if preflight_checks is not None:
+        rows["preflight_checks"] = OrderedDict(preflight_checks)
+    return rows
 
 
 def verify_source(source: Mapping[str, Any] | None, *, source_path: str) -> OrderedDict[str, Any]:
     if source is None:
         return _verification_failure("HIST-LONG-4 JSON missing", source_path)
-    if not _status_completed(source.get("status")):
-        return _verification_failure("source status is not completed/success", source_path)
     windows = list(source.get("window_level_results", []) or [])
-    detected = [_window_id(row) for row in windows]
-    if tuple(detected) != REQUIRED_WINDOWS:
-        return _verification_failure("completed windows are not exactly 20, 60, 120", source_path)
+    detected = sorted(_window_id(row) for row in windows) if windows else []
     comparison = source.get("longitudinal_comparison", {}) or {}
     completed_count = source.get("completed_window_count", comparison.get("completed_window_count"))
-    if completed_count is not None and int(completed_count) != 3:
-        return _verification_failure("completed_window_count != 3", source_path)
-    if len(windows) != 3 or any(not isinstance(row, Mapping) or not row for row in windows):
-        return _verification_failure("one or more window summaries are missing", source_path)
     governance = source.get("governance_certification", {}) or {}
     enabled = [key for key in FORBIDDEN_SOURCE_GOVERNANCE_FLAGS if governance.get(key) is True]
+    preflight_checks = OrderedDict([
+        ("source_exists", True),
+        ("source_status", source.get("status")),
+        ("source_status_ok_or_success", _status_completed(source.get("status"))),
+        ("all_three_real_windows_completed", source.get("all_three_real_windows_completed") is True),
+        ("completed_window_count", completed_count),
+        ("completed_window_count_is_3", int(completed_count or 0) == 3),
+        ("windows_detected", detected),
+        ("windows_exactly_20_60_120", tuple(detected) == REQUIRED_WINDOWS),
+        ("window_level_results_count", len(windows)),
+        ("window_level_results_contains_3_completed_windows", len(windows) == 3 and all(isinstance(row, Mapping) and row and _status_completed(row.get("source_status", source.get("status"))) for row in windows)),
+        ("governance_mode", governance.get("governance_mode")),
+        ("governance_observational_only", governance.get("governance_mode") == "observational_only"),
+        ("forbidden_governance_enabled", enabled),
+    ])
+    if not preflight_checks["source_status_ok_or_success"]:
+        return _verification_failure("source status is not ok/success", source_path, preflight_checks)
+    if not preflight_checks["all_three_real_windows_completed"]:
+        return _verification_failure("all_three_real_windows_completed is not true", source_path, preflight_checks)
+    if not preflight_checks["window_level_results_contains_3_completed_windows"]:
+        return _verification_failure("window_level_results does not contain 3 completed windows", source_path, preflight_checks)
+    if not preflight_checks["windows_exactly_20_60_120"]:
+        return _verification_failure("completed windows are not exactly 20, 60, 120", source_path, preflight_checks)
+    if not preflight_checks["completed_window_count_is_3"]:
+        return _verification_failure("completed_window_count != 3", source_path, preflight_checks)
+    if not preflight_checks["governance_observational_only"]:
+        return _verification_failure("source governance_mode is not observational_only", source_path, preflight_checks)
     if enabled:
-        return _verification_failure(f"forbidden source governance enabled: {', '.join(enabled)}", source_path)
+        return _verification_failure(f"forbidden source governance enabled: {', '.join(enabled)}", source_path, preflight_checks)
     return OrderedDict([
         ("verified", True),
         ("source_path", source_path),
@@ -167,6 +189,7 @@ def verify_source(source: Mapping[str, Any] | None, *, source_path: str) -> Orde
         ("completed_window_count", completed_count if completed_count is not None else 3),
         ("completed_windows", list(REQUIRED_WINDOWS)),
         ("source_digest", sha256(json.dumps(source, sort_keys=True, default=str).encode("utf-8")).hexdigest()),
+        ("preflight_checks", preflight_checks),
     ])
 
 
@@ -175,6 +198,25 @@ def _recurring_symbols(windows: Sequence[Mapping[str, Any]]) -> set[str]:
     for row in windows:
         counter.update({str(symbol).upper() for symbol in row.get("weak_symbols", []) or []})
     return {symbol for symbol, count in counter.items() if count >= 2}
+
+
+def _qualitative_score(value: Any, *, positive: bool = True) -> float | None:
+    if isinstance(value, str):
+        lowered = value.lower()
+        if any(token in lowered for token in ("stable", "persistent", "low", "bounded", "single_posture")):
+            return 1.0 if positive else 0.0
+        if any(token in lowered for token in ("high", "volatile", "fragile", "weak")):
+            return 0.0 if positive else 1.0
+    if isinstance(value, Mapping):
+        for key in ("score", "ratio", "retention_score", "risk_score"):
+            number = _as_number(value.get(key))
+            if number is not None:
+                return number
+        for key in ("assessment", "posture_stability", "status"):
+            score = _qualitative_score(value.get(key), positive=positive)
+            if score is not None:
+                return score
+    return _as_number(value)
 
 
 def _extract_metrics(row: Mapping[str, Any], recurring_symbols: set[str]) -> OrderedDict[str, float | None]:
@@ -194,12 +236,12 @@ def _extract_metrics(row: Mapping[str, Any], recurring_symbols: set[str]) -> Ord
         ("replay_saturation", _nested_number(row.get("replay_saturation"), ("density", "score", "ratio"))),
         ("contradiction_burden", _nested_number(row.get("contradiction_burden"), ("ratio", "score", "count"))),
         ("topology_richness", _nested_number(row.get("topology_richness"), ("chunk_richness_average", "average", "score"))),
-        ("morphology_persistence", _nested_number(row.get("morphology_persistence"), ("score", "ratio"))),
-        ("temporal_persistence", _nested_number(row.get("temporal_persistence"), ("score", "ratio", "observed_days"))),
+        ("morphology_persistence", _qualitative_score(row.get("morphology_persistence"))),
+        ("temporal_persistence", _qualitative_score(row.get("temporal_persistence"))),
         ("sector_hhi", _nested_number(row.get("sector_hhi"), ("universe_hhi", "score", "hhi"))),
         ("subsector_hhi", _nested_number(row.get("subsector_hhi"), ("universe_hhi", "score", "hhi"))),
-        ("monoculture_risk_score", _nested_number(row.get("monoculture_risk_score", row.get("monoculture_risk")), ("score", "risk_score", "ratio"))),
-        ("diversity_retention_score", _nested_number(row.get("diversity_retention_score", row.get("diversity_persistence")), ("score", "retention_score", "ratio"))),
+        ("monoculture_risk", _qualitative_score(row.get("monoculture_risk_score", row.get("monoculture_risk")), positive=False)),
+        ("diversity_retention", _qualitative_score(row.get("diversity_retention_score", row.get("diversity_persistence")))),
         ("weak_symbol_count", float(len(weak_symbols))),
         ("recurring_weak_symbol_count", float(len(weak_symbols & recurring_symbols))),
         ("provider_degradation_count", float(endpoint_failure_count + len(top_failure_reasons))),
@@ -367,8 +409,6 @@ def _fragility(values_by_window: Mapping[int, Mapping[str, float | None]]) -> Or
             reasons.append("provider_degradation")
         if (metrics["contradiction_burden"] or 0) > 0:
             reasons.append("contradiction_burden")
-        if (metrics["replay_saturation"] or 0) >= 0.98:
-            reasons.append("replay_saturation")
         fragile_by_window[window] = reasons
     windows = [window for window, reasons in fragile_by_window.items() if reasons]
     tags: list[str]
@@ -387,14 +427,15 @@ def _fragility(values_by_window: Mapping[int, Mapping[str, float | None]]) -> Or
     return OrderedDict([("classification", tags), ("fragile_windows", windows), ("reasons_by_window", fragile_by_window)])
 
 
-def build_blocked_artifact(*, source_path: str, reason: str) -> OrderedDict[str, Any]:
+def build_blocked_artifact(*, source_path: str, reason: str, source_verification: Mapping[str, Any] | None = None) -> OrderedDict[str, Any]:
+    verification = source_verification or _verification_failure(reason, source_path)
     return OrderedDict([
         ("schema_version", HIST_LONG5B_SCHEMA_VERSION),
         ("status", "blocked"),
         ("review_date", date.today().isoformat()),
         ("source_artifacts", [source_path]),
         ("completed_windows", []),
-        ("source_verification", _verification_failure(reason, source_path)),
+        ("source_verification", verification),
         ("temporal_delta_tables", OrderedDict((group, []) for group in METRIC_GROUPS)),
         ("sensitivity_ranking", []),
         ("structural_persistence_classification", OrderedDict()),
@@ -410,7 +451,7 @@ def build_blocked_artifact(*, source_path: str, reason: str) -> OrderedDict[str,
 def build_hist_long5b(source: Mapping[str, Any], *, source_path: str = DEFAULT_SOURCE_ARTIFACT_PATH) -> OrderedDict[str, Any]:
     verification = verify_source(source, source_path=source_path)
     if not verification["verified"]:
-        return build_blocked_artifact(source_path=source_path, reason=str(verification["reason"]))
+        return build_blocked_artifact(source_path=source_path, reason=str(verification["reason"]), source_verification=verification)
     windows = sorted(list(source.get("window_level_results", []) or []), key=lambda row: int(row["window_trading_days"]))
     recurring = _recurring_symbols(windows)
     values_by_window: OrderedDict[int, OrderedDict[str, float | None]] = OrderedDict((int(row["window_trading_days"]), _extract_metrics(row, recurring)) for row in windows)
@@ -420,7 +461,7 @@ def build_hist_long5b(source: Mapping[str, Any], *, source_path: str = DEFAULT_S
     concentration_evolution = _aggregate_evolution(values_by_window, ("sector_hhi", "subsector_hhi"), {"stable": "stable_balanced", "up": "increasing_concentration", "down": "decreasing_concentration", "volatile": "volatile_concentration", "insufficient": "insufficient_signal"})
     return OrderedDict([
         ("schema_version", HIST_LONG5B_SCHEMA_VERSION),
-        ("status", "completed"),
+        ("status", "ok"),
         ("review_date", date.today().isoformat()),
         ("source_artifacts", [source_path]),
         ("completed_windows", list(REQUIRED_WINDOWS)),

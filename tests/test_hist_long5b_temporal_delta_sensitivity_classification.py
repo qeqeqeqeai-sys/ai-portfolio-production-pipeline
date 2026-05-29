@@ -31,8 +31,8 @@ def _window(days: int, *, normalized: int | None = None, replay: float = 0.9, se
         "temporal_persistence": {"score": 1.0},
         "sector_hhi": {"universe_hhi": sector_hhi},
         "subsector_hhi": {"universe_hhi": sector_hhi + 0.01},
-        "monoculture_risk_score": 0.0,
-        "diversity_retention_score": 1.0,
+        "monoculture_risk": "Low observed chunk monoculture risk; density spread is bounded.",
+        "diversity_persistence": "stable_curated_universe",
         "weak_symbols": weak_symbols or [],
         "foxa_present": foxa_present,
         "foxa_weak": foxa_weak,
@@ -41,6 +41,7 @@ def _window(days: int, *, normalized: int | None = None, replay: float = 0.9, se
 
 def _completed_hist_long4(windows: list[dict] | None = None, governance: dict | None = None) -> dict:
     base_governance = {
+        "governance_mode": "observational_only",
         "prediction_enabled": False,
         "trading_execution_enabled": False,
         "replay_activation_enabled": False,
@@ -53,6 +54,7 @@ def _completed_hist_long4(windows: list[dict] | None = None, governance: dict | 
         base_governance.update(governance)
     return {
         "status": "ok",
+        "all_three_real_windows_completed": True,
         "completed_window_count": 3,
         "governance_certification": base_governance,
         "window_level_results": windows or [_window(20), _window(60), _window(120)],
@@ -68,7 +70,7 @@ def test_successful_source_verification_from_completed_synthetic_hist_long4_like
 
     artifact = write_hist_long5b(source_artifact_path=str(source), report_path=str(report), artifact_path=str(artifact_path))
 
-    assert artifact["status"] == "completed"
+    assert artifact["status"] == "ok"
     assert artifact["source_verification"]["verified"] is True
     assert artifact["completed_windows"] == [20, 60, 120]
 
@@ -87,7 +89,7 @@ def test_explicit_completed_source_artifact_path_overrides_default_blocked_sourc
         artifact_path=str(tmp_path / "artifact.json"),
     )
 
-    assert artifact["status"] == "completed"
+    assert artifact["status"] == "ok"
     assert artifact["source_artifacts"] == [str(completed_source)]
     assert artifact["source_verification"]["verified"] is True
 
@@ -105,7 +107,7 @@ def test_env_completed_source_artifact_path_overrides_default_when_no_explicit_p
         artifact_path=str(tmp_path / "artifact.json"),
     )
 
-    assert artifact["status"] == "completed"
+    assert artifact["status"] == "ok"
     assert artifact["source_artifacts"] == [str(completed_source)]
 
 def test_blocked_artifact_when_hist_long4_source_missing(tmp_path: Path):
@@ -191,5 +193,5 @@ def test_report_and_json_outputs_are_written(tmp_path: Path):
 
     assert report.exists()
     assert artifact_path.exists()
-    assert json.loads(artifact_path.read_text(encoding="utf-8"))["status"] == "completed"
+    assert json.loads(artifact_path.read_text(encoding="utf-8"))["status"] == "ok"
     assert "## Temporal Delta Tables" in report.read_text(encoding="utf-8")
