@@ -1,22 +1,35 @@
 {
-  "completed_windows": [],
+  "completed_windows": [
+    20,
+    60,
+    120
+  ],
   "concentration_evolution_classification": {
-    "classification": "insufficient_signal"
+    "classification": "stable_balanced",
+    "metric_classifications": {
+      "sector_hhi": "stable",
+      "subsector_hhi": "stable"
+    }
   },
   "foxa_longitudinal_assessment": {
     "contribution_consistency": "insufficient granular signal",
     "insufficient_granular_signal": true,
-    "present_all_windows": false,
-    "stability_classification": "insufficient_signal",
-    "supervisor_assessment": "Blocked before FOXA longitudinal assessment.",
-    "weak_window_count": 0
+    "present_all_windows": true,
+    "stability_classification": "stable",
+    "supervisor_assessment": "FOXA is present across all windows and not weak. Source lacks symbol-level FOXA contribution data.",
+    "weak_window_count": 0,
+    "weak_windows": []
   },
   "fragility_emergence_detection": {
     "classification": [
       "no_fragility_detected"
     ],
     "fragile_windows": [],
-    "reasons_by_window": {}
+    "reasons_by_window": {
+      "20": [],
+      "60": [],
+      "120": []
+    }
   },
   "governance_certification": {
     "fmp_calls_enabled": false,
@@ -34,27 +47,1050 @@
     "topology_persistence_enabled": false,
     "trading_execution_enabled": false
   },
-  "recommendation_for_hist_long6": "Blocked: HIST-LONG-6 should not proceed until HIST-LONG-4 source verification succeeds.",
+  "metric_values_by_window": {
+    "20": {
+      "completeness_ratio": 1.0,
+      "contradiction_burden": 0.0,
+      "diversity_retention": 1.0,
+      "endpoint_failure_count": 0.0,
+      "exact_date_match_ratio": 0.95,
+      "failed_count": 0.0,
+      "foxa_weak_window_count": 0.0,
+      "monoculture_risk": 0.0,
+      "morphology_persistence": 1.0,
+      "normalized_rows": 4820.0,
+      "partial_count": 0.0,
+      "provider_degradation_count": 0.0,
+      "reconciled_date_ratio": 0.05,
+      "recurring_weak_symbol_count": 0.0,
+      "replay_density": 1.0,
+      "replay_saturation": 1.0,
+      "sector_hhi": 0.06107,
+      "subsector_hhi": 0.06107,
+      "temporal_persistence": 1.0,
+      "topology_richness": 2.0,
+      "weak_symbol_count": 0.0
+    },
+    "60": {
+      "completeness_ratio": 1.0,
+      "contradiction_burden": 0.0,
+      "diversity_retention": 1.0,
+      "endpoint_failure_count": 0.0,
+      "exact_date_match_ratio": 0.966667,
+      "failed_count": 0.0,
+      "foxa_weak_window_count": 0.0,
+      "monoculture_risk": 0.0,
+      "morphology_persistence": 1.0,
+      "normalized_rows": 14460.0,
+      "partial_count": 0.0,
+      "provider_degradation_count": 0.0,
+      "reconciled_date_ratio": 0.033333,
+      "recurring_weak_symbol_count": 0.0,
+      "replay_density": 1.0,
+      "replay_saturation": 1.0,
+      "sector_hhi": 0.06107,
+      "subsector_hhi": 0.06107,
+      "temporal_persistence": 1.0,
+      "topology_richness": 2.0,
+      "weak_symbol_count": 0.0
+    },
+    "120": {
+      "completeness_ratio": 1.0,
+      "contradiction_burden": 0.0,
+      "diversity_retention": 1.0,
+      "endpoint_failure_count": 0.0,
+      "exact_date_match_ratio": 0.95,
+      "failed_count": 0.0,
+      "foxa_weak_window_count": 0.0,
+      "monoculture_risk": 0.0,
+      "morphology_persistence": 1.0,
+      "normalized_rows": 28920.0,
+      "partial_count": 0.0,
+      "provider_degradation_count": 0.0,
+      "reconciled_date_ratio": 0.05,
+      "recurring_weak_symbol_count": 0.0,
+      "replay_density": 1.0,
+      "replay_saturation": 1.0,
+      "sector_hhi": 0.06107,
+      "subsector_hhi": 0.06107,
+      "temporal_persistence": 1.0,
+      "topology_richness": 2.0,
+      "weak_symbol_count": 0.0
+    }
+  },
+  "recommendation_for_hist_long6": "Proceed only as observational analysis if HIST-LONG-6 continues; preserve no-provider-call and no-replay-activation governance.",
   "replay_evolution_classification": {
-    "classification": "insufficient_signal"
+    "classification": "stable",
+    "metric_classifications": {
+      "contradiction_burden": "stable",
+      "replay_density": "stable",
+      "replay_saturation": "stable",
+      "temporal_persistence": "stable",
+      "topology_richness": "stable"
+    }
   },
   "review_date": "2026-05-29",
   "schema_version": "hist_long5b_v1",
-  "sensitivity_ranking": [],
+  "sensitivity_ranking": [
+    {
+      "classification": "highly_sensitive",
+      "max_relative_change": 2.0,
+      "metric": "normalized_rows",
+      "sensitivity_rank": 1,
+      "stability_score": 0.0,
+      "total_absolute_change": 24100.0,
+      "volatility_score": 0.166667
+    },
+    {
+      "classification": "sensitive",
+      "max_relative_change": 0.500015,
+      "metric": "reconciled_date_ratio",
+      "sensitivity_rank": 2,
+      "stability_score": 0.33332,
+      "total_absolute_change": 0.033334,
+      "volatility_score": 0.66668
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.017544,
+      "metric": "exact_date_match_ratio",
+      "sensitivity_rank": 3,
+      "stability_score": 0.965517,
+      "total_absolute_change": 0.033334,
+      "volatility_score": 0.034483
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "completeness_ratio",
+      "sensitivity_rank": 4,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "contradiction_burden",
+      "sensitivity_rank": 5,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "diversity_retention",
+      "sensitivity_rank": 6,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "endpoint_failure_count",
+      "sensitivity_rank": 7,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "failed_count",
+      "sensitivity_rank": 8,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "foxa_weak_window_count",
+      "sensitivity_rank": 9,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "monoculture_risk",
+      "sensitivity_rank": 10,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "morphology_persistence",
+      "sensitivity_rank": 11,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "partial_count",
+      "sensitivity_rank": 12,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "provider_degradation_count",
+      "sensitivity_rank": 13,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "recurring_weak_symbol_count",
+      "sensitivity_rank": 14,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "replay_density",
+      "sensitivity_rank": 15,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "replay_saturation",
+      "sensitivity_rank": 16,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "sector_hhi",
+      "sensitivity_rank": 17,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "subsector_hhi",
+      "sensitivity_rank": 18,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "temporal_persistence",
+      "sensitivity_rank": 19,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "topology_richness",
+      "sensitivity_rank": 20,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    },
+    {
+      "classification": "stable",
+      "max_relative_change": 0.0,
+      "metric": "weak_symbol_count",
+      "sensitivity_rank": 21,
+      "stability_score": 1.0,
+      "total_absolute_change": 0.0,
+      "volatility_score": 0.0
+    }
+  ],
   "source_artifacts": [
     "artifacts/hist_long4_real_multi_window_ecology_review.json"
   ],
   "source_verification": {
-    "reason": "source status is not completed/success",
+    "completed_window_count": 3,
+    "completed_windows": [
+      20,
+      60,
+      120
+    ],
+    "preflight_checks": {
+      "all_three_real_windows_completed": true,
+      "completed_window_count": 3,
+      "completed_window_count_is_3": true,
+      "forbidden_governance_enabled": [],
+      "governance_mode": "observational_only",
+      "governance_observational_only": true,
+      "source_exists": true,
+      "source_status": "ok",
+      "source_status_ok_or_success": true,
+      "window_level_results_contains_3_completed_windows": true,
+      "window_level_results_count": 3,
+      "windows_detected": [
+        20,
+        60,
+        120
+      ],
+      "windows_exactly_20_60_120": true
+    },
+    "source_digest": "ccb37a3969309734c46220f3a348ef8e49aa228eaf633e6566d6cfcad39af3c9",
     "source_path": "artifacts/hist_long4_real_multi_window_ecology_review.json",
-    "verified": false
+    "source_status": "ok",
+    "verified": true
   },
-  "status": "blocked",
-  "structural_persistence_classification": {},
+  "status": "ok",
+  "structural_persistence_classification": {
+    "completeness_ratio": "stable",
+    "contradiction_burden": "stable",
+    "diversity_retention": "stable",
+    "endpoint_failure_count": "stable",
+    "exact_date_match_ratio": "volatile",
+    "failed_count": "stable",
+    "foxa_weak_window_count": "stable",
+    "monoculture_risk": "stable",
+    "morphology_persistence": "stable",
+    "normalized_rows": "emerging",
+    "partial_count": "stable",
+    "provider_degradation_count": "stable",
+    "reconciled_date_ratio": "volatile",
+    "recurring_weak_symbol_count": "stable",
+    "replay_density": "stable",
+    "replay_saturation": "stable",
+    "sector_hhi": "stable",
+    "subsector_hhi": "stable",
+    "temporal_persistence": "stable",
+    "topology_richness": "stable",
+    "weak_symbol_count": "stable"
+  },
   "temporal_delta_tables": {
-    "concentration_diversity": [],
-    "ingestion_continuity": [],
-    "replay_ecology": [],
-    "weak_symbol_provider_quality": []
+    "concentration_diversity": [
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.06107,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "sector_hhi",
+        "relative_delta": 0.0,
+        "to_value": 0.06107,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.06107,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "subsector_hhi",
+        "relative_delta": 0.0,
+        "to_value": 0.06107,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "monoculture_risk",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "diversity_retention",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.06107,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "sector_hhi",
+        "relative_delta": 0.0,
+        "to_value": 0.06107,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.06107,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "subsector_hhi",
+        "relative_delta": 0.0,
+        "to_value": 0.06107,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "monoculture_risk",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "diversity_retention",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.06107,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "sector_hhi",
+        "relative_delta": 0.0,
+        "to_value": 0.06107,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.06107,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "subsector_hhi",
+        "relative_delta": 0.0,
+        "to_value": 0.06107,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "monoculture_risk",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "diversity_retention",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      }
+    ],
+    "ingestion_continuity": [
+      {
+        "absolute_delta": 9640.0,
+        "direction": "increase",
+        "from_value": 4820.0,
+        "from_window": 20,
+        "interpretation": "material_change",
+        "metric": "normalized_rows",
+        "relative_delta": 2.0,
+        "to_value": 14460.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "completeness_ratio",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "partial_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "failed_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.016667,
+        "direction": "increase",
+        "from_value": 0.95,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "exact_date_match_ratio",
+        "relative_delta": 0.017544,
+        "to_value": 0.966667,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": -0.016667,
+        "direction": "decrease",
+        "from_value": 0.05,
+        "from_window": 20,
+        "interpretation": "material_change",
+        "metric": "reconciled_date_ratio",
+        "relative_delta": -0.33334,
+        "to_value": 0.033333,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "endpoint_failure_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 14460.0,
+        "direction": "increase",
+        "from_value": 14460.0,
+        "from_window": 60,
+        "interpretation": "material_change",
+        "metric": "normalized_rows",
+        "relative_delta": 1.0,
+        "to_value": 28920.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "completeness_ratio",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "partial_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "failed_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": -0.016667,
+        "direction": "decrease",
+        "from_value": 0.966667,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "exact_date_match_ratio",
+        "relative_delta": -0.017242,
+        "to_value": 0.95,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.016667,
+        "direction": "increase",
+        "from_value": 0.033333,
+        "from_window": 60,
+        "interpretation": "material_change",
+        "metric": "reconciled_date_ratio",
+        "relative_delta": 0.500015,
+        "to_value": 0.05,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "endpoint_failure_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 24100.0,
+        "direction": "increase",
+        "from_value": 4820.0,
+        "from_window": 20,
+        "interpretation": "material_change",
+        "metric": "normalized_rows",
+        "relative_delta": 5.0,
+        "to_value": 28920.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "completeness_ratio",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "partial_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "failed_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.95,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "exact_date_match_ratio",
+        "relative_delta": 0.0,
+        "to_value": 0.95,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.05,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "reconciled_date_ratio",
+        "relative_delta": 0.0,
+        "to_value": 0.05,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "endpoint_failure_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      }
+    ],
+    "replay_ecology": [
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "replay_density",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "replay_saturation",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "contradiction_burden",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 2.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "topology_richness",
+        "relative_delta": 0.0,
+        "to_value": 2.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "morphology_persistence",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "temporal_persistence",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "replay_density",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "replay_saturation",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "contradiction_burden",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 2.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "topology_richness",
+        "relative_delta": 0.0,
+        "to_value": 2.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "morphology_persistence",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "temporal_persistence",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "replay_density",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "replay_saturation",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "contradiction_burden",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 2.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "topology_richness",
+        "relative_delta": 0.0,
+        "to_value": 2.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "morphology_persistence",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 1.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "temporal_persistence",
+        "relative_delta": 0.0,
+        "to_value": 1.0,
+        "to_window": 120
+      }
+    ],
+    "weak_symbol_provider_quality": [
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "weak_symbol_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "recurring_weak_symbol_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "provider_degradation_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "foxa_weak_window_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 60
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "weak_symbol_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "recurring_weak_symbol_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "provider_degradation_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 60,
+        "interpretation": "stable",
+        "metric": "foxa_weak_window_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "weak_symbol_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "recurring_weak_symbol_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "provider_degradation_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      },
+      {
+        "absolute_delta": 0.0,
+        "direction": "flat",
+        "from_value": 0.0,
+        "from_window": 20,
+        "interpretation": "stable",
+        "metric": "foxa_weak_window_count",
+        "relative_delta": null,
+        "to_value": 0.0,
+        "to_window": 120
+      }
+    ]
+  },
+  "thresholds": {
+    "material_relative_delta": 0.05,
+    "sensitivity_thresholds": {
+      "highly_sensitive": ">=0.75",
+      "mildly_sensitive": "0.05-<0.25",
+      "sensitive": "0.25-<0.75",
+      "stable": "<0.05"
+    },
+    "stable_tolerance": 1e-06
   }
 }
