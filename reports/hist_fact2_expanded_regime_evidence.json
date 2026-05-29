@@ -1,0 +1,837 @@
+[
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "concentration",
+    "entity_type": "ecosystem",
+    "evidence_count": 3,
+    "fact_id": "histfact2_645d773206428147e6966078",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "sector_hhi_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.06107,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_00514789b0cc49b175714dd0",
+        "histfact1_3d2ea41ee1f852337a94dd71",
+        "histfact1_409678470e07f60eb1598bd9"
+      ],
+      "source_metric_name": "sector_hhi",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.06107,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "concentration",
+    "entity_type": "ecosystem",
+    "evidence_count": 3,
+    "fact_id": "histfact2_469c1488c795ce04772e0ea3",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "subsector_hhi_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.06107,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_1145fd4cfe684a27040fb0b2",
+        "histfact1_719e0ea0dcebb4d789bd1996",
+        "histfact1_83f2e80072609ae20c442bd1"
+      ],
+      "source_metric_name": "subsector_hhi",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.06107,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_80518d7a7612911741234f5a",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.074689,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_39a1dafa03ef91698cc13ea2",
+        "histfact1_5657840da49be6a9b5b955d2",
+        "histfact1_e256aac82bd73a86f046a47c"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.074689,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_0439d2a573f116879c0e6891",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.06639,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_64347bbab06e7d4648ede166",
+        "histfact1_76f06dc553b47bf39bcc2e16",
+        "histfact1_f570a87970f3f17add86ffb0"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.06639,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_fa29920971cc163f632fface",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.078838,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_118d826f5867b0a3878746f5",
+        "histfact1_31dff40fc8e41ff182b4493d",
+        "histfact1_47a880b5b35d0c95dedc9cbe"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.078838,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_ac7539300bf2fb9a26cf2ee8",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_1010f694d991f3b5e43ce076",
+        "histfact1_40fb20672a64480ade111b49",
+        "histfact1_c108a6119eda4dbcf058fe65"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_7c40231cf87200c19571813d",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_933ca4a1554f693e5eb38ef6",
+        "histfact1_e2ea3130281eeff5138bb4c4",
+        "histfact1_f344675beb1a21ab5093568e"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_27e77b15db86bb7ca603217b",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_1b697b6455cc502d377e7c96",
+        "histfact1_bfa4f492cd1f97b2fe1f624b",
+        "histfact1_ffa659c34f33116a6fcc2d11"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "industrials_automation",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_6b16fa25c354175350eb8133",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_17c7cafdb829f9e761ca7b8d",
+        "histfact1_6737d395334607ae8d092995",
+        "histfact1_7db2765dc608c1baf115df55"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_41d0913e04b7cc0c951ff538",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.082988,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_76306a33d3827f5c240aaba0",
+        "histfact1_ad52c215b8b27fca041cb7c7",
+        "histfact1_e6bc75670037ab15f49cd2c9"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.082988,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_7c4c46364b86fd88eaf0e658",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.074689,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_6a2e2b1cd5829c9f2aecabf3",
+        "histfact1_c1e41aa69a9385dbde4317d4",
+        "histfact1_efdd0087a0260394cf668345"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.074689,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_aba52ea7174fd494aa606d7d",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.06639,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_1bc38fbf1f7bf5ebae3168eb",
+        "histfact1_6b672bc029ea85bf79a5bd53",
+        "histfact1_e34b6037d2c5ce604f83203e"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.06639,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_8735086b8a0d8c52d2311415",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.078838,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_1a5dbe9ba1f768a5898e339f",
+        "histfact1_4bdb8167640b9581486a2fd9",
+        "histfact1_77960dab3b4084b69f758fc5"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.078838,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_a63a92f41ae59016068ccd67",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_0c71a8845fa9e8fdfac62454",
+        "histfact1_145102cec2962bfec0b8564e",
+        "histfact1_f168886b6287f1f7fdcccad8"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_e6fe81dcc04cb44dca6f8b83",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_242c894923ef704b4f5db250",
+        "histfact1_37262d22925483964566a22f",
+        "histfact1_5dd9518ad3be11423060605f"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_76bb0f0aae21b6055d169fb5",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_5332ef02e538e016e6258eb3",
+        "histfact1_d09127acf974be2f21702b10",
+        "histfact1_db95cf1dc7f2afb92c6d90c7"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "industrials_automation",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_32170abcc28f9bc044a5f239",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.070539,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_a645141c14f6e9459be7ad8f",
+        "histfact1_e7c1e00f17a05a7f72b05f03",
+        "histfact1_ec1ea44e204da80af8fe4b54"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.070539,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact2_3d8d6fa7a372eb3c9bd3be57",
+    "fact_type": "concentration_inflection_fact",
+    "metric_name": "window_share_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "concentration",
+      "end_value": 0.082988,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_09d772121ed5d6009074bcca",
+        "histfact1_53d69bba381d6ac70c89bbbf",
+        "histfact1_defa0afbc8aea4929dbeebc5"
+      ],
+      "source_metric_name": "window_share",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 0.082988,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "participation",
+    "entity_type": "ecosystem",
+    "evidence_count": 3,
+    "fact_id": "histfact2_4fde77c546154dfe05741214",
+    "fact_type": "participation_shift_fact",
+    "metric_name": "effective_symbol_count_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "participation",
+      "end_value": 241.0,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_097292c134bb6b208bbc51cc",
+        "histfact1_2a28c1b0f7747a6e5c358801",
+        "histfact1_7314f78f48fca6089bb26ed9"
+      ],
+      "source_metric_name": "effective_symbol_count",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 241.0,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "replay",
+    "entity_type": "ecosystem",
+    "evidence_count": 3,
+    "fact_id": "histfact2_6f6850c975269ad57f341137",
+    "fact_type": "replay_inflection_fact",
+    "metric_name": "replay_density_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "replay",
+      "end_value": 1.0,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_070383d221c24778900d8a91",
+        "histfact1_4fae9edda30e60349669249c",
+        "histfact1_f5a5dacd85b7a94cc79ba6b4"
+      ],
+      "source_metric_name": "replay_density",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 1.0,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "replay",
+    "entity_type": "ecosystem",
+    "evidence_count": 3,
+    "fact_id": "histfact2_908a62c616f5ce94a13c9e16",
+    "fact_type": "replay_inflection_fact",
+    "metric_name": "replay_saturation_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "replay",
+      "end_value": 1.0,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_5663975ec082d9c93282632d",
+        "histfact1_7c0bdf47528d0ed5fafb71e8",
+        "histfact1_e3a89429d9a58c28542e2ab2"
+      ],
+      "source_metric_name": "replay_saturation",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 1.0,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "topology",
+    "entity_type": "ecosystem",
+    "evidence_count": 3,
+    "fact_id": "histfact2_52a0b33e3ead6834a611bc5e",
+    "fact_type": "topology_inflection_fact",
+    "metric_name": "completeness_window_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "absolute_delta": 0.0,
+      "dimension": "topology",
+      "end_value": 1.0,
+      "end_window_days": 120,
+      "evidence_role": "regime_transition_evidence",
+      "source_artifacts": [
+        "artifacts/hist_long4_real_multi_window_ecology_review.json"
+      ],
+      "source_fact_count": 3,
+      "source_fact_ids": [
+        "histfact1_3dd95aeb79132d4f9172cb2c",
+        "histfact1_565948542b56ebb834cf3835",
+        "histfact1_5b2737113d5a84b2b6eb5577"
+      ],
+      "source_metric_name": "completeness",
+      "source_phases": [
+        "HIST-LONG-4"
+      ],
+      "start_value": 1.0,
+      "start_window_days": 20,
+      "window_count": 3
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_fact1_expanded_observation_facts.json",
+    "source_phase": "HIST-FACT-1",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "candidate_transition_filter",
+    "entity_type": "ecosystem",
+    "evidence_count": 18,
+    "fact_id": "histfact2_b4b163be5690eb4fde642fed",
+    "fact_type": "transition_rejection_fact",
+    "metric_name": "candidate_transitions_found_minus_emitted",
+    "metric_value": 18.0,
+    "payload_jsonb": {
+      "candidate_transitions_emitted": 0,
+      "candidate_transitions_found": 18,
+      "evidence_role": "transition_readiness_evidence",
+      "reason": "candidate_transition_evidence_below_emission_threshold",
+      "source_phase": "HIST-INTEL-3"
+    },
+    "phase_id": "HIST-FACT-2",
+    "source_artifact": "reports/hist_intel3_narrative_evolution.json",
+    "source_phase": "HIST-INTEL-3",
+    "window_days": null
+  }
+]
