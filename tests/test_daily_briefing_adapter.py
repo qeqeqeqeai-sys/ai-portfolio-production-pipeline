@@ -293,3 +293,126 @@ def test_quality_status_empty_thin_strong_and_noisy_are_computed():
     assert thin["briefing_quality_status"] == "thin"
     assert strong["briefing_quality_status"] == "strong"
     assert noisy["briefing_quality_status"] == "noisy"
+
+
+def _dated_payload(snapshot_date, section_name, items):
+    payload = _payload(section_name, items)
+    payload["query_parameters"] = {"snapshot_date": snapshot_date}
+    return payload
+
+
+def test_story_key_is_stable_across_lifecycle_and_archetype_changes():
+    from transmission_layers.daily_briefing.adapter import story_key
+
+    first = _item(
+        "Continuity Story",
+        metric=4,
+        facts=["fact-1", "fact-2"],
+        classification="live_only",
+        source="live_only_anomaly",
+    )
+    second = _item(
+        "Continuity Story",
+        metric=22,
+        facts=["fact-3", "fact-4"],
+        classification="live_weaker_than_historical",
+        source="persistent_weakening_live",
+    )
+
+    assert story_key(first) == story_key(second) == "story:continuity story"
+
+
+def test_story_history_construction_is_deterministic_across_dates():
+    from transmission_layers.daily_briefing.adapter import build_story_histories, story_key
+
+    older = _dated_payload("2026-05-27", "Investigation Candidates", [_item("History Story", metric=4, facts=["fact-1", "fact-2"])])
+    newer = _dated_payload("2026-05-28", "Investigation Candidates", [_item("History Story", metric=8, facts=["fact-3", "fact-4"])])
+
+    histories = build_story_histories([newer, older], selected_date="2026-05-28")
+    history = histories[story_key(_item("History Story"))]
+
+    assert history["first_seen"] == "2026-05-27"
+    assert history["last_seen"] == "2026-05-28"
+    assert history["appearance_count"] == 2
+    assert history["consecutive_appearances"] == 2
+    assert history["highest_priority_seen"] == "high"
+    assert history["confidence_trend"] == ["medium", "medium"]
+
+
+def test_evolution_direction_rising_classification():
+    old = _dated_payload("2026-05-28", "Investigation Candidates", [_item("Rising Story", metric=2, facts=["fact-1", "fact-2"], source="manual_review")])
+    current = _dated_payload("2026-05-29", "Investigation Candidates", [_item("Rising Story", metric=4, facts=["fact-3", "fact-4"], classification="live_only", source="live_only_anomaly")])
+
+    briefing = build_daily_briefing([old, current], selected_date="2026-05-29")
+
+    assert briefing["stories"][0]["evolution_direction"] == "rising"
+    assert briefing["stories"][0]["why_now"] == "priority increased versus previous appearance"
+
+
+def test_evolution_direction_stable_classification():
+    old = _dated_payload("2026-05-28", "Investigation Candidates", [_item("Stable Story", metric=4, facts=["fact-1", "fact-2"], classification="live_only", source="live_only_anomaly")])
+    current = _dated_payload("2026-05-29", "Investigation Candidates", [_item("Stable Story", metric=4, facts=["fact-3", "fact-4"], classification="live_only", source="live_only_anomaly")])
+
+    briefing = build_daily_briefing([old, current], selected_date="2026-05-29")
+
+    assert briefing["stories"][0]["evolution_direction"] == "stable"
+    assert briefing["stories"][0]["why_now"] == "no material change detected"
+
+
+def test_evolution_direction_falling_classification():
+    old = _dated_payload("2026-05-28", "Investigation Candidates", [_item("Falling Story", metric=4, facts=["fact-1", "fact-2"], classification="live_only", source="live_only_anomaly")])
+    current = _dated_payload("2026-05-29", "Investigation Candidates", [_item("Falling Story", metric=11, facts=["fact-3", "fact-4"], classification="live_weaker_than_historical", source="persistent_weakening_live")])
+
+    briefing = build_daily_briefing([old, current], selected_date="2026-05-29")
+
+    assert briefing["stories"][0]["evolution_direction"] == "falling"
+    assert briefing["stories"][0]["why_now"] == "priority or lifecycle weakened versus previous appearance"
+
+
+def test_evolution_direction_reappearing_classification():
+    old = _dated_payload("2026-05-27", "Investigation Candidates", [_item("Reappearing Story", metric=4, facts=["fact-1", "fact-2"], classification="live_only", source="live_only_anomaly")])
+    current = _dated_payload("2026-05-29", "Investigation Candidates", [_item("Reappearing Story", metric=4, facts=["fact-3", "fact-4"], classification="live_only", source="live_only_anomaly")])
+
+    briefing = build_daily_briefing([old, current], selected_date="2026-05-29")
+
+    assert briefing["stories"][0]["evolution_direction"] == "reappearing"
+    assert briefing["stories"][0]["why_now"] == "first appearance after absence"
+
+
+def test_evolution_highlight_sections_are_capped_at_five_items_per_group():
+    old_items = [_item(f"Rising {index}", metric=2, facts=[f"old-{index}", f"old-x-{index}"], source="manual_review") for index in range(7)]
+    current_items = [
+        _item(f"Rising {index}", metric=4, facts=[f"new-{index}", f"new-x-{index}"], classification="live_only", source="live_only_anomaly")
+        for index in range(7)
+    ]
+
+    briefing = build_daily_briefing(
+        [
+            _dated_payload("2026-05-28", "Investigation Candidates", old_items),
+            _dated_payload("2026-05-29", "Investigation Candidates", current_items),
+        ],
+        selected_date="2026-05-29",
+    )
+
+    assert len(briefing["evolution_highlights"]["rising_stories"]) == 5
+
+
+def test_evolution_highlights_respect_suppression_and_do_not_include_internal_items():
+    internal = _item("Pipeline validation smoke test", metric=100, facts=["fact-1", "fact-2"], classification="live_only", source="live_only_anomaly")
+    visible = _item("Visible Story", metric=4, facts=["fact-3", "fact-4"], classification="live_only", source="live_only_anomaly")
+
+    briefing = build_daily_briefing([_dated_payload("2026-05-29", "Investigation Candidates", [internal, visible])], selected_date="2026-05-29")
+
+    highlighted_titles = [item["title"] for group in briefing["evolution_highlights"].values() for item in group]
+    assert "Pipeline validation smoke test" not in highlighted_titles
+    assert briefing["suppression_summary"]["internal_artifacts_suppressed"] >= 1
+
+
+def test_evolution_fields_do_not_move_evidence_out_of_drill_down():
+    briefing = build_daily_briefing([_sample_payload()], selected_date="2026-05-29")
+
+    highlight = briefing["evolution_highlights"]["rising_stories"] + briefing["evolution_highlights"]["stable_stories"]
+    if highlight:
+        assert "evidence" not in highlight[0]
+        assert "supporting_evidence_ids" not in highlight[0]
+    assert "evidence" in briefing["stories"][0]

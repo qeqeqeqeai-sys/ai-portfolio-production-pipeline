@@ -82,6 +82,26 @@ def _render_quality_gate(briefing: dict) -> None:
             st.write(f"{key.replace('_', ' ').title()}: {summary.get(key, 0)}")
 
 
+def _render_story_history(history: dict | None, evolution_direction: str | None = None) -> None:
+    history = history or {}
+    st.write("Story History")
+    st.write(f"- First seen: {history.get('first_seen', 'not available')}")
+    st.write(f"- Last seen: {history.get('last_seen', 'not available')}")
+    st.write(f"- Appearance count: {history.get('appearance_count', 0)}")
+    st.write(f"- Consecutive appearances: {history.get('consecutive_appearances', 0)}")
+    st.write(f"- Highest priority seen: {history.get('highest_priority_seen', 'not available')}")
+    st.write(f"- Evolution direction: {evolution_direction or 'unknown'}")
+
+
+def _render_evolution_group(title: str, items: list[dict]) -> None:
+    st.write(f"**{title}**")
+    if not items:
+        st.caption("No stories in this group.")
+        return
+    for item in items:
+        st.write(f"- {item.get('title', 'Untitled story')} — {item.get('why_now', 'no material change detected')}")
+
+
 def _render_item_list(items: list[dict], empty_text: str) -> None:
     if not items:
         st.info(empty_text)
@@ -107,6 +127,16 @@ def render_daily_briefing(briefing: dict) -> None:
     st.subheader("Top major developments")
     _render_item_list(briefing.get("major_developments") or [], "No major developments in the loaded briefing artifact.")
 
+    st.subheader("Story Evolution Highlights")
+    highlights = briefing.get("evolution_highlights") or {}
+    cols = st.columns(3)
+    with cols[0]:
+        _render_evolution_group("Rising Stories", highlights.get("rising_stories") or [])
+    with cols[1]:
+        _render_evolution_group("Reappearing Stories", highlights.get("reappearing_stories") or [])
+    with cols[2]:
+        _render_evolution_group("Falling Stories", highlights.get("falling_stories") or [])
+
     st.subheader("Top investigation candidates")
     candidates = briefing.get("investigation_candidates") or []
     if not candidates:
@@ -115,6 +145,7 @@ def render_daily_briefing(briefing: dict) -> None:
         with st.container(border=True):
             st.markdown(f"**#{item.get('rank')} {item.get('title')}**")
             st.write(f"Why it appears: {item.get('why_it_appears')}")
+            st.write(f"Why now: {item.get('why_now', 'not available')}")
             st.write(f"Analyst value: {item.get('analyst_value')}")
             st.caption(
                 f"{_lifecycle_badge(item)} · Type: {item.get('investigation_type')} · Priority: {item.get('priority')} · "
@@ -154,6 +185,7 @@ def render_investigation_queue(briefing: dict) -> None:
             st.write(f"Narrative archetype: {item.get('narrative_archetype', 'not available')}")
             st.write(f"Priority: {item.get('priority')}")
             st.write(f"Why it appears: {item.get('why_it_appears')}")
+            st.write(f"Why now: {item.get('why_now', 'not available')}")
             st.write(f"Analyst value: {item.get('analyst_value')}")
             st.write("Recommended questions:")
             for question in item.get("recommended_questions") or []:
@@ -184,6 +216,8 @@ def render_story_detail(briefing: dict) -> None:
     st.write(f"Lifecycle: {story.get('lifecycle_state', 'not available')}")
     st.write(f"Narrative archetype: {story.get('narrative_archetype', 'not available')}")
     st.write(f"Continuity explanation: {story.get('continuity_explanation', 'Not available')}")
+    st.write(f"Why Now: {story.get('why_now', 'not available')}")
+    _render_story_history(story.get("story_history"), story.get("evolution_direction"))
     st.write(f"Historical context: {story.get('historical_context')}")
     st.write(f"Similarities: {story.get('similarities')}")
     st.write(f"Differences: {story.get('differences')}")
