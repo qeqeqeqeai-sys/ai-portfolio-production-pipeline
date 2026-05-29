@@ -1,0 +1,728 @@
+{
+  "schema_version": "hist_intel1_v1",
+  "phase_id": "HIST-INTEL-1",
+  "phase_name": "HIST-INTEL-1_historical_structural_findings",
+  "status": "ok",
+  "top_n": 10,
+  "source_artifacts_inspected": [
+    {
+      "status": "loaded",
+      "schema_version": "hist_long4_v1",
+      "phase_status": "ok",
+      "digest": "ccb37a3969309734",
+      "path": "artifacts/hist_long4_real_multi_window_ecology_review.json"
+    },
+    {
+      "status": "loaded",
+      "schema_version": "hist_long5b_v1",
+      "phase_status": "ok",
+      "digest": "a9c950582a0647b9",
+      "path": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json"
+    },
+    {
+      "status": "loaded",
+      "schema_version": "hist_long6_v1",
+      "phase_status": "ok",
+      "digest": "612aa07c3c9a3d17",
+      "path": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json"
+    },
+    {
+      "status": "loaded",
+      "schema_version": "hist_long7_v1",
+      "phase_status": "ok",
+      "digest": "64ac23bba623d16c",
+      "path": "artifacts/hist_long7_intra_group_structural_contrast.json"
+    }
+  ],
+  "missing_sources": [],
+  "observation_fact_rows_supplied": 0,
+  "source_digest": "627236b6ecc54bc7",
+  "governance_certification": {
+    "analysis_only": true,
+    "no_provider_calls": true,
+    "no_supabase_writes": true,
+    "no_prediction": true,
+    "no_trading": true,
+    "no_portfolio_recommendation": true,
+    "no_governed_activation": true
+  },
+  "findings": {
+    "persistent_structural_hubs": [
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "persistence_score": 1.0,
+        "window_coverage": 1,
+        "supporting_windows": [
+          "20_60_120"
+        ],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "intra-group persistent morphology"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "persistence_score": 1.0,
+        "window_coverage": 1,
+        "supporting_windows": [
+          "20_60_120"
+        ],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "intra-group persistent morphology"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "persistence_score": 1.0,
+        "window_coverage": 1,
+        "supporting_windows": [
+          "20_60_120"
+        ],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "intra-group persistent morphology"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "cloud_software_infrastructure",
+        "persistence_score": 0.306017,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 4,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "recurs across 3 windows",
+          "sector high-importance in 120d",
+          "sector high-importance in 20d",
+          "sector high-importance in 60d"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "cloud_software_infrastructure",
+        "persistence_score": 0.306017,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 4,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "recurs across 3 windows",
+          "subsector high-importance in 120d",
+          "subsector high-importance in 20d",
+          "subsector high-importance in 60d"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "healthcare_biotech",
+        "persistence_score": 0.302904,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 4,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "recurs across 3 windows",
+          "sector high-importance in 120d",
+          "sector high-importance in 20d",
+          "sector high-importance in 60d"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "industrials_automation",
+        "persistence_score": 0.302904,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 4,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "recurs across 3 windows",
+          "sector high-importance in 120d",
+          "sector high-importance in 20d",
+          "sector high-importance in 60d"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "healthcare_biotech",
+        "persistence_score": 0.302904,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 4,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "recurs across 3 windows",
+          "subsector high-importance in 120d",
+          "subsector high-importance in 20d",
+          "subsector high-importance in 60d"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "industrials_automation",
+        "persistence_score": 0.302904,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 4,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "recurs across 3 windows",
+          "subsector high-importance in 120d",
+          "subsector high-importance in 20d",
+          "subsector high-importance in 60d"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "semiconductors",
+        "persistence_score": 0.252832,
+        "window_coverage": 4,
+        "supporting_windows": [
+          "120",
+          "20",
+          "3_windows",
+          "60"
+        ],
+        "evidence_count": 5,
+        "source_count": 2,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "cross-sectional overrepresented",
+          "recurs across 3 windows",
+          "sector high-importance in 120d",
+          "sector high-importance in 20d",
+          "sector high-importance in 60d"
+        ]
+      }
+    ],
+    "persistent_fragility_sources": [
+      {
+        "entity_type": "metric",
+        "name": "normalized_rows",
+        "fragility_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "highly_sensitive temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "reconciled_date_ratio",
+        "fragility_score": 0.66668,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "sensitive temporal sensitivity"
+        ]
+      }
+    ],
+    "recurrent_propagation_paths": [
+      {
+        "path": "cloud_software_infrastructure / cloud_software_infrastructure co-occurrence",
+        "recurrence_count": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 1,
+        "confidence_label": "HIGH",
+        "wording_note": "Directional wording is omitted unless direction is explicit in source facts."
+      },
+      {
+        "path": "commodities remained persistent and coherent",
+        "recurrence_count": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 1,
+        "confidence_label": "HIGH",
+        "wording_note": "Directional wording is omitted unless direction is explicit in source facts."
+      },
+      {
+        "path": "consumer_discretionary / consumer_discretionary co-occurrence",
+        "recurrence_count": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 1,
+        "confidence_label": "HIGH",
+        "wording_note": "Directional wording is omitted unless direction is explicit in source facts."
+      },
+      {
+        "path": "consumer_discretionary remained persistent and coherent",
+        "recurrence_count": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 1,
+        "confidence_label": "HIGH",
+        "wording_note": "Directional wording is omitted unless direction is explicit in source facts."
+      },
+      {
+        "path": "semiconductors / semiconductors co-occurrence",
+        "recurrence_count": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 1,
+        "confidence_label": "HIGH",
+        "wording_note": "Directional wording is omitted unless direction is explicit in source facts."
+      },
+      {
+        "path": "semiconductors remained persistent and coherent",
+        "recurrence_count": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 1,
+        "confidence_label": "HIGH",
+        "wording_note": "Directional wording is omitted unless direction is explicit in source facts."
+      }
+    ],
+    "stable_structural_anchors": [
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "stability_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "stable persistence indicators",
+          "stable persistence indicators",
+          "stable persistence indicators"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "stability_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "stable persistence indicators",
+          "stable persistence indicators",
+          "stable persistence indicators"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "completeness_ratio",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "contradiction_burden",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "diversity_retention",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "endpoint_failure_count",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "failed_count",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "foxa_weak_window_count",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "monoculture_risk",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "morphology_persistence",
+        "stability_score": 1.0,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "low temporal sensitivity"
+        ]
+      }
+    ],
+    "unstable_or_drifting_structures": [
+      {
+        "entity_type": "metric",
+        "name": "reconciled_date_ratio",
+        "drift_score": 0.66668,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "sensitive change across windows"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "normalized_rows",
+        "drift_score": 0.166667,
+        "window_coverage": 0,
+        "supporting_windows": [],
+        "evidence_count": 1,
+        "source_count": 1,
+        "confidence_label": "LOW",
+        "supporting_evidence": [
+          "highly_sensitive change across windows"
+        ]
+      }
+    ],
+    "replay_density_leaders": [
+      {
+        "entity_type": "sector",
+        "name": "cloud_software_infrastructure",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "commodities",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "consumer_discretionary",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "energy_utilities",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "financials",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "healthcare_biotech",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "industrials_automation",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "semiconductors",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "cloud_software_infrastructure",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "commodities",
+        "replay_density_score": 1.0,
+        "window_coverage": 3,
+        "supporting_windows": [
+          "120",
+          "20",
+          "60"
+        ],
+        "evidence_count": 3,
+        "source_count": 1,
+        "confidence_label": "HIGH",
+        "supporting_evidence": [
+          "replay-density concentration context",
+          "replay-density concentration context",
+          "replay-density concentration context"
+        ]
+      }
+    ],
+    "executive_summary": [
+      "Persistent hub: group commodities scored 1.0 with 1 evidence rows (LOW confidence).",
+      "Persistent hub: group consumer_discretionary scored 1.0 with 1 evidence rows (LOW confidence).",
+      "Fragility source: metric normalized_rows scored 1.0 with 1 evidence rows (LOW confidence).",
+      "Fragility source: metric reconciled_date_ratio scored 0.66668 with 1 evidence rows (LOW confidence).",
+      "Recurrent structural pattern: cloud_software_infrastructure / cloud_software_infrastructure co-occurrence recurred 3 times with HIGH confidence.",
+      "Recurrent structural pattern: commodities remained persistent and coherent recurred 3 times with HIGH confidence.",
+      "Stable anchor: group consumer_discretionary scored 1.0 with 3 evidence rows (HIGH confidence).",
+      "Stable anchor: group semiconductors scored 1.0 with 3 evidence rows (HIGH confidence).",
+      "Drifting structure: metric reconciled_date_ratio scored 0.66668 with 1 evidence rows (LOW confidence).",
+      "Drifting structure: metric normalized_rows scored 0.166667 with 1 evidence rows (LOW confidence)."
+    ]
+  },
+  "limitations": [
+    "Analysis is limited to existing local artifacts and supplied observation facts; no live collection is performed."
+  ],
+  "recommended_next_phase": "Review the bounded findings and, if needed, add a fact-native adapter for additional historical observation fact snapshots without enabling live collection or activation."
+}
