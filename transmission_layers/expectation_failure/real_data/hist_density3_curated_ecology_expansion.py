@@ -57,7 +57,7 @@ def _select_unique_symbol(candidates: list[str], seen: set[str], reserved: set[s
     raise ValueError("HIST-DENSITY-3 fails closed: no unique replacement candidate available")
 
 
-def _effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, apply_sde2_replacements: bool) -> tuple[list[str], dict[str, Any]]:
+def _config_effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, apply_sde2_replacements: bool) -> tuple[list[str], dict[str, Any]]:
     picked = get_sde2_curated_symbol_universe()[:max_symbols]
     detected = [s for s in picked if s in REPLACEMENTS]
     replacements_applied: dict[str, str] = {}
@@ -90,6 +90,33 @@ def _effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, app
         "effective_universe_version": f"{SDE2_VERSION}_effective",
     }
     return out, tel
+
+
+def _effective_symbols(*, max_symbols: int, include_high_risk_symbols: bool, apply_sde2_replacements: bool) -> tuple[list[str], dict[str, Any]]:
+    if (
+        max_symbols == DEFAULT_MAX_SYMBOLS
+        and include_high_risk_symbols is False
+        and apply_sde2_replacements is True
+    ):
+        from transmission_layers.expectation_failure.real_data.sefi_observation_universe import (
+            load_sefi_universe_symbols,
+        )
+
+        return load_sefi_universe_symbols(config_loader=_config_effective_symbols)
+    symbols, telemetry = _config_effective_symbols(
+        max_symbols=max_symbols,
+        include_high_risk_symbols=include_high_risk_symbols,
+        apply_sde2_replacements=apply_sde2_replacements,
+    )
+    telemetry = dict(telemetry)
+    telemetry.update({
+        "universe_source_used": "config_fallback",
+        "universe_count": len(symbols),
+        "universe_digest": sha256("|".join(sorted(symbols)).encode("utf-8")).hexdigest(),
+        "fallback_reason": "non_default_effective_symbol_parameters",
+        "bounded_sample_symbols": sorted(symbols)[:5],
+    })
+    return symbols, telemetry
 
 
 def run_hist_density3(*, trading_days: int = DEFAULT_TRADING_DAYS, max_symbols: int = DEFAULT_MAX_SYMBOLS, symbol_chunk_size: int = DEFAULT_SYMBOL_CHUNK_SIZE, expected_chunk_count: int = STAGE5_MAX_CHUNKS, output_root: str = "reports/hist_density3_curated_241", density_mode: str = DENSITY_MODE_FIXTURE, raw_cache_enabled: bool = False, raw_cache_write_enabled: bool = False, cache_validation_mode: bool = False, cache_only_validation: bool = False, include_high_risk_symbols: bool = False, apply_sde2_replacements: bool = True, dry_run_config_only: bool = False, end_date: str | None = None) -> dict[str, Any]:

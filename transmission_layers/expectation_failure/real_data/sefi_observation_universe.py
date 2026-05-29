@@ -9,7 +9,7 @@ from typing import Any, Mapping, Sequence
 
 from transmission_layers.expectation_failure.real_data.hist_density3_curated_ecology_expansion import (
     DEFAULT_MAX_SYMBOLS,
-    _effective_symbols,
+    _config_effective_symbols,
 )
 from transmission_layers.expectation_failure.real_data.sde2_curated_symbol_ecology_expansion import (
     CATEGORY_TO_SECTOR,
@@ -21,6 +21,7 @@ SEFI_OBSERVATION_UNIVERSE_TABLE = "sefi_observation_universe"
 SEFI_OBSERVATION_UNIVERSE_VERSION = f"{SDE2_VERSION}_effective_241"
 SEFI_OBSERVATION_UNIVERSE_SOURCE_PHASE = "hist_density3_curated_241_effective"
 EXPECTED_SEFI_OBSERVATION_UNIVERSE_ACTIVE_COUNT = 241
+EXPECTED_SEFI_OBSERVATION_UNIVERSE_DIGEST = "2b25bc53631cdf1f95848fbe8a154cd7edd1aed5f4c52a931aedc1ff63a6c3af"
 BOUNDED_SAMPLE_SIZE = 5
 ETF_SYMBOLS = {
     "ARKK", "DBA", "DBC", "DIA", "GLD", "HYG", "ICLN", "IEF", "IWM", "JNK", "KBE", "KRE", "LQD", "QQQ", "SHY", "SLV", "SPY", "TAN", "TIP", "TLT", "UUP", "VIXY", "VNQ", "USO", "XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY",
@@ -32,8 +33,8 @@ def canonical_symbol(symbol: str) -> str:
 
 
 def get_active_config_sefi_universe_symbols() -> list[str]:
-    """Return the current file/config-derived SEFI universe; this remains the active default."""
-    symbols, _ = _effective_symbols(
+    """Return the deterministic file/config-derived SEFI universe fallback."""
+    symbols, _ = _config_effective_symbols(
         max_symbols=DEFAULT_MAX_SYMBOLS,
         include_high_risk_symbols=False,
         apply_sde2_replacements=True,
@@ -76,7 +77,7 @@ def symbol_digest(symbols: Sequence[str]) -> str:
     return sha256("|".join(ordered).encode("utf-8")).hexdigest()
 
 
-def validate_sefi_observation_universe_rows(rows: Sequence[Mapping[str, Any]], *, expected_active_count: int = EXPECTED_SEFI_OBSERVATION_UNIVERSE_ACTIVE_COUNT) -> OrderedDict[str, Any]:
+def validate_sefi_observation_universe_rows(rows: Sequence[Mapping[str, Any]], *, expected_active_count: int = EXPECTED_SEFI_OBSERVATION_UNIVERSE_ACTIVE_COUNT, expected_digest: str = EXPECTED_SEFI_OBSERVATION_UNIVERSE_DIGEST) -> OrderedDict[str, Any]:
     active_symbols = [canonical_symbol(str(r.get("symbol", ""))) for r in rows if r.get("is_active") is not False and canonical_symbol(str(r.get("symbol", "")))]
     counts = Counter(active_symbols)
     duplicate_symbols = sorted(symbol for symbol, count in counts.items() if count > 1)
@@ -86,6 +87,7 @@ def validate_sefi_observation_universe_rows(rows: Sequence[Mapping[str, Any]], *
     }
     missing_columns = sorted(required_columns - set(rows[0].keys())) if rows else sorted(required_columns)
     sample_symbols = sorted(counts)[:BOUNDED_SAMPLE_SIZE]
+    digest = symbol_digest(active_symbols)
     return OrderedDict([
         ("expected_active_count", expected_active_count),
         ("active_count", len(active_symbols)),
@@ -95,19 +97,106 @@ def validate_sefi_observation_universe_rows(rows: Sequence[Mapping[str, Any]], *
         ("duplicate_count", sum(count - 1 for count in counts.values() if count > 1)),
         ("duplicate_symbols_sample", duplicate_symbols[:BOUNDED_SAMPLE_SIZE]),
         ("duplicates_valid", not duplicate_symbols),
-        ("symbol_digest", symbol_digest(active_symbols)),
+        ("expected_symbol_digest", expected_digest),
+        ("symbol_digest", digest),
+        ("symbol_digest_valid", digest == expected_digest),
         ("bounded_sample_symbols", sample_symbols),
         ("bounded_sample_size", len(sample_symbols)),
         ("missing_required_columns", missing_columns),
         ("schema_columns_valid", not missing_columns),
         ("source_phase", SEFI_OBSERVATION_UNIVERSE_SOURCE_PHASE),
         ("universe_version", SEFI_OBSERVATION_UNIVERSE_VERSION),
-        ("ready", len(active_symbols) == expected_active_count and len(counts) == expected_active_count and not duplicate_symbols and not missing_columns),
+        ("ready", len(active_symbols) == expected_active_count and len(counts) == expected_active_count and not duplicate_symbols and not missing_columns and digest == expected_digest),
     ])
 
 
+def _rows_from_symbols(symbols: Sequence[str]) -> list[OrderedDict[str, Any]]:
+    return [
+        OrderedDict([
+            ("symbol", canonical_symbol(symbol)),
+            ("entity_name", canonical_symbol(symbol)),
+            ("entity_type", "unknown"),
+            ("asset_class", "unknown"),
+            ("sector", "unknown"),
+            ("subsector", "unknown"),
+            ("ecosystem_group", "unknown"),
+            ("source_phase", SEFI_OBSERVATION_UNIVERSE_SOURCE_PHASE),
+            ("universe_version", SEFI_OBSERVATION_UNIVERSE_VERSION),
+            ("is_active", True),
+            ("created_at", "validation_only"),
+            ("updated_at", "validation_only"),
+        ])
+        for symbol in symbols
+        if canonical_symbol(symbol)
+    ]
+
+
+def _validation_failure_reason(validation: Mapping[str, Any], *, prefix: str) -> str:
+    failed: list[str] = []
+    if not validation.get("active_count_valid"):
+        failed.append("active_count")
+    if not validation.get("unique_symbol_count_valid"):
+        failed.append("unique_symbol_count")
+    if not validation.get("duplicates_valid"):
+        failed.append("duplicate_count")
+    if not validation.get("symbol_digest_valid"):
+        failed.append("digest")
+    if not validation.get("schema_columns_valid"):
+        failed.append("schema_columns")
+    return f"{prefix}_validation_failed:" + ",".join(failed or ["unknown"])
+
+
+def _compact_universe_telemetry(*, source: str, symbols: Sequence[str], validation: Mapping[str, Any], fallback_reason: str | None = None) -> OrderedDict[str, Any]:
+    telemetry = OrderedDict([
+        ("universe_source_used", source),
+        ("universe_count", len(symbols)),
+        ("universe_digest", validation.get("symbol_digest")),
+        ("bounded_sample_symbols", list(validation.get("bounded_sample_symbols", []))[:BOUNDED_SAMPLE_SIZE]),
+    ])
+    if fallback_reason:
+        telemetry["fallback_reason"] = fallback_reason
+    return telemetry
+
+
+def load_sefi_universe_symbols(*, client: Any | None = None, allow_db: bool = True, config_loader: Any | None = None) -> tuple[list[str], OrderedDict[str, Any]]:
+    """Prefer validated public.sefi_observation_universe, with validated config fallback."""
+    fallback_reason: str | None = None
+    if allow_db:
+        try:
+            db_rows = get_db_sefi_observation_universe(client=client)
+            db_validation = validate_sefi_observation_universe_rows(db_rows)
+            if db_validation.get("ready"):
+                symbols = [canonical_symbol(str(row.get("symbol", ""))) for row in db_rows if row.get("is_active") is not False and canonical_symbol(str(row.get("symbol", "")))]
+                return symbols, _compact_universe_telemetry(source="db", symbols=symbols, validation=db_validation)
+            fallback_reason = _validation_failure_reason(db_validation, prefix="db")
+        except Exception as exc:
+            fallback_reason = f"db_read_failed:{type(exc).__name__}"
+    else:
+        fallback_reason = "db_disabled"
+
+    loader = config_loader or _config_effective_symbols
+    config_symbols, config_telemetry = loader(
+        max_symbols=DEFAULT_MAX_SYMBOLS,
+        include_high_risk_symbols=False,
+        apply_sde2_replacements=True,
+    )
+    symbols = [canonical_symbol(s) for s in config_symbols if canonical_symbol(s)]
+    config_validation = validate_sefi_observation_universe_rows(_rows_from_symbols(symbols))
+    if not config_validation.get("ready"):
+        raise ValueError(_validation_failure_reason(config_validation, prefix="config_fallback"))
+    telemetry = _compact_universe_telemetry(
+        source="config_fallback",
+        symbols=symbols,
+        validation=config_validation,
+        fallback_reason=fallback_reason,
+    )
+    for key, value in dict(config_telemetry).items():
+        telemetry.setdefault(key, value)
+    return symbols, telemetry
+
+
 def get_db_sefi_observation_universe(*, client: Any | None = None, active_only: bool = True, limit: int | None = None) -> list[dict[str, Any]]:
-    """Read-only helper for future cutover; not used by active OPS-LIVE/HIST-LONG loaders."""
+    """Read active SEFI observation-universe rows for the DB-default cutover loader."""
     c = client or _build_supabase_client()
     if c is None:
         return []
@@ -151,7 +240,7 @@ def render_validation_report(validation: Mapping[str, Any]) -> str:
         "",
         "## Scope",
         "- DB-readiness only for `public.sefi_observation_universe`.",
-        "- Active OPS-LIVE / HIST-LONG universe source remains the existing file/config loader.",
+        "- Active OPS-LIVE / HIST-LONG universe source now prefers validated `public.sefi_observation_universe` with config fallback.",
         "- No prediction, trading, signal activation, replay activation, or live cutover changes are included.",
         "",
         "## Source discovery",
@@ -170,8 +259,8 @@ def render_validation_report(validation: Mapping[str, Any]) -> str:
         f"- Ready: {validation.get('ready')}",
         "",
         "## Cutover posture",
-        "- DB read helper is available for future use only.",
-        "- Existing JSON/config universe remains active default.",
-        "- Observation accumulation source was not changed.",
+        "- Source order: DB sefi_observation_universe -> validation gates -> config fallback.",
+        "- Required DB gates: active_count=241, unique_symbol_count=241, duplicate_count=0, exact digest match.",
+        "- If DB is empty or not loaded, run `python scripts/load_sefi_observation_universe.py --execute` before expecting DB selection.",
         "",
     ])
