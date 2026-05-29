@@ -22,6 +22,7 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
@@ -52,7 +53,7 @@ Thumbs.db
 *.7z
 
 # ============================================================================
-# Runtime outputs
+# Runtime outputs / generated artifacts
 # ============================================================================
 
 artifacts/**
@@ -60,6 +61,8 @@ exports/**
 logs/**
 outputs/**
 temp/**
+tmp/**
+cache/**
 
 # ============================================================================
 # Data stores / caches
@@ -69,12 +72,19 @@ data/**
 
 # ============================================================================
 # Generated reports
+# Hide machine-generated reports by default.
+# Keep Markdown summaries visible because they are compact and useful for Codex.
 # ============================================================================
 
 reports/**
-
-# Keep top-level summary reports visible
+!reports/
 !reports/*.md
+
+# Explicitly keep large generated report JSON hidden
+reports/*.json
+reports/**/*.json
+artifacts/*.json
+artifacts/**/*.json
 
 # ============================================================================
 # Images / generated visuals
@@ -107,20 +117,27 @@ test_outputs/
 
 *.csv
 *.parquet
+*.xlsx
+*.xls
 
 # Allow documentation CSVs
 !docs/**/*.csv
 
 # ============================================================================
 # Generated JSON
+# Hide generic JSON by default, then re-allow known source/config JSON.
 # ============================================================================
 
 *.json
 
-# Preserve configuration JSON
+# Preserve configuration / package JSON
 !configs/**/*.json
 !package.json
 !package-lock.json
+
+# Preserve source-side JSON if intentionally stored in these folders
+!docs/**/*.json
+!tests/**/*.json
 
 # ============================================================================
 # KEEP ARCHITECTURE & SOURCE CODE VISIBLE
