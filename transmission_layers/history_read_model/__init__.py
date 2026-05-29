@@ -27,6 +27,17 @@ from .observation_intelligence_query import (
     write_intelligence_question_outputs,
 )
 
+from .analyst_consumption_views import (
+    VIEW_TYPES as OBS_QUERY4_VIEW_TYPES,
+    build_anomaly_monitor_view,
+    build_change_monitor_view,
+    build_consumption_view,
+    build_ecosystem_briefing_view,
+    build_investigation_queue_view,
+    build_persistence_monitor_view,
+    render_consumption_view_markdown,
+    write_consumption_view_outputs,
+)
 from .historical_live_comparison import (
     compare_historical_live_state,
     get_historically_weak_structures_strengthening_live,
@@ -91,6 +102,15 @@ __all__ = [
     "retrieve_intelligence_question",
     "render_intelligence_question_markdown",
     "write_intelligence_question_outputs",
+    "OBS_QUERY4_VIEW_TYPES",
+    "build_anomaly_monitor_view",
+    "build_change_monitor_view",
+    "build_consumption_view",
+    "build_ecosystem_briefing_view",
+    "build_investigation_queue_view",
+    "build_persistence_monitor_view",
+    "render_consumption_view_markdown",
+    "write_consumption_view_outputs",
     "compare_historical_live_state",
     "get_historically_weak_structures_strengthening_live",
     "get_live_anomalies_vs_historical",
