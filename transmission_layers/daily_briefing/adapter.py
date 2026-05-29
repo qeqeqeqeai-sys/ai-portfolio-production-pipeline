@@ -8,6 +8,7 @@ model without creating facts, writing data, or generating new intelligence.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -26,7 +27,16 @@ DEFAULT_ARTIFACT_PATHS: tuple[str, ...] = (
 
 INVESTIGATION_TYPES = {"anomaly", "emergence", "structural_change", "continuity", "validation"}
 PRIORITIES = {"critical", "high", "medium", "low"}
+SECTION_CAPS = {
+    "major_developments": 5,
+    "investigation_candidates": 7,
+    "historical_live_deviation_highlights": 5,
+    "emerging_themes": 5,
+    "persistence_watchlist": 5,
+}
 _PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+_PRIORITY_STRENGTH = {"critical": 3, "high": 2, "medium": 1, "low": 0}
+_CONFIDENCE_STRENGTH = {"high": 2, "medium": 1, "low": 0}
 _TYPE_BY_SOURCE = {
     "live_only_anomaly": "anomaly",
     "historical_live_deviation": "structural_change",
@@ -235,6 +245,183 @@ def _section_map(payloads: Sequence[Mapping[str, Any]]) -> dict[str, list[Mappin
     return sections
 
 
+def _empty_suppression_summary() -> dict[str, int]:
+    return {
+        "total_candidates_seen": 0,
+        "total_items_suppressed": 0,
+        "duplicates_suppressed": 0,
+        "low_confidence_suppressed": 0,
+        "low_priority_suppressed": 0,
+        "internal_artifacts_suppressed": 0,
+        "final_items_shown": 0,
+    }
+
+
+def _add_suppression_summary(target: dict[str, int], source: Mapping[str, int]) -> None:
+    for key in target:
+        target[key] += int(source.get(key, 0))
+
+
+def _normalized_title(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _has_meaningful_identifier(item: Mapping[str, Any]) -> bool:
+    title = _normalized_title(item.get("identifier") or item.get("title"))
+    return bool(title) and title not in {"not available", "unidentified structure", "untitled item", "none", "null"}
+
+
+def _text_blob(item: Mapping[str, Any], *, section_name: str | None = None) -> str:
+    values = [section_name or ""]
+    for key in (
+        "identifier",
+        "title",
+        "classification",
+        "queue_source",
+        "source_comparison_type",
+        "source_query_type",
+        "source_type",
+        "validation_status",
+        "artifact_type",
+    ):
+        value = item.get(key)
+        if value is not None:
+            values.append(str(value))
+    return " ".join(values).lower()
+
+
+def _is_internal_artifact(item: Mapping[str, Any], *, section_name: str | None = None) -> bool:
+    blob = _text_blob(item, section_name=section_name)
+    internal_terms = (
+        "internal governance",
+        "governance",
+        "pipeline",
+        "validation-only",
+        "validation only",
+        "schema validation",
+        "artifact validation",
+        "smoke test",
+        "runbook",
+        "orchestration",
+        "auditability",
+        "lineage manifest",
+        "operational readiness",
+    )
+    return any(term in blob for term in internal_terms)
+
+
+def _is_evidence_only(item: Mapping[str, Any]) -> bool:
+    if _clean_text(item.get("classification"), default="") or _metric_value(item) or item.get("delta") not in (None, ""):
+        return False
+    return bool(_fact_ids(item) or _evidence_ids(item))
+
+
+def _duplicate_key(item: Mapping[str, Any], *, section_name: str) -> tuple[str, str, str, str]:
+    return (
+        _normalized_title(item.get("identifier") or item.get("title")),
+        infer_lifecycle_state(item, section_name=section_name),
+        infer_narrative_archetype(item, section_name=section_name),
+        section_name.strip().lower(),
+    )
+
+
+def _support_count(item: Mapping[str, Any]) -> int:
+    return len(_fact_ids(item)) + len(_evidence_ids(item))
+
+
+def _raw_priority(item: Mapping[str, Any]) -> str:
+    return _priority_for(item, _type_for(item))
+
+
+def _strength_key(item: Mapping[str, Any], *, section_name: str, investigation: bool = False) -> tuple[int, int, float, int, str]:
+    priority = _raw_priority(item) if investigation else "medium"
+    return (
+        _PRIORITY_STRENGTH.get(priority, 0),
+        _CONFIDENCE_STRENGTH.get(_confidence_label(item), 0),
+        _metric_value(item),
+        _support_count(item),
+        _normalized_title(item.get("identifier") or item.get("title")),
+    )
+
+
+def _better_item(
+    current: tuple[Mapping[str, Any], str],
+    candidate: tuple[Mapping[str, Any], str],
+    *,
+    investigation: bool = False,
+) -> tuple[Mapping[str, Any], str]:
+    current_key = _strength_key(current[0], section_name=current[1], investigation=investigation)
+    candidate_key = _strength_key(candidate[0], section_name=candidate[1], investigation=investigation)
+    if candidate_key[:-1] > current_key[:-1]:
+        return candidate
+    if candidate_key[:-1] == current_key[:-1] and candidate_key[-1] < current_key[-1]:
+        return candidate
+    return current
+
+
+def _quality_gate_raw_items(
+    rows: Sequence[tuple[str, Mapping[str, Any]]],
+    *,
+    limit: int,
+    investigation: bool = False,
+) -> tuple[list[tuple[str, Mapping[str, Any]]], dict[str, int]]:
+    summary = _empty_suppression_summary()
+    summary["total_candidates_seen"] = len(rows)
+    usable: list[tuple[str, Mapping[str, Any]]] = []
+    for section_name, item in rows:
+        if not _has_meaningful_identifier(item) or _is_evidence_only(item):
+            summary["total_items_suppressed"] += 1
+            continue
+        if _is_internal_artifact(item, section_name=section_name):
+            summary["internal_artifacts_suppressed"] += 1
+            summary["total_items_suppressed"] += 1
+            continue
+        usable.append((section_name, item))
+
+    collapsed: dict[tuple[str, str, str, str], tuple[Mapping[str, Any], str]] = {}
+    for section_name, item in usable:
+        key = _duplicate_key(item, section_name=section_name)
+        candidate = (item, section_name)
+        if key in collapsed:
+            summary["duplicates_suppressed"] += 1
+            summary["total_items_suppressed"] += 1
+            collapsed[key] = _better_item(collapsed[key], candidate, investigation=investigation)
+        else:
+            collapsed[key] = candidate
+
+    deduped = [(section_name, item) for item, section_name in collapsed.values()]
+    has_medium_or_high = any(_confidence_label(item) in {"medium", "high"} for section_name, item in deduped)
+    if has_medium_or_high:
+        retained: list[tuple[str, Mapping[str, Any]]] = []
+        for row in deduped:
+            if _confidence_label(row[1]) == "low":
+                summary["low_confidence_suppressed"] += 1
+                summary["total_items_suppressed"] += 1
+            else:
+                retained.append(row)
+        deduped = retained
+
+    if investigation and any(_raw_priority(item) != "low" for _section_name, item in deduped):
+        retained = []
+        for row in deduped:
+            if _raw_priority(row[1]) == "low":
+                summary["low_priority_suppressed"] += 1
+                summary["total_items_suppressed"] += 1
+            else:
+                retained.append(row)
+        deduped = retained
+
+    deduped = _sort_summary_rows(deduped)
+
+    overflow = max(0, len(deduped) - limit)
+    if overflow:
+        summary["total_items_suppressed"] += overflow
+    shown = deduped[:limit]
+    summary["final_items_shown"] = len(shown)
+    return shown, summary
+
+
 def _make_summary_item(item: Mapping[str, Any], *, section_name: str) -> dict[str, Any]:
     identifier = _clean_text(item.get("identifier"), default="Unidentified structure")
     classification = _clean_text(item.get("classification"), default="observed")
@@ -261,13 +448,21 @@ def _make_summary_item(item: Mapping[str, Any], *, section_name: str) -> dict[st
     }
 
 
-def _top_items(sections: Mapping[str, list[Mapping[str, Any]]], names: Iterable[str], *, limit: int) -> list[dict[str, Any]]:
-    candidates: list[tuple[float, str, str, Mapping[str, Any]]] = []
+def _candidate_rows(sections: Mapping[str, list[Mapping[str, Any]]], names: Iterable[str]) -> list[tuple[str, Mapping[str, Any]]]:
+    rows: list[tuple[str, Mapping[str, Any]]] = []
     for section_name in names:
         for item in sections.get(section_name, []):
-            candidates.append((-_metric_value(item), section_name, str(item.get("identifier") or ""), item))
-    candidates.sort(key=lambda row: (row[0], row[1], row[2]))
-    return [_make_summary_item(item, section_name=section_name) for _score, section_name, _identifier, item in candidates[:limit]]
+            rows.append((section_name, item))
+    return rows
+
+
+def _sort_summary_rows(rows: Sequence[tuple[str, Mapping[str, Any]]]) -> list[tuple[str, Mapping[str, Any]]]:
+    return sorted(rows, key=lambda row: (-_metric_value(row[1]), row[0], _normalized_title(row[1].get("identifier") or row[1].get("title"))))
+
+
+def _top_items(sections: Mapping[str, list[Mapping[str, Any]]], names: Iterable[str], *, limit: int) -> list[dict[str, Any]]:
+    rows, _summary = _quality_gate_raw_items(_sort_summary_rows(_candidate_rows(sections, names)), limit=limit)
+    return [_make_summary_item(item, section_name=section_name) for section_name, item in rows]
 
 
 def _priority_for(item: Mapping[str, Any], investigation_type: str) -> str:
@@ -358,15 +553,35 @@ def rank_investigations(items: Iterable[Mapping[str, Any]], *, limit: int = 7) -
     return ranked
 
 
+def _rank_investigation_rows(rows: Sequence[tuple[str, Mapping[str, Any]]], *, limit: int) -> list[dict[str, Any]]:
+    normalized = [_investigation_item(item, rank_hint=index + 1) for index, (_section_name, item) in enumerate(rows)]
+    normalized.sort(
+        key=lambda item: (
+            _PRIORITY_ORDER.get(str(item["priority"]), 99),
+            str(item["investigation_type"]),
+            -float(item.get("sort_metric") or 0.0),
+            str(item["title"]),
+            str(item["id"]),
+        )
+    )
+    ranked: list[dict[str, Any]] = []
+    for index, item in enumerate(normalized[:limit], start=1):
+        clean_item = dict(item)
+        clean_item["rank"] = index
+        clean_item.pop("sort_metric", None)
+        ranked.append(clean_item)
+    return ranked
+
+
 def _investigation_source_items(sections: Mapping[str, list[Mapping[str, Any]]]) -> list[Mapping[str, Any]]:
-    items: list[Mapping[str, Any]] = []
-    for name in ("Investigation Candidates", "Investigation Queue"):
-        items.extend(sections.get(name, []))
-    if items:
-        return items
-    for name in ("Significant Deviations", "Historical-Live Deviations", "Live-Only Anomalies"):
-        items.extend(sections.get(name, []))
-    return items
+    return [item for _section_name, item in _investigation_source_rows(sections)]
+
+
+def _investigation_source_rows(sections: Mapping[str, list[Mapping[str, Any]]]) -> list[tuple[str, Mapping[str, Any]]]:
+    rows = _candidate_rows(sections, ("Investigation Candidates", "Investigation Queue"))
+    if rows:
+        return rows
+    return _candidate_rows(sections, ("Significant Deviations", "Historical-Live Deviations", "Live-Only Anomalies"))
 
 
 def _attention_level(investigations: Sequence[Mapping[str, Any]], deviations: Sequence[Mapping[str, Any]]) -> str:
@@ -392,6 +607,35 @@ def _payload_date(payloads: Sequence[Mapping[str, Any]], selected_date: str | da
     return "not selected"
 
 
+def _briefing_quality_status(
+    *,
+    major: Sequence[Mapping[str, Any]],
+    investigations: Sequence[Mapping[str, Any]],
+    deviations: Sequence[Mapping[str, Any]],
+    themes: Sequence[Mapping[str, Any]],
+    persistence: Sequence[Mapping[str, Any]],
+    suppression_summary: Mapping[str, int],
+) -> str:
+    shown_count = sum(len(items) for items in (major, investigations, deviations, themes, persistence))
+    if shown_count == 0:
+        return "empty"
+    noisy_suppressed = (
+        int(suppression_summary.get("duplicates_suppressed", 0))
+        + int(suppression_summary.get("low_confidence_suppressed", 0))
+        + int(suppression_summary.get("internal_artifacts_suppressed", 0))
+    )
+    if noisy_suppressed >= 3 and noisy_suppressed >= max(1, shown_count // 2):
+        return "noisy"
+    strong_items = [
+        item
+        for item in [*major, *investigations]
+        if item.get("confidence") in {"medium", "high"}
+    ]
+    if len(strong_items) >= 3:
+        return "strong"
+    return "thin"
+
+
 def build_daily_briefing(
     payloads: Sequence[Mapping[str, Any]],
     *,
@@ -401,31 +645,78 @@ def build_daily_briefing(
     """Normalize existing intelligence payloads into the Daily Briefing view model."""
 
     sections = _section_map(payloads)
-    investigations = rank_investigations(_investigation_source_items(sections), limit=7)
-    deviations = _top_items(sections, ("Significant Deviations", "Historical-Live Deviations"), limit=7)
-    major = _top_items(
-        sections,
-        (
-            "Significant Deviations",
-            "Live-Only Anomalies",
-            "Changed Structures",
-            "Persistent Structures",
-            "Dominant Structures",
-            "Recurring Structures",
-            "Investigation Candidates",
-        ),
-        limit=7,
+    suppression_summary = _empty_suppression_summary()
+
+    investigation_rows, investigation_summary = _quality_gate_raw_items(
+        _sort_summary_rows(_investigation_source_rows(sections)),
+        limit=SECTION_CAPS["investigation_candidates"],
+        investigation=True,
     )
-    themes = _top_items(sections, ("Changed Structures", "Transitioning Structures", "Live-Only Anomalies"), limit=7)
-    persistence = _top_items(sections, ("Persistent Structures", "Recurring Structures", "Persistent Structures Weakening Live"), limit=7)
+    _add_suppression_summary(suppression_summary, investigation_summary)
+    investigations = _rank_investigation_rows(investigation_rows, limit=SECTION_CAPS["investigation_candidates"])
+
+    deviation_rows, deviation_summary = _quality_gate_raw_items(
+        _sort_summary_rows(_candidate_rows(sections, ("Significant Deviations", "Historical-Live Deviations"))),
+        limit=SECTION_CAPS["historical_live_deviation_highlights"],
+    )
+    _add_suppression_summary(suppression_summary, deviation_summary)
+    deviations = [_make_summary_item(item, section_name=section_name) for section_name, item in deviation_rows]
+
+    major_rows, major_summary = _quality_gate_raw_items(
+        _sort_summary_rows(
+            _candidate_rows(
+                sections,
+                (
+                    "Significant Deviations",
+                    "Live-Only Anomalies",
+                    "Changed Structures",
+                    "Persistent Structures",
+                    "Dominant Structures",
+                    "Recurring Structures",
+                    "Investigation Candidates",
+                ),
+            )
+        ),
+        limit=SECTION_CAPS["major_developments"],
+    )
+    _add_suppression_summary(suppression_summary, major_summary)
+    major = [_make_summary_item(item, section_name=section_name) for section_name, item in major_rows]
+
+    theme_rows, theme_summary = _quality_gate_raw_items(
+        _sort_summary_rows(_candidate_rows(sections, ("Changed Structures", "Transitioning Structures", "Live-Only Anomalies"))),
+        limit=SECTION_CAPS["emerging_themes"],
+    )
+    _add_suppression_summary(suppression_summary, theme_summary)
+    themes = [_make_summary_item(item, section_name=section_name) for section_name, item in theme_rows]
+
+    persistence_rows, persistence_summary = _quality_gate_raw_items(
+        _sort_summary_rows(_candidate_rows(sections, ("Persistent Structures", "Recurring Structures", "Persistent Structures Weakening Live"))),
+        limit=SECTION_CAPS["persistence_watchlist"],
+    )
+    _add_suppression_summary(suppression_summary, persistence_summary)
+    persistence = [_make_summary_item(item, section_name=section_name) for section_name, item in persistence_rows]
+
+    suppression_summary["final_items_shown"] = sum(
+        len(items) for items in (major, investigations, deviations, themes, persistence)
+    )
+    briefing_quality_status = _briefing_quality_status(
+        major=major,
+        investigations=investigations,
+        deviations=deviations,
+        themes=themes,
+        persistence=persistence,
+        suppression_summary=suppression_summary,
+    )
     return {
         "briefing_date": _payload_date(payloads, selected_date),
         "attention_level": _attention_level(investigations, deviations),
-        "major_developments": major[:7],
-        "investigation_candidates": investigations[:7],
-        "historical_live_deviation_highlights": deviations[:7],
-        "emerging_themes": themes[:7],
-        "persistence_watchlist": persistence[:7],
+        "briefing_quality_status": briefing_quality_status,
+        "suppression_summary": suppression_summary,
+        "major_developments": major,
+        "investigation_candidates": investigations,
+        "historical_live_deviation_highlights": deviations,
+        "emerging_themes": themes,
+        "persistence_watchlist": persistence,
         "confidence_labels": sorted({item.get("confidence") for item in [*major, *investigations, *deviations] if item.get("confidence")}),
         "stories": investigations,
         "source_paths": list(source_paths),

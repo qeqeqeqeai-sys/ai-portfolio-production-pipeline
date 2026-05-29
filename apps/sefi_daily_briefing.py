@@ -58,6 +58,30 @@ def _render_summary_card(item: dict) -> None:
     )
 
 
+def _quality_message(status: str | None) -> str | None:
+    if status == "empty":
+        return "No major ecosystem changes detected for the selected date."
+    if status == "thin":
+        return "Limited briefing-worthy intelligence detected; review watchlist items before escalating."
+    return None
+
+
+def _render_quality_gate(briefing: dict) -> None:
+    summary = briefing.get("suppression_summary") or {}
+    with st.expander("Briefing quality gate"):
+        st.write(f"Quality status: {briefing.get('briefing_quality_status', 'not available')}")
+        for key in (
+            "total_candidates_seen",
+            "total_items_suppressed",
+            "duplicates_suppressed",
+            "low_confidence_suppressed",
+            "low_priority_suppressed",
+            "internal_artifacts_suppressed",
+            "final_items_shown",
+        ):
+            st.write(f"{key.replace('_', ' ').title()}: {summary.get(key, 0)}")
+
+
 def _render_item_list(items: list[dict], empty_text: str) -> None:
     if not items:
         st.info(empty_text)
@@ -69,10 +93,16 @@ def _render_item_list(items: list[dict], empty_text: str) -> None:
 
 def render_daily_briefing(briefing: dict) -> None:
     st.header("Daily Briefing")
-    cols = st.columns(3)
+    cols = st.columns(4)
     cols[0].metric("Briefing date", briefing.get("briefing_date", "not selected"))
     cols[1].metric("Attention level", briefing.get("attention_level", "not available"))
-    cols[2].metric("Confidence labels", ", ".join(briefing.get("confidence_labels") or ["not available"]))
+    cols[2].metric("Quality status", briefing.get("briefing_quality_status", "not available"))
+    cols[3].metric("Confidence labels", ", ".join(briefing.get("confidence_labels") or ["not available"]))
+
+    message = _quality_message(briefing.get("briefing_quality_status"))
+    if message:
+        st.info(message)
+    _render_quality_gate(briefing)
 
     st.subheader("Top major developments")
     _render_item_list(briefing.get("major_developments") or [], "No major developments in the loaded briefing artifact.")
@@ -198,7 +228,7 @@ def main() -> None:
         project_root=PROJECT_ROOT,
     )
     briefing = load_result.briefing
-    if briefing.get("empty"):
+    if briefing.get("empty") and briefing.get("briefing_quality_status") != "empty":
         _render_empty_state(load_result)
         return
 

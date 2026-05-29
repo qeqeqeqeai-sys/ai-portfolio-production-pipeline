@@ -83,10 +83,12 @@ def test_adapter_normalizes_sample_intelligence_payload():
 
     assert briefing["briefing_date"] == "2026-05-29"
     assert briefing["attention_level"] == "critical"
-    assert 3 <= len(briefing["major_developments"]) <= 7
+    assert 3 <= len(briefing["major_developments"]) <= 5
     assert briefing["investigation_candidates"][0]["title"] == "Supply chain divergence"
     assert briefing["historical_live_deviation_highlights"][0]["title"] == "AI infrastructure demand"
     assert briefing["persistence_watchlist"][0]["title"] == "Capex concentration"
+    assert briefing["briefing_quality_status"] == "strong"
+    assert briefing["suppression_summary"]["final_items_shown"] == 7
 
 
 def test_investigation_ranking_order_is_deterministic():
@@ -193,3 +195,101 @@ def test_lifecycle_fields_do_not_expose_evidence_on_top_level_cards():
     assert "supporting_fact_ids" not in summary_item
     assert "supporting_evidence_ids" not in summary_item
     assert "evidence" not in summary_item
+
+
+def _item(identifier, *, metric=1, facts=(), evidence=(), classification="live_deviates_from_historical", source="baseline_deviation"):
+    return {
+        "identifier": identifier,
+        "classification": classification,
+        "source_comparison_type": source,
+        "queue_source": source,
+        "ranking_metric": {"name": "score", "value": metric},
+        "supporting_fact_ids": list(facts),
+        "supporting_evidence_ids": list(evidence),
+    }
+
+
+def _payload(section_name, items):
+    return {"sections": [{"section_name": section_name, "items": items}]}
+
+
+def test_quality_gate_section_caps_are_enforced():
+    items = [
+        _item(f"Major {index}", metric=100 - index, facts=[f"fact-{index}", f"fact-x-{index}"])
+        for index in range(8)
+    ]
+
+    briefing = build_daily_briefing([_payload("Significant Deviations", items)], selected_date="2026-05-29")
+
+    assert len(briefing["major_developments"]) == 5
+    assert len(briefing["historical_live_deviation_highlights"]) == 5
+    assert briefing["suppression_summary"]["total_items_suppressed"] == 7
+
+
+def test_quality_gate_duplicate_items_are_collapsed_deterministically_to_stronger_item():
+    weak = _item("Duplicate Story", metric=5, facts=["fact-1"])
+    strong = _item("Duplicate Story", metric=10, facts=["fact-1", "fact-2", "fact-3", "fact-4"])
+
+    first = build_daily_briefing([_payload("Significant Deviations", [weak, strong])], selected_date="2026-05-29")
+    second = build_daily_briefing([_payload("Significant Deviations", [strong, weak])], selected_date="2026-05-29")
+
+    assert [item["title"] for item in first["major_developments"]] == ["Duplicate Story"]
+    assert first["major_developments"] == second["major_developments"]
+    assert first["major_developments"][0]["why_it_matters"].endswith("score=10.")
+    assert first["suppression_summary"]["duplicates_suppressed"] == second["suppression_summary"]["duplicates_suppressed"] == 3
+
+
+def test_quality_gate_suppresses_low_confidence_when_stronger_alternatives_exist():
+    low = _item("Unsupported deviation", metric=100)
+    medium = _item("Supported deviation", metric=10, facts=["fact-1", "fact-2"])
+
+    briefing = build_daily_briefing([_payload("Significant Deviations", [low, medium])], selected_date="2026-05-29")
+
+    assert [item["title"] for item in briefing["major_developments"]] == ["Supported deviation"]
+    assert briefing["suppression_summary"]["low_confidence_suppressed"] == 3
+
+
+def test_quality_gate_suppresses_low_priority_investigations_when_higher_priority_exists():
+    low = _item("Manual review candidate", metric=0, facts=["fact-1", "fact-2"], classification="needs review", source="manual_review")
+    high = _item("Live anomaly", metric=4, facts=["fact-3", "fact-4"], classification="live_only", source="live_only_anomaly")
+
+    briefing = build_daily_briefing([_payload("Investigation Candidates", [low, high])], selected_date="2026-05-29")
+
+    assert [item["title"] for item in briefing["investigation_candidates"]] == ["Live anomaly"]
+    assert briefing["suppression_summary"]["low_priority_suppressed"] == 1
+
+
+def test_quality_gate_suppresses_internal_artifact_like_items():
+    internal = _item("Pipeline validation artifact", metric=20, facts=["fact-1", "fact-2"], classification="pipeline validation-only")
+    analyst = _item("Analyst relevant deviation", metric=10, facts=["fact-3", "fact-4"])
+
+    briefing = build_daily_briefing([_payload("Significant Deviations", [internal, analyst])], selected_date="2026-05-29")
+
+    assert [item["title"] for item in briefing["major_developments"]] == ["Analyst relevant deviation"]
+    assert briefing["suppression_summary"]["internal_artifacts_suppressed"] == 3
+
+
+def test_quality_status_empty_thin_strong_and_noisy_are_computed():
+    empty = build_daily_briefing([], selected_date="2026-05-29")
+    thin = build_daily_briefing([_payload("Significant Deviations", [_item("Single supported", facts=["f1", "f2"])])])
+    strong = build_daily_briefing(
+        [_payload("Significant Deviations", [_item(f"Supported {idx}", facts=[f"f{idx}", f"fx{idx}"]) for idx in range(3)])]
+    )
+    noisy = build_daily_briefing(
+        [
+            _payload(
+                "Significant Deviations",
+                [
+                    _item("Supported core", facts=["f1", "f2"]),
+                    _item("Pipeline validation artifact A", facts=["f3", "f4"], classification="pipeline validation-only"),
+                    _item("Pipeline validation artifact B", facts=["f5", "f6"], classification="governance validation-only"),
+                    _item("Pipeline validation artifact C", facts=["f7", "f8"], classification="artifact validation-only"),
+                ],
+            )
+        ]
+    )
+
+    assert empty["briefing_quality_status"] == "empty"
+    assert thin["briefing_quality_status"] == "thin"
+    assert strong["briefing_quality_status"] == "strong"
+    assert noisy["briefing_quality_status"] == "noisy"
