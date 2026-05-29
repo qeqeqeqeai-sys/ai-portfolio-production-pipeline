@@ -1,0 +1,293 @@
+{
+  "schema_version": "hist_intel1b_v1",
+  "phase_id": "HIST-INTEL-1B",
+  "phase_name": "HIST-INTEL-1B_fact_native_historical_findings",
+  "status": "ok",
+  "top_n": 5,
+  "fact_rows_supplied": 7,
+  "fact_rows_considered": 7,
+  "fact_native_ecosystem_rows": 5,
+  "pipeline_diagnostic_rows_suppressed": 2,
+  "compact_source_artifacts_inspected": [],
+  "missing_compact_sources": [],
+  "source_digest": "dcc32bcc9eb20b69",
+  "governance_certification": {
+    "analysis_only": true,
+    "local_only": true,
+    "no_provider_calls": true,
+    "no_supabase_writes": true,
+    "no_prediction": true,
+    "no_trading": true,
+    "no_portfolio_recommendation": true,
+    "no_governed_activation": true
+  },
+  "findings": {
+    "executive_summary": [
+      "Persistent hub: sector cloud infrastructure scored 1.0 with 2 fact rows across 2 windows (HIGH confidence).",
+      "Cross-window persistence leader: sector cloud infrastructure scored 1.0 with 2 fact rows across 2 windows (HIGH confidence).",
+      "Stable ecosystem anchor: sector cloud infrastructure scored 1.0 with 2 fact rows across 2 windows (HIGH confidence).",
+      "Stable ecosystem anchor: subsector edge ai scored 0.92 with 1 fact rows across 1 windows (LOW confidence).",
+      "Replay-density leader: subsector edge ai scored 0.92 with 1 fact rows across 1 windows (LOW confidence).",
+      "Fragility source: symbol thin-breadth cohort scored 0.84 with 1 fact rows across 1 windows (LOW confidence).",
+      "Drift/instability leader: sector legacy media scored 0.54 with 1 fact rows across 1 windows (LOW confidence)."
+    ],
+    "fact_native_persistent_hubs": [
+      {
+        "entity_type": "sector",
+        "name": "cloud infrastructure",
+        "persistence_score": 1.0,
+        "evidence_count": 2,
+        "window_coverage": 2,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "average_metric_value": 0.93,
+        "max_metric_value": 0.94,
+        "confidence_label": "HIGH",
+        "dominant_metrics": [
+          "persistence_score"
+        ],
+        "supporting_windows": [
+          "20",
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:persistence_score:20",
+          "HIST-LONG-8:persistence_score:60"
+        ]
+      }
+    ],
+    "fact_native_fragility_sources": [
+      {
+        "entity_type": "symbol",
+        "name": "thin-breadth cohort",
+        "fragility_score": 0.84,
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "average_metric_value": 0.73,
+        "max_metric_value": 0.73,
+        "confidence_label": "LOW",
+        "dominant_metrics": [
+          "emerging_fragility_score"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:emerging_fragility_score:120"
+        ]
+      }
+    ],
+    "cross_window_persistence_leaders": [
+      {
+        "entity_type": "sector",
+        "name": "cloud infrastructure",
+        "cross_window_score": 1.0,
+        "evidence_count": 2,
+        "window_coverage": 2,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "average_metric_value": 0.93,
+        "max_metric_value": 0.94,
+        "confidence_label": "HIGH",
+        "dominant_metrics": [
+          "persistence_score"
+        ],
+        "supporting_windows": [
+          "20",
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:persistence_score:20",
+          "HIST-LONG-8:persistence_score:60"
+        ]
+      }
+    ],
+    "drift_and_instability_leaders": [
+      {
+        "entity_type": "sector",
+        "name": "legacy media",
+        "drift_score": 0.54,
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "average_metric_value": -0.43,
+        "max_metric_value": -0.43,
+        "confidence_label": "LOW",
+        "dominant_metrics": [
+          "morphology_drift_score"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:morphology_drift_score:120"
+        ]
+      }
+    ],
+    "replay_density_and_recurrence_leaders": [
+      {
+        "entity_type": "subsector",
+        "name": "edge ai",
+        "replay_density_score": 0.92,
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "average_metric_value": 0.81,
+        "max_metric_value": 0.81,
+        "confidence_label": "LOW",
+        "dominant_metrics": [
+          "replay_density"
+        ],
+        "supporting_windows": [
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:replay_density:60"
+        ]
+      }
+    ],
+    "stable_ecosystem_anchors": [
+      {
+        "entity_type": "sector",
+        "name": "cloud infrastructure",
+        "stability_score": 1.0,
+        "evidence_count": 2,
+        "window_coverage": 2,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "average_metric_value": 0.93,
+        "max_metric_value": 0.94,
+        "confidence_label": "HIGH",
+        "dominant_metrics": [
+          "persistence_score"
+        ],
+        "supporting_windows": [
+          "20",
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:persistence_score:20",
+          "HIST-LONG-8:persistence_score:60"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "edge ai",
+        "stability_score": 0.92,
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "average_metric_value": 0.81,
+        "max_metric_value": 0.81,
+        "confidence_label": "LOW",
+        "dominant_metrics": [
+          "replay_density"
+        ],
+        "supporting_windows": [
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:replay_density:60"
+        ]
+      }
+    ],
+    "observation_pattern_clusters": [
+      {
+        "metric_name": "persistence_score",
+        "entity_type": "sector",
+        "phase_id": "hist-long-8",
+        "evidence_count": 2,
+        "window_coverage": 2,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "entity_coverage": 1,
+        "average_metric_value": 0.93,
+        "max_metric_value": 0.94,
+        "confidence_label": "HIGH"
+      },
+      {
+        "metric_name": "emerging_fragility_score",
+        "entity_type": "symbol",
+        "phase_id": "hist-long-9",
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "entity_coverage": 1,
+        "average_metric_value": 0.73,
+        "max_metric_value": 0.73,
+        "confidence_label": "LOW"
+      },
+      {
+        "metric_name": "morphology_drift_score",
+        "entity_type": "sector",
+        "phase_id": "hist-long-9",
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "entity_coverage": 1,
+        "average_metric_value": -0.43,
+        "max_metric_value": -0.43,
+        "confidence_label": "LOW"
+      },
+      {
+        "metric_name": "replay_density",
+        "entity_type": "subsector",
+        "phase_id": "hist-long-9",
+        "evidence_count": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "entity_coverage": 1,
+        "average_metric_value": 0.81,
+        "max_metric_value": 0.81,
+        "confidence_label": "LOW"
+      }
+    ],
+    "suppressed_pipeline_diagnostics": [
+      {
+        "metric_name": "normalized_rows",
+        "entity_type": "pipeline",
+        "suppressed_count": 1,
+        "reason": "pipeline diagnostic excluded from executive ecosystem findings"
+      },
+      {
+        "metric_name": "reconciled_date_ratio",
+        "entity_type": "diagnostic",
+        "suppressed_count": 1,
+        "reason": "pipeline diagnostic excluded from executive ecosystem findings"
+      }
+    ]
+  },
+  "limitations": [
+    "Analysis is local-only and bounded to supplied observation facts plus optional compact local artifacts; no live collection or governed workflow activation is performed.",
+    "Pipeline diagnostics were detected and suppressed from the executive summary when ecosystem facts were available."
+  ]
+}
