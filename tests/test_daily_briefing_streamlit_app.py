@@ -21,3 +21,14 @@ def test_daily_briefing_streamlit_ui_surfaces_lifecycle_without_top_level_eviden
     assert source.index("with st.expander(\"Evidence drill-down: supporting fact and evidence IDs\")") < source.index(
         "Supporting evidence IDs:"
     )
+
+
+def test_daily_briefing_streamlit_ui_surfaces_quality_gate_metadata_without_suppressed_dumps():
+    source = Path("apps/sefi_daily_briefing.py").read_text(encoding="utf-8")
+
+    assert "Quality status" in source
+    assert "Briefing quality gate" in source
+    assert "suppression_summary" in source
+    assert "No major ecosystem changes detected for the selected date." in source
+    assert "Limited briefing-worthy intelligence detected; review watchlist items before escalating." in source
+    assert "suppressed_items" not in source

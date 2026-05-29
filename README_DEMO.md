@@ -149,9 +149,42 @@ streamlit run apps/sefi_daily_briefing.py
 ```
 
 Primary workflow:
-1. **Daily Briefing** — shows briefing date, attention level, top developments, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, confidence labels, and compact lifecycle/archetype labels.
+1. **Daily Briefing** — shows briefing date, attention level, briefing quality status, top developments, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, confidence labels, and compact lifecycle/archetype labels.
 2. **Investigation Queue** — shows deterministic ranked items with investigation type, lifecycle state, narrative archetype, priority, why each item appears, analyst value, and review questions.
 3. **Story Detail** — shows current state, lifecycle state, narrative archetype, a short continuity explanation, historical context, similarities, differences, analyst significance, next questions, and expandable evidence drill-down.
+
+### Briefing quality gate
+
+C-1F adds a deterministic presentation-only quality gate so the briefing stays concise, non-duplicative, and analyst-useful as more local intelligence artifacts accumulate. The gate does not create new intelligence; it only selects, suppresses, and labels existing artifact items for display.
+
+Section caps are enforced before rendering:
+
+- `major_developments`: max 5
+- `investigation_candidates`: max 7
+- `historical_live_deviation_highlights`: max 5
+- `emerging_themes`: max 5
+- `persistence_watchlist`: max 5
+
+The gate deterministically suppresses duplicate items, low-confidence items when medium/high-confidence alternatives exist, low-priority investigation items when higher-priority candidates exist, items without meaningful title/identifier, evidence-only/raw-ID-only items, and internal governance/pipeline/validation-only artifacts. Duplicate items are collapsed when they share materially similar title/identifier, lifecycle state, narrative archetype, and source section; the retained item is selected by priority, confidence, ranking metric value, evidence/fact support count, then deterministic title sort.
+
+The Daily Briefing page shows a **Briefing quality gate** expander with counts only:
+
+- `total_candidates_seen`
+- `total_items_suppressed`
+- `duplicates_suppressed`
+- `low_confidence_suppressed`
+- `low_priority_suppressed`
+- `internal_artifacts_suppressed`
+- `final_items_shown`
+
+Suppressed item details are not rendered. The summary is quality metadata only; top-level briefing cards continue to omit raw evidence IDs, while Story Detail preserves the evidence drill-down.
+
+Briefing quality statuses are normalized as:
+
+- `empty` — no briefing-worthy items remain; the app states: "No major ecosystem changes detected for the selected date."
+- `thin` — some briefing-worthy intelligence exists but support is limited; the app states: "Limited briefing-worthy intelligence detected; review watchlist items before escalating."
+- `strong` — at least three medium/high-confidence major or investigation items are available.
+- `noisy` — duplicate, low-confidence, or internal artifact suppression is high enough that the loaded artifacts need analyst caution.
 
 Narrative lifecycle labels are deterministic read-only presentation fields inferred from existing artifact signals only:
 
@@ -169,7 +202,7 @@ Narrative archetypes are also deterministic read-only presentation fields inferr
 - `breakdown` — persistent structures weakening live or live weaker than historical context.
 - `transition` — baseline or historical/live deviations.
 
-These lifecycle and archetype labels are presentation logic only. They do not create schema migrations, write to Supabase, create database tables, alter pipelines, call external APIs, or generate new intelligence.
+These lifecycle/archetype labels and the quality gate are presentation logic only. They do not create schema migrations, write to Supabase, create database tables, alter pipelines, call external APIs, or generate new intelligence.
 
 Data sources read by the MVP are local JSON artifacts only. The adapter inspects these paths in order and loads any that exist:
 
