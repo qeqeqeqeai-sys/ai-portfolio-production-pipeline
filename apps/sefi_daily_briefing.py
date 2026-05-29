@@ -29,6 +29,12 @@ def _confidence_badge(value: str | None) -> str:
     return f"Confidence: {value or 'not available'}"
 
 
+def _lifecycle_badge(item: dict) -> str:
+    lifecycle = item.get("lifecycle_state") or "not available"
+    archetype = item.get("narrative_archetype") or "not available"
+    return f"Lifecycle: {lifecycle} · Archetype: {archetype}"
+
+
 def _render_empty_state(load_result) -> None:
     st.warning("No daily briefing data available for selected date")
     st.write("Suggested next action: run existing OPS-LIVE / OBS-QUERY pipeline.")
@@ -47,7 +53,7 @@ def _render_summary_card(item: dict) -> None:
     st.write(f"What changed: {item.get('what_changed', 'Not available')}")
     st.write(f"Why it matters: {item.get('why_it_matters', 'Not available')}")
     st.caption(
-        f"{_confidence_badge(item.get('confidence'))} · Historical/live deviation: "
+        f"{_lifecycle_badge(item)} · {_confidence_badge(item.get('confidence'))} · Historical/live deviation: "
         f"{item.get('historical_live_deviation') if item.get('historical_live_deviation') is not None else 'not available'}"
     )
 
@@ -81,7 +87,7 @@ def render_daily_briefing(briefing: dict) -> None:
             st.write(f"Why it appears: {item.get('why_it_appears')}")
             st.write(f"Analyst value: {item.get('analyst_value')}")
             st.caption(
-                f"Type: {item.get('investigation_type')} · Priority: {item.get('priority')} · "
+                f"{_lifecycle_badge(item)} · Type: {item.get('investigation_type')} · Priority: {item.get('priority')} · "
                 f"{_confidence_badge(item.get('confidence'))}"
             )
             if st.button("Open detail", key=f"briefing-open-{item.get('id')}"):
@@ -114,6 +120,8 @@ def render_investigation_queue(briefing: dict) -> None:
         with st.container(border=True):
             st.markdown(f"**#{item.get('rank')} {item.get('title')}**")
             st.write(f"Investigation type: {item.get('investigation_type')}")
+            st.write(f"Lifecycle: {item.get('lifecycle_state', 'not available')}")
+            st.write(f"Narrative archetype: {item.get('narrative_archetype', 'not available')}")
             st.write(f"Priority: {item.get('priority')}")
             st.write(f"Why it appears: {item.get('why_it_appears')}")
             st.write(f"Analyst value: {item.get('analyst_value')}")
@@ -143,6 +151,9 @@ def render_story_detail(briefing: dict) -> None:
         return
     st.subheader(story.get("title", "Selected story"))
     st.write(f"Current state: {story.get('current_state')}")
+    st.write(f"Lifecycle: {story.get('lifecycle_state', 'not available')}")
+    st.write(f"Narrative archetype: {story.get('narrative_archetype', 'not available')}")
+    st.write(f"Continuity explanation: {story.get('continuity_explanation', 'Not available')}")
     st.write(f"Historical context: {story.get('historical_context')}")
     st.write(f"Similarities: {story.get('similarities')}")
     st.write(f"Differences: {story.get('differences')}")

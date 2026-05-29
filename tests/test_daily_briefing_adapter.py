@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from transmission_layers.daily_briefing.adapter import build_daily_briefing, load_daily_briefing, rank_investigations
+from transmission_layers.daily_briefing.adapter import (
+    build_daily_briefing,
+    infer_lifecycle_state,
+    infer_narrative_archetype,
+    load_daily_briefing,
+    rank_investigations,
+)
 
 
 def _sample_payload():
@@ -123,3 +129,67 @@ def test_raw_evidence_is_suppressed_from_top_level_briefing_fields():
     story = briefing["stories"][0]
     assert "evidence" in story
     assert story["evidence"]["supporting_evidence_ids"] == ["ev-3"]
+
+
+def test_lifecycle_and_archetype_mapping_is_deterministic():
+    item = {
+        "identifier": "AI infrastructure demand",
+        "classification": "live_deviates_from_historical",
+        "source_comparison_type": "baseline_deviation",
+        "ranking_metric": {"value": 31},
+        "delta": 31,
+    }
+
+    assert infer_lifecycle_state(item) == infer_lifecycle_state(dict(item)) == "developing"
+    assert infer_narrative_archetype(item) == infer_narrative_archetype(dict(item)) == "transition"
+
+
+def test_live_only_anomaly_maps_to_new_emergence():
+    item = {"classification": "live_only", "queue_source": "live_only_anomaly", "ranking_metric": {"value": 4}}
+
+    assert infer_lifecycle_state(item) == "new"
+    assert infer_narrative_archetype(item) == "emergence"
+
+
+def test_persistent_weakening_maps_to_weakening_breakdown():
+    item = {
+        "classification": "live_weaker_than_historical",
+        "queue_source": "persistent_weakening_live",
+        "ranking_metric": {"value": 11},
+    }
+
+    assert infer_lifecycle_state(item) == "weakening"
+    assert infer_narrative_archetype(item) == "breakdown"
+
+
+def test_historical_live_deviation_maps_to_developing_transition():
+    item = {
+        "classification": "live_deviates_from_historical",
+        "source_comparison_type": "historical_live_deviation",
+        "ranking_metric": {"value": 30},
+        "delta": 30,
+    }
+
+    assert infer_lifecycle_state(item) == "developing"
+    assert infer_narrative_archetype(item) == "transition"
+
+
+def test_lifecycle_archetype_and_continuity_appear_in_normalized_stories():
+    briefing = build_daily_briefing([_sample_payload()], selected_date="2026-05-29")
+
+    story = briefing["stories"][0]
+    assert story["lifecycle_state"] == "new"
+    assert story["narrative_archetype"] == "emergence"
+    assert "continuity_explanation" in story
+    assert "existing live_only_anomaly" in story["continuity_explanation"]
+
+
+def test_lifecycle_fields_do_not_expose_evidence_on_top_level_cards():
+    briefing = build_daily_briefing([_sample_payload()], selected_date="2026-05-29")
+
+    summary_item = briefing["major_developments"][0]
+    assert summary_item["lifecycle_state"] in {"new", "developing", "stable", "weakening", "resolved"}
+    assert summary_item["narrative_archetype"] in {"continuation", "acceleration", "emergence", "breakdown", "transition"}
+    assert "supporting_fact_ids" not in summary_item
+    assert "supporting_evidence_ids" not in summary_item
+    assert "evidence" not in summary_item

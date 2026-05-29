@@ -10,3 +10,14 @@ def test_daily_briefing_streamlit_entrypoint_sets_project_root_before_project_im
     assert "sys.path.insert" in source
     assert "from transmission_layers.daily_briefing" in source
     assert source.index("sys.path.insert") < source.index("from transmission_layers.daily_briefing")
+
+
+def test_daily_briefing_streamlit_ui_surfaces_lifecycle_without_top_level_evidence_ids():
+    source = Path("apps/sefi_daily_briefing.py").read_text(encoding="utf-8")
+
+    assert "Lifecycle:" in source
+    assert "Narrative archetype:" in source
+    assert "Continuity explanation:" in source
+    assert source.index("with st.expander(\"Evidence drill-down: supporting fact and evidence IDs\")") < source.index(
+        "Supporting evidence IDs:"
+    )
