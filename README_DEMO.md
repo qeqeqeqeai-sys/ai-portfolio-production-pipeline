@@ -149,9 +149,27 @@ streamlit run apps/sefi_daily_briefing.py
 ```
 
 Primary workflow:
-1. **Daily Briefing** — shows briefing date, attention level, top developments, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, and confidence labels.
-2. **Investigation Queue** — shows deterministic ranked items with investigation type, priority, why each item appears, analyst value, and review questions.
-3. **Story Detail** — shows current state, historical context, similarities, differences, analyst significance, next questions, and expandable evidence drill-down.
+1. **Daily Briefing** — shows briefing date, attention level, top developments, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, confidence labels, and compact lifecycle/archetype labels.
+2. **Investigation Queue** — shows deterministic ranked items with investigation type, lifecycle state, narrative archetype, priority, why each item appears, analyst value, and review questions.
+3. **Story Detail** — shows current state, lifecycle state, narrative archetype, a short continuity explanation, historical context, similarities, differences, analyst significance, next questions, and expandable evidence drill-down.
+
+Narrative lifecycle labels are deterministic read-only presentation fields inferred from existing artifact signals only:
+
+- `new` — live-only or newly surfaced signals.
+- `developing` — historical/live deviations, baseline deviations, or strengthening live signals.
+- `stable` — persistent, recurring, or continued structures.
+- `weakening` — live signals weaker than historical context or persistent weakening.
+- `resolved` — source artifacts that already mark an item as resolved, closed, or normalized.
+
+Narrative archetypes are also deterministic read-only presentation fields inferred from existing artifact signals only:
+
+- `continuation` — stable persistence or recurrence.
+- `acceleration` — historically weak structures strengthening in live context.
+- `emergence` — live-only or live-only anomaly items.
+- `breakdown` — persistent structures weakening live or live weaker than historical context.
+- `transition` — baseline or historical/live deviations.
+
+These lifecycle and archetype labels are presentation logic only. They do not create schema migrations, write to Supabase, create database tables, alter pipelines, call external APIs, or generate new intelligence.
 
 Data sources read by the MVP are local JSON artifacts only. The adapter inspects these paths in order and loads any that exist:
 

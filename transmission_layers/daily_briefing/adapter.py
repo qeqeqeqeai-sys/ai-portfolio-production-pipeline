@@ -56,6 +56,88 @@ _QUESTIONS_BY_TYPE = {
     ],
 }
 
+LIFECYCLE_STATES = {"new", "developing", "stable", "weakening", "resolved"}
+NARRATIVE_ARCHETYPES = {"continuation", "acceleration", "emergence", "breakdown", "transition"}
+
+
+def _signal_values(item: Mapping[str, Any], *, section_name: str | None = None) -> set[str]:
+    values: set[str] = set()
+    for key in ("classification", "queue_source", "source_comparison_type", "source_query_type", "source_type"):
+        value = item.get(key)
+        if value is not None:
+            values.add(str(value).strip().lower())
+    if section_name:
+        values.add(section_name.strip().lower())
+    return {value for value in values if value}
+
+
+def _has_signal(signals: set[str], *needles: str) -> bool:
+    return any(needle in signal for signal in signals for needle in needles)
+
+
+def infer_lifecycle_state(item: Mapping[str, Any], *, section_name: str | None = None) -> str:
+    """Infer a deterministic story lifecycle state from existing artifact fields only."""
+
+    signals = _signal_values(item, section_name=section_name)
+    if _has_signal(signals, "resolved", "closed", "normalized", "normalised"):
+        return "resolved"
+    if _has_signal(signals, "persistent_weakening_live", "live_weaker_than_historical", "weakening live"):
+        return "weakening"
+    if _has_signal(signals, "historically_weak_strengthening_live"):
+        return "developing"
+    if _has_signal(signals, "live_deviates_from_historical", "baseline_deviation", "historical_live_deviation"):
+        return "developing"
+    if _has_signal(signals, "live_only_anomaly", "live_only"):
+        return "new"
+    if _has_signal(signals, "persistent", "recurring", "persisted"):
+        return "stable"
+    if item.get("delta") not in (None, ""):
+        return "developing"
+    if len(_fact_ids(item)) >= 2 or len(_evidence_ids(item)) >= 2:
+        return "stable"
+    return "new"
+
+
+def infer_narrative_archetype(item: Mapping[str, Any], *, section_name: str | None = None) -> str:
+    """Infer a deterministic narrative archetype from existing artifact fields only."""
+
+    signals = _signal_values(item, section_name=section_name)
+    if _has_signal(signals, "persistent_weakening_live", "live_weaker_than_historical", "weakening live"):
+        return "breakdown"
+    if _has_signal(signals, "historically_weak_strengthening_live"):
+        return "acceleration"
+    if _has_signal(signals, "live_deviates_from_historical", "baseline_deviation", "historical_live_deviation"):
+        return "transition"
+    if _has_signal(signals, "live_only_anomaly", "live_only"):
+        return "emergence"
+    if _has_signal(signals, "persistent", "recurring", "persisted"):
+        return "continuation"
+    if item.get("delta") not in (None, ""):
+        return "transition"
+    if len(_fact_ids(item)) >= 2 or len(_evidence_ids(item)) >= 2:
+        return "continuation"
+    return "emergence"
+
+
+def continuity_explanation(item: Mapping[str, Any], *, section_name: str | None = None) -> str:
+    """Return a short read-only explanation for the inferred narrative continuity."""
+
+    lifecycle_state = infer_lifecycle_state(item, section_name=section_name)
+    archetype = infer_narrative_archetype(item, section_name=section_name)
+    source = _source_label(item)
+    classification = _clean_text(item.get("classification"), default="unspecified classification")
+    fact_count = len(_fact_ids(item))
+    evidence_count = len(_evidence_ids(item))
+    metric_value = item.get("ranking_metric", {}).get("value") if isinstance(item.get("ranking_metric"), Mapping) else None
+    metric_clause = f"; ranking metric={metric_value}" if metric_value is not None else ""
+    delta_clause = f"; delta={item.get('delta')}" if item.get("delta") not in (None, "") else ""
+    section_clause = f" in {section_name}" if section_name else ""
+    return (
+        f"Marked {lifecycle_state}/{archetype} from existing {source}{section_clause} signals "
+        f"({classification}) with {fact_count} fact IDs and {evidence_count} evidence IDs"
+        f"{metric_clause}{delta_clause}."
+    )
+
 
 @dataclass(frozen=True)
 class BriefingLoadResult:
@@ -160,6 +242,8 @@ def _make_summary_item(item: Mapping[str, Any], *, section_name: str) -> dict[st
     metric = item.get("ranking_metric") if isinstance(item.get("ranking_metric"), Mapping) else {}
     metric_name = _clean_text(metric.get("name"), default="ranking metric")
     metric_display = metric.get("value")
+    lifecycle_state = infer_lifecycle_state(item, section_name=section_name)
+    narrative_archetype = infer_narrative_archetype(item, section_name=section_name)
     what_changed = f"{identifier}: {classification} in {section_name}."
     why_it_matters = f"Source view: {source}; {metric_name}={metric_display if metric_display is not None else 'not available'}."
     return {
@@ -169,6 +253,9 @@ def _make_summary_item(item: Mapping[str, Any], *, section_name: str) -> dict[st
         "source_section": section_name,
         "source_view": source,
         "classification": classification,
+        "lifecycle_state": lifecycle_state,
+        "narrative_archetype": narrative_archetype,
+        "continuity_explanation": continuity_explanation(item, section_name=section_name),
         "confidence": _confidence_label(item),
         "historical_live_deviation": item.get("delta"),
     }
@@ -217,12 +304,17 @@ def _investigation_item(item: Mapping[str, Any], *, rank_hint: int) -> dict[str,
     source = _source_label(item)
     facts = _fact_ids(item)
     evidence = _evidence_ids(item)
+    lifecycle_state = infer_lifecycle_state(item)
+    narrative_archetype = infer_narrative_archetype(item)
     return {
         "id": f"{source}:{identifier}",
         "rank": rank_hint,
         "title": identifier,
         "investigation_type": investigation_type,
         "priority": priority,
+        "lifecycle_state": lifecycle_state,
+        "narrative_archetype": narrative_archetype,
+        "continuity_explanation": continuity_explanation(item),
         "why_it_appears": f"{classification} surfaced by {source}.",
         "analyst_value": "Focuses review on an existing SEFI item with historical/live context and bounded evidence references.",
         "recommended_questions": list(_QUESTIONS_BY_TYPE[investigation_type]),
