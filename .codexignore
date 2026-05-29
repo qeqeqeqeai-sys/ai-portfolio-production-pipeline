@@ -1,10 +1,9 @@
 ###############################################################################
-# SEFI Codex Context Control
+# SEFI .codexignore
 #
-# Goal:
-# - Keep architecture, source code, tests, configs, and documentation visible
-# - Hide generated artifacts, caches, archives, telemetry, and large outputs
-# - Reduce Codex token consumption significantly
+# Purpose:
+# Reduce Codex context consumption by hiding generated artifacts,
+# caches, exports, logs, datasets, and runtime outputs.
 ###############################################################################
 
 # ============================================================================
@@ -53,53 +52,41 @@ Thumbs.db
 *.7z
 
 # ============================================================================
-# Generated reports and outputs
+# Runtime outputs
 # ============================================================================
 
-reports/generated/
-outputs/
-artifacts/
-exports/
+artifacts/**
+exports/**
+logs/**
+outputs/**
+temp/**
 
 # ============================================================================
-# Historical ecosystem outputs
+# Data stores / caches
 # ============================================================================
 
-hist_outputs/
-observation_outputs/
-density_outputs/
-replay_outputs/
-replay_archives/
+data/**
 
 # ============================================================================
-# Runtime telemetry
+# Generated reports
 # ============================================================================
 
-logs/
-telemetry/
+reports/**
+
+# Keep top-level summary reports visible
+!reports/*.md
 
 # ============================================================================
-# Data caches
+# Images / generated visuals
 # ============================================================================
 
-cache/
-raw_cache/
-historical_cache/
-data_cache/
-downloads/
+assets/**
 
 # ============================================================================
-# Supabase exports
+# n8n workflow exports
 # ============================================================================
 
-supabase_exports/
-
-# ============================================================================
-# Temporary files
-# ============================================================================
-
-tmp/
-temp/
+n8n/**
 
 # ============================================================================
 # Notebook artifacts
@@ -111,52 +98,46 @@ temp/
 # Test output artifacts
 # ============================================================================
 
-test_outputs/
 coverage_reports/
+test_outputs/
 
 # ============================================================================
-# Large generated data files
+# Large generated files
 # ============================================================================
 
 *.csv
 *.parquet
 
-# Keep manually maintained CSVs if needed
+# Allow documentation CSVs
 !docs/**/*.csv
 
 # ============================================================================
-# Generated JSON artifacts
+# Generated JSON
 # ============================================================================
 
 *.json
 
-# Preserve configuration JSON files
+# Preserve configuration JSON
 !configs/**/*.json
-!config/**/*.json
 !package.json
 !package-lock.json
 
 # ============================================================================
-# Generated markdown reports (may be needed when going on a new phase)
+# KEEP ARCHITECTURE & SOURCE CODE VISIBLE
 # ============================================================================
 
-# reports/**/*.md
-
-# Keep architecture and human-authored docs visible
-!README.md
-!docs/**/*.md
-
-# ============================================================================
-# KEEP SOURCE CODE VISIBLE
-# ============================================================================
-
-!src/**
+!ai_transmission/**
+!configs/**
+!core/**
+!database/**
+!docs/**
+!monitoring/**
+!pipelines/**
 !scripts/**
+!sql/**
+!streamlit_apps/**
+!supabase/**
 !tests/**
 !transmission_layers/**
-!configs/**
-!config/**
-!docs/**
-!requirements.txt
-!pyproject.toml
-!README.md
+!utils/**
+!.github/**
