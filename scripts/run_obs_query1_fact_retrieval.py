@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from collections import OrderedDict
+from pathlib import Path
+from typing import Any, Mapping
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from transmission_layers.history_read_model.observation_fact_retrieval import (
+    DEFAULT_LIMIT,
+    retrieve_observation_facts,
+    write_observation_fact_retrieval_outputs,
+)
+
+
+def _build_env_supabase_client() -> Any | None:
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
+    if not url or not key:
+        return None
+    from supabase import create_client
+
+    return create_client(url, key)
+
+
+def _empty_result_with_warning(args: argparse.Namespace) -> OrderedDict[str, Any]:
+    result = retrieve_observation_facts(
+        fact_rows=[],
+        snapshot_date=args.snapshot_date,
+        symbol=args.symbol,
+        sector=args.sector,
+        subsector=args.subsector,
+        taxonomy=args.taxonomy,
+        source_layer=args.source_layer,
+        min_confidence=args.min_confidence,
+        evidence_id=args.evidence_id,
+        limit=args.limit,
+    )
+    result["runtime_warnings"] = [
+        "SUPABASE_URL and Supabase key env var were not both present; emitted deterministic empty retrieval output without external provider calls."
+    ]
+    return result
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="OBS-QUERY-1 bounded DB-2 observation fact retrieval.")
+    parser.add_argument("--snapshot-date", help="Observation snapshot date (YYYY-MM-DD); matched to loaded_at/created_at date.")
+    parser.add_argument("--symbol", help="Symbol/entity filter when entity_type=symbol.")
+    parser.add_argument("--sector", help="Unsupported unless DB-2 observation facts gains a sector field; reported in metadata.")
+    parser.add_argument("--subsector", help="Unsupported unless DB-2 observation facts gains a subsector field; reported in metadata.")
+    parser.add_argument("--taxonomy", help="Taxonomy/category/fact-type filter mapped to metric_name.")
+    parser.add_argument("--source-layer", help="Source layer / producer phase filter mapped to phase_id.")
+    parser.add_argument("--min-confidence", type=float, help="Unsupported unless DB-2 observation facts gains a confidence/strength field; reported in metadata.")
+    parser.add_argument("--evidence-id", help="Evidence/fact id filter mapped to id when numeric, with deterministic local fact-id post-filter.")
+    parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="Bounded row limit; hard maximum is enforced by the retrieval module.")
+    parser.add_argument("--output-json", help="Write deterministic JSON output.")
+    parser.add_argument("--output-md", help="Write deterministic Markdown report output.")
+    args = parser.parse_args()
+
+    client = _build_env_supabase_client()
+    if client is None:
+        result = _empty_result_with_warning(args)
+    else:
+        result = retrieve_observation_facts(
+            client=client,
+            snapshot_date=args.snapshot_date,
+            symbol=args.symbol,
+            sector=args.sector,
+            subsector=args.subsector,
+            taxonomy=args.taxonomy,
+            source_layer=args.source_layer,
+            min_confidence=args.min_confidence,
+            evidence_id=args.evidence_id,
+            limit=args.limit,
+        )
+
+    paths = write_observation_fact_retrieval_outputs(result, output_json=args.output_json, output_md=args.output_md)
+    print(json.dumps({"status": "ok", "row_count": result["row_count"], "effective_limit": result["effective_limit"], **paths}, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

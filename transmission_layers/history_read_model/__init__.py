@@ -8,6 +8,12 @@ from .loader import (
     load_rows_to_supabase,
 )
 
+from .observation_fact_retrieval import (
+    HARD_LIMIT as OBS_QUERY1_HARD_LIMIT,
+    retrieve_observation_facts,
+    render_observation_fact_retrieval_markdown,
+    write_observation_fact_retrieval_outputs,
+)
 from .observation_query import (
     build_observation_intelligence_report,
     get_fragility_leaderboard,
@@ -34,6 +40,10 @@ __all__ = [
     "build_rows_from_artifact",
     "deterministic_duplicate_key",
     "load_rows_to_supabase",
+    "OBS_QUERY1_HARD_LIMIT",
+    "retrieve_observation_facts",
+    "render_observation_fact_retrieval_markdown",
+    "write_observation_fact_retrieval_outputs",
     "get_latest_completed_phase",
     "get_phase_run_summary",
     "get_sector_morphology",
