@@ -14,6 +14,18 @@ from .observation_fact_retrieval import (
     render_observation_fact_retrieval_markdown,
     write_observation_fact_retrieval_outputs,
 )
+
+from .observation_intelligence_query import (
+    get_changed_structures as get_obs_query2_changed_structures,
+    get_dominant_structures as get_obs_query2_dominant_structures,
+    get_persistent_structures as get_obs_query2_persistent_structures,
+    get_recurrent_structures as get_obs_query2_recurrent_structures,
+    get_transitioning_structures as get_obs_query2_transitioning_structures,
+    get_weakening_structures as get_obs_query2_weakening_structures,
+    retrieve_intelligence_question,
+    render_intelligence_question_markdown,
+    write_intelligence_question_outputs,
+)
 from .observation_query import (
     build_observation_intelligence_report,
     get_fragility_leaderboard,
@@ -59,4 +71,13 @@ __all__ = [
     "get_top_deteriorating_metrics",
     "get_top_persistent_structures",
     "get_window_metrics",
+    "get_obs_query2_changed_structures",
+    "get_obs_query2_dominant_structures",
+    "get_obs_query2_persistent_structures",
+    "get_obs_query2_recurrent_structures",
+    "get_obs_query2_transitioning_structures",
+    "get_obs_query2_weakening_structures",
+    "retrieve_intelligence_question",
+    "render_intelligence_question_markdown",
+    "write_intelligence_question_outputs",
 ]
