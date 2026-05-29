@@ -26,6 +26,17 @@ from .observation_intelligence_query import (
     render_intelligence_question_markdown,
     write_intelligence_question_outputs,
 )
+
+from .historical_live_comparison import (
+    compare_historical_live_state,
+    get_historically_weak_structures_strengthening_live,
+    get_live_anomalies_vs_historical,
+    get_live_baseline_deviations,
+    get_live_recurring_historical_patterns,
+    get_persistent_structures_weakening_live,
+    render_historical_live_comparison_markdown,
+    write_historical_live_comparison_outputs,
+)
 from .observation_query import (
     build_observation_intelligence_report,
     get_fragility_leaderboard,
@@ -80,4 +91,12 @@ __all__ = [
     "retrieve_intelligence_question",
     "render_intelligence_question_markdown",
     "write_intelligence_question_outputs",
+    "compare_historical_live_state",
+    "get_historically_weak_structures_strengthening_live",
+    "get_live_anomalies_vs_historical",
+    "get_live_baseline_deviations",
+    "get_live_recurring_historical_patterns",
+    "get_persistent_structures_weakening_live",
+    "render_historical_live_comparison_markdown",
+    "write_historical_live_comparison_outputs",
 ]
