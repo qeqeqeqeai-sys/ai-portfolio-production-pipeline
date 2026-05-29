@@ -32,3 +32,16 @@ def test_daily_briefing_streamlit_ui_surfaces_quality_gate_metadata_without_supp
     assert "No major ecosystem changes detected for the selected date." in source
     assert "Limited briefing-worthy intelligence detected; review watchlist items before escalating." in source
     assert "suppressed_items" not in source
+
+
+def test_daily_briefing_streamlit_ui_surfaces_story_evolution_without_raw_history_payloads():
+    source = Path("apps/sefi_daily_briefing.py").read_text(encoding="utf-8")
+
+    assert "Story Evolution Highlights" in source
+    assert "Rising Stories" in source
+    assert "Reappearing Stories" in source
+    assert "Falling Stories" in source
+    assert "Why now:" in source
+    assert "Story History" in source
+    assert "First seen:" in source
+    assert "raw JSON" not in source

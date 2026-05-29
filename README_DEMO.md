@@ -149,9 +149,46 @@ streamlit run apps/sefi_daily_briefing.py
 ```
 
 Primary workflow:
-1. **Daily Briefing** — shows briefing date, attention level, briefing quality status, top developments, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, confidence labels, and compact lifecycle/archetype labels.
-2. **Investigation Queue** — shows deterministic ranked items with investigation type, lifecycle state, narrative archetype, priority, why each item appears, analyst value, and review questions.
-3. **Story Detail** — shows current state, lifecycle state, narrative archetype, a short continuity explanation, historical context, similarities, differences, analyst significance, next questions, and expandable evidence drill-down.
+1. **Daily Briefing** — shows briefing date, attention level, briefing quality status, top developments, story evolution highlights, investigation candidates, historical/live deviations, emerging themes, persistence watchlist, confidence labels, and compact lifecycle/archetype labels.
+2. **Investigation Queue** — shows deterministic ranked items with investigation type, lifecycle state, narrative archetype, priority, why each item appears, deterministic `why_now` context, analyst value, and review questions.
+3. **Story Detail** — shows current state, lifecycle state, narrative archetype, a short continuity explanation, deterministic `why_now` context, story history summary, historical context, similarities, differences, analyst significance, next questions, and expandable evidence drill-down.
+
+### Cross-day story continuity and evolution (C-1G)
+
+C-1G adds a read-only, presentation-only continuity layer over multiple available Daily Briefing artifacts. It uses existing artifact fields only and does not persist derived fields anywhere.
+
+Story identity is deterministic. The adapter creates a stable `story_key` from existing `identifier` or `title` values whenever possible, with lifecycle/archetype/source/classification fields used only as deterministic fallback signals when no meaningful title-like identifier exists. This lets the same story resolve to the same identity across briefing dates without introducing a database table or schema migration.
+
+For each visible story, the adapter builds a compact story history summary from loaded artifacts:
+
+- `first_seen`
+- `last_seen`
+- `appearance_count`
+- `consecutive_appearances`
+- `highest_priority_seen`
+- internal confidence, lifecycle, archetype, priority, and seen-date histories used for deterministic classification
+
+The UI displays only the compact summary fields. It does not expose raw history payloads or raw JSON.
+
+Evolution direction is deterministic and limited to:
+
+- `rising` — priority, confidence, or lifecycle strength increased versus the prior appearance.
+- `stable` — no material priority/confidence/lifecycle movement was detected.
+- `falling` — priority or lifecycle strength weakened versus the prior appearance.
+- `reappearing` — the story appears after a dated gap in available artifacts.
+- `unknown` — insufficient prior history exists for cross-day comparison.
+
+The adapter also adds deterministic `why_now` templates, such as:
+
+- `priority increased versus previous appearance`
+- `confidence improved versus previous appearance`
+- `first appearance after absence`
+- `no material change detected`
+- `insufficient prior history for cross-day comparison`
+
+Daily Briefing now includes **Story Evolution Highlights** grouped into Rising Stories, Reappearing Stories, and Falling Stories. The normalized adapter model also includes a capped `evolution_highlights` section with `rising_stories`, `stable_stories`, `falling_stories`, and `reappearing_stories`; each group is capped at 5 items and respects the same duplicate, low-confidence, low-priority, and internal-artifact suppression logic used by the quality gate.
+
+This layer is explicitly read-only and presentation-only. It does not create schema migrations, create tables, write to Supabase, alter pipelines, call external APIs, generate new intelligence, add forecasting, or add prediction/trading language.
 
 ### Briefing quality gate
 
@@ -164,6 +201,7 @@ Section caps are enforced before rendering:
 - `historical_live_deviation_highlights`: max 5
 - `emerging_themes`: max 5
 - `persistence_watchlist`: max 5
+- `evolution_highlights`: max 5 per group
 
 The gate deterministically suppresses duplicate items, low-confidence items when medium/high-confidence alternatives exist, low-priority investigation items when higher-priority candidates exist, items without meaningful title/identifier, evidence-only/raw-ID-only items, and internal governance/pipeline/validation-only artifacts. Duplicate items are collapsed when they share materially similar title/identifier, lifecycle state, narrative archetype, and source section; the retained item is selected by priority, confidence, ranking metric value, evidence/fact support count, then deterministic title sort.
 
@@ -202,7 +240,7 @@ Narrative archetypes are also deterministic read-only presentation fields inferr
 - `breakdown` — persistent structures weakening live or live weaker than historical context.
 - `transition` — baseline or historical/live deviations.
 
-These lifecycle/archetype labels and the quality gate are presentation logic only. They do not create schema migrations, write to Supabase, create database tables, alter pipelines, call external APIs, or generate new intelligence.
+These lifecycle/archetype labels, cross-day evolution fields, `why_now` templates, story history summaries, evolution highlights, and the quality gate are presentation logic only. They do not create schema migrations, write to Supabase, create database tables, alter pipelines, call external APIs, or generate new intelligence.
 
 Data sources read by the MVP are local JSON artifacts only. The adapter inspects these paths in order and loads any that exist:
 
