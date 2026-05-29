@@ -65,6 +65,32 @@ class FakeClient:
         raise AssertionError("artifact/live storage paths must not be used")
 
 
+class FkCheckingTable(FakeTable):
+    def insert(self, rows):
+        if self.name == mod.RUN_REGISTRY_TABLE:
+            assert rows[0]["artifact_id"] in self.client.artifacts
+            self.client.runs.add(rows[0]["run_id"])
+        elif self.name == OBSERVATION_FACTS_TABLE:
+            for row in rows:
+                assert row["artifact_id"] in self.client.artifacts
+                assert row["run_id"] in self.client.runs
+        elif self.name == mod.ARTIFACT_REGISTRY_TABLE:
+            self.client.artifacts.add(rows[0]["artifact_id"])
+        return super().insert(rows)
+
+
+class FkCheckingClient(FakeClient):
+    def __init__(self):
+        super().__init__()
+        self.artifacts = set()
+        self.runs = set()
+
+    def table(self, name):
+        table = FkCheckingTable(self, name)
+        self.tables.append(table)
+        return table
+
+
 BASE = {
     "observed_at": "2026-05-29T00:00:00Z",
     "source_phase": "OPS-LIVE-1B",
@@ -165,10 +191,41 @@ def test_injected_client_write_path_uses_insert_only_through_db2():
     client = FakeClient()
     result = run_ops_live2_accumulation(live_observations=[BASE], client=client, enabled=True, dry_run=False)
 
+    assert result["registry_emission"]["inserted_rows"] == 2
     assert result["fact_emission"]["dry_run"] is False
     assert result["fact_emission"]["inserted_rows"] == 1
-    assert client.inserted[0][0] == OBSERVATION_FACTS_TABLE
-    assert client.tables[0].calls == [("insert", result["fact_rows"]), ("execute", None)]
+    assert [table for table, _rows in client.inserted] == [
+        mod.ARTIFACT_REGISTRY_TABLE,
+        mod.RUN_REGISTRY_TABLE,
+        OBSERVATION_FACTS_TABLE,
+    ]
+    assert client.tables[0].calls == [("insert", [result["artifact_registry_row"]]), ("execute", None)]
+    assert client.tables[1].calls == [("insert", [result["run_registry_row"]]), ("execute", None)]
+    assert client.tables[2].calls == [("insert", result["fact_rows"]), ("execute", None)]
+
+
+def test_fk_safe_persistence_succeeds_after_parent_registration():
+    client = FkCheckingClient()
+    result = run_ops_live2_accumulation(live_observations=[BASE], client=client, enabled=True, dry_run=False)
+
+    assert result["artifact_registry_row"]["artifact_id"] in client.artifacts
+    assert result["run_registry_row"]["run_id"] in client.runs
+    assert result["fact_emission"]["inserted_rows"] == 1
+
+
+def test_duplicate_parent_registration_keys_remain_deterministic():
+    observations = build_ops_live2_observations([BASE])
+    context = build_ops_live2_context(observations, enabled=True, dry_run=False)
+    loaded_at = "2026-05-29T00:00:00Z"
+    first_artifact = mod.build_ops_live2_artifact_registry_row(context, observations, loaded_at=loaded_at)
+    second_artifact = mod.build_ops_live2_artifact_registry_row(context, observations, loaded_at=loaded_at)
+    first_run = mod.build_ops_live2_run_registry_row(context, loaded_at=loaded_at)
+    second_run = mod.build_ops_live2_run_registry_row(context, loaded_at=loaded_at)
+
+    assert first_artifact == second_artifact
+    assert first_run == second_run
+    assert first_artifact["duplicate_prevention_key"] == second_artifact["duplicate_prevention_key"]
+    assert first_run["duplicate_prevention_key"] == second_run["duplicate_prevention_key"]
 
 
 def test_no_provider_api_fmp_prediction_trading_replay_topology_paths(monkeypatch):

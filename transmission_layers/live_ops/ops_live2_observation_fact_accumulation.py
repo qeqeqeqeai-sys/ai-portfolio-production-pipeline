@@ -6,6 +6,7 @@ from hashlib import sha256
 from numbers import Number
 from typing import Any, Iterable, Mapping, Sequence
 
+from transmission_layers.history_read_model.loader import deterministic_duplicate_key
 from transmission_layers.history_read_model.fact_emitter import (
     MAX_PAYLOAD_BYTES,
     OBSERVATION_FACTS_TABLE,
@@ -21,6 +22,8 @@ SCHEMA_VERSION = "ops_live2_v1"
 MAX_LOCAL_INPUT_ROWS = 1000
 DEFAULT_RUN_ID = "ops-live2-local-dry-run"
 DEFAULT_ARTIFACT_ID = "ops-live2-local-bounded-payload"
+ARTIFACT_REGISTRY_TABLE = "sefi_artifact_registry"
+RUN_REGISTRY_TABLE = "sefi_run_registry"
 SUGGESTED_METRIC_NAMES = (
     "live_observation_value",
     "live_replay_density",
@@ -85,6 +88,17 @@ def _window_days(value: Any) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ObservationFactEmissionError("window_days must be an integer or null")
     return value
+
+
+def _utc_now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _source_sha256(observations: Sequence[Mapping[str, Any]]) -> str:
+    encoded = json.dumps(list(observations), sort_keys=True, separators=(",", ":"), default=str)
+    return sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def _source_digest(observations: Sequence[Mapping[str, Any]]) -> str:
@@ -162,6 +176,73 @@ def build_ops_live2_fact_rows(
     return build_observation_fact_rows(context=context, observations=observations)
 
 
+def build_ops_live2_artifact_registry_row(context: Mapping[str, Any], observations: Sequence[Mapping[str, Any]], *, loaded_at: str | None = None) -> OrderedDict[str, Any]:
+    """Build the deterministic OPS-LIVE-2 parent artifact registry row."""
+    source_sha = _source_sha256(observations)
+    source_path = f"ops-live2://bounded-live-observations/{source_sha[:16]}"
+    stable_loaded_at = loaded_at or _utc_now()
+    payload = _ordered_mapping({
+        "observation_count": len(observations),
+        "source_digest": source_sha[:16],
+        "status": "ok",
+    }, field_name="payload_jsonb")
+    return OrderedDict([
+        ("artifact_id", _stable_string(context.get("artifact_id"), "artifact_id")),
+        ("source_artifact_path", source_path),
+        ("source_artifact_sha256", source_sha),
+        ("artifact_kind", PHASE_NAME),
+        ("schema_version", SCHEMA_VERSION),
+        ("created_at", stable_loaded_at),
+        ("loaded_at", stable_loaded_at),
+        ("payload_jsonb", payload),
+        ("duplicate_prevention_key", deterministic_duplicate_key(ARTIFACT_REGISTRY_TABLE, source_path, source_sha)),
+    ])
+
+
+def build_ops_live2_run_registry_row(context: Mapping[str, Any], *, loaded_at: str | None = None) -> OrderedDict[str, Any]:
+    """Build the deterministic OPS-LIVE-2 parent run registry row."""
+    stable_loaded_at = loaded_at or _utc_now()
+    artifact_id = _stable_string(context.get("artifact_id"), "artifact_id")
+    run_id = _stable_string(context.get("run_id"), "run_id")
+    return OrderedDict([
+        ("run_id", run_id),
+        ("phase_id", PHASE_ID),
+        ("phase_name", PHASE_NAME),
+        ("artifact_id", artifact_id),
+        ("status", "ok"),
+        ("created_at", stable_loaded_at),
+        ("loaded_at", stable_loaded_at),
+        ("completed_at", None),
+        ("payload_jsonb", _ordered_mapping({"schema_version": SCHEMA_VERSION}, field_name="payload_jsonb")),
+        ("duplicate_prevention_key", deterministic_duplicate_key(RUN_REGISTRY_TABLE, PHASE_ID, PHASE_NAME, artifact_id, run_id)),
+    ])
+
+
+def emit_ops_live2_parent_registries(client: Any, artifact_row: Mapping[str, Any], run_row: Mapping[str, Any], *, dry_run: bool = True) -> OrderedDict[str, Any]:
+    """Append OPS-LIVE-2 parent registry rows before inserting child facts."""
+    result = OrderedDict([
+        ("dry_run", bool(dry_run)),
+        ("tables", [ARTIFACT_REGISTRY_TABLE, RUN_REGISTRY_TABLE]),
+        ("attempted_rows", 2),
+        ("inserted_rows", 0),
+    ])
+    if dry_run:
+        return result
+    client.table(ARTIFACT_REGISTRY_TABLE).insert([OrderedDict(artifact_row)]).execute()
+    client.table(RUN_REGISTRY_TABLE).insert([OrderedDict(run_row)]).execute()
+    result["inserted_rows"] = 2
+    return result
+
+
+def _default_registry_emission_result() -> OrderedDict[str, Any]:
+    return OrderedDict([
+        ("dry_run", True),
+        ("tables", [ARTIFACT_REGISTRY_TABLE, RUN_REGISTRY_TABLE]),
+        ("attempted_rows", 0),
+        ("inserted_rows", 0),
+    ])
+
+
 def _default_emission_result(dry_run: bool = True) -> OrderedDict[str, Any]:
     return OrderedDict([
         ("table", OBSERVATION_FACTS_TABLE),
@@ -197,7 +278,13 @@ def run_ops_live2_accumulation(
     observations = build_ops_live2_observations(raw, max_rows=max_rows)
     context = build_ops_live2_context(observations, enabled=enabled, dry_run=dry_run, artifact_id=artifact_id, run_id=run_id)
     fact_rows = build_observation_fact_rows(context=context, observations=observations)
+    registry_loaded_at = _utc_now()
+    artifact_registry_row = build_ops_live2_artifact_registry_row(context, observations, loaded_at=registry_loaded_at) if fact_rows else None
+    run_registry_row = build_ops_live2_run_registry_row(context, loaded_at=registry_loaded_at) if fact_rows else None
     can_write = enabled is True and dry_run is False and client is not None
+    registry_emission = _default_registry_emission_result()
+    if can_write and artifact_registry_row and run_registry_row:
+        registry_emission = emit_ops_live2_parent_registries(client, artifact_registry_row, run_registry_row, dry_run=False)
     emission = emit_observation_facts(client, fact_rows, dry_run=False) if can_write else _default_emission_result(dry_run=True)
     if enabled and dry_run:
         emission = emit_observation_facts(client, fact_rows, dry_run=True)
@@ -209,6 +296,7 @@ def run_ops_live2_accumulation(
         ("metric_counts", OrderedDict(sorted(Counter(row["metric_name"] for row in observations).items()))),
         ("enabled", bool(enabled)),
         ("dry_run", bool(dry_run) or not can_write),
+        ("registry_emission", registry_emission),
         ("fact_emission", emission),
         ("governance_review", OrderedDict([
             ("consumes_bounded_existing_observations", True),
@@ -227,6 +315,9 @@ def run_ops_live2_accumulation(
         ("context", context),
         ("observations", observations),
         ("fact_rows", fact_rows),
+        ("artifact_registry_row", artifact_registry_row),
+        ("run_registry_row", run_registry_row),
+        ("registry_emission", registry_emission),
         ("fact_emission", emission),
         ("report", build_ops_live2_report(report_model)),
         ("report_model", report_model),
