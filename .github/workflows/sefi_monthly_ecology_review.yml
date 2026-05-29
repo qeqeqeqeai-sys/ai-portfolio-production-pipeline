@@ -1,0 +1,120 @@
+name: SEFI Monthly Ecology Review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 3 * *"
+
+permissions:
+  contents: read
+
+jobs:
+  monthly-ecology-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      PYTHONPATH: .
+      HIST_LONG4_WINDOWS: "20,60,120"
+      HIST_LONG4_MAX_SYMBOLS: "241"
+      HIST_LONG4_SYMBOL_CHUNK_SIZE: "50"
+      HIST_LONG4_EXPECTED_CHUNK_COUNT: "5"
+      HIST_LONG4_OUTPUT_ROOT: reports/hist_long4_windows
+      HIST_LONG4_REPORT_PATH: reports/hist_long4_real_multi_window_ecology_review.md
+      HIST_LONG4_ARTIFACT_PATH: artifacts/hist_long4_real_multi_window_ecology_review.json
+      HIST_LONG5B_REPORT_PATH: reports/hist_long5b_temporal_delta_sensitivity_classification.md
+      HIST_LONG5B_ARTIFACT_PATH: artifacts/hist_long5b_temporal_delta_sensitivity_classification.json
+      HIST_LONG6_REPORT_PATH: reports/hist_long6_cross_sectional_ecology_differentiation.md
+      HIST_LONG6_ARTIFACT_PATH: artifacts/hist_long6_cross_sectional_ecology_differentiation.json
+      HIST_LONG7_REPORT_PATH: reports/hist_long7_intra_group_structural_contrast.md
+      HIST_LONG7_ARTIFACT_PATH: artifacts/hist_long7_intra_group_structural_contrast.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Preflight monthly controls
+        shell: bash
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          [ "$HIST_LONG4_WINDOWS" = "20,60,120" ] || { echo "HIST-LONG-4 windows must be 20,60,120." >&2; exit 1; }
+          [ "$HIST_LONG4_MAX_SYMBOLS" = "241" ] || { echo "HIST_LONG4_MAX_SYMBOLS must be 241." >&2; exit 1; }
+          [ "$HIST_LONG4_SYMBOL_CHUNK_SIZE" = "50" ] || { echo "HIST_LONG4_SYMBOL_CHUNK_SIZE must be 50." >&2; exit 1; }
+          [ "$HIST_LONG4_EXPECTED_CHUNK_COUNT" = "5" ] || { echo "HIST_LONG4_EXPECTED_CHUNK_COUNT must be 5." >&2; exit 1; }
+          [ -n "${FMP_API_KEY:-}" ] || { echo "FMP_API_KEY is required." >&2; exit 1; }
+          echo "monthly_preflight=passed"
+
+      - name: Run HIST-LONG-4 real multi-window ecology
+        shell: bash
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long4_real_multi_window_ecology.py \
+            --windows "$HIST_LONG4_WINDOWS" \
+            --max-symbols "$HIST_LONG4_MAX_SYMBOLS" \
+            --symbol-chunk-size "$HIST_LONG4_SYMBOL_CHUNK_SIZE" \
+            --expected-chunk-count "$HIST_LONG4_EXPECTED_CHUNK_COUNT" \
+            --output-root "$HIST_LONG4_OUTPUT_ROOT" \
+            --report-path "$HIST_LONG4_REPORT_PATH" \
+            --artifact-path "$HIST_LONG4_ARTIFACT_PATH"
+
+      - name: Run HIST-LONG-5B temporal delta sensitivity classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long5b_temporal_delta_sensitivity_classification.py \
+            --source-artifact-path "$HIST_LONG4_ARTIFACT_PATH" \
+            --completed-source-artifact-path "$HIST_LONG4_ARTIFACT_PATH" \
+            --report-path "$HIST_LONG5B_REPORT_PATH" \
+            --artifact-path "$HIST_LONG5B_ARTIFACT_PATH"
+
+      - name: Run HIST-LONG-6 cross-sectional ecology differentiation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long6_cross_sectional_ecology_differentiation.py \
+            --hist-long4-source "$HIST_LONG4_ARTIFACT_PATH" \
+            --hist-long5b-source "$HIST_LONG5B_ARTIFACT_PATH" \
+            --artifact-path "$HIST_LONG6_ARTIFACT_PATH" \
+            --report-path "$HIST_LONG6_REPORT_PATH"
+
+      - name: Run HIST-LONG-7 intra-group structural contrast
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long7_intra_group_structural_contrast.py \
+            --hist-long4-source "$HIST_LONG4_ARTIFACT_PATH" \
+            --hist-long5b-source "$HIST_LONG5B_ARTIFACT_PATH" \
+            --hist-long6-source "$HIST_LONG6_ARTIFACT_PATH" \
+            --artifact-path "$HIST_LONG7_ARTIFACT_PATH" \
+            --report-path "$HIST_LONG7_REPORT_PATH"
+
+      - name: Upload monthly ecology artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sefi-monthly-ecology-review-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ env.HIST_LONG4_REPORT_PATH }}
+            ${{ env.HIST_LONG4_ARTIFACT_PATH }}
+            ${{ env.HIST_LONG5B_REPORT_PATH }}
+            ${{ env.HIST_LONG5B_ARTIFACT_PATH }}
+            ${{ env.HIST_LONG6_REPORT_PATH }}
+            ${{ env.HIST_LONG6_ARTIFACT_PATH }}
+            ${{ env.HIST_LONG7_REPORT_PATH }}
+            ${{ env.HIST_LONG7_ARTIFACT_PATH }}

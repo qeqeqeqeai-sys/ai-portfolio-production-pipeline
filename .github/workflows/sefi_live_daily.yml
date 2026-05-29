@@ -1,0 +1,190 @@
+name: SEFI Live Daily Accumulation
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_date:
+        description: "Optional UTC snapshot date override (YYYY-MM-DD)"
+        required: false
+        type: string
+  schedule:
+    - cron: "17 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  ops-live-run1-daily-accumulation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: .
+      SNAPSHOT_OUTPUT_DIR: reports/ops_live_run1
+      OPS_LIVE1_OUTPUT_PATH: reports/ops_live_run1/ops_live1_snapshot.json
+      OPS_LIVE2_INPUT_PATH: reports/ops_live_run1/ops_live2_observations.json
+      OPS_LIVE2_REPORT_PATH: reports/ops_live_run1/ops_live2_observation_fact_accumulation.md
+      OPS_LIVE3_REPORT_PATH: reports/ops_live_run1/ops_live3_structural_state_snapshot.md
+      ARTIFACT_RETENTION_DAYS: "14"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Resolve UTC snapshot date
+        shell: bash
+        run: |
+          set -euo pipefail
+          input_date="${{ github.event.inputs.snapshot_date || '' }}"
+          snapshot_date="${input_date:-$(date -u +%F)}"
+          if ! [[ "$snapshot_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "Invalid snapshot date format; expected YYYY-MM-DD." >&2
+            exit 1
+          fi
+          mkdir -p "$SNAPSHOT_OUTPUT_DIR"
+          echo "SNAPSHOT_DATE=$snapshot_date" >> "$GITHUB_ENV"
+          echo "snapshot_date=$snapshot_date"
+
+      - name: Preflight operational secrets
+        shell: bash
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          set -euo pipefail
+          [ -n "${FMP_API_KEY:-}" ] || { echo "FMP_API_KEY is required." >&2; exit 1; }
+          [ -n "${SUPABASE_URL:-}" ] || { echo "SUPABASE_URL is required." >&2; exit 1; }
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ] && [ -z "${SUPABASE_KEY:-}" ]; then
+            echo "SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY is required." >&2
+            exit 1
+          fi
+          echo "operational_secret_preflight=passed"
+          echo "supabase_write_required=true"
+
+      - name: Run OPS-LIVE-1 controlled ingest
+        shell: bash
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_ops_live1b_50_symbol_operational_ingest.py \
+            --snapshot-date "$SNAPSHOT_DATE" \
+            --output "$OPS_LIVE1_OUTPUT_PATH"
+
+      - name: Build OPS-LIVE-2 bounded observations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = json.loads(Path(os.environ["OPS_LIVE1_OUTPUT_PATH"]).read_text(encoding="utf-8"))
+          payload = source.get("ops_live1b_payload", {})
+          canonical = payload.get("canonical_tables", {})
+          diagnostics = payload.get("diagnostics", {})
+          observed_at = payload.get("snapshot_ts") or source.get("snapshot_identity", {}).get("snapshot_ts")
+          source_run_id = payload.get("snapshot_id") or source.get("snapshot_identity", {}).get("snapshot_id") or os.environ["SNAPSHOT_DATE"]
+          universe_size = max(int(diagnostics.get("symbols_requested") or 0), 1)
+
+          observations = [{
+              "observed_at": observed_at,
+              "source_phase": "OPS-LIVE-1",
+              "source_run_id": source_run_id,
+              "entity_type": "phase",
+              "entity_id": "OPS-LIVE-1",
+              "metric_name": "live_ingestion_completeness",
+              "metric_value": float(diagnostics.get("normalization_completeness_percentage") or 0.0) / 100.0,
+              "payload_jsonb": {"status": source.get("status"), "symbols_requested": diagnostics.get("symbols_requested"), "symbols_normalized": diagnostics.get("symbols_successfully_normalized")},
+          }, {
+              "observed_at": observed_at,
+              "source_phase": "OPS-LIVE-1",
+              "source_run_id": source_run_id,
+              "entity_type": "provider",
+              "entity_id": "FMP",
+              "metric_name": "live_provider_health",
+              "metric_value": 1.0 if source.get("status") == "ok" else 0.0,
+              "payload_jsonb": {"status": source.get("status"), "invalid_values": diagnostics.get("invalid_values"), "missing_fields": diagnostics.get("missing_fields")},
+          }]
+
+          for row in canonical.get("symbol_snapshot_rows", []):
+              observations.append({
+                  "observed_at": observed_at,
+                  "source_phase": "OPS-LIVE-1",
+                  "source_run_id": source_run_id,
+                  "entity_type": "symbol",
+                  "entity_id": row.get("symbol"),
+                  "metric_name": "live_symbol_weakness",
+                  "metric_value": float(row.get("resilience_pressure") or 0.0),
+                  "window_days": 1,
+                  "payload_jsonb": {"sector": row.get("sector"), "subsector": row.get("subsector"), "snapshot_id": row.get("snapshot_id")},
+              })
+
+          for row in canonical.get("sector_summary_rows", []):
+              observations.append({
+                  "observed_at": observed_at,
+                  "source_phase": "OPS-LIVE-1",
+                  "source_run_id": source_run_id,
+                  "entity_type": "sector",
+                  "entity_id": row.get("sector"),
+                  "metric_name": "live_sector_concentration",
+                  "metric_value": float(row.get("symbol_count") or 0.0) / universe_size,
+                  "window_days": 1,
+                  "payload_jsonb": {"symbol_count": row.get("symbol_count"), "snapshot_id": row.get("snapshot_id")},
+              })
+
+          Path(os.environ["OPS_LIVE2_INPUT_PATH"]).write_text(json.dumps(observations, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(f"ops_live2_observation_rows={len(observations)}")
+          PY
+
+      - name: Run OPS-LIVE-2 fact accumulation
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_ops_live2_observation_fact_accumulation.py \
+            --input-json "$OPS_LIVE2_INPUT_PATH" \
+            --report-path "$OPS_LIVE2_REPORT_PATH" \
+            --enable-emission \
+            --write-facts
+
+      - name: Run OPS-LIVE-3 structural state snapshot
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_ops_live3_structural_state_snapshot.py \
+            --report-path "$OPS_LIVE3_REPORT_PATH" \
+            --use-supabase
+
+      - name: Upload run artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sefi-live-daily-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ env.OPS_LIVE1_OUTPUT_PATH }}
+            ${{ env.OPS_LIVE2_INPUT_PATH }}
+            ${{ env.OPS_LIVE2_REPORT_PATH }}
+            ${{ env.OPS_LIVE3_REPORT_PATH }}

@@ -1,0 +1,58 @@
+name: SEFI Weekly Observation Review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  weekly-observation-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: .
+      HIST_LONG8_REPORT_PATH: reports/hist_long8_cross_window_persistence.md
+      HIST_LONG9_REPORT_PATH: reports/hist_long9_persistence_drift.md
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run HIST-LONG-8 cross-window persistence review
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long8_cross_window_persistence.py \
+            --report-path "$HIST_LONG8_REPORT_PATH"
+
+      - name: Run HIST-LONG-9 persistence drift review
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/run_hist_long9_persistence_drift.py \
+            --report-path "$HIST_LONG9_REPORT_PATH"
+
+      - name: Upload weekly review reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sefi-weekly-observation-review-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ env.HIST_LONG8_REPORT_PATH }}
+            ${{ env.HIST_LONG9_REPORT_PATH }}
