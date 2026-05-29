@@ -1,0 +1,5303 @@
+[
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_097292c134bb6b208bbc51cc",
+    "fact_type": "breadth_expansion_fact",
+    "metric_name": "effective_symbol_count",
+    "metric_value": 241.0,
+    "payload_jsonb": {
+      "source_key": "effective_symbol_count"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_2a28c1b0f7747a6e5c358801",
+    "fact_type": "breadth_expansion_fact",
+    "metric_name": "effective_symbol_count",
+    "metric_value": 241.0,
+    "payload_jsonb": {
+      "source_key": "effective_symbol_count"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_7314f78f48fca6089bb26ed9",
+    "fact_type": "breadth_expansion_fact",
+    "metric_name": "effective_symbol_count",
+    "metric_value": 241.0,
+    "payload_jsonb": {
+      "source_key": "effective_symbol_count"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_cdf46ea6900d21dc4ccec60d",
+    "fact_type": "breadth_fragility_fact",
+    "metric_name": "failed_count",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "source_key": "failed_count"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_942c93b6126dc52917c5a6f8",
+    "fact_type": "breadth_fragility_fact",
+    "metric_name": "failed_count",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "source_key": "failed_count"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_8c2de3299dcb23e568f1e29c",
+    "fact_type": "breadth_fragility_fact",
+    "metric_name": "failed_count",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "source_key": "failed_count"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_facb42e0b97d33c2e9053e1d",
+    "fact_type": "concentration_fragility_fact",
+    "metric_name": "leader_tail_gap",
+    "metric_value": 0.0625,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_cc1e88de263d7b3d6e760e19",
+    "fact_type": "concentration_fragility_fact",
+    "metric_name": "leader_tail_gap",
+    "metric_value": 0.052632,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_06c79f0c73dc78b773617d5f",
+    "fact_type": "concentration_fragility_fact",
+    "metric_name": "leader_tail_gap",
+    "metric_value": 0.05,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8713daa29af2341f32ee187f",
+    "fact_type": "ecosystem_concentration_fact",
+    "metric_name": "hidden_concentration_intensity",
+    "metric_value": 0.072179,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_012b99d82ed847dee6144e1d",
+    "fact_type": "ecosystem_concentration_fact",
+    "metric_name": "hidden_concentration_intensity",
+    "metric_value": 0.101768,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_faac66bd6c243d2e974cd447",
+    "fact_type": "ecosystem_concentration_fact",
+    "metric_name": "hidden_concentration_intensity",
+    "metric_value": 0.112772,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ebe3a2448e785ef7d554b223",
+    "fact_type": "entity_persistence_fact",
+    "metric_name": "morphology_persistence_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_5453b2d3fb4a6a5dcc4a11b6",
+    "fact_type": "entity_persistence_fact",
+    "metric_name": "morphology_persistence_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f40bc012b6ff571f78a9bed1",
+    "fact_type": "entity_persistence_fact",
+    "metric_name": "morphology_persistence_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "normalized_rows",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_0c9d483a002e9b94eff85451",
+    "fact_type": "morphology_drift_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 9640.0,
+    "payload_jsonb": {
+      "direction": "increase",
+      "from_window": 20,
+      "interpretation": "material_change",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "normalized_rows",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_1720bd62714f94fb9c545980",
+    "fact_type": "morphology_drift_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 14460.0,
+    "payload_jsonb": {
+      "direction": "increase",
+      "from_window": 60,
+      "interpretation": "material_change",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "normalized_rows",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_2afe44068a0ae5c59229a3bd",
+    "fact_type": "morphology_drift_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 24100.0,
+    "payload_jsonb": {
+      "direction": "increase",
+      "from_window": 20,
+      "interpretation": "material_change",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "reconciled_date_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_314dbd967bc9a791a2268e7c",
+    "fact_type": "morphology_drift_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": -0.016667,
+    "payload_jsonb": {
+      "direction": "decrease",
+      "from_window": 20,
+      "interpretation": "material_change",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "reconciled_date_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_39c243214f16773c9440d589",
+    "fact_type": "morphology_drift_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.016667,
+    "payload_jsonb": {
+      "direction": "increase",
+      "from_window": 60,
+      "interpretation": "material_change",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_470cee3e8b7dbfe1b523280f",
+    "fact_type": "participation_fact",
+    "metric_name": "breadth_of_differentiation",
+    "metric_value": 0.8,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ffd9c83864055db1422a90c4",
+    "fact_type": "participation_fact",
+    "metric_name": "breadth_of_differentiation",
+    "metric_value": 0.95,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8895816064f621f759cce3a6",
+    "fact_type": "participation_fact",
+    "metric_name": "breadth_of_differentiation",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "completeness_ratio",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_a83dfad56677368a76aed776",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 1.0,
+        "20": 1.0,
+        "60": 1.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "contradiction_burden",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ba6dd69759f62e43fdbaeb18",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "diversity_retention",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_42d8f932f0aa7979be5010f1",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 1.0,
+        "20": 1.0,
+        "60": 1.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "endpoint_failure_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_4b42c946e487e7ac5bb9a9e7",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "failed_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_d7541b5215dcc45632be16d6",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "foxa_weak_window_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_9629152cbd118373d900eb9b",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "monoculture_risk",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_28d53d165fc7a8ae40f7b67c",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "partial_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ebc8231ebe7010edaedb7944",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "provider_degradation_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_3665e075204060017a9d5973",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "recurring_weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f7a09a5050fb00ad0e1dd1ef",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "temporal_persistence",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_94ef13b15f127e660cdeb4ee",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 1.0,
+        "20": 1.0,
+        "60": 1.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_2da9ee8fd6ad4ae08ce31a45",
+    "fact_type": "persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.0,
+        "20": 0.0,
+        "60": 0.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_070383d221c24778900d8a91",
+    "fact_type": "replay_density_fact",
+    "metric_name": "replay_density",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "replay_density"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_f5a5dacd85b7a94cc79ba6b4",
+    "fact_type": "replay_density_fact",
+    "metric_name": "replay_density",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "replay_density"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_4fae9edda30e60349669249c",
+    "fact_type": "replay_density_fact",
+    "metric_name": "replay_density",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "replay_density"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "completeness_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_dcb6ccd59c5251d333a2550b",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "completeness_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_709aa9c7a80076f7179440df",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "completeness_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_a1ec85da80350b1b244fb5a0",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "contradiction_burden",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_57c9297c1909ee02303d9a45",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "contradiction_burden",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_6060b758fef6ceb478c471d1",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "contradiction_burden",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_bfeb270a2f2164aabd635199",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "diversity_retention",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_7010c59e32dc58118c374938",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "diversity_retention",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_0aa438d2d987c516d51847be",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "diversity_retention",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_40be45612513e7bbdc0fb3e5",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "endpoint_failure_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_950686e142b09662bdc5d7ee",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "endpoint_failure_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_b978155bce1833768870ae99",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "endpoint_failure_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_deaecdd38c3c1dab197d296b",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "exact_date_match_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_f64c571c83ea8b6b63296a54",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.016667,
+    "payload_jsonb": {
+      "direction": "increase",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "exact_date_match_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_10e695ea52ca85d5e0a965cf",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": -0.016667,
+    "payload_jsonb": {
+      "direction": "decrease",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "exact_date_match_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_e4e55c825d4ab8e0a5d5a9db",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "failed_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_d75ea2d423f9e0f346d98f50",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "failed_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_152ae9a4b75e5b63172e25bd",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "failed_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_2c139e2d2cbbf6e398eb7937",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "foxa_weak_window_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_3a26320d974b077c0624e411",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "foxa_weak_window_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_5c1059f5eda8e1e7db6fcd9f",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "foxa_weak_window_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_6bc01db1dc8de15ed40a26d3",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "monoculture_risk",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_59e61cf49cfcf697b7be3682",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "monoculture_risk",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_3cb3ef915b9abf1114d3289c",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "monoculture_risk",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_68b5f36592e72908014e21d4",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "morphology_persistence",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_177d4c968bd75e3161412b5d",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "morphology_persistence",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_6bf9f9fe787412dffbd7aa23",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "morphology_persistence",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_a8e03eb077c6e044d05c9d63",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "partial_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_956b57377a9e82ab0973ba71",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "partial_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_9a2182ee692eff7735864abf",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "partial_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_af58c792bb25cd02b862bcbd",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "provider_degradation_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_26bbadf60c4f4ef52724933f",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "provider_degradation_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_8a9d2019d5cf708e04f748f5",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "provider_degradation_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_edfdd1094029c48b5e13dfbd",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "reconciled_date_ratio",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_473c4b486540aea653f65899",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "ingestion_continuity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "recurring_weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_1455cf8904145a87689777ff",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "recurring_weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_26176af0eb3e6d23121d9b52",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "recurring_weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_a4695d0907d8d95a11fb2d07",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "replay_density",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_7fca7874e7f8e70459dba46a",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "replay_density",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_c3e56923d5ea9519ebf67cc2",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "replay_density",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_e1a7060f84a5ee707c2c3d30",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "replay_saturation",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_c97ba10e5a652c2af138952d",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "replay_saturation",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_4a6696e45d9adcbb36a11ca5",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "replay_saturation",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_56fe9413a7c2c44d1453048b",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "sector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_c94d16fc62bf3d1ab9d4bb3d",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "sector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_57b467b2f48e34a5a5d28fd1",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "sector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_f17d23049e3fe154751ca858",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "subsector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_b3c6f0c6973175b160057f68",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "subsector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_43308ee53033bcfb3dd3ee2b",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "subsector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_f6883cfb501681c62cbe9b21",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "concentration_diversity",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "temporal_persistence",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_74d51d188d4346f9d4ba22cb",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "temporal_persistence",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_0ead1f586671582ae73ed900",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "temporal_persistence",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_73f84db21542a598cd176e76",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "topology_richness",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_598949c6a1d40643e12b7ad1",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "topology_richness",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_8d9c2f6e540a9a3f087c5fe2",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "topology_richness",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_cd43a334b871892f1069bf7b",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "replay_ecology",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_3f181f40e3a052500d8144ba",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 60
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_1db3ce9187b18efc19bcc8fa",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 20,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "MEDIUM",
+    "entity_id": "weak_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 2,
+    "fact_id": "histfact1_64be9b03cf2823b54c33dc38",
+    "fact_type": "replay_recurrence_fact",
+    "metric_name": "absolute_delta",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "direction": "flat",
+      "from_window": 60,
+      "interpretation": "stable",
+      "table": "weak_symbol_provider_quality",
+      "to_window": 120
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "replay_density",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c6d54774291e2cc3185441f7",
+    "fact_type": "replay_stability_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 1.0,
+        "20": 1.0,
+        "60": 1.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "replay_saturation",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_1e8583c1efb46548a506bab5",
+    "fact_type": "replay_stability_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 1.0,
+        "20": 1.0,
+        "60": 1.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_7c0bdf47528d0ed5fafb71e8",
+    "fact_type": "replay_stability_fact",
+    "metric_name": "replay_saturation",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "replay_saturation"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_e3a89429d9a58c28542e2ab2",
+    "fact_type": "replay_stability_fact",
+    "metric_name": "replay_saturation",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "replay_saturation"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_5663975ec082d9c93282632d",
+    "fact_type": "replay_stability_fact",
+    "metric_name": "replay_saturation",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "replay_saturation"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "sector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_e2806a7284af041b72ae11b6",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.06107,
+        "20": 0.06107,
+        "60": 0.06107
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "subsector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_edf605198a47e55035f863fb",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 0.06107,
+        "20": 0.06107,
+        "60": 0.06107
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_38e7e8ea1b70b35011a6c201",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.001943,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 18,
+      "symbol_share": 0.074689
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_88535f8137b97bda75e527f4",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.001943,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 18,
+      "symbol_share": 0.074689
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_90382b8319813aa99af2093f",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.001943,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 18,
+      "symbol_share": 0.074689
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_e256aac82bd73a86f046a47c",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.074689,
+    "payload_jsonb": {
+      "rank": 3,
+      "symbol_count": 18
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_39a1dafa03ef91698cc13ea2",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.074689,
+    "payload_jsonb": {
+      "rank": 3,
+      "symbol_count": 18
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_5657840da49be6a9b5b955d2",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.074689,
+    "payload_jsonb": {
+      "rank": 3,
+      "symbol_count": 18
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_f570a87970f3f17add86ffb0",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.06639,
+    "payload_jsonb": {
+      "rank": 8,
+      "symbol_count": 16
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_64347bbab06e7d4648ede166",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.06639,
+    "payload_jsonb": {
+      "rank": 8,
+      "symbol_count": 16
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_76f06dc553b47bf39bcc2e16",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.06639,
+    "payload_jsonb": {
+      "rank": 8,
+      "symbol_count": 16
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_033919e20efa6fa100f46882",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_785d055650128d9908612b6a",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c15b9e3a745514aaf8a32e28",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "overrepresented_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_fb80b57d0c700378de7830f2",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_sectors",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_118d826f5867b0a3878746f5",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.078838,
+    "payload_jsonb": {
+      "rank": 2,
+      "symbol_count": 19
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_31dff40fc8e41ff182b4493d",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.078838,
+    "payload_jsonb": {
+      "rank": 2,
+      "symbol_count": 19
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_47a880b5b35d0c95dedc9cbe",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.078838,
+    "payload_jsonb": {
+      "rank": 2,
+      "symbol_count": 19
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_b0376e88c915e8b682564aa9",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_sectors",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c128d9122927952cd99e3c2d",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c58080cda99bf760d21e7e12",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_d804dbe22cd0a0d93014abc4",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_c108a6119eda4dbcf058fe65",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 4,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_1010f694d991f3b5e43ce076",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 4,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "energy_utilities",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_40fb20672a64480ade111b49",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 4,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_638adaf0fe8d89f473b36832",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_sectors",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_731bb9293ac176c3ec0c4528",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_969c0622c9b13a4bbc30c7c5",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_933ca4a1554f693e5eb38ef6",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 5,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_e2ea3130281eeff5138bb4c4",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 5,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "financials",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_f344675beb1a21ab5093568e",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 5,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_20ef4f4b467be431c3966767",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_52fc99643fb65d21ecee2172",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_ffa659c34f33116a6fcc2d11",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 6,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_bfa4f492cd1f97b2fe1f624b",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 6,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_1b697b6455cc502d377e7c96",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 6,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "industrials_automation",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_49c4cdf5a91dc6412a554d17",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "industrials_automation",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_651daa39492a0ad2d31985ec",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "industrials_automation",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_6737d395334607ae8d092995",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 7,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "industrials_automation",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_7db2765dc608c1baf115df55",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 7,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "industrials_automation",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_17c7cafdb829f9e761ca7b8d",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 7,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_11dc1650142ea5b0e6523cf2",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_1492e41fa4bc95d9381b8b8b",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_sectors",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8949c83209182e2b18af357e",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "overrepresented_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_e432b1f5423c8e155e347c46",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_76306a33d3827f5c240aaba0",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.082988,
+    "payload_jsonb": {
+      "rank": 1,
+      "symbol_count": 20
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_e6bc75670037ab15f49cd2c9",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.082988,
+    "payload_jsonb": {
+      "rank": 1,
+      "symbol_count": 20
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "semiconductors",
+    "entity_type": "sector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_ad52c215b8b27fca041cb7c7",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.082988,
+    "payload_jsonb": {
+      "rank": 1,
+      "symbol_count": 20
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_3d2ea41ee1f852337a94dd71",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "sector_hhi",
+    "metric_value": 0.06107,
+    "payload_jsonb": {
+      "source_key": "sector_hhi"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_00514789b0cc49b175714dd0",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "sector_hhi",
+    "metric_value": 0.06107,
+    "payload_jsonb": {
+      "source_key": "sector_hhi"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_409678470e07f60eb1598bd9",
+    "fact_type": "sector_concentration_fact",
+    "metric_name": "sector_hhi",
+    "metric_value": 0.06107,
+    "payload_jsonb": {
+      "source_key": "sector_hhi"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_6dd951681b54904023e04da5",
+    "fact_type": "sector_fragility_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.006655,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "underrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 16,
+      "symbol_share": 0.06639
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8f05141632b1be7852c917de",
+    "fact_type": "sector_fragility_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.006655,
+    "payload_jsonb": {
+      "finding_bucket": "underrepresented_groups",
+      "representation_label": "underrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 16,
+      "symbol_share": 0.06639
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "sector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_d21ede63bce698db5dc37390",
+    "fact_type": "sector_fragility_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.006655,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_sectors",
+      "representation_label": "underrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 16,
+      "symbol_share": 0.06639
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f870cf28fc655d985e256bb8",
+    "fact_type": "structural_anchor_fact",
+    "metric_name": "anchor_dependency_score",
+    "metric_value": 0.125,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_443513d0ab034062a1b986c3",
+    "fact_type": "structural_anchor_fact",
+    "metric_name": "anchor_dependency_score",
+    "metric_value": 0.105263,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c459c2e8a2534ba27bc4b809",
+    "fact_type": "structural_anchor_fact",
+    "metric_name": "anchor_dependency_score",
+    "metric_value": 0.1,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "concentration_stability_drift",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_19157fd501428ced78beb82d",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- concentration_stability_drift: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "contradiction_stability_drift",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_bd88e6348d8cbecb206be83a",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- contradiction_stability_drift: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "exact_date_match_ratio",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_30970230132d8c0e73726b67",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "classification_code",
+    "metric_value": 0.25,
+    "payload_jsonb": {
+      "classification": "volatile",
+      "values_by_window": {
+        "120": 0.95,
+        "20": 0.95,
+        "60": 0.966667
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "foxa_persistence",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_91815b567145140c3730e6a7",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- foxa_persistence: score=None class=INSUFFICIENT_DATA"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "foxa_persistence_drift",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_6748fdb7dccc247f315d5546",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- foxa_persistence_drift: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "morphology_persistence_drift",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_ea6c0f91f1c59bfec376b979",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- morphology_persistence_drift: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "normalized_rows",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_58bb0cba85539186800d1b1d",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "classification_code",
+    "metric_value": 0.75,
+    "payload_jsonb": {
+      "classification": "emerging",
+      "values_by_window": {
+        "120": 28920.0,
+        "20": 4820.0,
+        "60": 14460.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "persistence_drift_score",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_5c7f8806450466137d5fca49",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- persistence_drift_score: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "reconciled_date_ratio",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_1a00077a030f731b66963311",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "classification_code",
+    "metric_value": 0.25,
+    "payload_jsonb": {
+      "classification": "volatile",
+      "values_by_window": {
+        "120": 0.05,
+        "20": 0.05,
+        "60": 0.033333
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "replay_stability_drift",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_514c8d1fffbaedb1b71d3301",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- replay_stability_drift: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "weak_symbol_persistence",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_f7f175da3cdc67b217ba841a",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- weak_symbol_persistence: score=None class=INSUFFICIENT_DATA"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "INSUFFICIENT",
+    "entity_id": "weak_symbol_persistence_drift",
+    "entity_type": "metric",
+    "evidence_count": 0,
+    "fact_id": "histfact1_d4988712a274423013bdd4ff",
+    "fact_type": "structural_instability_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": null,
+    "payload_jsonb": {
+      "class_label": "INSUFFICIENT_DATA",
+      "source_line_prefix": "- weak_symbol_persistence_drift: class=INSUFFICIENT_DATA delta=None transition=INSUFFICIENT_DATA acceleration=None"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long9_persistence_drift.md",
+    "source_phase": "HIST-LONG-9",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_1636bfa4cb1a6168ff3dd3bd",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.001943,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 18,
+      "symbol_share": 0.074689
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_1db02fe29f6a9695c8b82bc6",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.001943,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 18,
+      "symbol_share": 0.074689
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_efdd0087a0260394cf668345",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.074689,
+    "payload_jsonb": {
+      "rank": 3,
+      "symbol_count": 18
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_6a2e2b1cd5829c9f2aecabf3",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.074689,
+    "payload_jsonb": {
+      "rank": 3,
+      "symbol_count": 18
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "cloud_software_infrastructure",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_c1e41aa69a9385dbde4317d4",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.074689,
+    "payload_jsonb": {
+      "rank": 3,
+      "symbol_count": 18
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "commodities",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_1bc38fbf1f7bf5ebae3168eb",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.06639,
+    "payload_jsonb": {
+      "rank": 8,
+      "symbol_count": 16
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "commodities",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_e34b6037d2c5ce604f83203e",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.06639,
+    "payload_jsonb": {
+      "rank": 8,
+      "symbol_count": 16
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "commodities",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_6b672bc029ea85bf79a5bd53",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.06639,
+    "payload_jsonb": {
+      "rank": 8,
+      "symbol_count": 16
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_00544ad4b4cb0ac77f42000f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_subsectors",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_37b4d5f7c89f05d6778ab02a",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "overrepresented_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_97d1ae98a1856c899f0005d9",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c72d555439cd55f4735ae709",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.007939,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 19,
+      "symbol_share": 0.078838
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_77960dab3b4084b69f758fc5",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.078838,
+    "payload_jsonb": {
+      "rank": 2,
+      "symbol_count": 19
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_4bdb8167640b9581486a2fd9",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.078838,
+    "payload_jsonb": {
+      "rank": 2,
+      "symbol_count": 19
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_1a5dbe9ba1f768a5898e339f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.078838,
+    "payload_jsonb": {
+      "rank": 2,
+      "symbol_count": 19
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_96232aa2507da8707122de5b",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c1146ef93a7833dc6c6dbc97",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f53ebea596e343627cef4acb",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_subsectors",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_0c71a8845fa9e8fdfac62454",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 4,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_f168886b6287f1f7fdcccad8",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 4,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "energy_utilities",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_145102cec2962bfec0b8564e",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 4,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_bdccdb5a30aafa5a57d83953",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "financials",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ce61b9e09f8cde716fc479fd",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_subsectors",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "financials",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_5dd9518ad3be11423060605f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 5,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "financials",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_37262d22925483964566a22f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 5,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "financials",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_242c894923ef704b4f5db250",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 5,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_cf6a23104b840152be978f3c",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_d09127acf974be2f21702b10",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 6,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_db95cf1dc7f2afb92c6d90c7",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 6,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "healthcare_biotech",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_5332ef02e538e016e6258eb3",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 6,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "industrials_automation",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f2c87a0651461451d33eea7f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.00289,
+    "payload_jsonb": {
+      "finding_bucket": "balanced_groups",
+      "representation_label": "balanced",
+      "stability_label": "stable_distinct",
+      "symbol_count": 17,
+      "symbol_share": 0.070539
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "industrials_automation",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_a645141c14f6e9459be7ad8f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 7,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "industrials_automation",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_ec1ea44e204da80af8fe4b54",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 7,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "industrials_automation",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_e7c1e00f17a05a7f72b05f03",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.070539,
+    "payload_jsonb": {
+      "rank": 7,
+      "symbol_count": 17
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8f7c0dcfafd995cecf77ab3f",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_subsectors",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_9b07ed8aeadab6aaf7fb31c3",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "overrepresented_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_af28e398c3ce0af00169f7b1",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "hidden_concentration_pockets",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_eb552f8c8523a81026f6e4ba",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.015196,
+    "payload_jsonb": {
+      "finding_bucket": "stable_but_distinct_ecology_groups",
+      "representation_label": "overrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 20,
+      "symbol_share": 0.082988
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_53d69bba381d6ac70c89bbbf",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.082988,
+    "payload_jsonb": {
+      "rank": 1,
+      "symbol_count": 20
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_defa0afbc8aea4929dbeebc5",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.082988,
+    "payload_jsonb": {
+      "rank": 1,
+      "symbol_count": 20
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "semiconductors",
+    "entity_type": "subsector",
+    "evidence_count": 1,
+    "fact_id": "histfact1_09d772121ed5d6009074bcca",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "window_share",
+    "metric_value": 0.082988,
+    "payload_jsonb": {
+      "rank": 1,
+      "symbol_count": 20
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_83f2e80072609ae20c442bd1",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "subsector_hhi",
+    "metric_value": 0.06107,
+    "payload_jsonb": {
+      "source_key": "subsector_hhi"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_719e0ea0dcebb4d789bd1996",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "subsector_hhi",
+    "metric_value": 0.06107,
+    "payload_jsonb": {
+      "source_key": "subsector_hhi"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_1145fd4cfe684a27040fb0b2",
+    "fact_type": "subsector_concentration_fact",
+    "metric_name": "subsector_hhi",
+    "metric_value": 0.06107,
+    "payload_jsonb": {
+      "source_key": "subsector_hhi"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_d7da1db5d8159cb5b791d155",
+    "fact_type": "subsector_fragility_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.006655,
+    "payload_jsonb": {
+      "finding_bucket": "strongest_differentiated_subsectors",
+      "representation_label": "underrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 16,
+      "symbol_share": 0.06639
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "subsector",
+    "evidence_count": 3,
+    "fact_id": "histfact1_e21411b8cc036002af354637",
+    "fact_type": "subsector_fragility_fact",
+    "metric_name": "differentiation_score",
+    "metric_value": 0.006655,
+    "payload_jsonb": {
+      "finding_bucket": "underrepresented_groups",
+      "representation_label": "underrepresented",
+      "stability_label": "stable_distinct",
+      "symbol_count": 16,
+      "symbol_share": 0.06639
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+    "source_phase": "HIST-LONG-6",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_160828da9d39235f39ea020f",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "commodity_shock_like_concentration",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "commodity_shock_like_concentration"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_dc53343b862e57f4e71d4b1b",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "high_leader_tail_gap",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "high_leader_tail_gap"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_49a37144c31294b43a8913b2",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "one_two_symbol_dominance",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "one_two_symbol_dominance"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_a5bc08e8c7dac89612c68d96",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "sector_strength_with_weak_breadth",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "sector_strength_with_weak_breadth"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ac686d09d8be36beb8b929df",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "strong_20d_but_weak_120d_support",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "strong_20d_but_weak_120d_support"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_23d06c4d38dac5303a94da14",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "structural_coherence_score",
+    "metric_value": 0.95,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_1a789c47a96c0ecc49797953",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "unstable_subgroup_ranking",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "unstable_subgroup_ranking"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_07ff3d493a345472b69d6921",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "commodity_shock_like_concentration",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "commodity_shock_like_concentration"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_64471bf6a8cf54033e0f9b84",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "high_leader_tail_gap",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "high_leader_tail_gap"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_374501fd6b101d22741f4408",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "one_two_symbol_dominance",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "one_two_symbol_dominance"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_336f80cdf3df1cc58e5de8f9",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "sector_strength_with_weak_breadth",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "sector_strength_with_weak_breadth"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_a559c11f4b48e331ad02e7e9",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "strong_20d_but_weak_120d_support",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "strong_20d_but_weak_120d_support"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f694a94b5f31923e8058f125",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "structural_coherence_score",
+    "metric_value": 0.9875,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_47efceda3452fdb6768aa27f",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "unstable_subgroup_ranking",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "unstable_subgroup_ranking"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_f859ea968a257c71a9efb26e",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "commodity_shock_like_concentration",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "commodity_shock_like_concentration"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_43c5459a96a5cf178603ea1c",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "high_leader_tail_gap",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "high_leader_tail_gap"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_049e1ba32eef1c911ffa04c8",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "one_two_symbol_dominance",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "one_two_symbol_dominance"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c1f0584cdf512e252268272b",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "sector_strength_with_weak_breadth",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "sector_strength_with_weak_breadth"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_bad4fed7252e5c5b3f21e81a",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "strong_20d_but_weak_120d_support",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "strong_20d_but_weak_120d_support"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_efc73f8f5d1edb5935c98e4e",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "structural_coherence_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_bc37272d597c7e37b60d83a4",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "unstable_subgroup_ranking",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "unstable_subgroup_ranking"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_120",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_565948542b56ebb834cf3835",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "completeness",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "completeness"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 120
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_20",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_3dd95aeb79132d4f9172cb2c",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "completeness",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "completeness"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 20
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "window_60",
+    "entity_type": "window",
+    "evidence_count": 1,
+    "fact_id": "histfact1_5b2737113d5a84b2b6eb5577",
+    "fact_type": "topology_coherence_fact",
+    "metric_name": "completeness",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "source_key": "completeness"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "source_phase": "HIST-LONG-4",
+    "window_days": 60
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_180508884c38c5ad7d0b1f4f",
+    "fact_type": "topology_fragmentation_fact",
+    "metric_name": "persistent_concentration_pockets",
+    "metric_value": 0.0,
+    "payload_jsonb": {
+      "indicator": "persistent_concentration_pockets"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "contradiction_burden",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_039d71326a95eecb232f41e8",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- contradiction_burden: score=1.0 class=STABLE values={'20': 0.0, '60': 0.0, '120': 0.0}"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "effective_symbol_count",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_4078b3fd0dac39f0e3bfa7bf",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- effective_symbol_count: score=1.0 class=STABLE values={'20': 241.0, '60': 241.0, '120': 241.0}"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "morphology_persistence",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_b9e961c0c5e6964c22b4bb8b",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 1.0,
+        "20": 1.0,
+        "60": 1.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "overall",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_dcbd003b617ee2fd8526b1a3",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": null,
+      "source_line_prefix": "- Overall: INSUFFICIENT_DATA (score=1.0)"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "replay_density",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_67a49f0da8ae6c7c6a786d50",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- replay_density: score=1.0 class=STABLE values={'20': 1.0, '60': 1.0, '120': 1.0}"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "replay_saturation",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_cbd1b6d59240e7f3c5f7ff71",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- replay_saturation: score=1.0 class=STABLE values={'20': 1.0, '60': 1.0, '120': 1.0}"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "sector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_db3fdd46144e07a3492107a3",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- sector_hhi: score=1.0 class=STABLE values={'20': 0.06107, '60': 0.06107, '120': 0.06107}"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "sector_morphology_persistence",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_4c51c841977a036fe2a62fd5",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- sector_morphology_persistence: score=1.0 class=STABLE"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "subsector_hhi",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_899df35d21c1bbaa6acddf17",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- subsector_hhi: score=1.0 class=STABLE values={'20': 0.06107, '60': 0.06107, '120': 0.06107}"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "LOW",
+    "entity_id": "subsector_morphology_persistence",
+    "entity_type": "metric",
+    "evidence_count": 1,
+    "fact_id": "histfact1_9445dee3d854a176e2689acc",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "markdown_report_score",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "class_label": "STABLE",
+      "source_line_prefix": "- subsector_morphology_persistence: score=1.0 class=STABLE"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "reports/hist_long8_cross_window_persistence.md",
+    "source_phase": "HIST-LONG-8",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "topology_richness",
+    "entity_type": "metric",
+    "evidence_count": 3,
+    "fact_id": "histfact1_14073d3b120201dfe821bf5a",
+    "fact_type": "topology_persistence_fact",
+    "metric_name": "classification_code",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "classification": "stable",
+      "values_by_window": {
+        "120": 2.0,
+        "20": 2.0,
+        "60": 2.0
+      }
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "source_phase": "HIST-LONG-5B",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_54430281827489a72cbd07d1",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "broad_support_across_windows",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "broad_support_across_windows"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_a62e1787655ca449f350feed",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "low_rank_churn",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "low_rank_churn"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_4a0eae17b1529337f7f96ccb",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "stable_leaders_across_20_60_120",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "stable_leaders_across_20_60_120"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "commodities",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8ad90ec4e645b480e4ec5a30",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "stable_subgroup_ordering",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "stable_subgroup_ordering"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_0c4f74193ed5737297e4eb4d",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "broad_support_across_windows",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "broad_support_across_windows"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_6cacb6b9269e9c153f64ea89",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "low_rank_churn",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "low_rank_churn"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_30523e9981239a524c35df88",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "persistent_concentration_pockets",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "persistent_concentration_pockets"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_18390b13fcc1a7944f7b95a7",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "stable_leaders_across_20_60_120",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "stable_leaders_across_20_60_120"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "consumer_discretionary",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_8230ae2bb76196301c604e6f",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "stable_subgroup_ordering",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "stable_subgroup_ordering"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_44e35916a51d54e575479c8b",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "broad_support_across_windows",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "broad_support_across_windows"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_c412ab98f7e88997c3a8c639",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "low_rank_churn",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "low_rank_churn"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_7fbf3891314584f2a60f8a76",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "persistent_concentration_pockets",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "persistent_concentration_pockets"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_ab2b1da94c728558b853dab9",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "stable_leaders_across_20_60_120",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "stable_leaders_across_20_60_120"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  },
+  {
+    "confidence_label": "HIGH",
+    "entity_id": "semiconductors",
+    "entity_type": "group",
+    "evidence_count": 3,
+    "fact_id": "histfact1_730d5bd3d04fea4667e2f804",
+    "fact_type": "topology_stability_fact",
+    "metric_name": "stable_subgroup_ordering",
+    "metric_value": 1.0,
+    "payload_jsonb": {
+      "indicator": "stable_subgroup_ordering"
+    },
+    "phase_id": "HIST-FACT-1",
+    "source_artifact": "artifacts/hist_long7_intra_group_structural_contrast.json",
+    "source_phase": "HIST-LONG-7",
+    "window_days": null
+  }
+]
