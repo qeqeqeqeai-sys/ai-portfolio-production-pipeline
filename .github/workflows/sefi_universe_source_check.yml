@@ -1,10 +1,10 @@
-name: SEFI Universe Source Check
+name: SEFI Universe Load And Validation
 
 on:
   workflow_dispatch:
 
 jobs:
-  check:
+  sefi-universe:
     runs-on: ubuntu-latest
 
     env:
@@ -12,9 +12,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -23,6 +25,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Preflight secrets
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          echo "supabase_url_present=true"
+          echo "supabase_service_role_key_present=true"
+
+      - name: Load SEFI observation universe
+        run: |
+          python scripts/load_sefi_observation_universe.py --execute
+
       - name: Check SEFI universe source
         run: |
           python scripts/check_sefi_universe_source.py
@@ -30,3 +43,12 @@ jobs:
       - name: Validate DB universe
         run: |
           python scripts/validate_sefi_observation_universe.py --source db
+
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sefi-universe-validation
+          path: |
+            reports/sefi_observation_universe_db_migration_readiness.md
+          if-no-files-found: ignore
