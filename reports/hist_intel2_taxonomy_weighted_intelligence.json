@@ -1,0 +1,1535 @@
+{
+  "schema_version": "hist_intel2_v1",
+  "phase_id": "HIST-INTEL-2",
+  "phase_name": "HIST-INTEL-2_taxonomy_weighted_intelligence_engine",
+  "status": "ok",
+  "top_n": 10,
+  "fact_rows_supplied": 0,
+  "fact_rows_loaded": 266,
+  "fact_rows_considered": 266,
+  "taxonomy_tier_counts": {
+    "A": 155,
+    "B": 6,
+    "C": 105
+  },
+  "ecosystem_fact_rows": 161,
+  "operational_diagnostic_rows_suppressed": 105,
+  "local_input_status": {
+    "path": "reports/hist_fact1_expanded_observation_facts.json",
+    "status": "loaded",
+    "row_count": 266
+  },
+  "source_digest": "8f900c1146cd2533",
+  "taxonomy_design": {
+    "tier_a": {
+      "label": "Ecosystem Intelligence",
+      "weight": 3.0,
+      "purpose": "drives executive findings",
+      "fact_types": [
+        "breadth_fragility_fact",
+        "fragility_fact",
+        "morphology_drift_fact",
+        "persistence_decay_fact",
+        "persistence_fact",
+        "replay_density_fact",
+        "replay_recurrence_fact",
+        "replay_stability_fact",
+        "sector_concentration_fact",
+        "sector_fragility_fact",
+        "sector_persistence_fact",
+        "structural_anchor_fact",
+        "structural_hub_fact",
+        "structural_instability_fact",
+        "structural_transition_fact",
+        "subsector_concentration_fact",
+        "subsector_fragility_fact",
+        "subsector_persistence_fact",
+        "topology_coherence_fact",
+        "topology_fragmentation_fact",
+        "topology_persistence_fact",
+        "topology_stability_fact"
+      ]
+    },
+    "tier_b": {
+      "label": "Supporting Ecosystem Context",
+      "weight": 1.5,
+      "purpose": "supports ecosystem sections below Tier A priority"
+    },
+    "tier_c": {
+      "label": "Operational / Pipeline Telemetry",
+      "weight": 0.1,
+      "purpose": "suppressed from executive findings when Tier A facts exist",
+      "fact_types": [
+        "artifact_diagnostic_fact",
+        "ingestion_continuity_fact",
+        "normalization_diagnostic_fact",
+        "pipeline_diagnostic_fact",
+        "provider_degradation_fact",
+        "reconciliation_diagnostic_fact"
+      ],
+      "metrics": [
+        "absolute_delta",
+        "artifact_count",
+        "classification_code",
+        "completeness_ratio",
+        "continuity_gap_count",
+        "effective_symbol_count",
+        "endpoint_failure_count",
+        "exact_date_match_ratio",
+        "failed_count",
+        "ingestion_continuity_ratio",
+        "input_rows",
+        "loaded_rows",
+        "missing_sources",
+        "normalized_rows",
+        "output_rows",
+        "partial_count",
+        "provider_degradation",
+        "provider_degradation_count",
+        "reconciled_date_ratio",
+        "records_loaded",
+        "row_count",
+        "rows_loaded",
+        "runtime_seconds",
+        "schema_version"
+      ],
+      "allowed_metric_entities": [
+        "concentration_stability_drift",
+        "morphology_persistence",
+        "replay_density",
+        "replay_saturation",
+        "topology_richness"
+      ]
+    },
+    "ranking_inputs": [
+      "taxonomy_weight",
+      "confidence",
+      "evidence_count",
+      "window_coverage",
+      "recurrence",
+      "persistence",
+      "entity_type",
+      "entity_name"
+    ]
+  },
+  "governance_certification": {
+    "analysis_only": true,
+    "local_only": true,
+    "no_provider_calls": true,
+    "no_supabase_writes": true,
+    "no_prediction": true,
+    "no_trading": true,
+    "no_portfolio_recommendation": true,
+    "no_governed_activation": true
+  },
+  "findings": {
+    "executive_summary": [
+      "Ecosystem hub: group commodities scored 2.29275 with Tier A weight 3.0, 9 evidence units, 0 windows, and HIGH confidence.",
+      "Ecosystem hub: group consumer_discretionary scored 2.28979 with Tier A weight 3.0, 9 evidence units, 0 windows, and HIGH confidence.",
+      "Ecosystem hub: group semiconductors scored 2.289 with Tier A weight 3.0, 9 evidence units, 0 windows, and HIGH confidence.",
+      "Structural anchor: group semiconductors scored 2.522308 with Tier A weight 3.0, 39 evidence units, 0 windows, and HIGH confidence.",
+      "Structural anchor: group consumer_discretionary scored 2.521807 with Tier A weight 3.0, 39 evidence units, 0 windows, and HIGH confidence.",
+      "Structural anchor: group commodities scored 2.480625 with Tier A weight 3.0, 36 evidence units, 0 windows, and HIGH confidence.",
+      "Structural anchor: window window_120 scored 2.136 with Tier A weight 3.0, 2 evidence units, 1 windows, and MEDIUM confidence.",
+      "Structural anchor: window window_20 scored 2.136 with Tier A weight 3.0, 2 evidence units, 1 windows, and MEDIUM confidence.",
+      "Structural anchor: window window_60 scored 2.136 with Tier A weight 3.0, 2 evidence units, 1 windows, and MEDIUM confidence.",
+      "Structural anchor: metric concentration_stability_drift scored 0.222 with Tier A weight 3.0, 1 evidence units, 0 windows, and LOW confidence."
+    ],
+    "highest_ranked_ecosystem_hubs": [
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "hub_score": 2.29275,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 0.354167,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "concentration_fragility_fact",
+          "topology_coherence_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "high_leader_tail_gap",
+          "leader_tail_gap",
+          "stable_leaders_across_20_60_120"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:concentration_fragility_fact:leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:high_leader_tail_gap:None",
+          "HIST-LONG-7:topology_stability_fact:stable_leaders_across_20_60_120:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "hub_score": 2.28979,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 0.350877,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "concentration_fragility_fact",
+          "topology_coherence_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "high_leader_tail_gap",
+          "leader_tail_gap",
+          "stable_leaders_across_20_60_120"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:concentration_fragility_fact:leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:high_leader_tail_gap:None",
+          "HIST-LONG-7:topology_stability_fact:stable_leaders_across_20_60_120:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "hub_score": 2.289,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 0.35,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "concentration_fragility_fact",
+          "topology_coherence_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "high_leader_tail_gap",
+          "leader_tail_gap",
+          "stable_leaders_across_20_60_120"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:concentration_fragility_fact:leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:high_leader_tail_gap:None",
+          "HIST-LONG-7:topology_stability_fact:stable_leaders_across_20_60_120:None"
+        ]
+      }
+    ],
+    "strongest_structural_anchors": [
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "anchor_score": 2.522308,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 39,
+        "evidence_rows": 13,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 12,
+        "persistence_count": 0,
+        "average_metric_value": 0.469231,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "topology_stability_fact",
+          "structural_anchor_fact"
+        ],
+        "dominant_metrics": [
+          "anchor_dependency_score",
+          "broad_support_across_windows",
+          "commodity_shock_like_concentration"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:structural_anchor_fact:anchor_dependency_score:None",
+          "HIST-LONG-7:topology_coherence_fact:commodity_shock_like_concentration:None",
+          "HIST-LONG-7:topology_coherence_fact:high_leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:one_two_symbol_dominance:None",
+          "HIST-LONG-7:topology_coherence_fact:sector_strength_with_weak_breadth:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "anchor_score": 2.521807,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 39,
+        "evidence_rows": 13,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 12,
+        "persistence_count": 0,
+        "average_metric_value": 0.468674,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "topology_stability_fact",
+          "structural_anchor_fact"
+        ],
+        "dominant_metrics": [
+          "anchor_dependency_score",
+          "broad_support_across_windows",
+          "commodity_shock_like_concentration"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:structural_anchor_fact:anchor_dependency_score:None",
+          "HIST-LONG-7:topology_coherence_fact:commodity_shock_like_concentration:None",
+          "HIST-LONG-7:topology_coherence_fact:high_leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:one_two_symbol_dominance:None",
+          "HIST-LONG-7:topology_coherence_fact:sector_strength_with_weak_breadth:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "anchor_score": 2.480625,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 36,
+        "evidence_rows": 12,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 11,
+        "persistence_count": 0,
+        "average_metric_value": 0.422917,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "topology_stability_fact",
+          "structural_anchor_fact"
+        ],
+        "dominant_metrics": [
+          "anchor_dependency_score",
+          "broad_support_across_windows",
+          "commodity_shock_like_concentration"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:structural_anchor_fact:anchor_dependency_score:None",
+          "HIST-LONG-7:topology_coherence_fact:commodity_shock_like_concentration:None",
+          "HIST-LONG-7:topology_coherence_fact:high_leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:one_two_symbol_dominance:None",
+          "HIST-LONG-7:topology_coherence_fact:sector_strength_with_weak_breadth:None"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_120",
+        "anchor_score": 2.136,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "MEDIUM",
+        "evidence_count": 2,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "replay_stability_fact",
+          "topology_coherence_fact"
+        ],
+        "dominant_metrics": [
+          "completeness",
+          "replay_saturation"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:replay_stability_fact:replay_saturation:120",
+          "HIST-LONG-4:topology_coherence_fact:completeness:120"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_20",
+        "anchor_score": 2.136,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "MEDIUM",
+        "evidence_count": 2,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "replay_stability_fact",
+          "topology_coherence_fact"
+        ],
+        "dominant_metrics": [
+          "completeness",
+          "replay_saturation"
+        ],
+        "supporting_windows": [
+          "20"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:replay_stability_fact:replay_saturation:20",
+          "HIST-LONG-4:topology_coherence_fact:completeness:20"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_60",
+        "anchor_score": 2.136,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "MEDIUM",
+        "evidence_count": 2,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "replay_stability_fact",
+          "topology_coherence_fact"
+        ],
+        "dominant_metrics": [
+          "completeness",
+          "replay_saturation"
+        ],
+        "supporting_windows": [
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:replay_stability_fact:replay_saturation:60",
+          "HIST-LONG-4:topology_coherence_fact:completeness:60"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "concentration_stability_drift",
+        "anchor_score": 0.222,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": null,
+        "max_metric_value": null,
+        "dominant_fact_types": [
+          "structural_instability_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:structural_instability_fact:markdown_report_score:None"
+        ]
+      }
+    ],
+    "replay_concentration_leaders": [
+      {
+        "entity_type": "window",
+        "name": "window_120",
+        "replay_score": 2.136,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "MEDIUM",
+        "evidence_count": 2,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "replay_density_fact",
+          "replay_stability_fact"
+        ],
+        "dominant_metrics": [
+          "replay_density",
+          "replay_saturation"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:replay_density_fact:replay_density:120",
+          "HIST-LONG-4:replay_stability_fact:replay_saturation:120"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_20",
+        "replay_score": 2.136,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "MEDIUM",
+        "evidence_count": 2,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "replay_density_fact",
+          "replay_stability_fact"
+        ],
+        "dominant_metrics": [
+          "replay_density",
+          "replay_saturation"
+        ],
+        "supporting_windows": [
+          "20"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:replay_density_fact:replay_density:20",
+          "HIST-LONG-4:replay_stability_fact:replay_saturation:20"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_60",
+        "replay_score": 2.136,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "MEDIUM",
+        "evidence_count": 2,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "replay_density_fact",
+          "replay_stability_fact"
+        ],
+        "dominant_metrics": [
+          "replay_density",
+          "replay_saturation"
+        ],
+        "supporting_windows": [
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:replay_density_fact:replay_density:60",
+          "HIST-LONG-4:replay_stability_fact:replay_saturation:60"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "replay_density",
+        "replay_score": 1.956,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:topology_persistence_fact:markdown_report_score:None"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "replay_saturation",
+        "replay_score": 1.956,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:topology_persistence_fact:markdown_report_score:None"
+        ]
+      }
+    ],
+    "cross_window_persistence_leaders": [
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "persistence_score": 2.874,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_stability_fact",
+          "entity_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "broad_support_across_windows",
+          "morphology_persistence_score",
+          "persistent_concentration_pockets"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:topology_stability_fact:broad_support_across_windows:None",
+          "HIST-LONG-7:topology_stability_fact:persistent_concentration_pockets:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "persistence_score": 2.874,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_stability_fact",
+          "entity_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "broad_support_across_windows",
+          "morphology_persistence_score",
+          "persistent_concentration_pockets"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:topology_stability_fact:broad_support_across_windows:None",
+          "HIST-LONG-7:topology_stability_fact:persistent_concentration_pockets:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "persistence_score": 2.574,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 0.666667,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "entity_persistence_fact",
+          "topology_fragmentation_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "broad_support_across_windows",
+          "morphology_persistence_score",
+          "persistent_concentration_pockets"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:topology_fragmentation_fact:persistent_concentration_pockets:None",
+          "HIST-LONG-7:topology_stability_fact:broad_support_across_windows:None"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "replay_density",
+        "persistence_score": 1.902,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:topology_persistence_fact:markdown_report_score:None"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "replay_saturation",
+        "persistence_score": 1.902,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:topology_persistence_fact:markdown_report_score:None"
+        ]
+      }
+    ],
+    "fragility_sources": [
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "fragility_score": 1.53075,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 15,
+        "evidence_rows": 5,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 4,
+        "persistence_count": 0,
+        "average_metric_value": 0.0125,
+        "max_metric_value": 0.0625,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "concentration_fragility_fact",
+          "topology_fragmentation_fact"
+        ],
+        "dominant_metrics": [
+          "leader_tail_gap",
+          "persistent_concentration_pockets",
+          "sector_strength_with_weak_breadth"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:concentration_fragility_fact:leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:sector_strength_with_weak_breadth:None",
+          "HIST-LONG-7:topology_coherence_fact:strong_20d_but_weak_120d_support:None",
+          "HIST-LONG-7:topology_coherence_fact:unstable_subgroup_ranking:None",
+          "HIST-LONG-7:topology_fragmentation_fact:persistent_concentration_pockets:None"
+        ]
+      },
+      {
+        "entity_type": "sector",
+        "name": "commodities",
+        "fragility_score": 1.491982,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 9,
+        "evidence_rows": 3,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 2,
+        "persistence_count": 0,
+        "average_metric_value": 0.006655,
+        "max_metric_value": 0.006655,
+        "dominant_fact_types": [
+          "sector_fragility_fact"
+        ],
+        "dominant_metrics": [
+          "differentiation_score"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-6"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-6:sector_fragility_fact:differentiation_score:120",
+          "HIST-LONG-6:sector_fragility_fact:differentiation_score:120",
+          "HIST-LONG-6:sector_fragility_fact:differentiation_score:120"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "fragility_score": 1.471421,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 12,
+        "evidence_rows": 4,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 3,
+        "persistence_count": 0,
+        "average_metric_value": 0.013158,
+        "max_metric_value": 0.052632,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "concentration_fragility_fact"
+        ],
+        "dominant_metrics": [
+          "leader_tail_gap",
+          "sector_strength_with_weak_breadth",
+          "strong_20d_but_weak_120d_support"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:concentration_fragility_fact:leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:sector_strength_with_weak_breadth:None",
+          "HIST-LONG-7:topology_coherence_fact:strong_20d_but_weak_120d_support:None",
+          "HIST-LONG-7:topology_coherence_fact:unstable_subgroup_ranking:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "fragility_score": 1.46925,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 12,
+        "evidence_rows": 4,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 3,
+        "persistence_count": 0,
+        "average_metric_value": 0.0125,
+        "max_metric_value": 0.05,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "concentration_fragility_fact"
+        ],
+        "dominant_metrics": [
+          "leader_tail_gap",
+          "sector_strength_with_weak_breadth",
+          "strong_20d_but_weak_120d_support"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:concentration_fragility_fact:leader_tail_gap:None",
+          "HIST-LONG-7:topology_coherence_fact:sector_strength_with_weak_breadth:None",
+          "HIST-LONG-7:topology_coherence_fact:strong_20d_but_weak_120d_support:None",
+          "HIST-LONG-7:topology_coherence_fact:unstable_subgroup_ranking:None"
+        ]
+      },
+      {
+        "entity_type": "subsector",
+        "name": "commodities",
+        "fragility_score": 1.293982,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 6,
+        "evidence_rows": 2,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 0,
+        "average_metric_value": 0.006655,
+        "max_metric_value": 0.006655,
+        "dominant_fact_types": [
+          "subsector_fragility_fact"
+        ],
+        "dominant_metrics": [
+          "differentiation_score"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-6"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-6:subsector_fragility_fact:differentiation_score:120",
+          "HIST-LONG-6:subsector_fragility_fact:differentiation_score:120"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "concentration_stability_drift",
+        "fragility_score": 0.222,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": null,
+        "max_metric_value": null,
+        "dominant_fact_types": [
+          "structural_instability_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:structural_instability_fact:markdown_report_score:None"
+        ]
+      }
+    ],
+    "drift_morphology_change_leaders": [
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "drift_score": 2.73,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 6,
+        "evidence_rows": 2,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "entity_persistence_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "low_rank_churn",
+          "morphology_persistence_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:topology_stability_fact:low_rank_churn:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "drift_score": 2.73,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 6,
+        "evidence_rows": 2,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "entity_persistence_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "low_rank_churn",
+          "morphology_persistence_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:topology_stability_fact:low_rank_churn:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "drift_score": 2.73,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "HIGH",
+        "evidence_count": 6,
+        "evidence_rows": 2,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 1,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "entity_persistence_fact",
+          "topology_stability_fact"
+        ],
+        "dominant_metrics": [
+          "low_rank_churn",
+          "morphology_persistence_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:topology_stability_fact:low_rank_churn:None"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "concentration_stability_drift",
+        "drift_score": 0.222,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": null,
+        "max_metric_value": null,
+        "dominant_fact_types": [
+          "structural_instability_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:structural_instability_fact:markdown_report_score:None"
+        ]
+      }
+    ],
+    "topology_findings": [
+      {
+        "entity_type": "group",
+        "name": "semiconductors",
+        "topology_score": 2.401845,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 2.8125,
+        "confidence_label": "HIGH",
+        "evidence_count": 48,
+        "evidence_rows": 16,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 15,
+        "persistence_count": 1,
+        "average_metric_value": 0.513298,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "topology_stability_fact",
+          "ecosystem_concentration_fact"
+        ],
+        "dominant_metrics": [
+          "anchor_dependency_score",
+          "breadth_of_differentiation",
+          "broad_support_across_windows"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:ecosystem_concentration_fact:hidden_concentration_intensity:None",
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:participation_fact:breadth_of_differentiation:None",
+          "HIST-LONG-7:structural_anchor_fact:anchor_dependency_score:None",
+          "HIST-LONG-7:topology_coherence_fact:commodity_shock_like_concentration:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "consumer_discretionary",
+        "topology_score": 2.398247,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 2.8125,
+        "confidence_label": "HIGH",
+        "evidence_count": 48,
+        "evidence_rows": 16,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 15,
+        "persistence_count": 1,
+        "average_metric_value": 0.509033,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "topology_stability_fact",
+          "ecosystem_concentration_fact"
+        ],
+        "dominant_metrics": [
+          "anchor_dependency_score",
+          "breadth_of_differentiation",
+          "broad_support_across_windows"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:ecosystem_concentration_fact:hidden_concentration_intensity:None",
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:participation_fact:breadth_of_differentiation:None",
+          "HIST-LONG-7:structural_anchor_fact:anchor_dependency_score:None",
+          "HIST-LONG-7:topology_coherence_fact:commodity_shock_like_concentration:None"
+        ]
+      },
+      {
+        "entity_type": "group",
+        "name": "commodities",
+        "topology_score": 2.335105,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 2.8125,
+        "confidence_label": "HIGH",
+        "evidence_count": 48,
+        "evidence_rows": 16,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 15,
+        "persistence_count": 1,
+        "average_metric_value": 0.434199,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact",
+          "topology_stability_fact",
+          "ecosystem_concentration_fact"
+        ],
+        "dominant_metrics": [
+          "anchor_dependency_score",
+          "breadth_of_differentiation",
+          "broad_support_across_windows"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-7"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-7:ecosystem_concentration_fact:hidden_concentration_intensity:None",
+          "HIST-LONG-7:entity_persistence_fact:morphology_persistence_score:None",
+          "HIST-LONG-7:participation_fact:breadth_of_differentiation:None",
+          "HIST-LONG-7:structural_anchor_fact:anchor_dependency_score:None",
+          "HIST-LONG-7:topology_coherence_fact:commodity_shock_like_concentration:None"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_120",
+        "topology_score": 2.01,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact"
+        ],
+        "dominant_metrics": [
+          "completeness"
+        ],
+        "supporting_windows": [
+          "120"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:topology_coherence_fact:completeness:120"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_20",
+        "topology_score": 2.01,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact"
+        ],
+        "dominant_metrics": [
+          "completeness"
+        ],
+        "supporting_windows": [
+          "20"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:topology_coherence_fact:completeness:20"
+        ]
+      },
+      {
+        "entity_type": "window",
+        "name": "window_60",
+        "topology_score": 2.01,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 1,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_coherence_fact"
+        ],
+        "dominant_metrics": [
+          "completeness"
+        ],
+        "supporting_windows": [
+          "60"
+        ],
+        "supporting_phases": [
+          "HIST-LONG-4"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-4:topology_coherence_fact:completeness:60"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "replay_density",
+        "topology_score": 1.956,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:topology_persistence_fact:markdown_report_score:None"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "replay_saturation",
+        "topology_score": 1.956,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 1,
+        "average_metric_value": 1.0,
+        "max_metric_value": 1.0,
+        "dominant_fact_types": [
+          "topology_persistence_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-8"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-8:topology_persistence_fact:markdown_report_score:None"
+        ]
+      },
+      {
+        "entity_type": "metric",
+        "name": "concentration_stability_drift",
+        "topology_score": 0.222,
+        "taxonomy_tier": "A",
+        "taxonomy_weight": 3.0,
+        "confidence_label": "LOW",
+        "evidence_count": 1,
+        "evidence_rows": 1,
+        "window_coverage": 0,
+        "phase_coverage": 1,
+        "recurrence_count": 0,
+        "persistence_count": 0,
+        "average_metric_value": null,
+        "max_metric_value": null,
+        "dominant_fact_types": [
+          "structural_instability_fact"
+        ],
+        "dominant_metrics": [
+          "markdown_report_score"
+        ],
+        "supporting_windows": [],
+        "supporting_phases": [
+          "HIST-LONG-9"
+        ],
+        "supporting_evidence": [
+          "HIST-LONG-9:structural_instability_fact:markdown_report_score:None"
+        ]
+      }
+    ],
+    "suppressed_operational_diagnostics": [
+      {
+        "fact_type": "replay_recurrence_fact",
+        "metric_name": "absolute_delta",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 58,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "persistence_fact",
+        "metric_name": "classification_code",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 12,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "structural_instability_fact",
+        "metric_name": "markdown_report_score",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 8,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "topology_persistence_fact",
+        "metric_name": "markdown_report_score",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 7,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "morphology_drift_fact",
+        "metric_name": "absolute_delta",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 5,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "breadth_expansion_fact",
+        "metric_name": "effective_symbol_count",
+        "entity_type": "window",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 3,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "breadth_fragility_fact",
+        "metric_name": "failed_count",
+        "entity_type": "window",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 3,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "structural_instability_fact",
+        "metric_name": "classification_code",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 3,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "replay_stability_fact",
+        "metric_name": "classification_code",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 2,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      },
+      {
+        "fact_type": "sector_concentration_fact",
+        "metric_name": "classification_code",
+        "entity_type": "metric",
+        "taxonomy_tier": "C",
+        "taxonomy_weight": 0.1,
+        "suppressed_count": 2,
+        "reason": "Tier C operational telemetry is excluded from executive intelligence when Tier A/B ecosystem facts exist"
+      }
+    ]
+  },
+  "limitations": [
+    "Analysis is deterministic, local-only, and bounded to supplied HIST-FACT-1/observation fact rows; it does not collect live data or activate governed workflows.",
+    "Taxonomy weights prioritize Tier A ecosystem intelligence over Tier B support context and suppress Tier C operational telemetry from executive intelligence whenever Tier A facts exist.",
+    "Tier C operational diagnostics were detected and reported only in the suppressed diagnostics section."
+  ]
+}
