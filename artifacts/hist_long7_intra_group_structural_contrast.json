@@ -1,0 +1,312 @@
+{
+  "boundary_certification": {
+    "analysis_only": true,
+    "fmp_calls_enabled": false,
+    "governance_mode": "observational_only",
+    "hist_long4_reexecution_enabled": false,
+    "hist_long5b_reexecution_enabled": false,
+    "hist_long6_reexecution_enabled": false,
+    "local_artifacts_only": true,
+    "phase": "HIST-LONG-7_intra_group_structural_contrast",
+    "prediction_enabled": false,
+    "provider_api_calls_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "source_artifacts_only": true,
+    "supabase_write_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "cross_group_findings": {
+    "expected_next_insight_layer": "Add symbol-level constituent contribution artifacts before asserting true anchors, leader tails, or subclusters.",
+    "not_hist_long6_summary_only": true,
+    "primary_explanation": "The top groups are differentiated by persistent cardinality/breadth, stable rank ordering, and sector-subsector coherence; only commodities add macro/regime sensitivity and lower breadth."
+  },
+  "governance_certification": {
+    "analysis_only": true,
+    "fmp_calls_enabled": false,
+    "governance_mode": "observational_only",
+    "hist_long4_reexecution_enabled": false,
+    "hist_long5b_reexecution_enabled": false,
+    "hist_long6_reexecution_enabled": false,
+    "local_artifacts_only": true,
+    "phase": "HIST-LONG-7_intra_group_structural_contrast",
+    "prediction_enabled": false,
+    "provider_api_calls_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "source_artifacts_only": true,
+    "supabase_write_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "group_morphology_decomposition": [
+    {
+      "fragility_indicators": {
+        "commodity_shock_like_concentration": false,
+        "high_leader_tail_gap": false,
+        "one_two_symbol_dominance": false,
+        "sector_strength_with_weak_breadth": false,
+        "strong_20d_but_weak_120d_support": false,
+        "unstable_subgroup_ranking": false
+      },
+      "group": "semiconductors",
+      "interpretation": "Differentiation is broad and structurally coherent: 20 observed names persist across every window, sector and subsector signals collapse to the same block, and the hidden concentration pocket is therefore a wide topology pocket rather than a one/two-symbol anchor.",
+      "metrics": {
+        "anchor_dependency_score": 0.1,
+        "breadth_of_differentiation": 1.0,
+        "expected_equal_sector_share": 0.125,
+        "hidden_concentration_intensity": 0.112772,
+        "internal_contradiction_score": 0.0,
+        "intra_group_dispersion": 0.0,
+        "leader_tail_gap": 0.05,
+        "morphology_persistence_score": 1.0,
+        "normalized_target_set_share": 0.363638,
+        "source_signal_note": "Symbol-level constituents are not present in HIST-LONG-4/5B/6; anchor metrics are conservative upper-bound proxies from group cardinality, not invented symbol leadership.",
+        "structural_coherence_score": 1.0,
+        "subcluster_separation_score": 0.0,
+        "window_alignment_score": 1.0
+      },
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "persistence_indicators": {
+        "broad_support_across_windows": true,
+        "low_rank_churn": true,
+        "persistent_concentration_pockets": true,
+        "stable_leaders_across_20_60_120": true,
+        "stable_subgroup_ordering": true
+      },
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      },
+      "window_observations": [
+        {
+          "sector_rank": 1,
+          "sector_share": 0.082988,
+          "subsector_rank": 1,
+          "subsector_share": 0.082988,
+          "symbol_count": 20,
+          "window": 20
+        },
+        {
+          "sector_rank": 1,
+          "sector_share": 0.082988,
+          "subsector_rank": 1,
+          "subsector_share": 0.082988,
+          "symbol_count": 20,
+          "window": 60
+        },
+        {
+          "sector_rank": 1,
+          "sector_share": 0.082988,
+          "subsector_rank": 1,
+          "subsector_share": 0.082988,
+          "symbol_count": 20,
+          "window": 120
+        }
+      ]
+    },
+    {
+      "fragility_indicators": {
+        "commodity_shock_like_concentration": false,
+        "high_leader_tail_gap": false,
+        "one_two_symbol_dominance": false,
+        "sector_strength_with_weak_breadth": false,
+        "strong_20d_but_weak_120d_support": false,
+        "unstable_subgroup_ranking": false
+      },
+      "group": "consumer_discretionary",
+      "interpretation": "Differentiation is broad but slightly less intense than semiconductors: 19 persistent names support the pocket, with no observed internal subcluster split or window rank churn.",
+      "metrics": {
+        "anchor_dependency_score": 0.105263,
+        "breadth_of_differentiation": 0.95,
+        "expected_equal_sector_share": 0.125,
+        "hidden_concentration_intensity": 0.101768,
+        "internal_contradiction_score": 0.0,
+        "intra_group_dispersion": 0.0,
+        "leader_tail_gap": 0.052632,
+        "morphology_persistence_score": 1.0,
+        "normalized_target_set_share": 0.345453,
+        "source_signal_note": "Symbol-level constituents are not present in HIST-LONG-4/5B/6; anchor metrics are conservative upper-bound proxies from group cardinality, not invented symbol leadership.",
+        "structural_coherence_score": 0.9875,
+        "subcluster_separation_score": 0.0,
+        "window_alignment_score": 1.0
+      },
+      "morphology_classifications": [
+        "broad_coherent",
+        "persistent_concentration_pocket"
+      ],
+      "persistence_indicators": {
+        "broad_support_across_windows": true,
+        "low_rank_churn": true,
+        "persistent_concentration_pockets": true,
+        "stable_leaders_across_20_60_120": true,
+        "stable_subgroup_ordering": true
+      },
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "equity_topology_like"
+      },
+      "window_observations": [
+        {
+          "sector_rank": 2,
+          "sector_share": 0.078838,
+          "subsector_rank": 2,
+          "subsector_share": 0.078838,
+          "symbol_count": 19,
+          "window": 20
+        },
+        {
+          "sector_rank": 2,
+          "sector_share": 0.078838,
+          "subsector_rank": 2,
+          "subsector_share": 0.078838,
+          "symbol_count": 19,
+          "window": 60
+        },
+        {
+          "sector_rank": 2,
+          "sector_share": 0.078838,
+          "subsector_rank": 2,
+          "subsector_share": 0.078838,
+          "symbol_count": 19,
+          "window": 120
+        }
+      ]
+    },
+    {
+      "fragility_indicators": {
+        "commodity_shock_like_concentration": false,
+        "high_leader_tail_gap": false,
+        "one_two_symbol_dominance": false,
+        "sector_strength_with_weak_breadth": false,
+        "strong_20d_but_weak_120d_support": false,
+        "unstable_subgroup_ranking": false
+      },
+      "group": "commodities",
+      "interpretation": "Differentiation is persistent but lower-breadth and macro/regime-sensitive: 16 names remain stable across windows, yet the group is underrepresented versus the strongest pockets and is best read as a broad commodity regime block, not an equity-topology anchor pocket.",
+      "metrics": {
+        "anchor_dependency_score": 0.125,
+        "breadth_of_differentiation": 0.8,
+        "expected_equal_sector_share": 0.125,
+        "hidden_concentration_intensity": 0.072179,
+        "internal_contradiction_score": 0.0,
+        "intra_group_dispersion": 0.0,
+        "leader_tail_gap": 0.0625,
+        "morphology_persistence_score": 1.0,
+        "normalized_target_set_share": 0.290909,
+        "source_signal_note": "Symbol-level constituents are not present in HIST-LONG-4/5B/6; anchor metrics are conservative upper-bound proxies from group cardinality, not invented symbol leadership.",
+        "structural_coherence_score": 0.95,
+        "subcluster_separation_score": 0.0,
+        "window_alignment_score": 1.0
+      },
+      "morphology_classifications": [
+        "broad_coherent",
+        "macro_regime_sensitive"
+      ],
+      "persistence_indicators": {
+        "broad_support_across_windows": true,
+        "low_rank_churn": true,
+        "persistent_concentration_pockets": false,
+        "stable_leaders_across_20_60_120": true,
+        "stable_subgroup_ordering": true
+      },
+      "structural_read": {
+        "broad_based_vs_anchor_driven": "broad_based",
+        "coherent_vs_stratified": "coherent",
+        "contradictory_vs_aligned": "aligned",
+        "persistent_vs_episodic": "persistent",
+        "topology_vs_macro": "macro_regime_sensitive"
+      },
+      "window_observations": [
+        {
+          "sector_rank": 8,
+          "sector_share": 0.06639,
+          "subsector_rank": 8,
+          "subsector_share": 0.06639,
+          "symbol_count": 16,
+          "window": 20
+        },
+        {
+          "sector_rank": 8,
+          "sector_share": 0.06639,
+          "subsector_rank": 8,
+          "subsector_share": 0.06639,
+          "symbol_count": 16,
+          "window": 60
+        },
+        {
+          "sector_rank": 8,
+          "sector_share": 0.06639,
+          "subsector_rank": 8,
+          "subsector_share": 0.06639,
+          "symbol_count": 16,
+          "window": 120
+        }
+      ]
+    }
+  ],
+  "objective": "Intra-group structural contrast and sector morphology decomposition for the three HIST-LONG-6 differentiated groups.",
+  "recommendation_after_hist_long7": "Proceed to a symbol-level, local-artifact-only constituent decomposition only if prior artifacts expose constituents; otherwise keep morphology conclusions at bounded group-level resolution.",
+  "review_date": "2026-05-29",
+  "schema_version": "hist_long7_v1",
+  "source_artifacts": [
+    "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+    "artifacts/hist_long6_cross_sectional_ecology_differentiation.json"
+  ],
+  "source_verification": {
+    "hist_long4_digest": "ccb37a3969309734c46220f3a348ef8e49aa228eaf633e6566d6cfcad39af3c9",
+    "hist_long5b_digest": "a9c950582a0647b9ec5e6bafc2d0572a11b251d45c2de655cc56254156833ac4",
+    "hist_long6_digest": "612aa07c3c9a3d1788a0aa433cc4ccdae9058d340d45af37bb759ad7c076552b",
+    "preflight_checks": {
+      "hist_long4_forbidden_governance_enabled": [],
+      "hist_long4_no_partial_failed_provider_degradation": true,
+      "hist_long4_source_path": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+      "hist_long4_status_ok": true,
+      "hist_long4_windows": [
+        20,
+        60,
+        120
+      ],
+      "hist_long4_windows_exactly_20_60_120": true,
+      "hist_long5b_completed_windows": [
+        20,
+        60,
+        120
+      ],
+      "hist_long5b_completed_windows_exactly_20_60_120": true,
+      "hist_long5b_concentration_stable": true,
+      "hist_long5b_forbidden_governance_enabled": [],
+      "hist_long5b_no_fragility": true,
+      "hist_long5b_replay_evolution_stable": true,
+      "hist_long5b_source_path": "artifacts/hist_long5b_temporal_delta_sensitivity_classification.json",
+      "hist_long5b_status_ok": true,
+      "hist_long6_expected_hidden_pockets": true,
+      "hist_long6_expected_top_three": true,
+      "hist_long6_forbidden_governance_enabled": [],
+      "hist_long6_source_path": "artifacts/hist_long6_cross_sectional_ecology_differentiation.json",
+      "hist_long6_status_ok": true,
+      "hist_long7_forbidden_governance_enabled": [],
+      "hist_long7_governance_flags_disabled": true
+    },
+    "verified": true
+  },
+  "status": "ok",
+  "target_groups": [
+    "semiconductors",
+    "consumer_discretionary",
+    "commodities"
+  ]
+}
