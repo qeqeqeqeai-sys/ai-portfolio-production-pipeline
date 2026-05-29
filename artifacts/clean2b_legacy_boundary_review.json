@@ -1,0 +1,2262 @@
+{
+  "clean3_recommendation": {
+    "blockers": [
+      "Queue A is empty after applying CLEAN-2B safety filters; no exact files qualify for archive.",
+      "51 UNKNOWN_REQUIRES_REVIEW files need manual review or protection decisions.",
+      "27 CLEAN-2 unreferenced candidates were excluded by package, current-core, graph-boundary, or active dataflow-map safeguards."
+    ],
+    "can_proceed": false,
+    "excluded_clean2_candidates": [
+      {
+        "path": "transmission_layers/graph_foundation/__init__.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "package initializer for package with referenced/non-candidate modules"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/finish_graph_evolution_run.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/graph_supabase_client.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/canonical_structural_ontology_engine.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/directed_intermediary_seeding_engine.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_classification.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_detection_engine.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_normalization.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_scoring.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_telemetry.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_utils.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/intermediaries/intermediary_validation.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3a1_evidence_density_expansion.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3a2_cross_theme_relationship_expansion.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3a_evidence_graph_expansion.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3b_relationship_persistence.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3c_regime_transition_structural_drift.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3d_structural_pressure_accumulation.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase3e_transmission_potential_surface.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase4a_controlled_single_hop_propagation.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/phase4b_propagation_memory_decay.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review",
+          "listed as active path or active path pattern in repository dependency dataflow map"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/start_graph_evolution_run.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review"
+        ]
+      },
+      {
+        "path": "transmission_layers/graph_foundation/write_graph_evolution_phase_event.py",
+        "reasons": [
+          "graph_foundation boundary retained for manual legacy ecosystem review"
+        ]
+      },
+      {
+        "path": "transmission_layers/history_long/__init__.py",
+        "reasons": [
+          "inside current SEFI core/protected path",
+          "package initializer for package with referenced/non-candidate modules"
+        ]
+      },
+      {
+        "path": "transmission_layers/history_read_model/__init__.py",
+        "reasons": [
+          "inside current SEFI core/protected path",
+          "package initializer for package with referenced/non-candidate modules"
+        ]
+      },
+      {
+        "path": "transmission_layers/intelligence/tier3i/__init__.py",
+        "reasons": [
+          "package initializer for package with referenced/non-candidate modules"
+        ]
+      },
+      {
+        "path": "transmission_layers/intelligence/tier4/__init__.py",
+        "reasons": [
+          "package initializer for package with referenced/non-candidate modules"
+        ]
+      }
+    ],
+    "recommended_scope": []
+  },
+  "generated_at": "2026-05-29T12:36:17.113220+00:00",
+  "high_risk_protected_paths": [
+    {
+      "matched_files": [
+        "transmission_layers/history_read_model/__init__.py",
+        "transmission_layers/history_read_model/fact_emitter.py",
+        "transmission_layers/history_read_model/loader.py",
+        "transmission_layers/history_read_model/observation_query.py",
+        "transmission_layers/history_read_model/queries.py"
+      ],
+      "path_prefix": "transmission_layers/history_read_model/",
+      "reason": "DB-2 observation read model defaults to protect."
+    },
+    {
+      "matched_files": [
+        "transmission_layers/history_long/__init__.py",
+        "transmission_layers/history_long/hist_intel1_historical_structural_findings.py",
+        "transmission_layers/history_long/hist_intel1b_fact_native_historical_findings.py",
+        "transmission_layers/history_long/hist_long8_cross_window_persistence.py",
+        "transmission_layers/history_long/hist_long9_persistence_drift.py"
+      ],
+      "path_prefix": "transmission_layers/history_long/",
+      "reason": "Historical long/intel modules default to protect."
+    },
+    {
+      "matched_files": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b1_benchmark_registry.py",
+        "transmission_layers/expectation_failure/real_data/b1_fragility_payload_builder.py",
+        "transmission_layers/expectation_failure/real_data/b1_market_snapshot_builder.py",
+        "transmission_layers/expectation_failure/real_data/b1_real_entity_registry.py",
+        "transmission_layers/expectation_failure/real_data/b1_snapshot_certification.py",
+        "transmission_layers/expectation_failure/real_data/b2_ingestion_candidate_builder.py",
+        "transmission_layers/expectation_failure/real_data/b2_ingestion_certification.py",
+        "transmission_layers/expectation_failure/real_data/b2_market_ingestion_adapter.py",
+        "transmission_layers/expectation_failure/real_data/b2_market_input_normalizer.py",
+        "transmission_layers/expectation_failure/real_data/b2_market_input_validation.py",
+        "transmission_layers/expectation_failure/real_data/b3_certified_snapshot_envelope.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembler.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembly_certification.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembly_validation.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_input_mapper.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_certification.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_contract.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_orchestrator.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_validator.py",
+        "transmission_layers/expectation_failure/real_data/b4_supabase_snapshot_repository.py",
+        "transmission_layers/expectation_failure/real_data/hist_density1_controlled_historical_density_expansion.py",
+        "transmission_layers/expectation_failure/real_data/hist_density2_longitudinal_ecology_enrichment.py",
+        "transmission_layers/expectation_failure/real_data/hist_density3_curated_ecology_expansion.py",
+        "transmission_layers/expectation_failure/real_data/hist_density4_findings_review.py",
+        "transmission_layers/expectation_failure/real_data/hist_long1_longitudinal_ecology.py",
+        "transmission_layers/expectation_failure/real_data/hist_long2_real_longitudinal_ecology.py",
+        "transmission_layers/expectation_failure/real_data/hist_long3_updated_universe_validation.py",
+        "transmission_layers/expectation_failure/real_data/hist_long4_real_multi_window_ecology.py",
+        "transmission_layers/expectation_failure/real_data/hist_long5_analysis_only_review.py",
+        "transmission_layers/expectation_failure/real_data/hist_long5b_temporal_delta_sensitivity_classification.py",
+        "transmission_layers/expectation_failure/real_data/hist_long6_cross_sectional_ecology_differentiation.py",
+        "transmission_layers/expectation_failure/real_data/hist_long7_intra_group_structural_contrast.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist1_controlled_historical_observation.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist2_historical_continuity_intelligence.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist3_historical_continuity_archetypes.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist4_archetype_recurrence_ecology.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist5_temporal_continuity_regimes.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist6_regime_morphology_observation.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist7_regime_ecology_saturation.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist_cache_raw_fmp.py",
+        "transmission_layers/expectation_failure/real_data/ops_live1_controlled_ecosystem_ingestion.py",
+        "transmission_layers/expectation_failure/real_data/ops_live1b_snapshot_observation_review.py",
+        "transmission_layers/expectation_failure/real_data/sde2_curated_symbol_ecology_expansion.py",
+        "transmission_layers/expectation_failure/real_data/sefi_observation_universe.py",
+        "transmission_layers/expectation_failure/real_data/t1_temporal_snapshot_sequencing.py",
+        "transmission_layers/expectation_failure/real_data/t2_structural_delta_intelligence.py",
+        "transmission_layers/expectation_failure/real_data/t3_fragility_evolution_curves.py",
+        "transmission_layers/expectation_failure/real_data/t4_regime_transition_detection.py",
+        "transmission_layers/expectation_failure/real_data/t5_historical_explainability.py",
+        "transmission_layers/expectation_failure/real_data/t6_temporal_evolution_certification_closeout.py"
+      ],
+      "path_prefix": "transmission_layers/expectation_failure/real_data/",
+      "reason": "Real-data expectation-failure modules are conservative/protected."
+    },
+    {
+      "matched_files": [
+        "transmission_layers/live_ops/__init__.py",
+        "transmission_layers/live_ops/ops_live2_observation_fact_accumulation.py",
+        "transmission_layers/live_ops/ops_live3_structural_state_snapshot.py"
+      ],
+      "path_prefix": "transmission_layers/live_ops/",
+      "reason": "Live operations current SEFI core."
+    },
+    {
+      "matched_files": [
+        "transmission_layers/graph_foundation/__init__.py",
+        "transmission_layers/graph_foundation/ai_anchor_graph_seed.py",
+        "transmission_layers/graph_foundation/continuity/continuity_engine.py",
+        "transmission_layers/graph_foundation/edge_scoring.py",
+        "transmission_layers/graph_foundation/finish_graph_evolution_run.py",
+        "transmission_layers/graph_foundation/graph_models.py",
+        "transmission_layers/graph_foundation/graph_snapshot_service.py",
+        "transmission_layers/graph_foundation/graph_supabase_client.py",
+        "transmission_layers/graph_foundation/graph_validation.py",
+        "transmission_layers/graph_foundation/intermediaries/canonical_structural_ontology_engine.py",
+        "transmission_layers/graph_foundation/intermediaries/directed_intermediary_seeding_engine.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_classification.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_detection_engine.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_normalization.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_scoring.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_telemetry.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_utils.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_validation.py",
+        "transmission_layers/graph_foundation/phase3a1_evidence_density_expansion.py",
+        "transmission_layers/graph_foundation/phase3a2_cross_theme_relationship_expansion.py",
+        "transmission_layers/graph_foundation/phase3a_evidence_graph_expansion.py",
+        "transmission_layers/graph_foundation/phase3b_relationship_persistence.py",
+        "transmission_layers/graph_foundation/phase3c_regime_transition_structural_drift.py",
+        "transmission_layers/graph_foundation/phase3d_structural_pressure_accumulation.py",
+        "transmission_layers/graph_foundation/phase3e_transmission_potential_surface.py",
+        "transmission_layers/graph_foundation/phase4a_controlled_single_hop_propagation.py",
+        "transmission_layers/graph_foundation/phase4b_propagation_memory_decay.py",
+        "transmission_layers/graph_foundation/phase4c_propagation_monitoring_dashboard.py",
+        "transmission_layers/graph_foundation/phase4e_historical_propagation_replay.py",
+        "transmission_layers/graph_foundation/phase5b_propagation_corridor_engine.py",
+        "transmission_layers/graph_foundation/phase5c_regime_corridor_dynamics_engine.py",
+        "transmission_layers/graph_foundation/phase5d_structural_propagation_regime_forecasting_engine.py",
+        "transmission_layers/graph_foundation/run_pass1_graph_foundation.py",
+        "transmission_layers/graph_foundation/start_graph_evolution_run.py",
+        "transmission_layers/graph_foundation/supabase_rest_client.py",
+        "transmission_layers/graph_foundation/write_graph_evolution_phase_event.py"
+      ],
+      "path_prefix": "transmission_layers/graph_foundation/",
+      "reason": "Repository dataflow map names graph foundation phase/dependency contracts; keep as legacy boundary pending manual review."
+    }
+  ],
+  "queue_a_safe_archive_candidates": [],
+  "queue_b_unknown_review": [
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b2_market_ingestion_adapter.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b2_market_input_normalizer.py"
+      ],
+      "path": "transmission_layers/expectation_failure/real_data/b2_market_input_validation.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembler.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/b3_certified_snapshot_envelope.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembler.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/b3_snapshot_assembly_certification.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembler.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b1_benchmark_registry.py",
+        "transmission_layers/expectation_failure/real_data/b1_real_entity_registry.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_input_mapper.py"
+      ],
+      "path": "transmission_layers/expectation_failure/real_data/b3_snapshot_assembly_validation.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_validator.py"
+      ],
+      "path": "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_certification.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_validator.py",
+        "transmission_layers/expectation_failure/real_data/b4_supabase_snapshot_repository.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_contract.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b4_supabase_snapshot_repository.py"
+      ],
+      "path": "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_orchestrator.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_certification.py",
+        "transmission_layers/expectation_failure/real_data/b4_supabase_snapshot_repository.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_contract.py"
+      ],
+      "path": "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_validator.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_orchestrator.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_contract.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_validator.py"
+      ],
+      "path": "transmission_layers/expectation_failure/real_data/b4_supabase_snapshot_repository.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/t2_structural_delta_intelligence.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/t3_fragility_evolution_curves.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/t4_regime_transition_detection.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/t5_historical_explainability.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/expectation_failure/real_data/__init__.py"
+      ],
+      "likely_category": "legacy expectation failure",
+      "outbound_imports": [],
+      "path": "transmission_layers/expectation_failure/real_data/t6_temporal_evolution_certification_closeout.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "expectation_failure",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/graph_foundation/run_pass1_graph_foundation.py"
+      ],
+      "likely_category": "legacy graph foundation",
+      "outbound_imports": [
+        "transmission_layers/graph_foundation/edge_scoring.py",
+        "transmission_layers/graph_foundation/graph_models.py"
+      ],
+      "path": "transmission_layers/graph_foundation/ai_anchor_graph_seed.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "graph_foundation",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/graph_foundation/ai_anchor_graph_seed.py"
+      ],
+      "likely_category": "legacy graph foundation",
+      "outbound_imports": [
+        "transmission_layers/graph_foundation/graph_models.py"
+      ],
+      "path": "transmission_layers/graph_foundation/edge_scoring.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "graph_foundation",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/graph_foundation/ai_anchor_graph_seed.py",
+        "transmission_layers/graph_foundation/edge_scoring.py"
+      ],
+      "likely_category": "legacy graph foundation",
+      "outbound_imports": [],
+      "path": "transmission_layers/graph_foundation/graph_models.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "graph_foundation",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/graph_foundation/run_pass1_graph_foundation.py"
+      ],
+      "likely_category": "legacy graph foundation",
+      "outbound_imports": [
+        "transmission_layers/graph_foundation/graph_validation.py",
+        "transmission_layers/graph_foundation/supabase_rest_client.py"
+      ],
+      "path": "transmission_layers/graph_foundation/graph_snapshot_service.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "graph_foundation",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/graph_foundation/graph_snapshot_service.py"
+      ],
+      "likely_category": "legacy graph foundation",
+      "outbound_imports": [],
+      "path": "transmission_layers/graph_foundation/graph_validation.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "graph_foundation",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/graph_foundation/graph_snapshot_service.py",
+        "transmission_layers/graph_foundation/run_pass1_graph_foundation.py"
+      ],
+      "likely_category": "legacy graph foundation",
+      "outbound_imports": [],
+      "path": "transmission_layers/graph_foundation/supabase_rest_client.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "protect",
+      "risk_level": "HIGH",
+      "subsystem": "graph_foundation",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/layer_a/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [],
+      "path": "transmission_layers/alpha/layer_a/predictive_validation.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/layer_b/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [
+        "transmission_layers/alpha/layer_a/__init__.py"
+      ],
+      "path": "transmission_layers/alpha/layer_b/regime_conditional_efficacy.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [
+        "transmission_layers/alpha/layer_c/structural_divergence_intelligence.py"
+      ],
+      "path": "transmission_layers/alpha/layer_c/__init__.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/layer_c/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [],
+      "path": "transmission_layers/alpha/layer_c/structural_divergence_intelligence.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [
+        "transmission_layers/alpha/layer_d/narrative_fragility_hype_decomposition.py"
+      ],
+      "path": "transmission_layers/alpha/layer_d/__init__.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/layer_d/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [],
+      "path": "transmission_layers/alpha/layer_d/narrative_fragility_hype_decomposition.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [
+        "transmission_layers/alpha/layer_e/signal_interaction_effect_intelligence.py"
+      ],
+      "path": "transmission_layers/alpha/layer_e/__init__.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/alpha/layer_e/__init__.py"
+      ],
+      "likely_category": "legacy alpha research",
+      "outbound_imports": [],
+      "path": "transmission_layers/alpha/layer_e/signal_interaction_effect_intelligence.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "alpha",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier4/causal_replay.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier4/structural_simulation.py"
+      ],
+      "path": "transmission_layers/intelligence/tier4/attribution_metrics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier4/causal_lineage.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier4/structural_simulation.py",
+        "transmission_layers/intelligence/tier4/topology_hashing.py"
+      ],
+      "path": "transmission_layers/intelligence/tier4/causal_paths.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier4/regime_persistence.py",
+        "transmission_layers/intelligence/tier4/regime_transitions.py",
+        "transmission_layers/intelligence/tier4/structural_regimes.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [],
+      "path": "transmission_layers/intelligence/tier4/regime_metrics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier4/scenario_comparison.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier4/scenario_semantics.py"
+      ],
+      "path": "transmission_layers/intelligence/tier4/scenario_metrics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier4/temporal_replay.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier4/structural_simulation.py"
+      ],
+      "path": "transmission_layers/intelligence/tier4/topology_drift.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier5/cross_system_transmission.py",
+        "transmission_layers/intelligence/tier5/distributed_survivability.py",
+        "transmission_layers/intelligence/tier5/federation_bottlenecks.py",
+        "transmission_layers/intelligence/tier5/federation_boundaries.py",
+        "transmission_layers/intelligence/tier5/federation_bridges.py",
+        "transmission_layers/intelligence/tier5/federation_engine.py",
+        "transmission_layers/intelligence/tier5/federation_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_recovery_dependencies.py",
+        "transmission_layers/intelligence/tier5/federation_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_topology.py",
+        "transmission_layers/intelligence/tier5/inter_system_contagion.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier5/federation_common.py"
+      ],
+      "path": "transmission_layers/intelligence/tier5/federation_diagnostics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/propagation_distortion_diagnostics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier6/propagation_distortion_diagnostics.py",
+        "transmission_layers/intelligence/tier6/structural_signal_quality.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_path_integrity.py",
+        "transmission_layers/intelligence/tier6/transmission_reliability_diagnostics.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier6/propagation_distortion_diagnostics.py",
+        "transmission_layers/intelligence/tier6/structural_signal_quality.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_path_integrity.py",
+        "transmission_layers/intelligence/tier6/transmission_reliability_diagnostics.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier6/propagation_distortion_diagnostics.py",
+        "transmission_layers/intelligence/tier6/structural_signal_quality.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_path_integrity.py",
+        "transmission_layers/intelligence/tier6/transmission_reliability_diagnostics.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_path_integrity.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_reliability_diagnostics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier6/propagation_distortion_diagnostics.py",
+        "transmission_layers/intelligence/tier6/structural_signal_quality.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_path_integrity.py",
+        "transmission_layers/intelligence/tier6/transmission_reliability_diagnostics.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier6/transmission_risk_register.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py"
+      ],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_coherence.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_continuity.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_stability_resilience.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    },
+    {
+      "classification": "UNKNOWN_REQUIRES_REVIEW",
+      "inbound_imports": [
+        "transmission_layers/intelligence/tier7/__init__.py",
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py"
+      ],
+      "likely_category": "historical intelligence",
+      "outbound_imports": [
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/operationalization/serialization.py"
+      ],
+      "path": "transmission_layers/intelligence/tier7/strategic_state_transition.py",
+      "reason": "Reference signal is ambiguous or only internal/indirect; no archive decision made.",
+      "recommended_next_action": "candidate for later archive",
+      "risk_level": "MEDIUM",
+      "subsystem": "intelligence",
+      "test_references": [],
+      "textual_references": [],
+      "workflow_references": []
+    }
+  ],
+  "queue_c_legacy_ecosystem_map": {
+    "DB-2 / Observation Read Model": {
+      "count": 5,
+      "counts_by_classification": {
+        "PROTECTED_ACTIVE": 4,
+        "UNREFERENCED_CANDIDATE": 1
+      },
+      "files": [
+        "transmission_layers/history_read_model/__init__.py",
+        "transmission_layers/history_read_model/fact_emitter.py",
+        "transmission_layers/history_read_model/loader.py",
+        "transmission_layers/history_read_model/observation_query.py",
+        "transmission_layers/history_read_model/queries.py"
+      ]
+    },
+    "Governance / Observability": {
+      "count": 0,
+      "counts_by_classification": {},
+      "files": []
+    },
+    "Historical Intelligence": {
+      "count": 164,
+      "counts_by_classification": {
+        "ACTIVE_REFERENCED": 136,
+        "PROTECTED_ACTIVE": 2,
+        "UNKNOWN_REQUIRES_REVIEW": 23,
+        "UNREFERENCED_CANDIDATE": 3
+      },
+      "files": [
+        "transmission_layers/history_long/__init__.py",
+        "transmission_layers/history_long/hist_intel1_historical_structural_findings.py",
+        "transmission_layers/history_long/hist_intel1b_fact_native_historical_findings.py",
+        "transmission_layers/history_long/hist_long8_cross_window_persistence.py",
+        "transmission_layers/history_long/hist_long9_persistence_drift.py",
+        "transmission_layers/intelligence/tier3i/__init__.py",
+        "transmission_layers/intelligence/tier3i/contagion_mapping.py",
+        "transmission_layers/intelligence/tier3i/historical_replay.py",
+        "transmission_layers/intelligence/tier3i/intelligence_summary.py",
+        "transmission_layers/intelligence/tier3i/multi_hop_quality.py",
+        "transmission_layers/intelligence/tier3i/path_explainability.py",
+        "transmission_layers/intelligence/tier3i/regime_drift.py",
+        "transmission_layers/intelligence/tier3i/structural_regime.py",
+        "transmission_layers/intelligence/tier4/__init__.py",
+        "transmission_layers/intelligence/tier4/adaptation_constraints.py",
+        "transmission_layers/intelligence/tier4/adaptation_exhaustion.py",
+        "transmission_layers/intelligence/tier4/attribution_metrics.py",
+        "transmission_layers/intelligence/tier4/cascade_boundaries.py",
+        "transmission_layers/intelligence/tier4/cascade_corridors.py",
+        "transmission_layers/intelligence/tier4/cascade_signatures.py",
+        "transmission_layers/intelligence/tier4/causal_lineage.py",
+        "transmission_layers/intelligence/tier4/causal_paths.py",
+        "transmission_layers/intelligence/tier4/causal_replay.py",
+        "transmission_layers/intelligence/tier4/chronic_instability.py",
+        "transmission_layers/intelligence/tier4/contagion_signatures.py",
+        "transmission_layers/intelligence/tier4/containment_integrity.py",
+        "transmission_layers/intelligence/tier4/dependency_concentration.py",
+        "transmission_layers/intelligence/tier4/durability_replay.py",
+        "transmission_layers/intelligence/tier4/failure_thresholds.py",
+        "transmission_layers/intelligence/tier4/flexibility_collapse.py",
+        "transmission_layers/intelligence/tier4/fragility_analysis.py",
+        "transmission_layers/intelligence/tier4/fragility_explanations.py",
+        "transmission_layers/intelligence/tier4/fragility_replay.py",
+        "transmission_layers/intelligence/tier4/fragility_signatures.py",
+        "transmission_layers/intelligence/tier4/fragmentation_diagnostics.py",
+        "transmission_layers/intelligence/tier4/influence_attribution.py",
+        "transmission_layers/intelligence/tier4/persistence_signatures.py",
+        "transmission_layers/intelligence/tier4/propagation_containment.py",
+        "transmission_layers/intelligence/tier4/recovery_bottlenecks.py",
+        "transmission_layers/intelligence/tier4/recovery_corridors.py",
+        "transmission_layers/intelligence/tier4/recovery_decay.py",
+        "transmission_layers/intelligence/tier4/recovery_explanations.py",
+        "transmission_layers/intelligence/tier4/recovery_fragments.py",
+        "transmission_layers/intelligence/tier4/recovery_persistence.py",
+        "transmission_layers/intelligence/tier4/recovery_signatures.py",
+        "transmission_layers/intelligence/tier4/regeneration_pathways.py",
+        "transmission_layers/intelligence/tier4/regime_metrics.py",
+        "transmission_layers/intelligence/tier4/regime_persistence.py",
+        "transmission_layers/intelligence/tier4/regime_transitions.py",
+        "transmission_layers/intelligence/tier4/reintegration_resistance.py",
+        "transmission_layers/intelligence/tier4/reintegration_stability.py",
+        "transmission_layers/intelligence/tier4/resilience_dispersion.py",
+        "transmission_layers/intelligence/tier4/resilience_erosion.py",
+        "transmission_layers/intelligence/tier4/resilience_saturation.py",
+        "transmission_layers/intelligence/tier4/resistance_signatures.py",
+        "transmission_layers/intelligence/tier4/response_effectiveness.py",
+        "transmission_layers/intelligence/tier4/response_explanations.py",
+        "transmission_layers/intelligence/tier4/response_signatures.py",
+        "transmission_layers/intelligence/tier4/rigidity_cascades.py",
+        "transmission_layers/intelligence/tier4/rigidity_explanations.py",
+        "transmission_layers/intelligence/tier4/rigidity_signatures.py",
+        "transmission_layers/intelligence/tier4/scenario_metrics.py",
+        "transmission_layers/intelligence/tier4/scenario_semantics.py",
+        "transmission_layers/intelligence/tier4/stabilization_longevity.py",
+        "transmission_layers/intelligence/tier4/stress_amplification.py",
+        "transmission_layers/intelligence/tier4/stress_concentration.py",
+        "transmission_layers/intelligence/tier4/stress_leakage.py",
+        "transmission_layers/intelligence/tier4/structural_criticality.py",
+        "transmission_layers/intelligence/tier4/structural_entropy.py",
+        "transmission_layers/intelligence/tier4/structural_memory.py",
+        "transmission_layers/intelligence/tier4/structural_regimes.py",
+        "transmission_layers/intelligence/tier4/structural_simulation.py",
+        "transmission_layers/intelligence/tier4/survivability_metrics.py",
+        "transmission_layers/intelligence/tier4/systemic_bottlenecks.py",
+        "transmission_layers/intelligence/tier4/systemic_stress_clustering.py",
+        "transmission_layers/intelligence/tier4/temporal_replay.py",
+        "transmission_layers/intelligence/tier4/tipping_points.py",
+        "transmission_layers/intelligence/tier4/topology_coherence.py",
+        "transmission_layers/intelligence/tier4/topology_drift.py",
+        "transmission_layers/intelligence/tier4/topology_hashing.py",
+        "transmission_layers/intelligence/tier4/transition_signatures.py",
+        "transmission_layers/intelligence/tier5/distributed_survivability_evolution.py",
+        "transmission_layers/intelligence/tier5/distributed_survivability_history.py",
+        "transmission_layers/intelligence/tier5/federation_bottleneck_evolution.py",
+        "transmission_layers/intelligence/tier5/federation_bottleneck_persistence.py",
+        "transmission_layers/intelligence/tier5/federation_boundary_evolution.py",
+        "transmission_layers/intelligence/tier5/federation_boundary_history.py",
+        "transmission_layers/intelligence/tier5/federation_bridge_evolution.py",
+        "transmission_layers/intelligence/tier5/federation_bridge_persistence.py",
+        "transmission_layers/intelligence/tier5/federation_common.py",
+        "transmission_layers/intelligence/tier5/federation_constraint_history.py",
+        "transmission_layers/intelligence/tier5/federation_constraints.py",
+        "transmission_layers/intelligence/tier5/federation_continuity_constraints.py",
+        "transmission_layers/intelligence/tier5/federation_continuity_observability.py",
+        "transmission_layers/intelligence/tier5/federation_degradation.py",
+        "transmission_layers/intelligence/tier5/federation_dependency_evolution.py",
+        "transmission_layers/intelligence/tier5/federation_dependency_resilience.py",
+        "transmission_layers/intelligence/tier5/federation_determinism.py",
+        "transmission_layers/intelligence/tier5/federation_diagnostic_readiness.py",
+        "transmission_layers/intelligence/tier5/federation_diagnostics.py",
+        "transmission_layers/intelligence/tier5/federation_engine.py",
+        "transmission_layers/intelligence/tier5/federation_escalation.py",
+        "transmission_layers/intelligence/tier5/federation_evolution_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_evolution_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_export_contracts.py",
+        "transmission_layers/intelligence/tier5/federation_failure_containment.py",
+        "transmission_layers/intelligence/tier5/federation_governance.py",
+        "transmission_layers/intelligence/tier5/federation_governance_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_governance_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_guardrails.py",
+        "transmission_layers/intelligence/tier5/federation_health_alignment.py",
+        "transmission_layers/intelligence/tier5/federation_health_classification.py",
+        "transmission_layers/intelligence/tier5/federation_health_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_health_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_integrity.py",
+        "transmission_layers/intelligence/tier5/federation_lineage.py",
+        "transmission_layers/intelligence/tier5/federation_observability.py",
+        "transmission_layers/intelligence/tier5/federation_observability_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_observability_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_persistence.py",
+        "transmission_layers/intelligence/tier5/federation_persistence_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_phase_transitions.py",
+        "transmission_layers/intelligence/tier5/federation_policy_boundaries.py",
+        "transmission_layers/intelligence/tier5/federation_propagation_visibility.py",
+        "transmission_layers/intelligence/tier5/federation_recoverability.py",
+        "transmission_layers/intelligence/tier5/federation_recovery.py",
+        "transmission_layers/intelligence/tier5/federation_recovery_evolution.py",
+        "transmission_layers/intelligence/tier5/federation_recovery_history.py",
+        "transmission_layers/intelligence/tier5/federation_recovery_paths.py",
+        "transmission_layers/intelligence/tier5/federation_replay_contracts.py",
+        "transmission_layers/intelligence/tier5/federation_replay_history.py",
+        "transmission_layers/intelligence/tier5/federation_replay_observability.py",
+        "transmission_layers/intelligence/tier5/federation_resilience.py",
+        "transmission_layers/intelligence/tier5/federation_resilience_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_resilience_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_score_contracts.py",
+        "transmission_layers/intelligence/tier5/federation_structural_health.py",
+        "transmission_layers/intelligence/tier5/federation_telemetry.py",
+        "transmission_layers/intelligence/tier5/federation_temporal_evolution.py",
+        "transmission_layers/intelligence/tier5/federation_temporal_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_traceability.py",
+        "transmission_layers/intelligence/tier5/federation_violation_detection.py",
+        "transmission_layers/intelligence/tier5/federation_visibility.py",
+        "transmission_layers/intelligence/tier5/inter_system_contagion_evolution.py",
+        "transmission_layers/intelligence/tier5/inter_system_contagion_history.py",
+        "transmission_layers/intelligence/tier6/propagation_distortion_diagnostics.py",
+        "transmission_layers/intelligence/tier6/structural_signal_quality.py",
+        "transmission_layers/intelligence/tier6/transmission_explainability.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_audit_trail.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_finalization.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_review_gate.py",
+        "transmission_layers/intelligence/tier6/transmission_governance_summary.py",
+        "transmission_layers/intelligence/tier6/transmission_path_integrity.py",
+        "transmission_layers/intelligence/tier6/transmission_reliability_diagnostics.py",
+        "transmission_layers/intelligence/tier6/transmission_risk_register.py",
+        "transmission_layers/intelligence/tier7/strategic_anomaly_attribution.py",
+        "transmission_layers/intelligence/tier7/strategic_causality_replay.py",
+        "transmission_layers/intelligence/tier7/strategic_coherence.py",
+        "transmission_layers/intelligence/tier7/strategic_continuity.py",
+        "transmission_layers/intelligence/tier7/strategic_drift_diagnostics.py",
+        "transmission_layers/intelligence/tier7/strategic_graph_state.py",
+        "transmission_layers/intelligence/tier7/strategic_regime_persistence.py",
+        "transmission_layers/intelligence/tier7/strategic_stability_resilience.py",
+        "transmission_layers/intelligence/tier7/strategic_state_transition.py"
+      ]
+    },
+    "Legacy AI Transmission": {
+      "count": 0,
+      "counts_by_classification": {},
+      "files": []
+    },
+    "Legacy Alpha Research": {
+      "count": 11,
+      "counts_by_classification": {
+        "ACTIVE_REFERENCED": 3,
+        "UNKNOWN_REQUIRES_REVIEW": 8
+      },
+      "files": [
+        "transmission_layers/alpha/__init__.py",
+        "transmission_layers/alpha/layer_a/__init__.py",
+        "transmission_layers/alpha/layer_a/predictive_validation.py",
+        "transmission_layers/alpha/layer_b/__init__.py",
+        "transmission_layers/alpha/layer_b/regime_conditional_efficacy.py",
+        "transmission_layers/alpha/layer_c/__init__.py",
+        "transmission_layers/alpha/layer_c/structural_divergence_intelligence.py",
+        "transmission_layers/alpha/layer_d/__init__.py",
+        "transmission_layers/alpha/layer_d/narrative_fragility_hype_decomposition.py",
+        "transmission_layers/alpha/layer_e/__init__.py",
+        "transmission_layers/alpha/layer_e/signal_interaction_effect_intelligence.py"
+      ]
+    },
+    "Legacy Expectation Failure": {
+      "count": 51,
+      "counts_by_classification": {
+        "ACTIVE_REFERENCED": 15,
+        "PROTECTED_ACTIVE": 22,
+        "UNKNOWN_REQUIRES_REVIEW": 14
+      },
+      "files": [
+        "transmission_layers/expectation_failure/real_data/__init__.py",
+        "transmission_layers/expectation_failure/real_data/b1_benchmark_registry.py",
+        "transmission_layers/expectation_failure/real_data/b1_fragility_payload_builder.py",
+        "transmission_layers/expectation_failure/real_data/b1_market_snapshot_builder.py",
+        "transmission_layers/expectation_failure/real_data/b1_real_entity_registry.py",
+        "transmission_layers/expectation_failure/real_data/b1_snapshot_certification.py",
+        "transmission_layers/expectation_failure/real_data/b2_ingestion_candidate_builder.py",
+        "transmission_layers/expectation_failure/real_data/b2_ingestion_certification.py",
+        "transmission_layers/expectation_failure/real_data/b2_market_ingestion_adapter.py",
+        "transmission_layers/expectation_failure/real_data/b2_market_input_normalizer.py",
+        "transmission_layers/expectation_failure/real_data/b2_market_input_validation.py",
+        "transmission_layers/expectation_failure/real_data/b3_certified_snapshot_envelope.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembler.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembly_certification.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_assembly_validation.py",
+        "transmission_layers/expectation_failure/real_data/b3_snapshot_input_mapper.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_certification.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_contract.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_orchestrator.py",
+        "transmission_layers/expectation_failure/real_data/b4_snapshot_persistence_validator.py",
+        "transmission_layers/expectation_failure/real_data/b4_supabase_snapshot_repository.py",
+        "transmission_layers/expectation_failure/real_data/hist_density1_controlled_historical_density_expansion.py",
+        "transmission_layers/expectation_failure/real_data/hist_density2_longitudinal_ecology_enrichment.py",
+        "transmission_layers/expectation_failure/real_data/hist_density3_curated_ecology_expansion.py",
+        "transmission_layers/expectation_failure/real_data/hist_density4_findings_review.py",
+        "transmission_layers/expectation_failure/real_data/hist_long1_longitudinal_ecology.py",
+        "transmission_layers/expectation_failure/real_data/hist_long2_real_longitudinal_ecology.py",
+        "transmission_layers/expectation_failure/real_data/hist_long3_updated_universe_validation.py",
+        "transmission_layers/expectation_failure/real_data/hist_long4_real_multi_window_ecology.py",
+        "transmission_layers/expectation_failure/real_data/hist_long5_analysis_only_review.py",
+        "transmission_layers/expectation_failure/real_data/hist_long5b_temporal_delta_sensitivity_classification.py",
+        "transmission_layers/expectation_failure/real_data/hist_long6_cross_sectional_ecology_differentiation.py",
+        "transmission_layers/expectation_failure/real_data/hist_long7_intra_group_structural_contrast.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist1_controlled_historical_observation.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist2_historical_continuity_intelligence.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist3_historical_continuity_archetypes.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist4_archetype_recurrence_ecology.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist5_temporal_continuity_regimes.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist6_regime_morphology_observation.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist7_regime_ecology_saturation.py",
+        "transmission_layers/expectation_failure/real_data/ops_hist_cache_raw_fmp.py",
+        "transmission_layers/expectation_failure/real_data/ops_live1_controlled_ecosystem_ingestion.py",
+        "transmission_layers/expectation_failure/real_data/ops_live1b_snapshot_observation_review.py",
+        "transmission_layers/expectation_failure/real_data/sde2_curated_symbol_ecology_expansion.py",
+        "transmission_layers/expectation_failure/real_data/sefi_observation_universe.py",
+        "transmission_layers/expectation_failure/real_data/t1_temporal_snapshot_sequencing.py",
+        "transmission_layers/expectation_failure/real_data/t2_structural_delta_intelligence.py",
+        "transmission_layers/expectation_failure/real_data/t3_fragility_evolution_curves.py",
+        "transmission_layers/expectation_failure/real_data/t4_regime_transition_detection.py",
+        "transmission_layers/expectation_failure/real_data/t5_historical_explainability.py",
+        "transmission_layers/expectation_failure/real_data/t6_temporal_evolution_certification_closeout.py"
+      ]
+    },
+    "Legacy Graph Foundation": {
+      "count": 36,
+      "counts_by_classification": {
+        "ACTIVE_REFERENCED": 1,
+        "LEGACY_REFERENCED": 1,
+        "PROTECTED_ACTIVE": 5,
+        "UNKNOWN_REQUIRES_REVIEW": 6,
+        "UNREFERENCED_CANDIDATE": 23
+      },
+      "files": [
+        "transmission_layers/graph_foundation/__init__.py",
+        "transmission_layers/graph_foundation/ai_anchor_graph_seed.py",
+        "transmission_layers/graph_foundation/continuity/continuity_engine.py",
+        "transmission_layers/graph_foundation/edge_scoring.py",
+        "transmission_layers/graph_foundation/finish_graph_evolution_run.py",
+        "transmission_layers/graph_foundation/graph_models.py",
+        "transmission_layers/graph_foundation/graph_snapshot_service.py",
+        "transmission_layers/graph_foundation/graph_supabase_client.py",
+        "transmission_layers/graph_foundation/graph_validation.py",
+        "transmission_layers/graph_foundation/intermediaries/canonical_structural_ontology_engine.py",
+        "transmission_layers/graph_foundation/intermediaries/directed_intermediary_seeding_engine.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_classification.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_detection_engine.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_normalization.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_scoring.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_telemetry.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_utils.py",
+        "transmission_layers/graph_foundation/intermediaries/intermediary_validation.py",
+        "transmission_layers/graph_foundation/phase3a1_evidence_density_expansion.py",
+        "transmission_layers/graph_foundation/phase3a2_cross_theme_relationship_expansion.py",
+        "transmission_layers/graph_foundation/phase3a_evidence_graph_expansion.py",
+        "transmission_layers/graph_foundation/phase3b_relationship_persistence.py",
+        "transmission_layers/graph_foundation/phase3c_regime_transition_structural_drift.py",
+        "transmission_layers/graph_foundation/phase3d_structural_pressure_accumulation.py",
+        "transmission_layers/graph_foundation/phase3e_transmission_potential_surface.py",
+        "transmission_layers/graph_foundation/phase4a_controlled_single_hop_propagation.py",
+        "transmission_layers/graph_foundation/phase4b_propagation_memory_decay.py",
+        "transmission_layers/graph_foundation/phase4c_propagation_monitoring_dashboard.py",
+        "transmission_layers/graph_foundation/phase4e_historical_propagation_replay.py",
+        "transmission_layers/graph_foundation/phase5b_propagation_corridor_engine.py",
+        "transmission_layers/graph_foundation/phase5c_regime_corridor_dynamics_engine.py",
+        "transmission_layers/graph_foundation/phase5d_structural_propagation_regime_forecasting_engine.py",
+        "transmission_layers/graph_foundation/run_pass1_graph_foundation.py",
+        "transmission_layers/graph_foundation/start_graph_evolution_run.py",
+        "transmission_layers/graph_foundation/supabase_rest_client.py",
+        "transmission_layers/graph_foundation/write_graph_evolution_phase_event.py"
+      ]
+    },
+    "Live OPS": {
+      "count": 3,
+      "counts_by_classification": {
+        "ACTIVE_REFERENCED": 1,
+        "PROTECTED_ACTIVE": 2
+      },
+      "files": [
+        "transmission_layers/live_ops/__init__.py",
+        "transmission_layers/live_ops/ops_live2_observation_fact_accumulation.py",
+        "transmission_layers/live_ops/ops_live3_structural_state_snapshot.py"
+      ]
+    },
+    "SEFI Core": {
+      "count": 0,
+      "counts_by_classification": {},
+      "files": []
+    },
+    "Tests-only Intelligence Modules": {
+      "count": 45,
+      "counts_by_classification": {
+        "ACTIVE_REFERENCED": 45
+      },
+      "files": [
+        "transmission_layers/intelligence/tier3i/edge_quality.py",
+        "transmission_layers/intelligence/tier3i/structural_influence.py",
+        "transmission_layers/intelligence/tier4/cascade_explanations.py",
+        "transmission_layers/intelligence/tier4/contagion_boundaries.py",
+        "transmission_layers/intelligence/tier4/contagion_explanations.py",
+        "transmission_layers/intelligence/tier4/intervention_saturation.py",
+        "transmission_layers/intelligence/tier4/intervention_strategies.py",
+        "transmission_layers/intelligence/tier4/persistence_durability.py",
+        "transmission_layers/intelligence/tier4/persistence_explanations.py",
+        "transmission_layers/intelligence/tier4/pressure_resistance.py",
+        "transmission_layers/intelligence/tier4/recovery_dynamics.py",
+        "transmission_layers/intelligence/tier4/recovery_replay.py",
+        "transmission_layers/intelligence/tier4/regime_replay.py",
+        "transmission_layers/intelligence/tier4/regime_state_machine.py",
+        "transmission_layers/intelligence/tier4/regime_transition_pressure.py",
+        "transmission_layers/intelligence/tier4/resistance_explanations.py",
+        "transmission_layers/intelligence/tier4/resistance_replay.py",
+        "transmission_layers/intelligence/tier4/response_policy.py",
+        "transmission_layers/intelligence/tier4/response_replay.py",
+        "transmission_layers/intelligence/tier4/scenario_comparison.py",
+        "transmission_layers/intelligence/tier4/scenario_perturbations.py",
+        "transmission_layers/intelligence/tier4/scenario_replay.py",
+        "transmission_layers/intelligence/tier4/scenario_sensitivity.py",
+        "transmission_layers/intelligence/tier4/scenario_signatures.py",
+        "transmission_layers/intelligence/tier4/stabilization_capacity.py",
+        "transmission_layers/intelligence/tier4/stabilization_exhaustion.py",
+        "transmission_layers/intelligence/tier4/state_snapshot.py",
+        "transmission_layers/intelligence/tier4/structural_recovery.py",
+        "transmission_layers/intelligence/tier4/structural_rigidity.py",
+        "transmission_layers/intelligence/tier4/systemic_cascades.py",
+        "transmission_layers/intelligence/tier4/transition_explanations.py",
+        "transmission_layers/intelligence/tier5/__init__.py",
+        "transmission_layers/intelligence/tier5/cross_system_transmission.py",
+        "transmission_layers/intelligence/tier5/distributed_survivability.py",
+        "transmission_layers/intelligence/tier5/federation_bottlenecks.py",
+        "transmission_layers/intelligence/tier5/federation_boundaries.py",
+        "transmission_layers/intelligence/tier5/federation_bridges.py",
+        "transmission_layers/intelligence/tier5/federation_explanations.py",
+        "transmission_layers/intelligence/tier5/federation_recovery_dependencies.py",
+        "transmission_layers/intelligence/tier5/federation_signatures.py",
+        "transmission_layers/intelligence/tier5/federation_stabilization_report.py",
+        "transmission_layers/intelligence/tier5/federation_topology.py",
+        "transmission_layers/intelligence/tier5/inter_system_contagion.py",
+        "transmission_layers/intelligence/tier6/__init__.py",
+        "transmission_layers/intelligence/tier7/__init__.py"
+      ]
+    },
+    "Unknown": {
+      "count": 0,
+      "counts_by_classification": {},
+      "files": []
+    }
+  },
+  "source_inputs": [
+    "reports/clean2_dependency_verification.md",
+    "artifacts/clean2_dependency_verification.json",
+    "docs/runbooks/repository_dependency_dataflow_map.md"
+  ],
+  "tests_only_modules": [
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "legacy alpha research",
+      "path": "transmission_layers/alpha/__init__.py",
+      "test_references": [
+        "tests/test_alpha_layer_c_structural_divergence.py",
+        "tests/test_alpha_layer_d_narrative_fragility.py",
+        "tests/test_alpha_layer_e_signal_interaction_effects.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "legacy expectation failure",
+      "path": "transmission_layers/expectation_failure/real_data/__init__.py",
+      "test_references": [
+        "tests/test_b2_ingestion_certification.py",
+        "tests/test_b3_snapshot_assembly_certification.py",
+        "tests/test_b4_snapshot_persistence_certification.py",
+        "tests/test_b4_snapshot_persistence_contract.py",
+        "tests/test_b4_snapshot_persistence_validator.py",
+        "tests/test_b4_supabase_snapshot_repository.py",
+        "tests/test_t1_temporal_snapshot_sequencing.py",
+        "tests/test_t2_structural_delta_intelligence.py",
+        "tests/test_t3_fragility_evolution_curves.py",
+        "tests/test_t4_regime_transition_detection.py",
+        "tests/test_t5_historical_explainability.py",
+        "tests/test_t6_temporal_evolution_certification_closeout.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier3i/edge_quality.py",
+      "test_references": [
+        "tests/test_tier3i_edge_quality.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier3i/structural_influence.py",
+      "test_references": [
+        "tests/test_tier3i_structural_influence.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/cascade_explanations.py",
+      "test_references": [
+        "tests/test_tier4_cascade_explanations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/contagion_boundaries.py",
+      "test_references": [
+        "tests/test_tier4_contagion_boundaries.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/contagion_explanations.py",
+      "test_references": [
+        "tests/test_tier4_contagion_explanations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/intervention_saturation.py",
+      "test_references": [
+        "tests/test_tier4_intervention_saturation.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/intervention_strategies.py",
+      "test_references": [
+        "tests/test_tier4_intervention_strategies.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/persistence_durability.py",
+      "test_references": [
+        "tests/test_tier4_persistence_durability.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/persistence_explanations.py",
+      "test_references": [
+        "tests/test_tier4_persistence_explanations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/pressure_resistance.py",
+      "test_references": [
+        "tests/test_tier4_intervention_saturation.py",
+        "tests/test_tier4_pressure_resistance.py",
+        "tests/test_tier4_stabilization_exhaustion.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/recovery_dynamics.py",
+      "test_references": [
+        "tests/test_tier4_recovery_dynamics.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/recovery_replay.py",
+      "test_references": [
+        "tests/test_tier4_recovery_replay.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/regime_replay.py",
+      "test_references": [
+        "tests/test_tier4_regime_transitions.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/regime_state_machine.py",
+      "test_references": [
+        "tests/test_tier4_regime_state_machine.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/regime_transition_pressure.py",
+      "test_references": [
+        "tests/test_tier4_regime_transition_pressure.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/resistance_explanations.py",
+      "test_references": [
+        "tests/test_tier4_resistance_explanations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/resistance_replay.py",
+      "test_references": [
+        "tests/test_tier4_resistance_replay.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/response_policy.py",
+      "test_references": [
+        "tests/test_tier4_response_policy.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/response_replay.py",
+      "test_references": [
+        "tests/test_tier4_response_replay.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/scenario_comparison.py",
+      "test_references": [
+        "tests/test_tier4_scenario_comparison.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/scenario_perturbations.py",
+      "test_references": [
+        "tests/test_tier4_scenario_comparison.py",
+        "tests/test_tier4_scenario_perturbations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/scenario_replay.py",
+      "test_references": [
+        "tests/test_tier4_scenario_replay.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/scenario_sensitivity.py",
+      "test_references": [
+        "tests/test_tier4_scenario_sensitivity.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/scenario_signatures.py",
+      "test_references": [
+        "tests/test_tier4_scenario_signatures.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/stabilization_capacity.py",
+      "test_references": [
+        "tests/test_tier4_intervention_saturation.py",
+        "tests/test_tier4_pressure_resistance.py",
+        "tests/test_tier4_stabilization_capacity.py",
+        "tests/test_tier4_stabilization_exhaustion.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/stabilization_exhaustion.py",
+      "test_references": [
+        "tests/test_tier4_stabilization_exhaustion.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/state_snapshot.py",
+      "test_references": [
+        "tests/test_tier4_replay_integrity.py",
+        "tests/test_tier4_structural_memory.py",
+        "tests/test_tier4_temporal_replay.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/structural_recovery.py",
+      "test_references": [
+        "tests/test_tier4_structural_recovery.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/structural_rigidity.py",
+      "test_references": [
+        "tests/test_tier4_structural_rigidity.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/systemic_cascades.py",
+      "test_references": [
+        "tests/test_tier4_systemic_cascades.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier4/transition_explanations.py",
+      "test_references": [
+        "tests/test_tier4_transition_explanations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/__init__.py",
+      "test_references": [
+        "tests/test_tier5_federation_integrity.py",
+        "tests/test_tier5_federation_observability.py",
+        "tests/test_tier5_federation_resilience.py",
+        "tests/test_tier5_federation_structural_health.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/cross_system_transmission.py",
+      "test_references": [
+        "tests/test_tier5_cross_system_transmission.py",
+        "tests/test_tier5a_cross_system_transmission.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/distributed_survivability.py",
+      "test_references": [
+        "tests/test_tier5_distributed_survivability.py",
+        "tests/test_tier5_distributed_survivability_evolution.py",
+        "tests/test_tier5_distributed_survivability_history.py",
+        "tests/test_tier5a_distributed_survivability.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_bottlenecks.py",
+      "test_references": [
+        "tests/test_tier5_federation_bottlenecks.py",
+        "tests/test_tier5a_federation_bottlenecks.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_boundaries.py",
+      "test_references": [
+        "tests/test_tier5_federation_boundaries.py",
+        "tests/test_tier5a_federation_boundaries.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_bridges.py",
+      "test_references": [
+        "tests/test_tier5_federation_bridges.py",
+        "tests/test_tier5a_federation_bridges.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_explanations.py",
+      "test_references": [
+        "tests/test_tier5_federation_explanations.py",
+        "tests/test_tier5a_federation_explanations.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_recovery_dependencies.py",
+      "test_references": [
+        "tests/test_tier5_federation_recovery_dependencies.py",
+        "tests/test_tier5a_federation_recovery_dependencies.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_signatures.py",
+      "test_references": [
+        "tests/test_tier5_federation_signatures.py",
+        "tests/test_tier5a_federation_signatures.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_stabilization_report.py",
+      "test_references": [
+        "tests/test_tier5_federation_integrity.py",
+        "tests/test_tier5_federation_stabilization_report.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/federation_topology.py",
+      "test_references": [
+        "tests/test_tier5_federation_topology.py",
+        "tests/test_tier5a_federation_topology.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier5/inter_system_contagion.py",
+      "test_references": [
+        "tests/test_tier5_inter_system_contagion.py",
+        "tests/test_tier5_inter_system_contagion_evolution.py",
+        "tests/test_tier5_inter_system_contagion_history.py",
+        "tests/test_tier5a_inter_system_contagion.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier6/__init__.py",
+      "test_references": [
+        "tests/test_tier6_propagation_distortion_diagnostics.py",
+        "tests/test_tier6_transmission_explainability.py",
+        "tests/test_tier6_transmission_governance_audit_trail.py",
+        "tests/test_tier6_transmission_governance_finalization.py",
+        "tests/test_tier6_transmission_governance_review_gate.py",
+        "tests/test_tier6_transmission_governance_summary.py",
+        "tests/test_tier6_transmission_path_integrity.py",
+        "tests/test_tier6_transmission_reliability_diagnostics.py",
+        "tests/test_tier6_transmission_risk_register.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "historical intelligence",
+      "path": "transmission_layers/intelligence/tier7/__init__.py",
+      "test_references": [
+        "tests/test_tier7_strategic_anomaly_attribution.py",
+        "tests/test_tier7_strategic_causality_replay.py",
+        "tests/test_tier7_strategic_coherence.py",
+        "tests/test_tier7_strategic_continuity.py",
+        "tests/test_tier7_strategic_drift_diagnostics.py",
+        "tests/test_tier7_strategic_graph_state.py",
+        "tests/test_tier7_strategic_regime_persistence.py",
+        "tests/test_tier7_strategic_stability_resilience.py",
+        "tests/test_tier7_strategic_state_transition.py"
+      ]
+    },
+    {
+      "classification": "ACTIVE_REFERENCED",
+      "likely_category": "current SEFI core",
+      "path": "transmission_layers/live_ops/__init__.py",
+      "test_references": [
+        "tests/test_ops_live2_observation_fact_accumulation.py"
+      ]
+    }
+  ],
+  "token_reduction_estimate": {
+    "estimated_files_reducible_in_clean3": 0,
+    "estimated_token_reduction": "none",
+    "notes": "CLEAN-2B intentionally narrows CLEAN-2 to exact safe files only; excluded legacy boundaries may still reduce review tokens after manual decisions, but are not archive-ready now.",
+    "safe_archive_candidate_count": 0
+  }
+}
