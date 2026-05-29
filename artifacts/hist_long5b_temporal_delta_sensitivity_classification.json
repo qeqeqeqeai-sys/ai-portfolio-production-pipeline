@@ -1,0 +1,60 @@
+{
+  "completed_windows": [],
+  "concentration_evolution_classification": {
+    "classification": "insufficient_signal"
+  },
+  "foxa_longitudinal_assessment": {
+    "contribution_consistency": "insufficient granular signal",
+    "insufficient_granular_signal": true,
+    "present_all_windows": false,
+    "stability_classification": "insufficient_signal",
+    "supervisor_assessment": "Blocked before FOXA longitudinal assessment.",
+    "weak_window_count": 0
+  },
+  "fragility_emergence_detection": {
+    "classification": [
+      "no_fragility_detected"
+    ],
+    "fragile_windows": [],
+    "reasons_by_window": {}
+  },
+  "governance_certification": {
+    "fmp_calls_enabled": false,
+    "governance_mode": "observational_only",
+    "hist_long4_reexecution_enabled": false,
+    "local_artifacts_only": true,
+    "phase": "HIST-LONG-5B_temporal_delta_sensitivity_classification",
+    "prediction_enabled": false,
+    "provider_api_calls_enabled": false,
+    "raw_cache_write_enabled": false,
+    "replay_activation_enabled": false,
+    "replay_execution_enabled": false,
+    "source_artifact_only": true,
+    "supabase_write_enabled": false,
+    "topology_persistence_enabled": false,
+    "trading_execution_enabled": false
+  },
+  "recommendation_for_hist_long6": "Blocked: HIST-LONG-6 should not proceed until HIST-LONG-4 source verification succeeds.",
+  "replay_evolution_classification": {
+    "classification": "insufficient_signal"
+  },
+  "review_date": "2026-05-29",
+  "schema_version": "hist_long5b_v1",
+  "sensitivity_ranking": [],
+  "source_artifacts": [
+    "artifacts/hist_long4_real_multi_window_ecology_review.json"
+  ],
+  "source_verification": {
+    "reason": "source status is not completed/success",
+    "source_path": "artifacts/hist_long4_real_multi_window_ecology_review.json",
+    "verified": false
+  },
+  "status": "blocked",
+  "structural_persistence_classification": {},
+  "temporal_delta_tables": {
+    "concentration_diversity": [],
+    "ingestion_continuity": [],
+    "replay_ecology": [],
+    "weak_symbol_provider_quality": []
+  }
+}
