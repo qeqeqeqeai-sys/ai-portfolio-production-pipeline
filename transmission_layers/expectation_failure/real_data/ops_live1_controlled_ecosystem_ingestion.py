@@ -6,6 +6,7 @@ curated 300-stock universe.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from hashlib import sha256
 import json
@@ -22,6 +23,18 @@ MAX_CONTINUITY_WINDOW_DAYS = 90
 MAX_DASHBOARD_PAYLOAD_ROWS = 120
 MAX_STRUCTURAL_SUMMARY_ITEMS = 12
 MAX_RETRY_ATTEMPTS = 2
+
+MAX_DIAGNOSTIC_SAMPLE_KEYS = 12
+MAX_DIAGNOSTIC_EXCEPTION_CHARS = 180
+
+FAILURE_STAGE_SUCCESS = "success"
+FAILURE_STAGE_FETCH_FAILED = "fetch_failed"
+FAILURE_STAGE_INVALID_PAYLOAD_SHAPE = "invalid_payload_shape"
+FAILURE_STAGE_EMPTY_FMP_PAYLOAD = "empty_fmp_payload"
+FAILURE_STAGE_ALL_ROWS_REJECTED_BY_SYMBOL_FILTER = "all_rows_rejected_by_symbol_filter"
+FAILURE_STAGE_SCHEMA_VALIDATION_FAILED = "schema_validation_failed"
+FAILURE_STAGE_NORMALIZATION_FAILED = "normalization_failed"
+
 DEFAULT_PROBE_UNIVERSE = ("AAPL", "MSFT", "JPM", "XOM", "UNH", "PG", "NEM", "NEE")
 MAX_PROBE_UNIVERSE_SIZE = 10
 
@@ -297,11 +310,118 @@ def _bounded_symbol_sample(symbols: Iterable[str], limit: int = 25) -> list[str]
     return sorted({s for s in symbols if s})[:limit]
 
 
+
+class InvalidFmpPayloadShape(TypeError):
+    def __init__(self, message: str, response_type: str, sample_response_keys: Sequence[str] | None = None) -> None:
+        super().__init__(message)
+        self.response_type = response_type
+        self.sample_response_keys = sorted(str(k) for k in (sample_response_keys or []))[:MAX_DIAGNOSTIC_SAMPLE_KEYS]
+
+
+def _bounded_exception_message(exc: Exception) -> str:
+    msg = str(exc)
+    api_key = os.getenv("FMP_API_KEY", "")
+    if api_key:
+        msg = msg.replace(api_key, "[REDACTED]")
+    for marker in ("apikey=", "api_key="):
+        lowered = msg.lower()
+        idx = lowered.find(marker)
+        if idx >= 0:
+            end = len(msg)
+            for sep in ("&", " ", "\n", "\t"):
+                sep_idx = msg.find(sep, idx + len(marker))
+                if sep_idx >= 0:
+                    end = min(end, sep_idx)
+            msg = f"{msg[:idx]}{marker}[REDACTED]{msg[end:]}"
+    return msg[:MAX_DIAGNOSTIC_EXCEPTION_CHARS]
+
+
+def _diagnostic_response_type(payload: object) -> str:
+    if isinstance(payload, list):
+        return "list"
+    if isinstance(payload, tuple):
+        return "tuple"
+    if isinstance(payload, Mapping):
+        return "dict"
+    return type(payload).__name__
+
+
+def _sample_response_keys(rows: Sequence[dict]) -> list[str]:
+    for row in rows:
+        if isinstance(row, Mapping):
+            return sorted(str(k) for k in row.keys())[:MAX_DIAGNOSTIC_SAMPLE_KEYS]
+    return []
+
+
+def _base_ingestion_boundary_diagnostics(
+    *,
+    fetch_status: str = "not_started",
+    response_type: str = "unknown",
+    raw_row_count: int = 0,
+    accepted_row_count: int = 0,
+    rejected_row_count: int = 0,
+    sample_response_keys: Sequence[str] | None = None,
+    failure_stage: str = FAILURE_STAGE_FETCH_FAILED,
+    exception_type: str = "",
+    exception_message: str = "",
+    canonicalized_batch_symbols: Iterable[str] = (),
+    canonicalized_row_symbols: Iterable[str] = (),
+    dropped_due_to_batch_filter_count: int = 0,
+    duplicate_elision_count: int = 0,
+    rejected_row_reasons: Sequence[dict[str, str]] = (),
+) -> dict:
+    return {
+        "fetch_status": fetch_status,
+        "response_type": response_type,
+        "raw_row_count": raw_row_count,
+        "accepted_row_count": accepted_row_count,
+        "rejected_row_count": rejected_row_count,
+        "sample_response_keys": sorted(str(k) for k in (sample_response_keys or []))[:MAX_DIAGNOSTIC_SAMPLE_KEYS],
+        "failure_stage": failure_stage,
+        "exception_type": exception_type,
+        "exception_message": exception_message,
+        "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
+        "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
+        "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
+        "duplicate_elision_count": duplicate_elision_count,
+        "rejected_row_reasons": list(rejected_row_reasons)[:25],
+    }
+
+
+def _classify_integrity_failure(integrity: dict, diagnostics: dict) -> str:
+    if diagnostics["raw_row_count"] == 0:
+        return FAILURE_STAGE_EMPTY_FMP_PAYLOAD
+    if diagnostics["accepted_row_count"] == 0 and diagnostics["dropped_due_to_batch_filter_count"] == diagnostics["raw_row_count"]:
+        return FAILURE_STAGE_ALL_ROWS_REJECTED_BY_SYMBOL_FILTER
+    return FAILURE_STAGE_SCHEMA_VALIDATION_FAILED
+
+
 def fetch_controlled_fmp_snapshot_batch(
     symbols: Sequence[str], fetch_batch: Callable[[Sequence[str]], Iterable[dict]]
 ) -> list[dict]:
     bounded_symbols = [canonicalize_symbol(s) for s in symbols if canonicalize_symbol(s)][:MAX_INGESTION_BATCH_SIZE]
-    return list(fetch_batch(bounded_symbols))
+    payload = fetch_batch(bounded_symbols)
+    if isinstance(payload, Mapping):
+        raise InvalidFmpPayloadShape(
+            f"Invalid FMP payload shape: {_diagnostic_response_type(payload)}",
+            _diagnostic_response_type(payload),
+            sorted(str(k) for k in payload.keys())[:MAX_DIAGNOSTIC_SAMPLE_KEYS],
+        )
+    if isinstance(payload, (str, bytes)):
+        raise InvalidFmpPayloadShape(
+            f"Invalid FMP payload shape: {_diagnostic_response_type(payload)}",
+            _diagnostic_response_type(payload),
+        )
+    try:
+        rows = list(payload)
+    except TypeError as exc:
+        raise InvalidFmpPayloadShape(
+            f"Invalid FMP payload shape: {_diagnostic_response_type(payload)}",
+            _diagnostic_response_type(payload),
+        ) from exc
+    if any(not isinstance(row, Mapping) for row in rows):
+        raise InvalidFmpPayloadShape("Invalid FMP payload row shape", _diagnostic_response_type(rows), _sample_response_keys(rows))
+    return rows
 
 
 def ingest_controlled_daily_snapshot(
@@ -322,6 +442,12 @@ def ingest_controlled_daily_snapshot(
     canonicalized_row_symbols: set[str] = set()
     rejected_row_reasons: list[dict[str, str]] = []
     normalized_by_symbol: dict[str, tuple[object, ...]] = {}
+    fetch_status = "not_started"
+    response_type = "unknown"
+    sample_response_keys: list[str] = []
+    failure_stage = FAILURE_STAGE_FETCH_FAILED
+    exception_type = ""
+    exception_message = ""
 
     for batch in batches:
         batch_success = False
@@ -332,6 +458,10 @@ def ingest_controlled_daily_snapshot(
             attempts += 1
             try:
                 batch_rows = fetch_controlled_fmp_snapshot_batch(canonical_batch, fetch_batch)
+                fetch_status = "ok"
+                response_type = "list"
+                if not sample_response_keys:
+                    sample_response_keys = _sample_response_keys(batch_rows)
                 raw_rows.extend(deepcopy(batch_rows))
                 for row in batch_rows:
                     row_symbol = canonicalize_symbol(row.get("symbol", ""))
@@ -359,7 +489,20 @@ def ingest_controlled_daily_snapshot(
                     filtered_rows.append(row)
                 batch_success = True
                 break
-            except Exception:
+            except InvalidFmpPayloadShape as exc:
+                fetch_status = "failed"
+                response_type = exc.response_type
+                if not sample_response_keys:
+                    sample_response_keys = exc.sample_response_keys
+                failure_stage = FAILURE_STAGE_INVALID_PAYLOAD_SHAPE
+                exception_type = type(exc).__name__
+                exception_message = _bounded_exception_message(exc)
+                continue
+            except Exception as exc:
+                fetch_status = "failed"
+                failure_stage = FAILURE_STAGE_FETCH_FAILED
+                exception_type = type(exc).__name__
+                exception_message = _bounded_exception_message(exc)
                 continue
         if not batch_success:
             return {
@@ -367,27 +510,59 @@ def ingest_controlled_daily_snapshot(
                 "snapshot_ts": snapshot_ts,
                 "attempts": attempts,
                 "batches": len(batches),
-                "ingestion_boundary_diagnostics": {
-                    "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
-                    "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
-                    "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
-                    "duplicate_elision_count": duplicate_elision_count,
-                    "rejected_row_reasons": rejected_row_reasons,
-                },
+                "ingestion_boundary_diagnostics": _base_ingestion_boundary_diagnostics(
+                    fetch_status=fetch_status,
+                    response_type=response_type,
+                    raw_row_count=len(raw_rows),
+                    accepted_row_count=len(filtered_rows),
+                    rejected_row_count=dropped_due_to_batch_filter_count + duplicate_elision_count,
+                    sample_response_keys=sample_response_keys,
+                    failure_stage=failure_stage,
+                    exception_type=exception_type,
+                    exception_message=exception_message,
+                    canonicalized_batch_symbols=canonicalized_batch_symbols,
+                    canonicalized_row_symbols=canonicalized_row_symbols,
+                    dropped_due_to_batch_filter_count=dropped_due_to_batch_filter_count,
+                    duplicate_elision_count=duplicate_elision_count,
+                    rejected_row_reasons=rejected_row_reasons,
+                ),
                 "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
             }
 
-    ingestion_boundary_diagnostics = {
-        "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
-        "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
-        "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
-        "duplicate_elision_count": duplicate_elision_count,
-        "rejected_row_reasons": rejected_row_reasons,
-    }
-    normalized = [_normalize_row(r, snapshot_ts) for r in filtered_rows if canonicalize_symbol(r.get("symbol", ""))]
-    normalized = sorted(normalized, key=lambda r: r["symbol"])[:MAX_SNAPSHOT_ROWS]
+    ingestion_boundary_diagnostics = _base_ingestion_boundary_diagnostics(
+        fetch_status=fetch_status,
+        response_type=response_type,
+        raw_row_count=len(raw_rows),
+        accepted_row_count=len(filtered_rows),
+        rejected_row_count=dropped_due_to_batch_filter_count + duplicate_elision_count,
+        sample_response_keys=sample_response_keys,
+        failure_stage=FAILURE_STAGE_SUCCESS,
+        canonicalized_batch_symbols=canonicalized_batch_symbols,
+        canonicalized_row_symbols=canonicalized_row_symbols,
+        dropped_due_to_batch_filter_count=dropped_due_to_batch_filter_count,
+        duplicate_elision_count=duplicate_elision_count,
+        rejected_row_reasons=rejected_row_reasons,
+    )
+    try:
+        normalized = [_normalize_row(r, snapshot_ts) for r in filtered_rows if canonicalize_symbol(r.get("symbol", ""))]
+        normalized = sorted(normalized, key=lambda r: r["symbol"])[:MAX_SNAPSHOT_ROWS]
+    except Exception as exc:
+        ingestion_boundary_diagnostics["failure_stage"] = FAILURE_STAGE_NORMALIZATION_FAILED
+        ingestion_boundary_diagnostics["exception_type"] = type(exc).__name__
+        ingestion_boundary_diagnostics["exception_message"] = _bounded_exception_message(exc)
+        return {
+            "status": "failed_closed",
+            "snapshot_ts": snapshot_ts,
+            "attempts": attempts,
+            "batches": len(batches),
+            "ingestion_boundary_diagnostics": ingestion_boundary_diagnostics,
+            "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
+        }
     integrity = _integrity_validate(normalized, ordered_symbols)
     if not integrity["is_valid"]:
+        ingestion_boundary_diagnostics["failure_stage"] = _classify_integrity_failure(integrity, ingestion_boundary_diagnostics)
+        ingestion_boundary_diagnostics["accepted_row_count"] = len(normalized)
+        ingestion_boundary_diagnostics["rejected_row_count"] = max(0, ingestion_boundary_diagnostics["raw_row_count"] - len(normalized))
         return {
             "status": "failed_closed",
             "snapshot_ts": snapshot_ts,
@@ -398,6 +573,8 @@ def ingest_controlled_daily_snapshot(
             "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
         }
 
+    ingestion_boundary_diagnostics["accepted_row_count"] = len(normalized)
+    ingestion_boundary_diagnostics["rejected_row_count"] = max(0, ingestion_boundary_diagnostics["raw_row_count"] - len(normalized))
     snapshot_identity = _compute_snapshot_identity(normalized, snapshot_ts)
     surfaces = build_normalized_operational_surfaces(normalized, snapshot_ts, snapshot_identity)
     payload = build_operator_payloads(surfaces)
@@ -579,6 +756,7 @@ def build_ops_live1b_canonical_payload(ingest_result: dict, universe_symbols: Se
             "avg_resilience_gap": round(sector_rollup[sector]["avg_resilience_gap"] / max(c,1), 6),
         })
     op = ingest_result.get("operator_payload", {})
+    ingestion_boundary_diagnostics = deepcopy(ingest_result.get("ingestion_boundary_diagnostics", {}))
     diagnostics = {
         "symbols_requested": len(universe_symbols),
         "symbols_successfully_normalized": len(rows),
@@ -598,6 +776,7 @@ def build_ops_live1b_canonical_payload(ingest_result: dict, universe_symbols: Se
         "data_completeness_summary": round((len(rows)/max(len(universe_symbols),1))*100.0,6),
         "normalization_completeness_percentage": round((len(rows)/max(len(universe_symbols),1))*100.0,6),
         "fallback_usage_percentage": 0.0,
+        "ingestion_boundary_diagnostics": ingestion_boundary_diagnostics,
     }
     snapshot_metadata_rows = [{"snapshot_id": snapshot_id, "snapshot_ts": snapshot_ts, **universe_metadata}]
     symbol_snapshot_rows = [{"snapshot_id": snapshot_id, **r} for r in rows]
@@ -656,6 +835,7 @@ def run_ops_live1b_controlled_50_symbol_operational_ingest(*, snapshot_date: str
         "snapshot_identity": ingest_result.get("snapshot_identity", {}),
         "universe": universe,
         "universe_metadata": _compute_universe_metadata(ingest_result.get("rows", []), universe),
+        "ingestion_boundary_diagnostics": deepcopy(ingest_result.get("ingestion_boundary_diagnostics", {})),
         "ops_live1b_payload": payload,
         "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
     }
