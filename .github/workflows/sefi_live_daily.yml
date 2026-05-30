@@ -24,6 +24,8 @@ jobs:
       OPS_LIVE2_INPUT_PATH: reports/ops_live_run1/ops_live2_observations.json
       OPS_LIVE2_REPORT_PATH: reports/ops_live_run1/ops_live2_observation_fact_accumulation.md
       OPS_LIVE3_REPORT_PATH: reports/ops_live_run1/ops_live3_structural_state_snapshot.md
+      DAILY_BRIEFING_JSON_PATH: reports/ops_live_run1/daily_briefing.json
+      DAILY_BRIEFING_EMAIL_OUTPUT_DIR: reports/ops_live_run1/daily_briefing_email
       ARTIFACT_RETENTION_DAYS: "14"
 
     steps:
@@ -177,6 +179,67 @@ jobs:
             --report-path "$OPS_LIVE3_REPORT_PATH" \
             --use-supabase
 
+      - name: Generate normalized Daily Briefing JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from transmission_layers.daily_briefing import load_daily_briefing
+
+          output_path = Path(os.environ["DAILY_BRIEFING_JSON_PATH"])
+          output_path.parent.mkdir(parents=True, exist_ok=True)
+          result = load_daily_briefing(
+              selected_date=os.environ.get("SNAPSHOT_DATE"),
+              project_root=Path.cwd(),
+          )
+          output_path.write_text(json.dumps(result.briefing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(
+              json.dumps(
+                  {
+                      "status": "ok",
+                      "daily_briefing_json_path": str(output_path),
+                      "loaded_source_count": len(result.loaded_paths),
+                      "warning_count": len(result.warnings),
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Generate Daily Briefing email artifacts and optionally send
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          SEFI_EMAIL_ENABLED: ${{ vars.SEFI_EMAIL_ENABLED || 'false' }}
+          SEFI_EMAIL_SMTP_HOST: ${{ vars.SEFI_EMAIL_SMTP_HOST || 'smtp.gmail.com' }}
+          SEFI_EMAIL_SMTP_PORT: ${{ vars.SEFI_EMAIL_SMTP_PORT || '587' }}
+          SEFI_EMAIL_SMTP_USER: ${{ secrets.SEFI_EMAIL_SMTP_USER }}
+          SEFI_EMAIL_SMTP_APP_PASSWORD: ${{ secrets.SEFI_EMAIL_SMTP_APP_PASSWORD }}
+          SEFI_EMAIL_FROM: ${{ secrets.SEFI_EMAIL_FROM }}
+          SEFI_EMAIL_TO: ${{ secrets.SEFI_EMAIL_TO }}
+          SEFI_EMAIL_SUBJECT_PREFIX: ${{ vars.SEFI_EMAIL_SUBJECT_PREFIX || 'SEFI Daily Briefing' }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$DAILY_BRIEFING_JSON_PATH" ]; then
+            echo "WARNING: Daily Briefing JSON not found at $DAILY_BRIEFING_JSON_PATH; skipping email artifact generation." >&2
+            exit 0
+          fi
+
+          send_flag=""
+          if [ "${SEFI_EMAIL_ENABLED:-}" = "true" ]; then
+            send_flag="--send"
+          fi
+
+          python scripts/run_daily_briefing_email.py \
+            --input-json "$DAILY_BRIEFING_JSON_PATH" \
+            --output-dir "$DAILY_BRIEFING_EMAIL_OUTPUT_DIR" \
+            $send_flag
+
       - name: Upload run artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -188,3 +251,6 @@ jobs:
             ${{ env.OPS_LIVE2_INPUT_PATH }}
             ${{ env.OPS_LIVE2_REPORT_PATH }}
             ${{ env.OPS_LIVE3_REPORT_PATH }}
+            ${{ env.DAILY_BRIEFING_JSON_PATH }}
+            ${{ env.DAILY_BRIEFING_EMAIL_OUTPUT_DIR }}/daily_email.html
+            ${{ env.DAILY_BRIEFING_EMAIL_OUTPUT_DIR }}/daily_email.txt
