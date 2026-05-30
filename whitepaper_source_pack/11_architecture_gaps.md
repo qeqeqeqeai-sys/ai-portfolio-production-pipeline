@@ -4,35 +4,38 @@
 
 This audit reviewed the current source pack files `01` through `10` and the architecture diagrams under `whitepaper_source_pack/diagrams/`. It does not rewrite the source pack and does not infer architecture beyond documented repository evidence.
 
-## Missing Architectural Links
+## Phase 4.5 correction note
+This file now records the corrected status of the high-priority audit findings. Items marked corrected have been normalized in the source notes and diagrams; remaining ambiguities are limited to explicitly documented local-artifact fallback, future persistence paths not yet implemented, and source-row-dependent taxonomy values.
 
-| Relationship | Status | Evidence in source pack | Gap or risk | Recommended clarification |
+## Architecture Corrections Status
+
+| Relationship | Phase 4.5 status | Evidence in corrected source pack | Residual ambiguity | Remaining action |
 |---|---:|---|---|---|
-| DB-2 ↔ Historical Intelligence | Partially documented | DB-2 is the central fact store; Historical Intelligence contributes historical artifacts/facts into DB-2 and supplies fields used by OBS-QUERY. | Direction is inconsistent. Some text places DB-2 before Historical Intelligence, while Historical Intelligence also produces rows loaded into DB-2. The historical diagrams also imply a sequence that can be read as HIST-INTEL before DB-2, while other sections describe DB-2 as the read model enabling fact-native historical findings. | State the relationship as bidirectional-but-asymmetric: Historical loaders/emitters produce DB-2 facts; historical intelligence may consume DB-2/fact-like rows for fact-native findings; DB-2 remains the source of truth for OBS-QUERY retrieval, not necessarily for every upstream historical artifact. |
-| DB-2 ↔ OPS-LIVE | Partially documented | OPS-LIVE-2 emits live observations to `sefi_observation_facts`; OPS-LIVE-3 reads accumulated facts and produces structural state. | Text is clear, but `ops_live_architecture.md` shows OPS-LIVE-3 flowing into DB-2 as well as OPS-LIVE-2 flowing into DB-2, which can imply snapshot writes to DB-2. | Correct or annotate the diagram so OPS-LIVE-3 is explicitly read-only from DB-2 and emits snapshots/reports outside DB-2 fact persistence unless a separate governed snapshot persistence path exists. |
-| OPS-LIVE ↔ OBS-QUERY | Partially documented | OPS-LIVE produces live facts/state; OBS-QUERY retrieves facts and performs historical/live comparison. | The handoff of OPS-LIVE-3 structural-state snapshots to OBS-QUERY is not precisely defined. It is unclear whether OBS-QUERY reads only DB-2 fact rows, local snapshot artifacts, or both when live structural state is involved. | Add an explicit contract for live state consumption: source object, allowed fields, whether it is DB-backed or artifact-backed, and how supporting fact IDs/evidence IDs are preserved. |
+| DB-2 ↔ Historical Intelligence | Corrected | `04` and `05` now distinguish fact-like rows, DB-2 fact candidates, persisted DB-2 facts, contribution, consumption, and retrieval. The historical stack diagram no longer implies a single linear pipe. | Historical local-artifact fallback remains bounded and labeled rather than promoted to source-of-truth status. | Keep future docs aligned to the producer/contributor/consumer/retriever distinction. |
+| DB-2 ↔ OPS-LIVE | Corrected | `06` and `ops_live_architecture.md` now show OPS-LIVE-2 as the DB-2 emission path and OPS-LIVE-3 as read-only structural-state synthesis over DB-2 rows or bounded local fact rows. | No separate governed snapshot-persistence path is documented. | Treat OPS-LIVE-3 reports as local artifacts unless a future governed persistence contract is added. |
+| OPS-LIVE ↔ OBS-QUERY | Corrected | `06` now maps OPS-LIVE-1 observations, OPS-LIVE-2 persisted live facts, and OPS-LIVE-3 snapshots through Structural State, OBS-QUERY, and Consumption Products. | OBS-QUERY retrieves DB-2 rows; OPS-LIVE-3 local snapshots may inform presentation context but are not DB-2 facts. | Do not imply OPS-LIVE-3 output is queryable through OBS-QUERY unless persisted by a future governed path. |
 | OBS-QUERY ↔ Consumption Products | Fully documented | OBS-QUERY-4 creates analyst consumption views; Daily Briefing adapter consumes OBS-QUERY/HIST-INTEL artifacts; downstream pages are presentation-only. | Minor residual ambiguity: Consumption Products can also read HIST-INTEL style artifacts directly, which bypasses the purely OBS-QUERY-first narrative. | Document the allowed direct HIST-INTEL fallback path and precedence order between OBS-QUERY artifacts and HIST-INTEL artifacts. |
-| Historical Intelligence ↔ OBS-QUERY | Partially documented | Historical Intelligence supplies phase IDs, metric names, taxonomy labels, persistence/drift/recurrence/stability payloads, fact IDs, evidence IDs, artifact IDs, and run IDs that OBS-QUERY retrieves. | The source pack does not fully map HIST-INTEL output fields to OBS-QUERY filters, typed questions, and comparison keys. | Add a field-level handoff table from HIST-FACT/HIST-INTEL outputs to OBS-QUERY canonical fields. |
-| OBS-QUERY ↔ Governance | Fully documented | OBS-QUERY certifications disable provider calls, writes, schema migrations, fact creation, prediction, recommendation, and market actions. | The exact certification object/schema is not documented in the source pack. | Add a compact schema excerpt or field list for governance certification outputs. |
+| Historical Intelligence ↔ OBS-QUERY | Corrected | `05` now includes a handoff table from historical outputs to OBS-QUERY filters, question types, comparison types, consumption views, and traceability. | Exact taxonomy values remain source-row dependent because DB-2 stores metric names rather than a separate taxonomy table. | Keep examples tied to observed `metric_name`, `phase_id`, and payload fields. |
+| OBS-QUERY ↔ Governance | Corrected | `07`, `08`, and `09` now list governance certification field families and retrieval-only/no-prediction/no-recommendation guarantees. | Field presence varies by OBS-QUERY phase because retrieval, comparison, consumption, and validation certify different modes. | Preserve phase-specific fields while retaining the shared disabled-action guarantees. |
 | DB-2 ↔ Governance | Fully documented | Fact emission validates context, required fields, bounded payloads, metric values, duplicate keys, dry-run defaults, and explicit write gates. | No major architectural gap, but DB-1/DB-2 naming remains a consistency issue. | Resolve naming in the data-model notes and migration-comment discussion. |
-| Consumption Products ↔ Governance | Fully documented | Consumption Products are presentation-only, read-only, and constrained by quality gates and no-prediction/no-recommendation boundaries. | Top-level cards omit raw evidence IDs while Story Detail preserves drill-down IDs; this is governed, but readers may misinterpret traceability as absent from all presentation surfaces. | Clarify that evidence is not always displayed at top level but remains available through drill-down models. |
+| Consumption Products ↔ Governance | Fully documented | Consumption Products are presentation-only, read-only, and constrained by Quality Gate filters and no-prediction/no-recommendation boundaries. | Top-level cards omit raw Evidence Reference identifiers while Story Detail preserves drill-down IDs; this is governed, but readers may misinterpret traceability as absent from all presentation surfaces. | Clarify that evidence is not always displayed at top level but remains available through drill-down models. |
 | Source Universe ↔ OPS-LIVE-1 | Partially documented | OPS-LIVE-1 uses a DB-preferred universe table with validated config fallback and telemetry. | The source-of-truth priority during fallback/cutover is under-specified for audit readers. | Define the source-universe precedence rule and required telemetry when fallback occurs. |
-| Structural State ↔ Queryable Intelligence | Partially documented | Structural state is a bridge between facts and analyst questions. OPS-LIVE-3 and historical layers classify state; OBS-QUERY retrieves and compares facts. | It is unclear which structural-state outputs are persisted, retrieved, or merely generated as reports/snapshots. | Distinguish persisted observation facts, non-persisted structural-state snapshots, and presentation-only derived state. |
+| Structural State ↔ Queryable Intelligence | Corrected | `06`, `10`, and lifecycle diagrams now distinguish persisted DB-2 facts, non-persisted structural-state snapshots, and presentation-only items. | Historical structural-state terms can still appear in local artifacts before persistence. | Label local artifacts and fixtures explicitly when not persisted. |
 
 ## Ambiguities
 
-| Ambiguity | Affected documents | Issue | Recommended clarification |
+| Ambiguity | Affected documents | Phase 4.5 status | Residual guidance |
 |---|---|---|---|
-| DB-2 position relative to Historical Intelligence | `01`, `02`, `04`, `05`, `10`, diagrams | DB-2 is described as both downstream of fact emission and before Historical Intelligence, while Historical Intelligence also contributes facts into DB-2. | Describe DB-2 as the canonical observation-fact read model that receives emissions from historical/live producers and is later consumed by query/historical-live comparison. Avoid a single linear chain when the relationship is cyclic across build/read phases. |
-| OPS-LIVE-3 persistence semantics | `06`, `diagrams/ops_live_architecture.md` | Text says OPS-LIVE-3 reads facts and has no DB writes; the diagram can be read as OPS-LIVE-3 writing to DB-2. | Mark OPS-LIVE-3 as read-only from DB-2, with outputs as snapshots/reports unless separately persisted under a named table/path. |
-| Evidence as conceptual layer vs database object | `03`, `04`, `10`, `diagrams/data_model_relationships.md` | The conceptual model says Observation → Fact → Evidence, but evidence IDs are payload-level/canonicalized identifiers, not a dedicated DB-2 evidence table. | Use “Evidence Reference” for payload/derived IDs unless a dedicated evidence table exists. |
-| Fact-like rows vs DB-2 rows | `03`, `05`, `07`, `10` | Historical layers produce fact-like rows and DB-2 rows, but the boundary between local fact fixtures, expanded facts, and persisted `sefi_observation_facts` is not always explicit. | Define three categories: local fact-like row, DB-2 observation fact candidate, persisted DB-2 observation fact. |
-| Observation vs Observation Fact ownership | `02`, `03`, `04`, `06` | OPS-LIVE-1 produces observations, OPS-LIVE-2 emits facts, historical loaders/fact expanders also produce facts; ownership is distributed but not summarized in one place. | Add a producer/owner matrix for Observation, Observation Fact candidate, persisted Fact, Structural State, and Consumption View. |
-| Live Intelligence vs OPS-LIVE terminology | `01`, `02`, `03`, `06` | “Live Intelligence” and “OPS-LIVE” are used closely; Live Intelligence is a conceptual layer while OPS-LIVE is the implementation path. | Standardize: OPS-LIVE is the subsystem; Live Intelligence is the architectural capability produced by OPS-LIVE. |
-| Queryable Intelligence vs OBS-QUERY terminology | `01`, `02`, `03`, `07` | Queryable Intelligence is a conceptual capability; OBS-QUERY is the implementation interface. | Standardize: OBS-QUERY is the subsystem; Queryable Intelligence is the capability/output class. |
-| Story vs narrative/evolution terminology | `03`, `05`, `08` | HIST-INTEL uses narrative evolution/regime transition language; Consumption Products use Story and Story Evolution. | Define narrative/regime outputs as historical intelligence source concepts and Story as a presentation grouping derived from existing artifacts. |
-| Quality Gate scope | `03`, `08`, `09` | Quality Gate is described as a deterministic presentation filter; governance also references validation scorecards. Readers may conflate presentation quality gates with OBS-QUERY validation. | Reserve “Quality Gate” for presentation filtering and use “Validation Scorecard” for OBS-QUERY-5 checks. |
-| Source-of-truth scope | `04`, `08`, `09`, `10` | DB-2 is source of truth for OBS-QUERY retrieval, while Consumption Products can load existing local artifacts. | State that DB-2 is the source of truth for OBS-QUERY fact retrieval; local artifacts are allowed presentation inputs only when already governed and traceable. |
+| DB-2 position relative to Historical Intelligence | `01`, `02`, `04`, `05`, `10`, diagrams | Corrected by distinguishing local fact-like rows, DB-2 fact candidates, persisted DB-2 facts, contribution, consumption, and retrieval. | Avoid a single linear chain when the relationship is cyclic across build/read phases. |
+| OPS-LIVE-3 persistence semantics | `06`, `diagrams/ops_live_architecture.md` | Corrected: OPS-LIVE-3 is read-only synthesis and produces local snapshot/report output rather than DB-2 facts. | Treat snapshots/reports as local artifacts unless a future governed persistence path names a table/path. |
+| Evidence as conceptual layer vs database object | `03`, `04`, `10`, `diagrams/data_model_relationships.md` | The conceptual model says Observation → Fact → Evidence, but Evidence Reference identifiers are payload-level/canonicalized identifiers, not a dedicated DB-2 evidence table. | Use “Evidence Reference” for payload/derived identifiers unless a dedicated evidence table exists. |
+| Fact-like rows vs DB-2 rows | `03`, `05`, `07`, `10` | Corrected by lifecycle definitions for Local Fixture, Fact-Like Row, DB-2 Fact Candidate, and Persisted DB-2 Fact. | Keep future source-pack updates aligned to those lifecycle state names. |
+| Observation vs Observation Fact ownership | `02`, `03`, `04`, `06` | Corrected through DB-2 directionality and lifecycle sections that identify producers and consumers by state. | Use lifecycle states instead of adding parallel ownership terminology. |
+| Live Intelligence vs OPS-LIVE terminology | `01`, `02`, `03`, `06` | Corrected in terminology notes: OPS-LIVE is the subsystem; Live Intelligence is the architectural capability/output category. | Preserve that distinction in future prose. |
+| Queryable Intelligence vs OBS-QUERY terminology | `01`, `02`, `03`, `07` | Corrected in terminology notes: OBS-QUERY is the subsystem/interface; Queryable Intelligence is the fact-backed capability/output class. | Preserve that distinction in future prose. |
+| Story vs Narrative Evolution terminology | `03`, `05`, `08` | Corrected: Narrative Evolution is reserved for HIST-INTEL historical outputs and Story Evolution for consumption-layer presentation history. | Avoid using Story Evolution for historical regime outputs. |
+| Quality Gate scope | `03`, `08`, `09` | Corrected: Quality Gate is scoped to presentation filtering and Validation Scorecard is scoped to OBS-QUERY-5 checks. | Preserve separate terms for presentation suppression vs validation. |
+| Source-of-truth scope | `04`, `08`, `09`, `10` | Corrected with Source of Truth Boundaries in DB-2, Governance, and Data Model notes. | Local artifacts remain governed inputs, not competing sources of truth. |
 | Unsupported filters and payload fields | `04`, `07`, `10` | Sector/subsector/min-confidence are unsupported in OBS-QUERY-1 because not exposed as columns, yet these fields may exist in payloads or other tables. | Clarify which filters are first-class DB-2 columns, which are payload-only, and which are intentionally unsupported. |
 | DB-1 vs DB-2 naming | `04`, `10` | The source pack notes legacy DB-1 historical read-model terminology while presenting `sefi_observation_facts` as DB-2. | Add a naming note that DB-2 is the current architectural name for observation-fact retrieval, while some migrations/comments retain legacy DB-1 labels. |
 
@@ -41,29 +44,29 @@ This audit reviewed the current source pack files `01` through `10` and the arch
 ### Layer Definitions
 
 - **Consistent:** Observation, Fact, Query, Consumption, and Governance are repeatedly defined with clear no-write/no-provider/no-prediction boundaries where applicable.
-- **Partially inconsistent:** Historical Intelligence and DB-2 are not strictly linear. Historical producers feed DB-2, but DB-2/fact rows also enable fact-native historical findings and OBS-QUERY comparison.
-- **Contradiction flagged:** OPS-LIVE-3 is textually read-only but diagrammatically connected as if it may output into DB-2.
+- **Corrected nuance:** Historical Intelligence and DB-2 are not strictly linear. Historical producers feed DB-2 through governed candidates, and DB-2/fact rows can enable fact-native historical findings and OBS-QUERY comparison.
+- **Corrected:** OPS-LIVE-3 is now documented and diagrammed as read-only synthesis; OPS-LIVE-2 is the live DB-2 emission path.
 
 ### Data Flow
 
 - **Consistent:** The dominant flow is bounded observation → observation fact → DB-2 → OBS-QUERY → consumption.
-- **Partially documented:** Historical and live paths both converge on DB-2, but historical artifact fallback and live structural-state snapshot handoffs are not fully specified.
-- **Contradiction flagged:** `historical_intelligence_stack.md` shows HIST-INTEL flowing to HIST-LONG before DB-2, while source notes describe HIST-LONG as upstream of HIST-FACT/HIST-INTEL.
+- **Corrected with bounded residuals:** Historical and live paths both converge on DB-2 through governed fact candidates; local artifacts, fixtures, and OPS-LIVE-3 snapshots are explicitly non-source-of-truth unless persisted by a governed path.
+- **Corrected:** `historical_intelligence_stack.md` now shows completed local historical artifacts feeding HIST-LONG-8/9 and HIST-FACT candidates, with HIST-INTEL consuming/grouping local facts and DB-2 retrieving persisted facts without a simple one-way pipe.
 
 ### Governance Boundaries
 
 - **Consistent:** No prediction, recommendation, trading, provider calls, and query/presentation writes are consistently prohibited.
-- **Needs precision:** The exact shape of governance certification outputs is described conceptually but not specified as a canonical field contract.
+- **Corrected:** `07` and `09` now list governance certification field families and shared disabled-action guarantees; phase-specific field variation remains intentional.
 
 ### Retrieval Boundaries
 
 - **Consistent:** OBS-QUERY is retrieval-only over DB-2 rows or controlled fixtures.
-- **Needs precision:** The allowed role of local fixtures and local artifacts in production vs validation vs presentation should be separated.
+- **Corrected:** `10` separates Local Artifact, Local Fixture, Fact-Like Row, DB-2 Fact Candidate, Persisted DB-2 Fact, and Presentation Item lifecycle states.
 
 ### Source-of-Truth Definitions
 
 - **Consistent:** `sefi_observation_facts` is the source of truth for OBS-QUERY fact retrieval.
-- **Needs precision:** Historical artifacts and consumption artifacts are valid inputs in some layers; their source-of-truth status should be scoped so they do not compete with DB-2.
+- **Corrected:** `04`, `09`, and `10` scope DB-2, governed local artifact, retrieval, and presentation boundaries explicitly.
 
 ## Documentation Completeness Score
 
@@ -107,7 +110,7 @@ Scores use a 1–10 scale for completeness, clarity, and traceability.
 ## Top 10 Highest-Priority Documentation Improvements
 
 1. Resolve DB-2 ↔ Historical Intelligence directionality with a non-linear producer/consumer diagram.
-2. Fix `ops_live_architecture.md` so OPS-LIVE-3 cannot be interpreted as writing structural snapshots to DB-2.
+2. Keep `ops_live_architecture.md` aligned so OPS-LIVE-3 cannot be interpreted as writing structural snapshots to DB-2.
 3. Fix `historical_intelligence_stack.md` so HIST-LONG, HIST-FACT, HIST-INTEL, DB-2, and OBS-QUERY ordering matches the source notes.
 4. Add a source-of-truth scoping statement: DB-2 for OBS-QUERY facts; governed local artifacts only as documented inputs/fallbacks.
 5. Rename or qualify “Evidence” as “Evidence Reference” where no evidence table exists.

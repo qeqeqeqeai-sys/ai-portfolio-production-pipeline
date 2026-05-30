@@ -2,21 +2,26 @@
 
 ```mermaid
 flowchart TD
-    A[Historical Inputs\ncompleted local ecology artifacts\nHIST-LONG-4/5B/6/7/8/9] --> B[HIST-FACT\nHIST-FACT-1 observation facts\nHIST-FACT-2 regime evidence]
-    B --> C[HIST-INTEL\nHIST-INTEL-1 structural findings\nHIST-INTEL-1B fact-native findings\nHIST-INTEL-2 taxonomy weighting\nHIST-INTEL-3 narrative evolution\nHIST-INTEL-4 ecosystem synthesis]
-    C --> D[HIST-LONG\npersistence, recurrence, morphology, ecology, drift]
-    D --> E[(DB-2\nsefi_observation_facts\nartifact/run lineage)]
-    E --> F[OBS-QUERY\nretrieval, typed questions,\nhistorical/live comparison, views]
+    A[Completed local historical artifacts\nHIST-LONG-4/5B/6/7] --> H8[HIST-LONG-8/9\npersistence, recurrence, drift\nfact-like rows]
+    A --> HF[HIST-FACT-1/2\nobservation fact candidates\nregime Evidence References]
+    H8 --> HI[HIST-INTEL-1/1B/2/3/4\nstructural findings\ntaxonomy weights\nNarrative Evolution\necosystem synthesis]
+    HF --> HI
+    H8 -. contributes candidates .-> E[Governed DB-2 emission path]
+    HF -. contributes candidates .-> E
+    HI -. may consume local facts/artifacts .-> H8
+    E --> DB2[(DB-2\nsefi_observation_facts\npersisted facts + lineage)]
+    DB2 --> OQ[OBS-QUERY\nretrieval, typed questions,\nhistorical/live comparison, views]
+    DB2 -. retrieved by .-> HI
 
     subgraph Governance[Historical governance boundary]
-        G1[Local artifacts only]
+        G1[Local artifacts / fixtures labeled]
         G2[No provider calls]
         G3[No prediction/trading/recommendations]
         G4[No replay/topology activation]
         G5[Bounded payloads + lineage]
     end
 
-    B -. certified .-> Governance
-    C -. certified .-> Governance
-    D -. certified .-> Governance
+    H8 -. certified .-> Governance
+    HF -. certified .-> Governance
+    HI -. certified .-> Governance
 ```

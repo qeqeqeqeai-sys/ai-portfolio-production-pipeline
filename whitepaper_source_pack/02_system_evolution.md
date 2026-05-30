@@ -40,7 +40,7 @@ The Fact layer exists to normalize observations into stable, bounded, lineaged r
 ### Current implementation evidence
 - DB-2 fact emission validates context, required fields, payload shape/size, numeric or null metric values, and deterministic duplicate-prevention keys.
 - OPS-LIVE-2 emits live observations as DB-2 observation facts only when write gates are explicitly enabled and non-dry execution has a database client.
-- Retrieval canonicalizes fact IDs, evidence IDs, artifact IDs, run IDs, taxonomy fields, and payloads for downstream use.
+- Retrieval canonicalizes fact IDs, Evidence Reference identifiers, artifact IDs, run IDs, taxonomy fields, and payloads for downstream use.
 
 ### Transition enabled
 Fact normalization turns heterogeneous observations into append-oriented evidence units that can support historical intelligence, live state synthesis, OBS-QUERY retrieval, and presentation drill-downs.
@@ -48,12 +48,12 @@ Fact normalization turns heterogeneous observations into append-oriented evidenc
 ## 3. Historical Intelligence
 
 ### Why the layer exists
-Historical Intelligence exists to interpret completed historical ecology artifacts and fact rows into reviewable structure: persistence, recurrence, stability, morphology, ecology, drift, taxonomy weighting, narrative evolution, and ecosystem synthesis.
+Historical Intelligence exists to interpret completed historical ecology artifacts and fact rows into reviewable structure: persistence, recurrence, stability, morphology, ecology, drift, taxonomy weighting, Narrative Evolution, and ecosystem synthesis.
 
 ### Current implementation evidence
 - HIST-LONG layers establish multi-window ecology, temporal sensitivity, cross-sectional differentiation, intra-group structural contrast, persistence, and stability drift.
 - HIST-FACT layers create bounded observation facts and regime evidence from historical artifacts.
-- HIST-INTEL layers group facts into structural findings, fact-native findings, taxonomy weights, narrative/evolution outputs, and ecosystem synthesis.
+- HIST-INTEL layers group facts into structural findings, fact-native findings, taxonomy weights, Narrative Evolution outputs, and ecosystem synthesis.
 
 ### Transition enabled
 Historical Intelligence supplies baseline context and historical structure that can later be compared with live facts without becoming a forecast.
@@ -82,7 +82,7 @@ Structural Intelligence exists because analysts need more than isolated facts: t
 - OBS-QUERY-2 and OBS-QUERY-3 expose typed questions and historical/live comparisons over existing facts.
 
 ### Transition enabled
-Structural Intelligence creates the conceptual bridge between persisted facts and analyst questions while retaining source fact and evidence references.
+Structural Intelligence creates the conceptual bridge between persisted facts and analyst questions while retaining source fact and Evidence References.
 
 ## 6. Query Layer
 
@@ -105,7 +105,7 @@ The Query Layer converts fact-native storage into bounded, repeatable analyst-fa
 Consumption Products exist to present existing OBS-QUERY and historical-intelligence outputs in analyst-usable forms while preserving the presentation-only boundary.
 
 ### Current implementation evidence
-- The Daily Briefing adapter normalizes existing artifacts into briefing cards, story evolution highlights, investigation candidates, story details, quality metadata, and evidence drill-downs.
+- The Daily Briefing adapter normalizes existing artifacts into briefing cards, story evolution highlights, investigation candidates, story details, quality metadata, and Evidence Reference drill-downs.
 - Story Evolution uses deterministic story histories and bounded evolution directions.
 - Investigation Queue ranks candidates deterministically and provides analyst review questions tied to evidence rather than recommendations.
 - Quality Gate suppresses display noise without mutating source data.
@@ -116,9 +116,9 @@ Consumption Products make the fact/query architecture reviewable by technical re
 ## Current end-to-end transition
 The current architecture can be summarized as:
 
-Bounded observations become normalized facts; facts accumulate in DB-2; historical and live layers derive structural context from existing artifacts and facts; OBS-QUERY retrieves and compares existing facts; Consumption Products present selected, traceable views with quality gates and evidence drill-downs.
+Bounded observations become normalized facts; facts accumulate in DB-2; historical and live layers derive structural context from existing artifacts and facts; OBS-QUERY retrieves and compares existing facts; Consumption Products present selected, traceable views with Quality Gate filters and Evidence Reference drill-downs.
 
 ## Architectural ambiguities
 - The source pack supports the layer sequence but does not fully establish a chronological build history for every layer.
 - Historical read-model and DB-2 terminology overlap in the data model documentation, especially where migration comments reference DB-1 while current architecture centers DB-2 observation facts.
-- Evidence IDs are traceable through payloads and canonicalization but are not documented as a dedicated persisted evidence table.
+- Evidence Reference identifiers are traceable through payloads and canonicalization but are not documented as a dedicated persisted evidence table.

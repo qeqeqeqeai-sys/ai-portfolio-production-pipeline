@@ -11,7 +11,7 @@ flowchart LR
     B --> B1[Deterministic normalization\nbounded payloads\nduplicate prevention]
     D --> D1[Retrieval-only\nno synthesis\nno fact creation]
     E --> E1[Presentation-only\nselect/label existing items]
-    F --> F1[Evidence drill-down\nfacts + evidence + source phases]
+    F --> F1[Evidence Reference drill-down\nfacts + Evidence Reference identifiers + source phases]
 
     subgraph Prohibited[Prohibited across current architecture focus]
         X1[Provider API side effects]
