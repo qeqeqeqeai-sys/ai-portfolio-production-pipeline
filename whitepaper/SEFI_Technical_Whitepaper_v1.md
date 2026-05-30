@@ -2,11 +2,11 @@
 
 title: "SEFI Technical Whitepaper v1.0"
 
-subtitle: "Draft 1 — Source-Pack-Derived Technical Architecture"
+subtitle: "Draft 2 — Professional Technical Whitepaper"
 
 date: "2026-05-30"
 
-status: "Draft 1"
+status: "Draft 2"
 
 source: "SEFI-SOURCE-PACK-v1.1"
 
@@ -14,12 +14,13 @@ source: "SEFI-SOURCE-PACK-v1.1"
 
 # SEFI Technical Whitepaper v1.0
 
-**Draft 1 — Source-Pack-Derived Technical Architecture**
+**Draft 2 — Professional Technical Whitepaper**
 
 
 **Prepared from:** SEFI-SOURCE-PACK-v1.1  
 **Prepared on:** 2026-05-30  
-**Document status:** Draft 1  
+**Document status:** Draft 2
+
 **Authoritative source rule:** The source pack is the sole architectural source of truth for this whitepaper.
 
 ## Revision History
@@ -31,6 +32,7 @@ source: "SEFI-SOURCE-PACK-v1.1"
 | --- | --- | --- | --- |
 
 | Draft 1 | 2026-05-30 | Initial technical whitepaper generated from the completed source pack. | SEFI-SOURCE-PACK-v1.1 |
+| Draft 2 | 2026-05-30 | Refinement and expansion pass focused on architecture rationale, DB-2, Historical Intelligence, OBS-QUERY, governance, and architecture review findings. | SEFI-SOURCE-PACK-v1.1 and architecture audit corrections |
 
 
 
@@ -53,9 +55,10 @@ source: "SEFI-SOURCE-PACK-v1.1"
 - [14. Governance Framework](#14-governance-framework)
 - [15. Data Model](#15-data-model)
 - [16. Architecture Boundaries](#16-architecture-boundaries)
-- [17. Limitations and Known Constraints](#17-limitations-and-known-constraints)
-- [18. Future Evolution Opportunities](#18-future-evolution-opportunities)
-- [19. Conclusion](#19-conclusion)
+- [17. Architecture Review Findings](#17-architecture-review-findings)
+- [18. Limitations and Known Constraints](#18-limitations-and-known-constraints)
+- [19. Future Evolution Opportunities](#19-future-evolution-opportunities)
+- [20. Conclusion](#20-conclusion)
 - [Appendix A — Terminology Standard](#appendix-a-terminology-standard)
 - [Appendix B — Lifecycle States](#appendix-b-lifecycle-states)
 - [Appendix C — Architecture Diagrams](#appendix-c-architecture-diagrams)
@@ -154,52 +157,113 @@ The remainder of the whitepaper progresses from design philosophy and system evo
 
 # 3. Design Philosophy
 
-SEFI's design philosophy is fact-native, deterministic, governance-first, explainable, and retrieval-oriented. Fact-native design means that durable intelligence is anchored in observation facts rather than in generated prose. Deterministic design means that transformations, sorting, ranking, duplicate prevention, validation fixtures, source-universe controls, payload caps, and section caps favor repeatable behavior. Governance-first design means that the prohibited behaviors are encoded into layer boundaries instead of being left to a final editorial review. Explainability means that each view can expose supporting facts, Evidence Reference identifiers, source phases, artifacts, and runs. Retrieval-over-generation means that query and presentation layers arrange existing evidence rather than creating new facts.
+SEFI's design philosophy is fact-native, deterministic, governance-first, explainable, and retrieval-oriented. These principles are not branding terms. They are architectural constraints that determine how observations become facts, how facts become retrievable intelligence, how historical and live contexts remain comparable, and how analyst-facing products remain bounded. The architecture deliberately treats the movement from observation to fact to query to presentation as a set of controlled boundary crossings rather than as a free-form analysis pipeline.
 
-The fact-native principle is especially important because the architecture contains both historical and live layers. Historical components can classify persistence, recurrence, stability, morphology, ecology, drift, taxonomy weight, and structural evolution. Live components can ingest bounded observations, accumulate governed fact rows, and synthesize read-only health or structural-state snapshots. These capabilities are useful only when tied to fact and evidence references. SEFI therefore treats a useful intelligence output as one that can answer which observation facts support it, which source phases and runs are attached, and which governance boundary prevents it from becoming prediction or recommendation.
+Fact-native design means that durable intelligence is anchored in observation facts rather than in generated prose. Deterministic design means that transformations, sorting, ranking, duplicate prevention, validation fixtures, source-universe controls, payload caps, and section caps favor repeatable behavior. Governance-first design means that prohibited behaviors are encoded into layer boundaries instead of being left to final editorial review. Explainability means that each view can expose supporting facts, Evidence Reference identifiers, source phases, artifacts, and runs. Retrieval-over-generation means that query and presentation layers arrange existing evidence rather than creating new facts.
 
-Determinism is not limited to database writes. It appears in dry-run defaults, explicit write gates, bounded payload size, duplicate prevention, fixture validation, retrieval limits, supported-filter checks, canonical row envelopes, deterministic ordering, Quality Gate filters, and validation scorecards. This approach recognizes that intelligence systems fail not only through incorrect calculations but also through uncontrolled widening of scope, inconsistent payloads, unsupported filters, and implicit synthesis.
-
-Across this section, the architectural boundary is intentionally conservative. The system may preserve, retrieve, group, compare, or present evidence-bearing observations, but the source pack does not authorize forecasts, predictions, trading instructions, portfolio recommendations, market-action directives, provider calls in retrieval layers, schema migrations in query or presentation layers, or unbounded generated narrative synthesis. When data is missing, unsupported, or outside the governed shape, the appropriate behavior is a bounded response, an unsupported-filter explanation, a dry-run summary, or an insufficient-data state rather than synthetic completion.
+The practical consequence is that SEFI optimizes for reviewable intelligence rather than maximal narrative fluency. The system may produce concise analyst views, but those views are valuable because they retain a connection to the facts and lineage that support them. The architecture does not assume that a fluent summary is trustworthy merely because it is coherent. A SEFI output is trustworthy only to the extent that it remains tied to governed observations, persisted facts, Evidence References, source phases, artifact lineage, run lineage, validation posture, and explicit non-responsibilities.
 
 **Table 4. Design principles and architectural implications.**
 
 | Principle | Implication |
-
 | --- | --- |
-
 | Fact-native intelligence | Observation facts and Evidence Reference identifiers are the durable basis for retrieval, comparison, and presentation. |
-
 | Deterministic architecture | Bounded inputs, stable keys, explicit gates, canonical envelopes, and repeatable ordering constrain system behavior. |
-
 | Governance-first design | Layer boundaries prohibit provider calls, writes, schema migrations, predictions, recommendations, and market actions where not authorized. |
-
-| Explainability | Consumption views preserve drill-down to facts, evidence references, artifacts, runs, source phases, and validation posture. |
-
+| Explainability | Consumption views preserve drill-down to facts, Evidence References, artifacts, runs, source phases, and validation posture, reviewer confidence, and audit continuity. |
 | Retrieval-over-generation | OBS-QUERY and Consumption Products retrieve and arrange existing facts rather than generating new intelligence or facts. |
 
+### 3.1 Why Fact-Native Intelligence
+
+SEFI is fact-native because the architecture is designed to preserve evidence through repeated transformations. Historical processing, live processing, query retrieval, and consumption presentation each compress or organize information. Without a durable fact layer, that compression would gradually detach downstream views from the observations that gave them meaning. A fact-native architecture prevents this detachment by making observation facts the durable review units for later comparison, retrieval, and presentation.
+
+Evidence preservation is the first rationale. A bounded observation may originate in a historical artifact, a live accumulation path, or a controlled fixture. Once normalized into an observation fact, its essential review fields are retained: phase identity, entity identity, metric identity, window, value, payload, artifact lineage, run lineage, source phase, and duplicate-prevention identity. This does not make every upstream artifact a database source of truth, but it does ensure that persisted DB-2 facts can be reviewed independently of a downstream narrative.
+
+Traceability is the second rationale. SEFI needs to answer not only what an analyst-facing view says but also how that view was assembled. Fact-native design makes traceability structural. The system can preserve fact IDs, Evidence Reference identifiers, source phases, artifact identifiers, run identifiers, and payload context across retrieval and presentation. A reviewer can therefore move backward from a Daily Briefing item, Story Evolution card, Investigation Queue entry, Why Now explanation, or Quality Gate state to the evidence-bearing rows and artifacts that informed it.
+
+Auditability is the third rationale. Audits require stable objects of inspection. A prose report can be inspected, but it is difficult to audit if it cannot be decomposed into source facts and lineage. An observation fact is smaller, typed, bounded, and tied to execution context. This makes it suitable for duplicate-prevention review, payload-bound review, source-of-truth review, retrieval review, and downstream presentation review. The fact-native model makes audits less dependent on reconstructing the intent of a narrative and more dependent on checking documented fields and boundary behavior.
+
+Accumulation is the fourth rationale. Market-structure intelligence in SEFI depends on what persists, recurs, weakens, strengthens, transitions, or changes across windows and runs. Those questions require comparable retained units. If intelligence remained only in artifacts or reports, each run would be harder to compare with previous runs. Fact accumulation gives Historical Intelligence, OPS-LIVE, and OBS-QUERY a shared substrate for longitudinal review while preserving the distinction between local fact-like rows, DB-2 fact candidates, and persisted DB-2 facts.
+
+Comparison is the fifth rationale. Historical/live comparison, persistence review, recurrence review, stability review, morphology review, and ecosystem review all require observations to be normalized enough to compare without erasing their lineage. Fact-native design provides this middle ground. It does not collapse all intelligence into a single undifferentiated score, and it does not leave each artifact isolated. It stores comparable observations with enough context for analysts and reviewers to understand what is being compared.
+
+Retrieval is the sixth rationale. OBS-QUERY depends on persisted facts and controlled fixtures because its governance posture is retrieval-only. It cannot create facts to answer a question. Therefore, the architecture must make relevant intelligence retrievable before the query layer is asked to present it. Fact-native design makes retrieval a consequence of earlier disciplined persistence rather than an opportunity for late-stage synthesis.
+
+This design differs conceptually from artifact-centric approaches. An artifact-centric architecture can preserve rich intermediate outputs, but it risks making downstream intelligence depend on whole documents or generated summaries whose internal claims are difficult to normalize, compare, or retrieve. SEFI still uses governed local artifacts where the source pack authorizes them, but it does not treat arbitrary artifacts, reports, or presentation cards as equivalent to persisted observation facts. The fact-native model preserves the richness of source context while identifying the bounded rows that downstream retrieval and audit can rely on.
+
+### 3.2 Why Deterministic Architecture
+
+SEFI uses deterministic architecture because repeatability is a governance requirement. The same bounded inputs and the same permitted execution context should lead to the same row shape, duplicate-prevention identity, validation posture, retrieval envelope, and presentation boundary. Determinism does not imply that the market structures being observed are simple. It means that the system's handling of those observations is predictable enough to review.
+
+Repeatability matters most at boundaries. DB-2 emission requires explicit enablement, non-dry execution, valid context, bounded payloads, numeric-or-null metric values, duplicate-prevention keys, and a supplied client. OBS-QUERY supports documented filters and reports unsupported filters rather than improvising. Consumption Products apply Quality Gates and presentation limits rather than expanding into unbounded prose. These controls make system behavior reproducible for reviewers who need to understand why a row was or was not emitted, why a query returned a bounded result, or why a presentation item was excluded.
+
+Governance depends on determinism because controls that cannot be repeated cannot be trusted. A no-write boundary is meaningful only if the layer consistently refuses writes. A no-provider-call boundary is meaningful only if retrieval does not occasionally reach outside DB-2 or controlled fixtures. A no-prediction boundary is meaningful only if outputs consistently avoid future-looking or market-action claims. Determinism turns these constraints into operational behavior.
+
+Validation also depends on deterministic behavior. Validation scorecards, fixture checks, duplicate handling, source-universe limits, payload caps, and supported-filter checks are only useful if they produce stable results under the same conditions. Deterministic validation allows the architecture to identify unsupported, insufficient, disabled, or dry-run states without treating them as failures to be hidden. A bounded negative result is part of the governance model.
+
+Bounded behavior is the fourth rationale. The architecture places caps and explicit states around inputs, payloads, writes, filters, retrieved facts, sections, and presentation items. These bounds reduce the risk that a downstream layer will widen scope merely because additional data or language is available. A controlled intelligence system must be able to say no: no rows emitted, unsupported filter, insufficient evidence, dry-run only, presentation excluded, or no recommendation.
+
+Operational reviewability is the final rationale. SEFI is intended to be inspected by technical reviewers, architecture reviewers, and governance reviewers. Deterministic design creates inspectable surfaces: emission summaries, row fields, duplicate keys, source-of-truth declarations, Evidence References, validation metadata, Quality Gates, and disabled-action certifications. Reviewers do not need to infer hidden intent from a generated narrative; they can inspect boundary behavior and lineage.
+
+### 3.3 Why Retrieval Over Generation
+
+Retrieval is a first-class architectural principle because SEFI's downstream value depends on evidence-backed access, not unsupported synthesis. OBS-QUERY retrieves existing DB-2 facts or controlled fixtures, canonicalizes them into fact and Evidence Reference envelopes, compares historical and live contexts where supported, and produces bounded views. It does not call providers, write facts, migrate schemas, create new facts, predict, recommend, or issue market actions.
+
+Evidence-backed retrieval protects reviewability. A retrieved answer can expose the rows, Evidence References, source phases, windows, artifacts, and runs that support it. A generated answer that is not constrained by retrieval may be coherent, but the architecture would have no reliable way to prove which observations support each claim. SEFI therefore treats retrieval as the authorized downstream intelligence mechanism and treats unsupported synthesis as outside the architecture.
+
+Retrieval also improves governance. Because OBS-QUERY is read-only, reviewers can reason about it as a consumer of persisted facts rather than as another producer. This prevents a query from becoming an undocumented transformation phase. If a user asks whether something persisted, changed, recurred, became dominant, weakened, or transitioned, the query layer must answer from retrievable evidence and documented comparison logic. If the evidence is unavailable or the filter is unsupported, the correct behavior is to report that state.
+
+The retrieval-over-generation principle does not make SEFI analytically shallow. Retrieval can still group facts, compare windows, surface persistence, identify recurrence, build historical/live views, populate story cards, and generate validation summaries. The distinction is that these operations organize existing evidence rather than inventing facts or ungrounded conclusions. Complexity remains anchored in prior governed layers.
+
+This principle is especially important for consumption products. Daily Briefing, Story Evolution, Investigation Queue, Story Detail, Why Now, and Quality Gate surfaces are allowed to make intelligence consumable, but they remain presentation-only. They can format, select, caveat, and display retrieved evidence. They cannot transform retrieval into forecast, recommendation, or unsupported narrative authority.
+
+### 3.4 Explainability As Architecture
+
+SEFI treats explainability as an architectural property rather than a post-processing feature. Explainability exists because lineage, Evidence References, artifacts, runs, phases, facts, and validation states are preserved across layers. A downstream explanation is credible only if the architecture has retained the objects needed for drill-down.
+
+Lineage begins with source phase identity. Historical layers, live layers, and query layers use phase identifiers and phase names to preserve where observations and facts came from. This allows reviewers to distinguish a historical persistence observation from a live accumulation observation or a query-derived presentation item. Phase lineage prevents downstream views from flattening all evidence into an undifferentiated claim.
+
+Evidence References provide a second explainability mechanism. The source pack clarifies that Evidence Reference is the preferred term where no universal evidence table exists. An Evidence Reference is therefore a pointer or identifier that supports traceability to the evidence-bearing context; it should not be overstated as a separate evidence repository unless documented. This clarification strengthens explainability because it prevents terminology from implying infrastructure that is not part of the architecture.
+
+Artifact lineage and run lineage provide execution context. Artifact identifiers connect facts and views to governed local artifacts where available. Run identifiers connect them to the execution that produced or accumulated the observation. These fields make it possible to determine whether a downstream view was supported by historical artifact processing, live accumulation, or a specific run context.
+
+Analyst drill-down is the consumption-side expression of explainability. A presentation item should not be a dead end. It should expose or preserve enough traceability for an analyst to understand supporting facts, Evidence References, source phase, validation posture, and relevant lineage. The architecture therefore designs explanation into the data path: facts carry lineage, retrieval preserves lineage, and presentation displays lineage or drill-down affordances.
 
 
+### 3.5 Design Philosophy and Subsystem Interaction
 
-### 3.1 Operational consequences of the design philosophy
+The design philosophy is most visible in the way subsystems interact. Historical Intelligence, OPS-LIVE, DB-2, OBS-QUERY, Consumption Products, and Governance do not duplicate one another's authority. They exchange bounded objects through explicit boundaries. Historical layers can characterize retained evidence. OPS-LIVE can accumulate live facts and synthesize read-only live structural context. DB-2 can persist governed observation facts. OBS-QUERY can retrieve and compare. Consumption Products can present. Governance constrains each transition.
 
-The operational consequence of fact-native design is that the system must preserve intermediate accountability even when a downstream view is concise. A Daily Briefing item, for example, can be short, but the architecture requires the item to remain connected to facts, Evidence Reference identifiers, source phases, and validation posture. This prevents a compact analyst view from becoming a detached narrative. The same principle applies to typed OBS-QUERY questions: an answer about a persisted, changed, recurred, dominant, weakened, or transitioned structure is meaningful only when it can be traced to the retrieved observations that support the answer.
+This interaction model prevents architectural shortcuts. For example, a consumption product should not bypass OBS-QUERY to invent a briefing claim. OBS-QUERY should not bypass DB-2 source-of-truth scope to generate a missing fact. OPS-LIVE-3 should not bypass OPS-LIVE-2 emission controls by writing structural snapshots as facts. Historical Intelligence should not be described as entirely downstream of DB-2 when it can also produce candidates and local fact-like rows.
 
-The operational consequence of deterministic architecture is that ambiguity is resolved through explicit states rather than through synthesis. A missing field, unsupported filter, disabled write gate, absent database client, oversized payload, dry-run mode, or insufficient fact set does not authorize a model or presentation layer to fill in the gap. The bounded response may be less complete than a speculative answer, but it is reviewable. This is why deterministic behavior is treated as a governance mechanism rather than merely a software-engineering preference.
+The subsystem interaction model also explains why the architecture uses multiple forms of lineage. Artifact lineage is useful when historical processing depends on completed local artifacts. Run lineage is useful when facts must be tied to execution context. Phase lineage is useful when reviewers need to distinguish historical, live, query, and presentation responsibilities. Evidence References are useful when downstream products need compact drill-down handles. These lineage forms work together; none alone is sufficient.
 
-The operational consequence of governance-first design is that the architecture is easier to review. Reviewers can inspect where writes are allowed, where reads are read-only, where provider calls are blocked, where schema migrations are prohibited, and where presentation remains presentation-only. The system's non-responsibilities are therefore as important as its responsibilities. A technical reviewer should be able to determine not only what SEFI produces but also what SEFI refuses to produce.
+### 3.6 Design Philosophy and Reviewer Readability
 
-The operational consequence of retrieval-over-generation is that the intelligence layer behaves as an evidence access and comparison layer. This does not make the system passive; retrieval can still group, compare, validate, and present complex structures. However, the complexity remains anchored in existing facts and documented artifacts. The architecture's value comes from preserving relationships among observations, facts, lineage, structural context, and analyst consumption rather than from generating unsupported prose.
+A professional technical whitepaper must be readable by reviewers who are not inside the implementation history. The design philosophy therefore emphasizes clear authority boundaries and repeated, but section-specific, explanations of why those boundaries exist. The goal is not to describe every code path. The goal is to make the architecture understandable enough that a reviewer can evaluate whether a subsystem is acting within its authorized role.
+
+Reviewer readability requires precise terms. Observation, Observation Fact, Evidence Reference, Fact-Like Row, DB-2 Fact Candidate, Persisted DB-2 Fact, Query Result, and Presentation Item describe different states. Using these terms consistently prevents architectural ambiguity. It also reduces the risk that readers interpret a generated report, fixture, or card as if it were a persisted fact.
+
+Reviewer readability also requires bounded claims. SEFI can claim that it preserves evidence, lineage, retrieval boundaries, presentation boundaries, and governance controls because those are architectural properties described by the source pack. It should not claim unsupported forecasting skill, recommendation authority, autonomous action, or external provider enrichment in retrieval layers. The whitepaper's credibility depends on this restraint.
+
+Finally, reviewer readability requires explaining why constraints are valuable. A reader may initially see no-prediction, no-recommendation, retrieval-only, and presentation-only controls as limitations. In SEFI, they are quality controls. They keep the architecture focused on evidence-backed structural review and prevent downstream products from overstating what the facts support.
+
+### 3.7 Operational consequences of the design philosophy
+
+The operational consequence of fact-native design is that the system must preserve intermediate accountability even when a downstream view is concise. A Daily Briefing item can be short, but the architecture requires the item to remain connected to facts, Evidence References, source phases, and validation posture, reviewer confidence, and audit continuity. This prevents a compact analyst view from becoming a detached narrative.
+
+The operational consequence of deterministic architecture is that ambiguity is resolved through explicit states rather than through synthesis. A missing field, unsupported filter, disabled write gate, absent database client, oversized payload, dry-run mode, or insufficient fact set does not authorize a model or presentation layer to fill in the gap. The bounded response may be less complete than a speculative answer, but it is reviewable.
+
+The operational consequence of governance-first design is that the architecture is easier to review. Reviewers can inspect where writes are allowed, where reads are read-only, where provider calls are blocked, where schema migrations are prohibited, and where presentation remains presentation-only. The system's non-responsibilities are therefore as important as its responsibilities.
+
+The operational consequence of retrieval-over-generation is that the intelligence layer behaves as an evidence access and comparison layer. Retrieval can still group, compare, validate, and present complex structures. However, the complexity remains anchored in existing facts and documented artifacts. The architecture's value comes from preserving relationships among observations, facts, lineage, structural context, and analyst consumption rather than from generating unsupported prose.
+
 
 # 4. System Evolution
 
 The source pack describes SEFI as an evolution from bounded observations toward fact persistence, historical intelligence, live intelligence, structural intelligence, queryable intelligence, and consumption products. This evolution should not be read as a single linear implementation pipeline. The architecture audit explicitly corrects the over-simple interpretation that DB-2 always precedes all Historical Intelligence. Historical layers can produce local fact-like rows and DB-2 fact candidates before persistence, while DB-2 later stores persisted observation facts that OBS-QUERY, comparison layers, and some historical retrieval paths can consume.
 
-The first architectural phase is the observation layer. Observations are bounded source signals captured from controlled historical or live inputs. Their role is to preserve what was observed without granting the observation durable fact status until normalization, validation, lineage binding, and emission gates are satisfied. The second phase is the fact layer, where observations are normalized into observation facts with phase, entity, metric, window, payload, lineage, and duplicate-prevention fields. The third phase is Historical Intelligence, where completed local ecology artifacts are used to evaluate persistence, recurrence, drift, stability, morphology, taxonomy weighting, Narrative Evolution, and ecosystem synthesis.
-
-The fourth phase is Live Intelligence through OPS-LIVE. OPS-LIVE-1 controls live ecosystem ingestion over a bounded universe. OPS-LIVE-2 performs live observation fact accumulation and can emit DB-2 facts only when write gates pass. OPS-LIVE-3 performs read-only live structural-state snapshotting over accumulated facts and does not create DB-2 facts. The fifth phase is Structural Intelligence, where historical and live evidence can be characterized in terms of ecosystem state, structural state, persistence, stability, recurrence, morphology, and ecology. The sixth phase is Queryable Intelligence through OBS-QUERY. The final phase is Consumption Products, where retrieved facts and artifacts are converted into presentation-only analyst surfaces.
-
-The emergence of DB-2 is therefore best understood as the emergence of an append-oriented observation-fact read model, not as the replacement of all local historical artifacts. DB-2 is authoritative for OBS-QUERY fact retrieval, while governed local artifacts and fixtures remain documented inputs or fallbacks where the source pack explicitly allows them. This distinction prevents source-of-truth language from becoming overly broad.
+The evolution is best understood as a response to architectural pressures. Each layer emerged because an earlier representation was insufficient for a later review need. Observations were necessary but not durable enough. Facts were necessary but not sufficient for longitudinal interpretation. Historical accumulation was necessary but did not replace live accumulation. Retrieval architecture was necessary because accumulated facts needed a governed way to answer analyst questions. Consumption products were necessary because retrieved intelligence needed bounded presentation surfaces.
 
 **Figure 2. SEFI intelligence lifecycle.** The corrected lifecycle shows observation, fact candidate, persisted fact, historical context, live context, structural state, query, and analyst consumption.
 
@@ -214,7 +278,8 @@ validated row shape]
 append-oriented fact store]
     C --> D[Historical Context
 HIST-LONG / HIST-FACT / HIST-INTEL]
-    D -. local fact-like rows\nmay precede persistence .-> K
+    D -. local fact-like rows
+may precede persistence .-> K
     C --> E[Live Context
 OPS-LIVE facts + health snapshot]
     D --> F[Structural State
@@ -241,35 +306,63 @@ Daily Briefing + Story Evolution + Investigation Queue]
 **Table 5. Evolutionary layers.**
 
 | Layer | Transition enabled | Architectural correction |
-
 | --- | --- | --- |
-
 | Observation | Bounded historical or live source signals become candidates for normalization. | Observation alone is not durable source-of-truth status. |
-
 | Fact | Normalized rows bind entity, metric, window, payload, source phase, artifact, run, and duplicate key. | Fact candidates are distinct from persisted DB-2 facts. |
-
 | Historical Intelligence | Completed artifacts produce persistence, recurrence, drift, taxonomy, Narrative Evolution, and ecosystem synthesis. | Historical Intelligence both contributes to and can retrieve from DB-2. |
-
 | Live Intelligence | OPS-LIVE handles controlled ingestion, accumulation, and structural snapshots. | OPS-LIVE-3 is read-only and does not emit facts. |
-
 | Query Layer | OBS-QUERY retrieves and compares existing facts. | Retrieval-only; no creation of new facts or intelligence. |
-
 | Consumption Products | Analyst views present retrieved evidence. | Presentation-only and bounded by Quality Gates. |
 
+### 4.1 Architectural pressures that drove evolution
+
+The first pressure was that observations alone were insufficient. A bounded observation preserves a signal, but it does not by itself provide durable source-of-truth status, duplicate-prevention identity, governed lineage, or a stable retrieval envelope. Observations can be useful inside a local phase, but downstream comparison requires a more normalized unit. Without the fact layer, downstream consumers would need to reinterpret raw or semi-structured artifacts each time they asked whether a pattern persisted, recurred, weakened, or transitioned.
+
+The second pressure was that facts became necessary for audit and retrieval. A fact binds entity, metric, window, value, payload, phase, artifact, run, and duplicate-prevention identity into a durable row shape. That row shape can be emitted, accumulated, retrieved, and reviewed. The fact layer therefore arose from a need to convert observations into durable review units without losing lineage. It is the point at which a bounded signal becomes suitable for append-oriented accumulation and query access.
+
+The third pressure was that DB-2 emerged as the persisted observation-fact read model. Historical and live layers can produce local fact-like rows and candidates, but the architecture needed a scoped source of truth for OBS-QUERY fact retrieval. DB-2 supplies that scope through `sefi_observation_facts`. It does not replace all local artifacts, and it does not precede all historical intelligence. It provides the persisted fact boundary that makes retrieval and comparison reviewable.
+
+The fourth pressure was historical accumulation. Market-structure intelligence depends on more than a single observation. Persistence, recurrence, stability, morphology, ecology, drift, taxonomy weighting, Narrative Evolution, and ecosystem synthesis all require retained evidence across windows and runs. Historical Intelligence emerged to make completed local ecology artifacts and accumulated facts interpretable as longitudinal structure. This is not forecasting. It is descriptive review of retained historical evidence.
+
+The fifth pressure was live accumulation. A historical-only architecture cannot express current bounded observations, live health, or current structural-state snapshots. OPS-LIVE emerged to ingest a bounded source universe, accumulate controlled live observation facts, and synthesize live structural-state snapshots. The architecture audit correction is important: OPS-LIVE-3 is read-only. Live snapshotting interprets accumulated facts and health context; it does not become a DB-2 fact-emission path.
+
+The sixth pressure was retrieval architecture. Accumulated facts and historical artifacts are valuable only if analysts and downstream systems can ask bounded questions over them. OBS-QUERY emerged to answer typed intelligence questions through read-only retrieval and comparison. It supplies canonical fact envelopes, Evidence Reference envelopes, historical/live comparisons, views, and validation scorecards while preserving disabled-action guarantees.
+
+The seventh pressure was analyst consumption. Retrieved intelligence still needs to be usable by humans. Consumption Products emerged to convert retrieved facts and historical intelligence artifacts into bounded presentation surfaces: Daily Briefing, Story Evolution, Investigation Queue, Story Detail, Why Now, and Quality Gate outputs. These products improve readability without becoming new sources of truth, prediction engines, or recommendation systems.
+
+### 4.2 Phase-by-phase architectural rationale
+
+The observation phase exists to capture bounded historical or live source signals while preserving the distinction between observed information and durable facts. This distinction is critical because not every observed signal should become a persisted fact. Some observations remain local, insufficient, unsupported, or outside governed shape.
+
+The fact phase exists to normalize observations into stable review units. It binds lineage and identity fields, constrains payloads, supports duplicate prevention, and creates a row shape that can be accumulated. This phase makes later comparison possible without requiring every downstream consumer to understand every upstream artifact format.
+
+Historical Intelligence exists to interpret retained evidence across windows and structural contexts. It evaluates persistence, recurrence, drift, stability, morphology, taxonomy weighting, Narrative Evolution, and ecosystem synthesis. Its role is descriptive and retrospective. It characterizes evidence that exists; it does not forecast what will happen.
+
+OPS-LIVE exists to bring the same governance posture to live observations. OPS-LIVE-1 controls live ecosystem ingestion over a bounded universe. OPS-LIVE-2 performs governed live observation fact accumulation and can emit DB-2 facts only when write gates pass. OPS-LIVE-3 performs read-only live structural-state snapshotting over accumulated facts and must not be described as emitting facts.
+
+Structural Intelligence exists as a characterization layer across historical and live context. It gives the architecture vocabulary for persistence, stability, recurrence, morphology, ecology, dominance, weakening, transition, and drift. These concepts remain tied to evidence and must not be converted into predictions or recommendations.
+
+OBS-QUERY exists because intelligence needs a governed read interface. It retrieves facts, applies supported filters, returns unsupported-filter states, compares historical and live evidence where supported, and emits validation posture, reviewer confidence, and audit continuity. It does not create new facts or intelligence.
+
+Consumption Products exist because analysts need concise views. They are presentation-only adapters over retrieved facts and historical intelligence artifacts. Their value is usability, not new authority. A presentation item can display evidence-backed intelligence; it cannot become the source of truth for that intelligence.
 
 
 
-### 4.1 Phase-by-phase architectural rationale
+### 4.3 Evolution as Increasing Review Granularity
 
-The observation phase exists because neither historical artifacts nor live source payloads should be treated as durable facts without normalization. Historical artifacts may contain structured ecology information, but they are completed local artifacts with their own governance context. Live payloads may be timely, but they are constrained by universe selection, fetcher behavior, and source availability. The observation phase gives both paths a common conceptual entry point: bounded source signals that can be normalized without erasing provenance.
+SEFI's evolution can also be read as increasing review granularity. Early observation capture provides raw bounded signals, but review questions quickly become more specific. Which observation was normalized? Which fact candidate was eligible for persistence? Which persisted fact supports a query result? Which historical artifact supplied longitudinal context? Which live snapshot was read-only? Which presentation item displayed the retrieved evidence? Each architectural stage adds a more precise review object.
 
-The fact phase exists because downstream review requires a stable unit of comparison. Without observation facts, retrieval would have to reason directly over heterogeneous artifacts, live payloads, reports, or presentation objects. That would make auditability fragile and would blur source-of-truth boundaries. The fact phase creates a normalized row shape, including phase, entity, metric, window, payload, artifact, run, and duplicate-prevention identity, so that retrieval can operate over bounded evidence rather than uncontrolled source documents.
+This increasing granularity is important because market-structure intelligence can otherwise become a chain of summaries. A summary of a summary may be readable, but it is weak for audit. SEFI instead keeps intermediate objects visible: observations, facts, candidates, persisted facts, structural states, query results, validation scorecards, and presentation views. Reviewers can inspect the layer where an issue occurred rather than treating the whole system as an opaque narrative generator.
 
-Historical Intelligence emerged because single observations do not fully describe structural context. Persistence, recurrence, stability, morphology, ecology, drift, and regime transition are longitudinal or comparative concepts. The historical stack therefore accumulates completed local evidence across windows, groups, and taxonomy structures. Its role is not to predict what will happen next but to characterize what has persisted, changed, recurred, drifted, stabilized, weakened, dominated, or transitioned in the retained evidence base.
+The same granularity supports governance. A write failure belongs at the emission boundary. An unsupported filter belongs at the OBS-QUERY boundary. A missing caveat belongs at the consumption boundary. A misleading future-looking phrase belongs at the governance language boundary. The system's evolution produced these boundaries because each class of issue needs a different control point.
 
-Live Intelligence emerged because the architecture also needs controlled handling of current observations. OPS-LIVE separates live ingestion from live fact accumulation and separates both from structural-state snapshotting. This separation is a governance control: OPS-LIVE-1 can bound the live universe, OPS-LIVE-2 can enforce write gates, and OPS-LIVE-3 can synthesize read-only snapshots without turning those snapshots into DB-2 facts.
+### 4.4 Evolution Without Architecture Drift
 
-The query and consumption phases emerged because analysts need bounded access to facts and structural context. OBS-QUERY turns persisted facts into retrievable and comparable evidence surfaces. Consumption Products then translate those surfaces into analyst-facing formats. The architecture remains conservative at the end of the lifecycle because the risk of unsupported claims is highest when information is summarized for human consumption.
+Draft 2 expands rationale without changing architecture. This distinction matters. The source pack already defines the subsystems, lifecycle definitions, governance boundaries, DB-2 correction, and OPS-LIVE-3 correction. The purpose of this pass is to explain why those pieces exist and how they interact, not to add new subsystems or speculative capabilities.
+
+Architecture drift would occur if the whitepaper converted descriptive historical review into forecasting, converted investigation candidates into recommendations, converted presentation products into source-of-truth objects, or converted OPS-LIVE-3 snapshots into fact emissions. It would also occur if the document implied that DB-2 must precede all Historical Intelligence or that Evidence References imply an undocumented universal evidence table. Draft 2 avoids these changes by preserving the audit corrections as controlling constraints.
+
+The result is an architecture that can evolve in documentation quality without evolving in unauthorized capability. More explanatory prose improves reviewability. More rationale improves reader confidence. More precise lifecycle language improves governance. None of these improvements requires redesigning SEFI.
 
 # 5. Core Concepts
 
@@ -429,129 +522,317 @@ Observation boundaries are also operational constraints. If an upstream source e
 
 ```mermaid
 flowchart TD
-    A[Observation Layer\nexisting bounded observations] --> B[Emission Context\nenabled + dry_run + phase/artifact/run IDs]
+    A[Observation Layer
+existing bounded observations] --> B[Emission Context
+enabled + dry_run + phase/artifact/run IDs]
     B --> C{should_emit_facts?}
     C -- no --> D[No fact rows emitted]
-    C -- yes --> E[Normalize observation\nentity, metric, value, window, payload]
-    E --> F[Validate bounded payload\nMAX_PAYLOAD_BYTES + mapping only]
-    F --> G[Build DB-2 row\nsefi_observation_facts shape]
-    G --> Q[DB-2 Fact Candidate\nnot source of truth until persisted]
-    Q --> H[Compute duplicate_prevention_key\nSHA-256 over row identity]
+    C -- yes --> E[Normalize observation
+entity, metric, value, window, payload]
+    E --> F[Validate bounded payload
+MAX_PAYLOAD_BYTES + mapping only]
+    F --> G[Build DB-2 row
+sefi_observation_facts shape]
+    G --> Q[DB-2 Fact Candidate
+not source of truth until persisted]
+    Q --> H[Compute duplicate_prevention_key
+SHA-256 over row identity]
     H --> I[Validate deterministic row]
-    I --> J{Write gate\nenabled true + dry_run false + client}
+    I --> J{Write gate
+enabled true + dry_run false + client}
     J -- no --> K[Dry-run emission summary]
-    J -- yes --> L[Append/upsert facts\nignore duplicate_prevention_key]
-    L --> M[DB-2 Source of Truth\nsefi_observation_facts]
-    M --> N[OBS-QUERY retrieval\nfacts + Evidence References]
+    J -- yes --> L[Append/upsert facts
+ignore duplicate_prevention_key]
+    L --> M[DB-2 Source of Truth
+sefi_observation_facts]
+    M --> N[OBS-QUERY retrieval
+facts + Evidence References]
 ```
 
 DB-2 is the repository's fact-native read model for SEFI observations. Its central table is `sefi_observation_facts`, an append-oriented store of bounded observation facts emitted from governed phases and later retrieved by OBS-QUERY and consumption products. DB-2 is not a single linear stage before all Historical Intelligence. The architecture audit correction is explicit: historical layers can produce local fact-like rows and DB-2 fact candidates before persistence, while DB-2 stores persisted observation facts that OBS-QUERY and comparison layers retrieve.
 
 The DB-2 input contract includes a gated emission context with enablement status, dry-run status, phase identity, artifact identity, and run identity. It also includes metric observations with entity, metric, optional window, value, and bounded payload. OPS-LIVE-2 contributes bounded live observations containing observed-at, source phase, source run, entity fields, metric fields, and payload metadata. Parent registry metadata can be emitted for artifact and run lineage when governed live fact rows exist.
 
-The observation-fact lifecycle contains seven source-pack steps. First, upstream live or historical components capture bounded observations. Second, an emission context is constructed and must include explicit enablement and identity fields. Third, observations are normalized into DB-2 row shape, including deterministic payload ordering and numeric or null metric validation. Fourth, artifact, run, phase, payload source fields, and duplicate-prevention keys bind rows to execution lineage. Fifth, the emission gate enforces dry-run as the safe default and requires explicit enablement, non-dry execution, and an injected database client for writes. Sixth, rows accumulate append-orientedly with duplicate-prevention conflict handling. Seventh, downstream layers retrieve bounded rows and expose canonical facts plus Evidence References.
+### 8.1 Why DB-2 Exists
 
-DB-2's source-of-truth role is scoped. `sefi_observation_facts` is the source of truth for OBS-QUERY fact retrieval and downstream query-derived consumption. That statement does not make every local artifact, fixture, presentation card, markdown report, or generated output a source of truth. Governed local artifacts can be documented inputs or fallbacks, and local fact-like rows can contribute candidates, but persisted DB-2 facts are the durable retrieval boundary for OBS-QUERY.
+DB-2 exists because SEFI requires a persisted observation-fact boundary between bounded observations and retrieval-oriented intelligence. Historical and live layers can identify signals, produce local fact-like rows, and assemble candidates, but retrieval requires a stable source of truth. `sefi_observation_facts` supplies that source of truth for OBS-QUERY fact retrieval and downstream query-derived consumption.
 
-Fact emission is deterministic and fail-closed. Context without `enabled=True`, missing required context fields, invalid required row fields, nonnumeric metric values where a numeric or null value is required, nonmapping payloads, oversized payloads, or incorrect duplicate-prevention keys cannot silently write durable facts. OPS-LIVE-2 reinforces the same semantics by capping local input rows, normalizing bounded observations, creating parent artifact/run registry rows only when fact rows exist, and writing only when `enabled` is true, `dry_run` is false, and a client is supplied.
+The observation-fact architecture is the core reason DB-2 exists. A raw observation is too close to its source context to serve as a durable cross-layer review unit. A presentation item is too far downstream to serve as source evidence. An observation fact occupies the governed middle: it is normalized enough to retrieve and compare, but it retains lineage back to source phase, artifact, run, entity, metric, window, payload, and Evidence Reference context.
+
+Retrieval requirements also make DB-2 necessary. OBS-QUERY must answer bounded questions without provider calls, writes, schema migrations, fact creation, prediction, recommendation, or market action. It can do so only if facts have already been persisted in a retrievable shape or are available through controlled fixtures where explicitly allowed. DB-2 therefore shifts intelligence discipline upstream. The query layer retrieves; it does not improvise missing facts.
+
+Evidence requirements make DB-2 necessary as well. A retrieved answer should expose fact identifiers, Evidence Reference identifiers, snapshot or observation windows, taxonomy or source-layer context where available, artifact lineage, run lineage, and payload support. DB-2 gives these fields a durable location. It allows downstream views to remain compact while preserving enough evidence for audit.
+
+Source-of-truth requirements are the fourth rationale. The architecture audit clarifies that DB-2 source-of-truth status is scoped. DB-2 is authoritative for OBS-QUERY fact retrieval. It is not a universal source of truth for all local artifacts, generated reports, fixtures, presentation cards, or markdown outputs. This scoping prevents DB-2 from being overstated while still recognizing its central role in the retrieval path.
+
+### 8.2 Observation Fact Philosophy
+
+An observation fact is a normalized review unit. It is not merely a copied source signal, and it is not a generated conclusion. It expresses a bounded observation using stable fields so that downstream systems can retrieve, compare, validate, and present it without changing its meaning.
+
+Normalization gives facts their durability. Entity identity, metric identity, metric value, window, payload, phase, artifact, run, and duplicate-prevention identity must be represented in predictable form. This permits historical and live observations to participate in shared retrieval and comparison patterns while preserving their source context.
+
+Observation facts are durable review units because they can be inspected independently of the full upstream artifact and independently of the downstream presentation. A reviewer can ask whether the row was emitted under valid context, whether its payload was bounded, whether its duplicate-prevention key matched row identity, whether its source phase was preserved, and whether retrieval displayed it correctly.
+
+Observation facts are also comparison units. SEFI's typed intelligence concepts—persisted, changed, recurred, dominant, weakened, transitioned—depend on comparing retained evidence. Those comparisons require facts that can be grouped by entity, metric, taxonomy, source layer, window, or Evidence Reference context where supported. The architecture does not require every fact to answer every possible question; it requires facts to be stable enough for documented comparisons.
+
+Finally, observation facts are accumulation units. Accumulation allows persistence, recurrence, and longitudinal review to emerge from retained evidence rather than from one-off reports. Append-oriented fact rows let the architecture observe how structures appear across runs and windows while retaining the lineage needed to explain each occurrence.
+
+### 8.3 Fact Lineage Strategy
+
+DB-2 lineage strategy is built around artifact lineage, run lineage, phase lineage, Evidence References, and duplicate-prevention identity. These fields support traceability objectives across emission, retrieval, validation, and presentation.
+
+Artifact lineage links a fact to the governed artifact context where available. Historical Intelligence may operate over completed local ecology artifacts, and OPS-LIVE-2 may emit parent artifact registry rows when governed fact rows exist. Artifact references help reviewers understand which upstream material supported a persisted fact without implying that every artifact is itself a DB-2 fact.
+
+Run lineage links a fact to the execution context that produced or accumulated it. This matters for operational review because two facts with similar entity and metric fields may arise from different runs. Run identity lets reviewers distinguish recurrence across executions from duplicate insertion within one execution. It also supports audit trails and validation scorecards.
+
+Phase lineage identifies the subsystem or phase responsible for producing the observation or fact candidate. Phase identity is important because the meaning of an observation depends partly on whether it came from historical processing, live accumulation, query retrieval, or presentation. DB-2 facts preserve source phase rather than flattening all evidence into a single anonymous table.
+
+Evidence References provide traceability into the evidence-bearing context. The architecture audit clarifies the term: Evidence Reference should be used where no concrete universal evidence table is documented. This avoids implying that SEFI has a separate evidence repository beyond the documented facts, artifacts, runs, and payload references. Evidence References are therefore identifiers that support drill-down and review.
+
+Duplicate-prevention identity completes the lineage strategy. DB-2 is append-oriented, but append-oriented does not mean uncontrolled duplication. Deterministic duplicate-prevention keys allow accumulation while supporting idempotent writes. They make it possible to distinguish a recurring structure from repeated insertion of the same row identity.
+
+### 8.4 Append-Oriented Accumulation
+
+DB-2 accumulation is append-oriented because SEFI's intelligence questions depend on retained evidence over time. Persistence cannot be reviewed from a single overwritten current state. Recurrence cannot be evaluated if prior occurrences disappear. Historical comparison cannot be performed if the system retains only the latest presentation view.
+
+Append-oriented accumulation preserves the sequence of governed facts while using duplicate-prevention behavior to avoid uncontrolled repetition. Rows that pass emission gates can be inserted or upserted with duplicate-ignore semantics. Rows that do not pass gates produce no durable facts or only dry-run summaries. This model supports both safety and accumulation.
+
+Persistence review depends on accumulation. A structure that appears across windows or runs can be described as persistent only if the architecture retains enough evidence to support that description. DB-2 facts provide retrievable units that OBS-QUERY and historical layers can compare without relying on unsupported memory.
+
+Recurrence review also depends on accumulation. Recurrence asks whether a pattern appears again under comparable conditions. That question requires retained rows with stable entity, metric, window, source, and lineage fields. Append-oriented facts make recurrence review possible while duplicate keys help prevent recurrence from being confused with duplicate ingestion.
+
+Historical comparison depends on accumulation across windows and contexts. Historical Intelligence can evaluate drift, stability, morphology, taxonomy weighting, Narrative Evolution, and ecosystem synthesis because evidence is retained rather than replaced by the latest output. DB-2 does not own every historical artifact, but it provides the persisted fact boundary that retrieval and comparison can trust.
+
+### 8.5 Historical ↔ DB-2 Relationship
+
+The architecture audit correction for DB-2 and Historical Intelligence is one of the most important clarifications in this whitepaper. The relationship is not a one-way sequence in which DB-2 must always precede Historical Intelligence. It is a producer/consumer relationship with non-linear directionality.
+
+Historical layers can produce local fact-like rows and DB-2 fact candidates before persistence. HIST-LONG layers characterize ecology, sensitivity, differentiation, contrast, persistence, and drift over completed local artifacts. HIST-FACT layers expand historical observation facts and regime evidence. HIST-INTEL layers produce structural findings, fact-native findings, taxonomy-weighted intelligence, Narrative Evolution, and ecosystem synthesis. Some of these outputs can contribute candidates for DB-2 persistence.
+
+DB-2 then stores persisted observation facts that OBS-QUERY and comparison layers retrieve. Historical layers may also consume persisted facts where the source pack describes such retrieval. This means the relationship is cyclic in an architectural sense but governed at each boundary: local artifacts are not automatically source-of-truth facts, candidates are not persisted facts, and retrieved facts do not authorize new writes in OBS-QUERY.
+
+This clarification prevents two errors. The first error is overstating DB-2 as the beginning of all historical intelligence. The second error is understating DB-2 as merely an implementation detail. DB-2 is central to persisted fact retrieval, but Historical Intelligence remains an active producer and consumer of evidence-bearing context.
+
+
+### 8.6 DB-2 as a Review Boundary
+
+DB-2 should be understood as a review boundary as much as a storage boundary. The architecture does not treat persistence as a passive database event. Persistence changes the authority of a row: a local observation or candidate becomes a retrievable persisted fact only after it passes governed emission controls. This is why DB-2 is described in terms of lifecycle, lineage, duplicate prevention, and source-of-truth scope rather than simply in terms of table storage.
+
+As a review boundary, DB-2 answers several questions. Was the row produced by an authorized phase? Was the emission context explicit? Was dry-run mode disabled for the write? Was a database client supplied? Were required fields present? Was the payload bounded and structured as a mapping? Was metric value numeric or null where required? Was duplicate-prevention identity deterministic? If any of these conditions fail, the architecture should not silently create durable facts.
+
+The review-boundary interpretation also explains why DB-2 must not absorb every object in the ecosystem. Completed local artifacts, validation fixtures, query views, briefing cards, and quality summaries can be useful, but they have different authority. DB-2 is the persisted observation-fact boundary for rows that have passed governed emission. Maintaining this distinction keeps audits precise and prevents downstream consumers from treating every readable artifact as if it had the same evidentiary status.
+
+This boundary is especially important for analyst trust. An analyst-facing product may summarize a structural condition in one sentence, but the confidence of that sentence depends on the ability to drill back to facts and lineage. DB-2 provides the durable row set that makes such drill-down possible. The presentation layer can remain concise because DB-2 preserves the inspectable substrate.
+
+### 8.7 DB-2 and Source-of-Truth Discipline
+
+Source-of-truth discipline is one of DB-2's most important architectural contributions. The source pack and architecture audit do not authorize a broad claim that DB-2 is the source of truth for every SEFI object. The correct claim is narrower and stronger: `sefi_observation_facts` is the source of truth for OBS-QUERY fact retrieval and downstream query-derived consumption.
+
+This scoped statement prevents two opposite errors. The first error is under-scoping DB-2 by treating it as an implementation detail behind the historical stack. That would weaken retrieval and audit because OBS-QUERY needs an authoritative fact source. The second error is over-scoping DB-2 by treating every artifact, fixture, and presentation object as if it were part of the same source-of-truth set. That would weaken lifecycle governance.
+
+The disciplined interpretation is that DB-2 owns persisted observation facts. Historical local artifacts remain governed inputs and evidence-bearing context. Controlled fixtures remain validation or fallback materials where documented. Fact-like rows and DB-2 fact candidates remain pre-persistence states. Presentation items remain consumption views. Each object can be important without sharing the same authority.
+
+Source-of-truth discipline also helps resolve conflicts. If a query-derived consumption view needs a fact, OBS-QUERY should retrieve it from DB-2 or an explicitly allowed fixture. If a presentation item contains a claim that cannot be traced to facts or documented artifacts, the claim should be caveated or excluded. If a local candidate has not been persisted, it should not be described as a persisted DB-2 fact. These rules keep the architecture reviewable.
+
+### 8.8 DB-2 Retrieval Consequences
+
+DB-2's row shape affects what OBS-QUERY can and cannot retrieve. Supported filters are those the retrieval adapter can apply against available fact fields and controlled envelopes. Unsupported filters must be reported as unsupported rather than synthesized. This is why the source pack notes that filters such as sector, subsector, and minimum confidence are unsupported where DB-2 fact rows do not expose those columns in the OBS-QUERY-1 schema.
+
+This retrieval consequence is not a weakness. It is a governance feature. A system that invents unsupported filter results would be more fluent but less trustworthy. SEFI instead requires the query layer to remain honest about what the persisted facts can answer. Where the data model does not expose a field, the architecture should either report the limitation or rely on a documented source that does expose it. It should not infer the missing field without authorization.
+
+DB-2 retrieval consequences also influence upstream design. If a future documented field is needed for retrieval, it must be introduced through governed architecture and data-model change, not through query-time improvisation. This maintains the separation between persistence design and query behavior. OBS-QUERY can retrieve and compare; it cannot mutate the data model to satisfy a question.
+
+### 8.9 DB-2 Failure Modes Avoided
+
+The DB-2 design avoids several failure modes. The first is silent fact creation. Without explicit gates, any upstream observation could become durable evidence even when context is incomplete. DB-2 avoids this through enabled flags, dry-run defaults, required context, row validation, payload bounds, and database-client checks.
+
+The second failure mode is duplicate confusion. Accumulation must allow recurrence, but uncontrolled duplication can masquerade as recurrence. Deterministic duplicate-prevention keys allow the architecture to preserve repeated observations across legitimate contexts while avoiding repeated insertion of the same row identity.
+
+The third failure mode is lineage loss. If facts were stored without phase, artifact, run, entity, metric, window, and payload context, downstream retrieval could produce answers that are impossible to audit. DB-2's lineage fields preserve the path from observation to fact to query to presentation.
+
+The fourth failure mode is source-of-truth inflation. If local artifacts, candidates, and presentation cards were all treated as facts, reviewers would have no stable authority model. DB-2 avoids that by reserving persisted fact status for governed rows in `sefi_observation_facts`.
+
+The fifth failure mode is query-time synthesis. If OBS-QUERY could generate missing facts, DB-2's role would collapse. DB-2 preserves retrieval discipline by making persisted facts the substrate for downstream answers and by requiring unsupported states when the substrate is insufficient.
+
+### 8.10 DB-2 operational responsibilities
+
+DB-2 has a narrow but central responsibility: retain governed observation facts in a form that can be retrieved without reinterpretation. The fact emitter and accumulation paths validate context, normalize strings, bound payloads, compute duplicate-prevention keys, validate rows, and either dry-run or insert/upsert according to the emission gate.
+
+DB-2 does not generate intelligence. It does not decide what analysts should do. It does not forecast. It does not recommend. It does not convert presentation items into facts. Its operational value comes from making persisted facts available to retrieval and comparison layers while preserving lineage and governance posture.
 
 **Table 9. DB-2 source-of-truth boundaries.**
 
 | Boundary | In scope | Out of scope |
-
 | --- | --- | --- |
-
 | Persisted fact scope | Rows in `sefi_observation_facts` plus lineage fields, duplicate-prevention keys, and optional governed parent registry rows. | Local fact-like rows, reports, presentation cards, quality summaries, unsupported synthetic fields. |
-
 | Retrieval scope | Canonical facts and Evidence Reference envelopes retrieved by OBS-QUERY. | Provider calls, new fact creation, schema migrations, recommendations, predictions. |
-
 | Directionality scope | Historical and live layers can contribute candidates; DB-2 supplies persisted retrieval facts. | A simplified one-way sequence where DB-2 must precede all historical intelligence. |
 
+The common lineage contract is essential. Facts and derived views retain source phase identity, artifact and run references where available, entity and metric identity, observation windows, bounded payload fields, Evidence Reference identifiers, and duplicate-prevention keys. This lineage is not optional metadata; it is the mechanism that makes downstream review, comparison, audit, and analyst drill-down possible without changing the meaning of the original observation.
 
 
-The common lineage contract is also essential. Facts and derived views retain source phase identity, artifact and run references where available, entity and metric identity, observation windows, bounded payload fields, Evidence Reference identifiers, and duplicate-prevention keys. This lineage is not an optional metadata convenience; it is the mechanism that makes downstream review, comparison, audit, and analyst drill-down possible without changing the meaning of the original observation.
 
+### 8.11 DB-2 and Analyst Drill-Down
 
-### 8.1 DB-2 operational responsibilities
+DB-2 enables analyst drill-down by preserving the row-level evidence behind downstream views. A Daily Briefing item or Story Evolution card may present only a small amount of text, but that text should be supported by retrievable facts, Evidence References, source phases, artifacts, runs, windows, and payload context. Without DB-2, drill-down would depend primarily on locating and interpreting whole artifacts or reports. With DB-2, the analyst can move from a presentation item to a bounded observation fact.
 
-DB-2 has a narrow but central responsibility: retain governed observation facts in a form that can be retrieved without reinterpretation. The fact emitter and accumulation paths validate context, normalize strings, bound payloads, compute duplicate-prevention keys, validate rows, and either dry-run or insert/upsert according to the emission gate. This means DB-2 is not an intelligence generator. It is the fact persistence and read model that enables intelligence layers to remain evidence-backed.
+This drill-down capability is also useful for architecture review. If a consumption product displays a claim about a persistent, changed, recurring, dominant, weakened, or transitioned structure, the reviewer can ask whether the supporting facts exist in DB-2 or in documented historical context. If they do not, the claim should be treated as unsupported. DB-2 therefore acts as a guardrail against presentation overreach.
 
-The append-oriented nature of DB-2 is important. Accumulation does not overwrite the conceptual history of observations; it allows repeated observations to coexist while duplicate-prevention behavior supports idempotence. Duplicate prevention is not merely a database optimization. It is a governance control that reduces accidental duplicate accumulation while preserving the ability to review repeated, recurring, or persistent structures over time.
+Drill-down does not require DB-2 to contain every possible explanatory object. The architecture preserves a scoped role. DB-2 stores persisted observation facts. Historical artifacts, taxonomy context, validation scorecards, and consumption views may add context at their own boundaries. The important requirement is that a downstream item must not sever its relationship to the facts and references that support it.
 
-DB-2 retrieval produces canonical envelopes. OBS-QUERY-1 retrieves selected columns, maps them into fact and Evidence Reference structures, applies supported filters, and reports unsupported filters. The canonical envelope is the handoff contract between persistence and query. It allows typed questions and consumption views to operate over consistent evidence rather than over heterogeneous database rows or local artifacts.
+### 8.12 DB-2 and Comparison Integrity
 
-The source-of-truth boundary should guide all review of DB-2. A persisted row in `sefi_observation_facts` can support OBS-QUERY fact retrieval. A local fact-like row can support historical processing but should not be treated as a persisted fact. A structural-state snapshot can support live context but should not be treated as fact emission. A presentation item can support analyst reading but should not be treated as a source record. These distinctions keep DB-2 central without overstating its scope.
+Comparison integrity depends on stable fact identity. When SEFI compares windows, entities, metrics, live contexts, or historical contexts, it needs to know that the compared units were constructed consistently. DB-2 supports this through normalized row shape, deterministic duplicate keys, bounded payloads, and lineage fields.
 
-DB-2 governance also provides failure semantics. When writes are disabled, dry-run is active, a database client is absent, context fields are missing, row fields are invalid, payloads are oversized, or duplicate keys are incorrect, the system should not emit facts. This fail-closed behavior is one of the strongest governance features in the architecture because it prevents partial or invalid evidence from becoming durable retrieval material.
+Stable identity prevents misleading comparisons. If two rows use different entity conventions, unsupported payload structures, missing source phases, or ambiguous windows, a comparison may appear meaningful while hiding inconsistent inputs. DB-2's validation and normalization responsibilities reduce that risk. They do not guarantee that every possible comparison is valid, but they give OBS-QUERY and reviewers a controlled substrate.
+
+Comparison integrity also depends on preserving absence and insufficiency. If a fact does not exist, OBS-QUERY should not create it. If a filter is unsupported, OBS-QUERY should report that state. If evidence is too sparse, validation should caveat the result. These behaviors protect comparison quality because they prevent missing evidence from being replaced by confident language.
 
 # 9. Historical Intelligence Architecture
 
-**Figure 5. Historical intelligence stack.** The corrected non-linear relationship among completed local artifacts, HIST-LONG, HIST-FACT, HIST-INTEL, governed DB-2 emission, and OBS-QUERY retrieval.
+Historical Intelligence converts completed local ecology artifacts and accumulated facts into longitudinal structural understanding. It is not a forecasting subsystem. It is an evidence-review architecture for persistence, recurrence, stability, morphology, ecology, drift, taxonomy weighting, Narrative Evolution, and ecosystem synthesis. Its purpose is to characterize what retained historical evidence shows about market-structure behavior without converting that characterization into prediction or recommendation.
+
+The current historical stack includes HIST-LONG, HIST-FACT, and HIST-INTEL layers. HIST-LONG layers perform ecology review, delta sensitivity classification, cross-sectional differentiation, intra-group contrast, cross-window persistence stability, and persistence evolution or stability drift. HIST-FACT layers expand historical observation facts and historical regime evidence. HIST-INTEL layers produce historical structural findings, fact-native historical findings, taxonomy-weighted intelligence, Narrative Evolution and regime transition mapping, and ecosystem intelligence synthesis.
+
+Historical Intelligence is architecture-oriented rather than merely layer-oriented. The layers matter because they separate review responsibilities, but the deeper architectural purpose is longitudinal accumulation. The system needs to understand whether observations persist, recur, stabilize, change morphology, or belong to a broader ecology. That understanding requires a path from completed artifacts to fact-like rows, persisted facts, structural findings, queryable comparisons, and presentation products.
+
+**Figure 5. Historical intelligence stack.** The historical stack moves from completed local ecology artifacts through HIST-LONG, HIST-FACT, HIST-INTEL, DB-2 contribution/retrieval, OBS-QUERY, and consumption products.
 
 ```mermaid
 flowchart TD
-    A[Completed local historical artifacts\nHIST-LONG-4/5B/6/7] --> H8[HIST-LONG-8/9\npersistence, recurrence, drift\nfact-like rows]
-    A --> HF[HIST-FACT-1/2\nobservation fact candidates\nregime Evidence References]
-    H8 --> HI[HIST-INTEL-1/1B/2/3/4\nstructural findings\ntaxonomy weights\nNarrative Evolution\necosystem synthesis]
-    HF --> HI
-    H8 -. contributes candidates .-> E[Governed DB-2 emission path]
-    HF -. contributes candidates .-> E
-    HI -. may consume local facts/artifacts .-> H8
-    E --> DB2[(DB-2\nsefi_observation_facts\npersisted facts + lineage)]
-    DB2 --> OQ[OBS-QUERY\nretrieval, typed questions,\nhistorical/live comparison, views]
-    DB2 -. retrieved by .-> HI
-
-    subgraph Governance[Historical governance boundary]
-        G1[Local artifacts / fixtures labeled]
-        G2[No provider calls]
-        G3[No prediction/trading/recommendations]
-        G4[No replay/topology activation]
-        G5[Bounded payloads + lineage]
-    end
-
-    H8 -. certified .-> Governance
-    HF -. certified .-> Governance
-    HI -. certified .-> Governance
+    A[Completed local ecology artifacts] --> B[HIST-LONG
+persistence + drift + ecology review]
+    B --> C[HIST-FACT
+historical observation facts + regime evidence]
+    C --> D[HIST-INTEL
+structural findings + taxonomy + Narrative Evolution + synthesis]
+    C -. fact candidates .-> E[(DB-2
+persisted observation facts)]
+    D -. fact candidates / summaries .-> E
+    E --> F[OBS-QUERY
+retrieval + comparison]
+    D --> F
+    F --> G[Consumption Products
+presentation-only analyst views]
 ```
 
-Historical Intelligence converts completed local ecology artifacts into fact/evidence rows, structural findings, Narrative Evolution signals, taxonomy weighting, and ecosystem synthesis. The historical stack is not a monolith. HIST-LONG components assess multi-window ecology, temporal delta sensitivity, cross-sectional differentiation, intra-group contrast, cross-window persistence, and persistence evolution or stability drift. HIST-FACT components expand historical observation fact candidates and regime Evidence References. HIST-INTEL components produce historical structural findings, fact-native historical findings, taxonomy-weighted intelligence, Narrative Evolution and regime transition mapping, and ecosystem intelligence synthesis.
+### 9.1 Why Persistence Matters
 
-HIST-LONG-4 performs real multi-window ecology review. HIST-LONG-5B classifies temporal delta sensitivity. HIST-LONG-6 differentiates cross-sectional ecology. HIST-LONG-7 evaluates intra-group structural contrast. HIST-LONG-8 identifies cross-window persistence structural stability. HIST-LONG-9 evaluates persistence evolution and stability drift. Together, these layers provide the historical evidence base for persistence, recurrence, stability, morphology, ecology, and longitudinal accumulation.
+Persistence matters because SEFI is interested in structures that remain observable across windows or runs. A single observation may be notable, but persistence gives it structural context. If a stress signal, taxonomy pattern, ecosystem characteristic, or narrative condition appears repeatedly across historical windows, the architecture can describe that retained evidence as persistent where supported.
 
-HIST-FACT-1 and HIST-FACT-2 bridge historical artifacts toward fact-native representation. HIST-FACT-1 expands historical observation fact candidates. HIST-FACT-2 expands historical regime evidence using Evidence Reference identifiers. These phases are important because they preserve a distinction between local fact-like rows or candidates and persisted DB-2 facts. They can contribute to a governed DB-2 emission path, but the candidate state is not identical to persisted source-of-truth status.
+Persistence is not prediction. It does not say that the structure will continue. It says that historical evidence shows continued presence across the reviewed windows. This distinction preserves governance while still allowing meaningful longitudinal review. Persistence is therefore a descriptive evidence property, not a forward-looking claim.
 
-HIST-INTEL layers organize historical evidence into higher-level structural descriptions. HIST-INTEL-1 produces historical structural findings. HIST-INTEL-1B emphasizes fact-native historical findings. HIST-INTEL-2 applies taxonomy-weighted intelligence. HIST-INTEL-3 maps Narrative Evolution and regime transitions. HIST-INTEL-4 synthesizes ecosystem intelligence. These outputs are intelligence in the source-pack sense: structured interpretation over retained facts and artifacts, not forecasting or recommendation behavior.
+Persistence also supports analyst prioritization without becoming recommendation. A persistent structure may deserve review because it has survived multiple windows or artifacts. The architecture can surface that condition in Story Evolution, Investigation Queue, or Why Now views, but the presentation remains an evidence-backed prompt rather than an instruction to act.
 
-Historical Intelligence contributes to DB-2 by creating candidates and fact-like rows suitable for governed emission where documented. It contributes to OBS-QUERY by supplying historical context, taxonomy, persistence, drift, recurrence, stability, and morphology fields that can be retrieved, grouped, or compared where available. It may also consume persisted DB-2 facts. The architecture audit correction is that historical layers and DB-2 have a producer/consumer relationship rather than a simple one-way flow.
+### 9.2 Why Recurrence Matters
 
-**Table 10. Historical Intelligence layer map.**
+Recurrence matters because some structures appear, fade, and reappear. A purely current-state architecture would miss this pattern, and a purely aggregate architecture might flatten it. Historical Intelligence preserves recurrence as a distinct review concept so analysts can see whether an observation has returned under comparable conditions.
 
-| Layer family | Components | Primary contribution |
+Recurrence requires retained evidence and stable comparison units. Observation facts, fact-like rows, source phases, windows, and Evidence References give the architecture a way to distinguish recurring structure from duplicate rows or repeated presentation. This is why DB-2 duplicate-prevention identity and historical lineage matter to the historical stack.
 
+Recurrence also supports ecosystem characterization. A recurring pattern may indicate that a sector, subsector, symbol group, taxonomy, or structural theme repeatedly enters the evidence set. SEFI can describe that recurrence without claiming causality beyond the supported evidence and without forecasting its future occurrence.
+
+### 9.3 Why Stability Matters
+
+Stability matters because historical structures can persist with different degrees of consistency. A signal that remains similar across windows has a different review profile from a signal that appears erratically or changes magnitude, taxonomy, or context. Stability review helps distinguish durable structural conditions from unstable observations.
+
+The historical stack addresses stability through cross-window persistence structural stability and persistence evolution or stability drift. These concepts allow the architecture to examine whether retained structures remain coherent, drift, or change classification. They are descriptive review tools and must not be converted into trading or forecasting language.
+
+Stability also supports validation. If a structural state is presented downstream, reviewers need to know whether it is supported by stable evidence or by a sparse, unstable, or insufficient set. Quality Gates and validation scorecards can then present caveats instead of allowing unsupported confidence.
+
+### 9.4 Why Morphology Matters
+
+Morphology matters because SEFI does not only track whether observations exist; it also characterizes their structural shape. Morphology describes how evidence is arranged across entities, groups, taxonomies, windows, and ecosystem contexts. Two observations with similar metric values can have different meanings if their morphology differs.
+
+Historical morphology review supports structural comparison. It helps the architecture identify whether patterns are concentrated or distributed, isolated or ecosystem-wide, stable or shifting, recurring in the same form or reappearing with a different shape. These distinctions are useful for analyst review because they preserve nuance without requiring unsupported narrative invention.
+
+Morphology also helps bridge Historical Intelligence and OBS-QUERY. Typed questions about dominance, weakening, transition, or change often depend on shape rather than simple presence. Historical morphology gives the retrieval layer a governed evidence context for those concepts when facts and artifacts support them.
+
+### 9.5 Why Ecology Matters
+
+Ecology matters because SEFI treats market-structure intelligence as an ecosystem problem rather than a collection of isolated observations. The historical stack includes real multi-window ecology review, cross-sectional ecology differentiation, intra-group structural contrast, and ecosystem intelligence synthesis. These layers help characterize how evidence appears across related entities and groups.
+
+Ecology review supports ecosystem characterization. It can describe whether evidence is broad or narrow, concentrated or dispersed, differentiated across groups, or contrasting within a group. This makes historical intelligence more useful for structural review because analysts can see the context in which a fact or pattern appears.
+
+Ecology also supports governance. By preserving ecology as evidence-backed characterization, the architecture avoids replacing structural review with unsupported explanation. It can say that retained evidence shows a particular ecosystem shape where supported. It cannot invent causal claims, future trajectories, or recommendations beyond the evidence.
+
+### 9.6 Why Longitudinal Accumulation Matters
+
+Longitudinal accumulation is the architectural foundation of Historical Intelligence. Without retained evidence across windows and runs, persistence, recurrence, stability, morphology, ecology, and drift would be weak or impossible to review. Accumulation allows the historical stack to compare evidence over time while preserving lineage.
+
+Longitudinal accumulation supports structural review. It enables the system to examine whether structures persist, reappear, weaken, stabilize, transition, or change form. It also supports evidence accumulation for downstream retrieval. OBS-QUERY can only answer historical typed questions if the relevant evidence has been retained in facts, controlled fixtures, or documented artifacts.
+
+Accumulation also improves reviewer confidence. A historical claim that cites a single presentation item is fragile. A historical claim that can point to retained facts, Evidence References, source phases, artifacts, and runs is reviewable. This is why Historical Intelligence contributes to DB-2 candidates and can consume persisted DB-2 facts without collapsing into a simple one-way sequence.
+
+
+### 9.7 Historical Intelligence and Caveated Interpretation
+
+Historical interpretation in SEFI is intentionally caveated. A historical finding is strongest when it can identify supporting artifacts, fact-like rows, persisted facts, Evidence References, windows, and validation posture, reviewer confidence, and audit continuity. It is weaker when one or more of those supports is absent. The architecture should make that weakness visible rather than allowing downstream products to present all findings with the same apparent confidence.
+
+Caveated interpretation is especially important for morphology and ecology. These concepts can be rich, but they are also easy to overstate. A morphology description should describe the shape shown by retained evidence. An ecology description should describe the relationships and contrasts shown by retained evidence. Neither should introduce causal explanations, future trajectories, or recommended actions beyond the documented support.
+
+This caveat discipline helps Historical Intelligence remain useful without becoming speculative. Analysts can still review persistent, recurring, stable, morphologically distinct, or ecosystem-relevant structures. They simply receive those structures as evidence-backed review objects rather than as predictions.
+
+### 9.8 Historical Intelligence and Consumption Readiness
+
+Not every historical output is ready for consumption. Some outputs are intermediate review objects, some are local artifacts, some are fact candidates, and some are persisted facts or retrieval-ready contexts. Consumption readiness depends on lineage, evidence sufficiency, validation posture, and governance boundaries.
+
+This distinction prevents premature presentation. A local finding may be useful inside the historical stack but insufficient for Daily Briefing or Story Evolution display. A fact candidate may be structurally well formed but not persisted. A persisted fact may support retrieval but still require historical context for interpretation. Quality Gates and validation scorecards help determine whether an item can be presented and how strongly it should be caveated.
+
+Consumption readiness is therefore a governed state, not a writing preference. The architecture expects presentation products to improve readability only after evidence and lineage are adequate. If readiness is not established, the appropriate behavior is exclusion, caveat, or insufficient-state reporting rather than synthetic completion.
+
+### 9.9 Historical accumulation responsibilities
+
+Historical Intelligence has three major responsibility groups. First, HIST-LONG produces longitudinal review of ecology, sensitivity, differentiation, contrast, persistence, stability, and drift over completed local artifacts. Second, HIST-FACT expands historical observation facts and regime evidence, creating fact-like rows and candidates that can participate in DB-2 persistence where governed. Third, HIST-INTEL produces structural findings, fact-native findings, taxonomy-weighted intelligence, Narrative Evolution, and ecosystem synthesis.
+
+The historical-to-OBS-QUERY handoff is evidence-oriented. Historical outputs may be consumed directly as documented artifacts or through DB-2 persisted facts where available. OBS-QUERY then retrieves, compares, validates, and presents bounded results. The architecture must preserve the distinction between local artifacts, local fixtures, fact-like rows, DB-2 fact candidates, persisted DB-2 facts, and presentation items.
+
+
+### 9.10 Historical Intelligence and Structural Review
+
+Historical Intelligence supports structural review by separating evidence characterization from action guidance. A reviewer can examine whether a structure persisted, recurred, remained stable, changed morphology, or appeared within a broader ecology. The architecture can then surface the finding to OBS-QUERY and Consumption Products without turning it into a forecast or recommendation.
+
+Structural review depends on multiple levels of context. At the observation level, the system needs bounded signals. At the fact level, it needs normalized review units. At the historical level, it needs retained windows, artifact context, taxonomy, and structural classifications. At the query level, it needs retrieval and comparison. At the consumption level, it needs presentation and caveats. Historical Intelligence connects these levels by producing descriptive structural context over accumulated evidence.
+
+This is why the historical stack cannot be reduced to a single score. Persistence, recurrence, stability, morphology, ecology, drift, taxonomy weighting, Narrative Evolution, and ecosystem synthesis describe different aspects of retained evidence. A single aggregate could hide whether a pattern is broad or narrow, stable or volatile, recurring or merely duplicated, morphologically similar or structurally changed. The architecture preserves multiple descriptive dimensions so reviewers can inspect the basis of a finding.
+
+### 9.11 Historical Intelligence and Evidence Accumulation
+
+Evidence accumulation in the historical stack has two complementary forms. The first is local accumulation through completed artifacts and historical processing outputs. These artifacts allow historical layers to review ecology, sensitivity, differentiation, contrast, persistence, and drift. The second is persisted accumulation through DB-2 facts where governed candidates become rows in `sefi_observation_facts`.
+
+The architecture audit correction requires these forms to remain distinct. A local artifact can be evidence-bearing and still not be a persisted DB-2 fact. A fact-like row can be useful for local processing and still not have source-of-truth status for OBS-QUERY. A persisted DB-2 fact can be retrieved by OBS-QUERY and still not replace the richer context of the historical artifact that contributed to it.
+
+This distinction improves review. If a historical finding is challenged, reviewers can ask which artifacts supported it, which fact-like rows were produced, which candidates were emitted, which rows were persisted, and which facts OBS-QUERY retrieved. Each question targets a different lifecycle state. The system's explainability depends on preserving those states rather than merging them.
+
+Evidence accumulation also supports analyst drill-down. Consumption Products may present a concise story or investigation candidate, but Historical Intelligence provides the longitudinal context that explains why the item is structurally relevant. The drill-down path should reveal whether the item is supported by persistence, recurrence, stability, morphology, ecology, taxonomy, Narrative Evolution, or ecosystem synthesis.
+
+### 9.12 Historical Intelligence and Governance
+
+Historical Intelligence is governed by the same architectural controls as the rest of SEFI. It may describe retained evidence, but it may not forecast, recommend, or issue market-action language. It may produce fact-like rows and candidates, but those states do not become persisted DB-2 facts until governed emission succeeds. It may support consumption products, but those products remain presentation-only.
+
+The no-forecasting boundary is especially important for historical language. Terms such as persistence, recurrence, stability, and transition can be misread as future claims if written loosely. Draft 2 therefore treats them as retrospective or current evidence descriptions. A persistent structure is one that retained evidence shows across reviewed windows, not one that the system predicts will remain.
+
+The no-recommendation boundary is equally important. Historical Intelligence can surface investigation candidates or Why Now context, but these are review prompts. They are not instructions to allocate capital, alter portfolios, or take market action. The architecture's value lies in making structural evidence visible, not in replacing analyst judgment.
+
+### 9.13 Historical Intelligence Handoff to Retrieval and Consumption
+
+The historical handoff to OBS-QUERY is not a simple file handoff. It is an authority-preserving transition from historical context to retrieval. OBS-QUERY may retrieve persisted DB-2 facts, use controlled fixtures where allowed, and consume documented historical outputs. It must preserve the authority difference among these objects.
+
+The handoff to consumption products is similarly bounded. Daily Briefing and Story Evolution can present historical context. Investigation Queue can surface candidates for review. Story Detail can expose supporting facts and lineage. Why Now can explain the evidence-backed reason an item appears. Quality Gate can show whether the evidence is sufficient. None of these views become new historical facts.
+
+This handoff design is why Historical Intelligence is central to a professional whitepaper. It explains how SEFI moves beyond isolated observations while remaining governed. The architecture can provide rich longitudinal context without adding speculative capability.
+
+**Table 10. Historical intelligence concepts.**
+
+| Concept | Architectural purpose | Governance boundary |
 | --- | --- | --- |
+| Persistence | Describe retained structures across windows or runs. | Descriptive only; no forecast of continuation. |
+| Recurrence | Identify reappearance of structures in retained evidence. | Must distinguish recurrence from duplicate ingestion. |
+| Stability | Characterize consistency or drift of retained structures. | Must expose insufficient or unstable evidence states. |
+| Morphology | Describe structural shape across entities, taxonomies, and windows. | No unsupported causal synthesis. |
+| Ecology | Characterize ecosystem-level relationships and contrasts. | Evidence-backed; no recommendation. |
+| Longitudinal accumulation | Preserve evidence for comparison and retrieval. | Local artifacts and persisted facts retain distinct lifecycle states. |
 
-| HIST-LONG | HIST-LONG-4, 5B, 6, 7, 8, 9 | Multi-window ecology, temporal sensitivity, differentiation, contrast, persistence, recurrence, stability drift, longitudinal accumulation. |
-
-| HIST-FACT | HIST-FACT-1, HIST-FACT-2 | Historical observation fact candidates and regime Evidence References. |
-
-| HIST-INTEL | HIST-INTEL-1, 1B, 2, 3, 4 | Structural findings, fact-native findings, taxonomy weighting, Narrative Evolution, regime transitions, ecosystem synthesis. |
-
-
-
-Across this section, the architectural boundary is intentionally conservative. The system may preserve, retrieve, group, compare, or present evidence-bearing observations, but the source pack does not authorize forecasts, predictions, trading instructions, portfolio recommendations, market-action directives, provider calls in retrieval layers, schema migrations in query or presentation layers, or unbounded generated narrative synthesis. When data is missing, unsupported, or outside the governed shape, the appropriate behavior is a bounded response, an unsupported-filter explanation, a dry-run summary, or an insufficient-data state rather than synthetic completion.
-
-
-### 9.1 Historical accumulation responsibilities
-
-Historical accumulation is responsible for retaining structure across time without treating time-series persistence as prediction. The HIST-LONG components review completed local ecology artifacts across windows and groups, identify deltas and contrasts, and characterize persistence and stability drift. Their value is cumulative: a single window can show a condition, but multiple windows can show whether that condition persisted, recurred, weakened, drifted, or changed morphology.
-
-HIST-FACT responsibilities are closer to the fact boundary. They translate historical evidence into fact-like rows, candidates, and Evidence References. This creates a disciplined bridge between local historical artifacts and DB-2. The bridge is necessary because historical artifacts may be rich but are not automatically normalized fact rows. By creating candidates with lineage, historical layers make later persistence and retrieval possible without erasing the distinction between local and persisted states.
-
-HIST-INTEL responsibilities are structural. These components organize fact-like and persisted evidence into findings, taxonomy weights, Narrative Evolution mappings, regime transition context, and ecosystem synthesis. The term “intelligence” in this layer refers to evidence-oriented interpretation over retained material. It does not authorize generation of future claims, trading recommendations, or market-action instructions.
-
-The historical-to-OBS-QUERY handoff depends on retained fields. Persistence, recurrence, stability, morphology, ecology, taxonomy, drift, and regime-transition context must be represented in a way that retrieval and comparison can use. Where a field is not exposed through the retrieval schema, OBS-QUERY must not infer it. The audit recommendation for field-level contracts reflects this dependency and remains a known documentation improvement area.
-
-Historical governance is conservative because historical artifacts can be tempting sources for broad narrative claims. The correct architecture keeps those claims bounded: completed artifacts are labeled, provider calls are absent, replay/topology activation is not introduced, payloads remain bounded, and prediction/trading/recommendation behavior remains prohibited.
 
 # 10. OPS-LIVE Architecture
 
@@ -744,75 +1025,163 @@ The lifecycle also supports future evolution. Additional retrieval, longitudinal
 
 # 12. OBS-QUERY Architecture
 
-**Figure 8. OBS-QUERY architecture.** The retrieval-only architecture from DB-2 fact retrieval through typed questions, comparison, consumption view generation, validation, and consumption products.
+OBS-QUERY is the retrieval-only architecture for SEFI facts and controlled fixtures. It reads persisted DB-2 facts, canonicalizes fact and Evidence Reference envelopes, supports typed intelligence questions, compares historical and live contexts where supported, generates bounded consumption views, and emits validation scorecards. It does not create facts, write to databases, migrate schemas, call providers, predict, recommend, or issue market-action language.
+
+OBS-QUERY is the architectural answer to a specific problem: once SEFI has accumulated facts and historical context, analysts need to ask bounded questions without weakening governance. A query layer that could synthesize unsupported answers would undermine the fact-native design. A query layer that can only retrieve and compare documented evidence preserves source-of-truth scope.
+
+**Figure 8. OBS-QUERY architecture.** OBS-QUERY reads DB-2 and controlled fixtures, returns facts and Evidence References, performs comparison and validation, and feeds consumption views.
 
 ```mermaid
 flowchart TD
-    DB2[(DB-2\nsefi_observation_facts)] --> Q1[OBS-QUERY-1\nFact retrieval]
-    Q1 --> Q2[OBS-QUERY-2\nTyped intelligence questions\npersisted / changed / recurred / dominant / weakened / transitioned]
-    Q1 --> Q3[OBS-QUERY-3\nHistorical vs live comparison]
-    Q2 --> Q4[OBS-QUERY-4\nConsumption view generation]
-    Q3 --> Q4
-    Q4 --> Q5[OBS-QUERY-5\nValidation harness]
-    Q5 --> V[Validation scorecard\nretrieval + comparison + consumption + traceability + governance]
-    Q4 --> C[Consumption Products]
-
-    subgraph Boundaries[Retrieval-only governance]
-        B1[No provider calls]
-        B2[No DB writes]
-        B3[No schema migrations]
-        B4[No fact creation]
-        B5[No predictions or recommendations]
-    end
-
-    Q1 -. certified .-> Boundaries
-    Q2 -. certified .-> Boundaries
-    Q3 -. certified .-> Boundaries
-    Q4 -. certified .-> Boundaries
+    A[(DB-2
+sefi_observation_facts)] --> B[OBS-QUERY-1
+fact retrieval adapter]
+    C[Controlled fixtures
+validation / fallback where allowed] --> B
+    B --> D[Canonical fact envelopes
+facts + Evidence References]
+    D --> E[OBS-QUERY-2
+typed intelligence questions]
+    D --> F[OBS-QUERY-3
+historical vs live comparison]
+    E --> G[OBS-QUERY-4
+consumption view generation]
+    F --> G
+    G --> H[Daily Briefing / Story Evolution / Investigation Queue / Why Now]
+    D --> I[OBS-QUERY-5
+validation scorecard]
+    I --> G
 ```
 
-OBS-QUERY is the retrieval-only query architecture over DB-2 facts and controlled fixtures. It is organized into five components. OBS-QUERY-1 retrieves facts. OBS-QUERY-2 answers typed intelligence questions such as persisted, changed, recurred, dominant, weakened, and transitioned structures. OBS-QUERY-3 performs historical versus live comparison. OBS-QUERY-4 generates consumption views. OBS-QUERY-5 provides a validation harness and Validation Scorecard covering retrieval, comparison, consumption, traceability, and governance.
+### 12.1 Retrieval Architecture Rationale
 
-OBS-QUERY-1 reads selected DB-2 columns from `sefi_observation_facts` and canonicalizes returned rows into fact and Evidence Reference envelopes. Supported filters include snapshot date, symbol, source layer, taxonomy, Evidence Reference identifier, and limit. Unsupported filters such as sector, subsector, and minimum confidence must be reported as unsupported where the OBS-QUERY-1 schema does not expose those columns. This explicit unsupported-filter behavior is an important retrieval boundary because it prevents the query layer from fabricating fields.
+OBS-QUERY exists because retrieval must be a governed architecture, not an ad hoc convenience. Persisted facts are only useful if a downstream layer can access them in a canonical way. OBS-QUERY-1 retrieves selected DB-2 columns, applies supported filters, reports unsupported filters, and returns canonical fact and Evidence Reference envelopes. This makes retrieval inspectable.
 
-OBS-QUERY-2 converts retrieved facts into bounded answers to typed intelligence questions. The architecture permits grouping and comparison of existing facts around concepts such as persisted, changed, recurred, dominant, weakened, and transitioned structures. It does not permit creation of new facts, provider calls, predictions, recommendations, or market actions. OBS-QUERY-3 compares historical and live context using retrieved evidence. Its role is comparison, not forecasting.
+The retrieval architecture protects source-of-truth scope. `sefi_observation_facts` is authoritative for OBS-QUERY fact retrieval, while controlled fixtures may be used only where documented. OBS-QUERY does not broaden this authority to local artifacts, reports, or presentation cards. It also does not transform a missing or unsupported filter into a generated substitute.
 
-OBS-QUERY-4 adapts retrieval and comparison outputs into consumption view structures. It remains a query-derived view generator, not a presentation layer with authority to write, migrate schemas, or invent unsupported fields. OBS-QUERY-5 validates retrieval behavior, comparison behavior, consumption view generation, traceability, and governance. It is part of certification and quality assurance; it should not be confused with runtime creation of new intelligence.
+Retrieval is also necessary for consistency across consumption products. Daily Briefing, Story Evolution, Investigation Queue, Why Now, and Quality Gate views can consume the same bounded envelopes rather than each product inventing its own access pattern. This reduces inconsistency and supports governance certification.
 
-**Table 14. OBS-QUERY governance certification boundaries.**
+### 12.2 Typed Intelligence Question Rationale
 
-| Boundary | Guarantee |
+OBS-QUERY typed intelligence questions exist because analysts do not only ask for rows; they ask what the retained evidence shows. The supported concepts—persisted, changed, recurred, dominant, weakened, transitioned—are retrieval concepts, not generative claims. Each concept organizes existing facts and context into a bounded answer.
 
-| --- | --- |
+Persisted exists as a retrieval concept because analysts need to know whether a structure remained present across windows or runs. The answer must be backed by retrieved evidence and lineage. It cannot become a forecast that the structure will persist in the future.
 
-| Provider calls | Disabled for OBS-QUERY retrieval and consumption view generation. |
+Changed exists because analysts need to identify differences across historical or live evidence. Change is a comparison over retained observations. It should expose the relevant windows, facts, and Evidence References rather than presenting unsupported explanation.
 
-| Database writes | Disabled; OBS-QUERY is read-only. |
+Recurred exists because patterns can reappear after absence or weakening. Recurrence requires the query layer to retrieve comparable evidence and distinguish repeated occurrence from duplicate ingestion. It is therefore a retrieval concept over accumulated facts.
 
-| Schema migrations | Disabled in query and presentation flow. |
+Dominant exists because analysts may need to know whether a structure is prominent within the retrieved evidence set. Dominance is bounded by the retrieved universe and supported filters. It is not a claim of market inevitability or investment priority.
 
-| Fact creation | Disabled; retrieved facts and controlled fixtures only. |
+Weakened exists because retained evidence may show reduced strength, presence, or structural coherence. Weakening is a descriptive comparison. It must not be converted into a sell signal, risk forecast, or recommendation.
 
-| Prediction/recommendation/market action | Disabled. |
+Transitioned exists because historical and live evidence may show movement between structural states or narrative conditions. Transition is a retrieval-backed state comparison, not a future scenario. It must preserve lineage to the facts and windows that support the transition description.
 
-| Source of truth | `sefi_observation_facts` for OBS-QUERY fact retrieval; controlled fixtures only where validation context is explicit. |
+### 12.3 Historical vs Live Comparison Rationale
+
+Historical vs live comparison exists because SEFI contains both accumulated historical context and controlled live observation context. Analysts need to know whether live structures align with, diverge from, recur from, or transition relative to historical evidence. OBS-QUERY provides the governed comparison boundary.
+
+The comparison must respect lifecycle states. Historical local artifacts, local fixtures, fact-like rows, DB-2 fact candidates, persisted DB-2 facts, and presentation items are not interchangeable. A historical artifact can provide documented context; a persisted DB-2 fact can provide retrieval source-of-truth evidence; a presentation item can display a comparison but cannot become the comparison's source of truth.
+
+The comparison must also respect OPS-LIVE-3 semantics. Live structural-state snapshotting is read-only and does not emit DB-2 facts. Therefore, live comparison can use accumulated live facts and snapshots as documented context, but it must not imply that OPS-LIVE-3 writes persisted facts.
+
+### 12.4 Validation Scorecard Rationale
+
+OBS-QUERY-5 validation scorecards exist because retrieval needs an explicit quality posture. A query answer is not complete merely because rows were returned. Reviewers need to know whether filters were supported, evidence was sufficient, source-of-truth scope was respected, disabled actions remained disabled, and output was safe for consumption.
+
+Validation scorecards increase reviewer confidence by making limitations visible. They can identify unsupported filters, insufficient data, fixture usage, source-of-truth declarations, and disabled-action guarantees. This prevents a downstream presentation from overstating what retrieval actually proved.
+
+The scorecard is separate from runtime query flow. It validates and certifies retrieval posture; it does not create facts or authorize presentation beyond the retrieved evidence. This distinction preserves the boundary between validation and intelligence generation.
+
+### 12.5 Retrieval-Only Governance Benefits
+
+Retrieval-only governance provides auditability. Because OBS-QUERY reads existing facts and controlled fixtures, a reviewer can inspect the source rows, Evidence References, filters, and comparison logic. There is no hidden provider call or write path that can change the evidence during query time.
+
+Retrieval-only governance provides traceability. Canonical envelopes preserve fact IDs, Evidence References, source phases, artifact lineage, run lineage, windows, taxonomy or source-layer context where supported, and payload support. This allows analyst-facing views to retain drill-down.
+
+Retrieval-only governance improves reviewer confidence. Unsupported filters are reported as unsupported rather than silently ignored or fabricated. Missing data produces bounded insufficient states rather than synthetic completion. Disabled actions are explicit: no provider calls, no writes, no schema migrations, no fact creation, no prediction, no recommendation, and no market action.
+
+Retrieval-only governance also bounds behavior. The query layer can retrieve, compare, validate, and format. It cannot become a new intelligence production layer. This makes OBS-QUERY a dependable bridge between DB-2 and Consumption Products.
+
+
+### 12.6 Supported, Unsupported, and Insufficient Retrieval States
+
+OBS-QUERY must distinguish supported, unsupported, and insufficient retrieval states. A supported state occurs when the requested question can be answered using available facts, permitted filters, and documented comparison logic. An unsupported state occurs when the requested filter or field is outside the retrieval contract. An insufficient state occurs when the concept is supported but the available evidence is too sparse or incomplete for a confident bounded answer.
+
+This distinction is essential for governance. Unsupported and insufficient states are not defects to be hidden; they are part of the architecture's honesty. A system that fabricates an answer for an unsupported filter would weaken auditability. A system that presents sparse evidence as strong would weaken reviewer confidence. OBS-QUERY therefore treats limitations as explicit output states.
+
+The distinction also helps consumption products. A Daily Briefing item may be excluded or caveated if evidence is insufficient. A Story Evolution card may show that a transition is unsupported by available facts. A Quality Gate may report that a view is not consumption-ready. These bounded outcomes preserve trust even when the answer is incomplete.
+
+### 12.7 OBS-QUERY and Evidence Reference Envelopes
+
+OBS-QUERY canonical envelopes are the mechanism by which retrieval preserves explainability. A fact envelope should carry fact identity, source phase, entity and metric fields, window context, payload support, and lineage where available. An Evidence Reference envelope should carry identifiers that allow downstream drill-down into supporting evidence context without implying a separate universal evidence table.
+
+These envelopes make query outputs portable across consumption products. The same retrieved evidence can support a Daily Briefing item, a Story Evolution view, an Investigation Queue entry, and a validation scorecard. Each product may present the evidence differently, but the underlying references should remain traceable.
+
+Evidence Reference envelopes also reduce narrative risk. If a generated-looking sentence appears in a presentation product, reviewers can ask which envelope supports it. If there is no supporting envelope or documented artifact, the claim should be treated as unsupported. This makes the retrieval layer a check on presentation language.
+
+### 12.8 OBS-QUERY and Consumption View Generation
+
+OBS-QUERY-4 generates bounded consumption views from retrieved evidence. This is not the same as creating new intelligence. View generation selects, groups, orders, caveats, and formats facts and comparison results so that consumption products can display them. The authority remains with the retrieved evidence and documented historical context.
+
+This boundary is important because consumption products are often the most visible part of the system. A concise card can appear more authoritative than the facts behind it. OBS-QUERY prevents that by preserving source-of-truth declarations, Evidence References, validation posture, and disabled-action guarantees in the view-generation path.
+
+View generation also supports consistency. If each consumption product retrieved and interpreted facts independently, the system could produce inconsistent story views, briefing items, and validation summaries. OBS-QUERY centralizes retrieval and comparison so presentation layers can focus on readability and governance display.
+
+### 12.9 OBS-QUERY Failure Modes Avoided
+
+OBS-QUERY avoids query-time data mutation. It does not write rows, migrate schemas, create facts, or repair missing upstream data. This prevents the retrieval layer from becoming an undocumented production layer.
+
+OBS-QUERY avoids provider-call leakage. Retrieval should operate over DB-2 and controlled fixtures where allowed, not over live external provider calls. This keeps retrieved answers reproducible and auditable.
+
+OBS-QUERY avoids unsupported synthesis. If a typed question cannot be answered from retrieved evidence, the correct response is unsupported or insufficient, not a fabricated answer. This protects the fact-native design.
+
+OBS-QUERY avoids recommendation drift. Typed concepts such as dominant, weakened, and transitioned can be useful for review, but they must not become instructions. The query layer can describe retrieved evidence; it cannot recommend action.
+
+OBS-QUERY avoids presentation authority inflation. It may generate consumption views, but those views remain presentation-only. A view can display a fact; it cannot become the fact.
+
+### 12.10 Query responsibilities by component
+
+OBS-QUERY-1 is responsible for retrieving facts and Evidence References from DB-2 or controlled fixtures. OBS-QUERY-2 is responsible for typed intelligence questions over retrieved evidence. OBS-QUERY-3 is responsible for historical/live comparison. OBS-QUERY-4 is responsible for bounded consumption view generation. OBS-QUERY-5 is responsible for validation scorecards and governance certification.
+
+**Table 14. OBS-QUERY responsibilities.**
+
+| Component | Responsibility | Prohibited behavior |
+| --- | --- | --- |
+| OBS-QUERY-1 | Retrieve and canonicalize facts and Evidence References. | Provider calls, writes, unsupported synthesis. |
+| OBS-QUERY-2 | Answer typed intelligence questions over retrieved evidence. | Prediction, recommendation, fact creation. |
+| OBS-QUERY-3 | Compare historical and live contexts where supported. | Treating local artifacts, candidates, and persisted facts as identical. |
+| OBS-QUERY-4 | Generate bounded consumption views. | Presentation becoming source of truth. |
+| OBS-QUERY-5 | Emit validation scorecards and governance certifications. | Runtime fact creation or schema change. |
 
 
 
-Across this section, the architectural boundary is intentionally conservative. The system may preserve, retrieve, group, compare, or present evidence-bearing observations, but the source pack does not authorize forecasts, predictions, trading instructions, portfolio recommendations, market-action directives, provider calls in retrieval layers, schema migrations in query or presentation layers, or unbounded generated narrative synthesis. When data is missing, unsupported, or outside the governed shape, the appropriate behavior is a bounded response, an unsupported-filter explanation, a dry-run summary, or an insufficient-data state rather than synthetic completion.
+### 12.11 OBS-QUERY and Analyst Question Discipline
+
+Typed intelligence questions give analysts a disciplined vocabulary. Instead of asking for an unconstrained narrative, an analyst can ask whether retrieved evidence shows persistence, change, recurrence, dominance, weakening, or transition. Each question has an architectural meaning and a governance boundary. The query layer is allowed to retrieve and compare evidence for the concept; it is not allowed to turn the concept into a forecast or recommendation.
+
+This discipline improves consistency across products. A persistence question used in a Story Evolution view should mean the same kind of evidence-backed condition as a persistence question used in a Daily Briefing or Quality Gate context. The presentation may differ, but the retrieval concept remains stable. That stability helps reviewers compare outputs across consumption surfaces.
+
+Question discipline also reduces ambiguity when evidence is incomplete. If a persistence question lacks sufficient historical windows, the answer can be insufficient rather than speculative. If a dominance question lacks the required grouping context, the answer can be unsupported. If a transition question cannot identify comparable states, the answer can be caveated. The architecture thereby makes uncertainty explicit.
+
+### 12.12 OBS-QUERY and Source-of-Truth Respect
+
+OBS-QUERY respects source-of-truth boundaries by treating persisted DB-2 facts as the authoritative source for fact retrieval. It can use controlled fixtures where documented, but it must not treat fixtures, local artifacts, reports, or presentation items as interchangeable with persisted facts. This respect for authority is what allows query-derived consumption products to remain credible.
+
+Source-of-truth respect also means preserving identifiers rather than hiding them. A query result should carry fact identity, Evidence Reference identity, source phase, and lineage where available. These fields may not all be shown prominently in a human-facing card, but they should remain available for drill-down and validation. A readable view should not require sacrificing auditability.
+
+Finally, source-of-truth respect means accepting limitations. If the persisted fact model does not expose a requested field, OBS-QUERY should not pretend otherwise. It should report unsupported filters or insufficient evidence. This behavior is central to the retrieval-only design.
 
 
-### 12.1 Query responsibilities by component
+### 12.13 OBS-QUERY and Caveat Propagation
 
-OBS-QUERY-1 has the narrowest and most foundational responsibility: retrieve facts and produce canonical fact and Evidence Reference envelopes. Its correctness depends on the DB-2 schema, supported filters, row canonicalization, and traceability fields. It is the point at which source-of-truth scoping becomes operational. If a fact is not in `sefi_observation_facts` or a controlled fixture context, OBS-QUERY-1 should not treat it as a retrieved production fact.
+OBS-QUERY must propagate caveats rather than bury them. Unsupported filters, insufficient evidence, fixture usage, source-of-truth scope, and disabled-action guarantees should remain visible to downstream consumption products. A presentation view may simplify wording for readability, but it should not remove the limitations that determine how the result can be interpreted.
 
-OBS-QUERY-2 adds typed question logic. It can ask whether structures persisted, changed, recurred, became dominant, weakened, or transitioned. These questions are valuable because they map analyst needs to evidence-backed retrieval. They remain bounded because the answers are assembled from existing facts. The component does not become a reasoning engine with authority to generate unsupported conclusions.
+Caveat propagation is part of retrieval-only governance. It ensures that a bounded answer remains bounded after formatting. It also protects analysts from treating a query result as stronger than the retrieved evidence allows. When caveats travel with the result, Daily Briefing, Story Evolution, Investigation Queue, Why Now, and Quality Gate surfaces can preserve confidence distinctions without adding unsupported synthesis.
 
-OBS-QUERY-3 compares historical and live context. The comparison boundary is subtle: comparison can identify differences between retained historical evidence and current live observations or snapshots, but it cannot extrapolate a future state. The correct language is comparative and descriptive. It can say what differs in the retrieved evidence; it cannot say what the market will do.
+This caveat discipline also keeps OBS-QUERY aligned with DB-2. If DB-2 lacks a persisted fact or a supported field, the query layer cannot repair that absence through language. It can only report the limitation, retrieve the supported evidence, and pass the resulting posture forward for presentation review.
 
-OBS-QUERY-4 generates consumption view structures. This component is where query results begin to look like analyst products, so its governance posture must remain explicit. It formats and arranges evidence; it does not write database rows, migrate schema, call providers, create facts, or recommend action. OBS-QUERY-5 validates these behaviors through a scorecard covering retrieval, comparison, consumption, traceability, and governance.
-
-OBS-QUERY's operational constraints include supported filters, result limits, canonicalization, validation fixtures, source-of-truth declarations, disabled-action certifications, and unsupported-filter reporting. These constraints should be visible in technical review because they are the mechanism by which a retrieval interface remains safe for analyst consumption.
+The same rule applies to consumption products: concise language is acceptable only when the supporting retrieval posture remains intact. Readability must not erase source scope, evidence sufficiency, governance caveats, lifecycle state, lineage, or validation posture, reviewer confidence, and audit continuity.
 
 # 13. Consumption Products
 
@@ -884,85 +1253,159 @@ Operationally, consumption products need clear caveats where evidence is insuffi
 
 # 14. Governance Framework
 
-**Figure 10. Governance boundary map.** Cross-cutting governance boundaries and prohibited behaviors across fact emission, retrieval, comparison, validation, and presentation.
-
-```mermaid
-flowchart LR
-    A[Governed Observations] --> B[DB-2 Fact Emission]
-    B --> C[(sefi_observation_facts)]
-    C --> D[OBS-QUERY Retrieval]
-    D --> E[Consumption Products]
-    E --> F[Analyst Presentation]
-
-    B --> B1[Deterministic normalization\nbounded payloads\nduplicate prevention]
-    D --> D1[Retrieval-only\nno synthesis\nno fact creation]
-    E --> E1[Presentation-only\nselect/label existing items]
-    F --> F1[Evidence Reference drill-down\nfacts + Evidence Reference identifiers + source phases]
-
-    subgraph Prohibited[Prohibited across current architecture focus]
-        X1[Provider API side effects]
-        X2[DB writes outside explicit DB-2 gates]
-        X3[Schema migrations in query/presentation]
-        X4[Predictions / forecasts]
-        X5[Recommendations / market actions]
-        X6[Unsupported synthetic fields]
-    end
-
-    B -. blocks .-> X1
-    D -. blocks .-> X1
-    D -. blocks .-> X2
-    D -. blocks .-> X3
-    D -. blocks .-> X4
-    D -. blocks .-> X5
-    E -. blocks .-> X2
-    E -. blocks .-> X3
-    E -. blocks .-> X4
-    E -. blocks .-> X5
-    D -. reports unsupported filters .-> X6
-```
-
 SEFI governance is embedded in architecture. It is not a final review step applied after arbitrary generation. The source pack supports deterministic guarantees, evidence traceability, retrieval-only guarantees, auditability, explainability, no-prediction guarantees, and no-recommendation guarantees. These guarantees are distributed across fact emission, live ingestion, historical processing, DB-2 persistence, OBS-QUERY retrieval, validation, and consumption presentation.
 
-Deterministic governance begins at emission. DB-2 writes require explicit enablement, non-dry execution, valid context, bounded payloads, duplicate-prevention keys, valid row fields, and a supplied database client. OPS-LIVE-2 inherits this posture. OBS-QUERY is read-only and must not perform database writes, schema migrations, provider calls, or fact creation. Consumption Products are presentation-only and must not introduce unsupported synthetic fields, recommendations, predictions, or market-action language.
+Governance is embedded because each layer has different authority. Observation layers can capture bounded signals. Emission paths can create fact candidates and, under write gates, persisted facts. DB-2 can store and serve facts. OBS-QUERY can retrieve and compare facts. Consumption Products can present retrieved intelligence. No single downstream layer is allowed to override these authority boundaries.
 
-Evidence traceability is the principal review mechanism. The architecture preserves supporting fact IDs, Evidence Reference identifiers, source phases, artifact IDs, run IDs, entity and metric fields, windows, payloads, and validation metadata. This makes it possible for a reviewer to move from an analyst-facing view back to the facts and source context that support it. Explainability is therefore structural: it results from preserving traceable relationships, not from attaching a post hoc natural-language explanation.
+**Figure 9. Governance boundary map.** Governance controls prohibit writes, provider calls, migrations, fact creation, prediction, recommendation, and market action outside authorized boundaries.
 
-The no-prediction and no-recommendation guarantees must be interpreted narrowly and consistently. SEFI may describe persistence, recurrence, stability, morphology, ecology, drift, health, dominance, weakening, transition, and structural state where supported by evidence. It may not translate those descriptions into forecasts, trading decisions, portfolio recommendations, future market claims, autonomous actions, or instructions to buy, sell, hold, allocate, or prioritize capital. Investigation candidates are review prompts, not recommendations.
+```mermaid
+flowchart TD
+    A[Observation / Historical / Live inputs] --> B[Governed emission
+explicit write gates]
+    B --> C[(DB-2
+persisted facts)]
+    C --> D[OBS-QUERY
+read-only retrieval]
+    D --> E[Consumption Products
+presentation-only]
+
+    X1[No unauthorized writes]
+    X2[No provider calls in retrieval]
+    X3[No schema migrations in query/presentation]
+    X4[No prediction]
+    X5[No recommendation or market action]
+    X6[Unsupported / insufficient states]
+
+    B -. enforces .-> X1
+    D -. enforces .-> X2
+    D -. enforces .-> X3
+    D -. enforces .-> X4
+    D -. enforces .-> X5
+    D -. reports .-> X6
+    E -. enforces .-> X4
+    E -. enforces .-> X5
+```
+
+### 14.1 Why governance is embedded in architecture
+
+Governance is embedded because SEFI's main risks arise at layer boundaries. An observation can be mistaken for a fact. A local artifact can be mistaken for a source-of-truth row. A query can be tempted to create missing intelligence. A presentation item can be mistaken for a recommendation. Embedding governance into boundaries prevents these category errors.
+
+Embedded governance also supports auditability. Reviewers can inspect explicit gates, disabled actions, source-of-truth declarations, Evidence References, validation scorecards, and Quality Gates. If governance existed only as a policy document, reviewers would need to trust that each layer remembered the policy. In SEFI, the architecture itself assigns responsibilities and prohibitions.
+
+Governance is therefore not external to intelligence quality. It is part of quality. A fact with weak lineage is less useful. A retrieved answer that hides unsupported filters is less trustworthy. A presentation item that omits caveats is less reviewable. Governance improves the architecture by making outputs bounded, traceable, and inspectable.
+
+### 14.2 Why controls are enforced at layer boundaries
+
+Controls are enforced at layer boundaries because that is where authority changes. Observation capture has different authority from fact persistence. Fact persistence has different authority from retrieval. Retrieval has different authority from presentation. A boundary control makes the transition explicit.
+
+The emission boundary controls writes. DB-2 writes require explicit enablement, non-dry execution, valid context, bounded payloads, duplicate-prevention keys, valid row fields, and a supplied database client. OPS-LIVE-2 inherits this posture. This prevents invalid or unauthorized observations from becoming durable facts.
+
+The DB-2 boundary controls source-of-truth scope. Persisted rows in `sefi_observation_facts` are authoritative for OBS-QUERY fact retrieval. Local artifacts, fixtures, candidates, reports, and presentation items are not automatically promoted to that status. This prevents source-of-truth language from becoming overly broad.
+
+The OBS-QUERY boundary controls retrieval. It reads, filters, canonicalizes, compares, validates, and reports unsupported states. It does not write, migrate schemas, call providers, create facts, predict, recommend, or issue market actions. This keeps the read side from becoming an ungoverned production side.
+
+The consumption boundary controls presentation. Consumption Products can make intelligence readable through Daily Briefing, Story Evolution, Investigation Queue, Story Detail, Why Now, and Quality Gate surfaces. They cannot add unsupported synthetic fields, create facts, or convert review prompts into recommendations.
+
+### 14.3 Architectural rationale for no prediction
+
+The no-prediction control exists because SEFI is a descriptive evidence architecture. Historical Intelligence can describe persistence, recurrence, stability, morphology, ecology, drift, Narrative Evolution, and ecosystem synthesis. OPS-LIVE can describe bounded live observations and read-only structural-state snapshots. OBS-QUERY can compare retrieved historical and live evidence. None of these responsibilities require forecasting.
+
+Prediction would change the authority of the system. It would require assumptions about future states that are not provided by persisted facts alone. The source pack does not authorize that capability. Therefore, no-prediction language is not a policy add-on; it is an architectural boundary that preserves the meaning of evidence-backed review.
+
+This control also protects analyst interpretation. A statement that a structure persisted historically is different from a statement that it will persist. A statement that a live snapshot diverges from historical context is different from a forecast. SEFI preserves these distinctions by prohibiting future-looking claims.
+
+### 14.4 Architectural rationale for no recommendation
+
+The no-recommendation control exists because SEFI's consumption products are review aids, not decision engines. Investigation candidates, Why Now explanations, and Story Evolution items can identify evidence-backed structures for analyst attention. They cannot instruct an analyst to buy, sell, hold, allocate, de-risk, or prioritize capital.
+
+Recommendation would convert structural review into action guidance. The source pack does not authorize that conversion. The architecture therefore blocks recommendation and market-action language in query and presentation layers. This is especially important because presentation surfaces are concise and could otherwise be mistaken for instructions.
+
+No-recommendation governance does not make the system less useful. It clarifies use. SEFI can surface evidence, lineage, validation posture, and structural context so that analysts can review them. It does not substitute for human judgment or external decision processes.
+
+### 14.5 Architectural rationale for retrieval-only
+
+Retrieval-only governance exists because the query layer must not become a hidden producer. OBS-QUERY has access to facts and can present them in useful forms. If it were allowed to create facts or synthesize unsupported intelligence, it would undermine DB-2 source-of-truth scope and make audits harder.
+
+Retrieval-only behavior also preserves traceability. Every query answer should be grounded in retrieved facts, Evidence References, controlled fixtures where allowed, and documented comparison logic. Unsupported filters, insufficient evidence, or missing data must remain visible.
+
+This boundary supports reviewer confidence. A reviewer can inspect what was retrieved and how it was presented. The reviewer does not need to search for hidden provider calls, query-time writes, schema changes, or generated facts.
+
+### 14.6 Architectural rationale for presentation-only
+
+Presentation-only governance exists because consumption products need to improve readability without adding authority. Daily Briefing, Story Evolution, Investigation Queue, Story Detail, Why Now, and Quality Gate outputs are valuable because they make retrieved intelligence usable. Their role is to format, select, caveat, and display evidence-backed information.
+
+A presentation item cannot become a persisted fact. It cannot override DB-2. It cannot replace Evidence References. It cannot transform a validation caveat into confidence. It cannot convert an investigation candidate into a recommendation. These prohibitions keep analyst-facing products aligned with their architectural role.
+
+Presentation-only governance also reduces ambiguity for reviewers. If a claim appears in a consumption product, the reviewer should be able to ask which facts, Evidence References, artifacts, runs, and validation states support it. If that support is absent, the claim should be treated as unsupported rather than as an autonomous product conclusion.
+
+### 14.7 Governance ownership by boundary
+
+Fact emission governance is owned by the components that construct and emit rows. Retrieval governance is owned by OBS-QUERY. Presentation governance is owned by Consumption Products and Quality Gates. Cross-cutting governance is expressed through deterministic design, traceability, no-prediction language, no-recommendation language, disabled provider calls, disabled writes, disabled migrations, and unsupported/insufficient states.
 
 **Table 16. Governance guarantee matrix.**
 
 | Guarantee | Mechanism | Affected layers |
-
 | --- | --- | --- |
-
 | Determinism | Payload bounds, sorting/ranking, duplicate keys, dry-run default, fixture validation, Quality Gates. | DB-2, OPS-LIVE, OBS-QUERY, Consumption. |
-
 | Evidence traceability | Fact IDs, Evidence References, artifacts, runs, phases, entity/metric/window fields. | All layers after observation normalization. |
-
 | Retrieval-only query | Read-only retrieval, unsupported-filter reporting, no fact creation. | OBS-QUERY and consumption view generation. |
-
 | Auditability | Canonical envelopes, validation scorecards, governance certification fields. | DB-2, OBS-QUERY-5, Consumption. |
-
 | No prediction | Boundary language and disabled actions. | Historical, live, query, consumption. |
-
 | No recommendation | No market-action or portfolio instruction surfaces. | Query and presentation layers. |
 
 
+### 14.8 Governance Certification Field Rationale
 
-Across this section, the architectural boundary is intentionally conservative. The system may preserve, retrieve, group, compare, or present evidence-bearing observations, but the source pack does not authorize forecasts, predictions, trading instructions, portfolio recommendations, market-action directives, provider calls in retrieval layers, schema migrations in query or presentation layers, or unbounded generated narrative synthesis. When data is missing, unsupported, or outside the governed shape, the appropriate behavior is a bounded response, an unsupported-filter explanation, a dry-run summary, or an insufficient-data state rather than synthetic completion.
+Governance certification fields exist to make disabled actions and source-of-truth declarations visible. The architecture audit notes that field-level variation may remain phase-specific, but the shared guarantee families are stable: source-of-truth declaration, disabled provider calls, disabled writes, disabled migrations, disabled fact creation, no prediction, no recommendation, no market action, traceability, unsupported states, and insufficient states.
 
+These field families matter because governance must be machine-reviewable and human-reviewable. A reviewer should not need to infer from prose whether a query called a provider or whether a presentation item is a recommendation. Certification fields and scorecards make the posture explicit.
 
-### 14.1 Governance ownership by boundary
+The rationale is not to add bureaucracy. The rationale is to preserve trust as outputs move farther from the original facts. A persisted row may be easy to inspect. A multi-card analyst briefing is harder to inspect unless it carries evidence references, validation posture, and disabled-action guarantees. Certification fields allow the architecture to preserve accountability at the point of consumption.
 
-Fact emission governance is owned by the components that construct and emit rows. They validate context, payloads, row fields, duplicate keys, dry-run state, write enablement, and database-client presence. This boundary prevents invalid or unauthorized observations from becoming durable facts. It is the main write-side control in the architecture.
+### 14.9 Governance and Lifecycle-State Separation
 
-Retrieval governance is owned by OBS-QUERY. It declares source-of-truth scope, applies supported filters, reports unsupported filters, canonicalizes facts, preserves Evidence References, and certifies disabled actions. This boundary prevents the read side from becoming a write side or a generation side. It also gives reviewers a concrete place to inspect retrieval-only guarantees.
+Governance depends on lifecycle-state separation. Local Artifact, Local Fixture, Fact-Like Row, DB-2 Fact Candidate, Persisted DB-2 Fact, Query Result, and Presentation Item each have different authority. If those states are merged, governance becomes ambiguous.
 
-Presentation governance is owned by Consumption Products and Quality Gates. It ensures that analyst views are evidence-backed, bounded, traceable, and caveated. It also ensures that presentation views do not inherit authority they do not possess. A card or briefing item can present a fact; it cannot become a fact.
+A Local Artifact can support historical processing. A Local Fixture can support validation or fallback where documented. A Fact-Like Row can support local historical reasoning. A DB-2 Fact Candidate can be eligible for persistence. A Persisted DB-2 Fact can serve as source-of-truth evidence for OBS-QUERY retrieval. A Query Result can organize retrieved evidence. A Presentation Item can display it. None of these transitions should be implicit.
 
-Cross-cutting governance is expressed through deterministic design, traceability, no-prediction language, no-recommendation language, and auditability. These controls should be consistent across subsystem documentation. Where phase-specific certification fields differ, the shared guarantee families remain stable: source-of-truth declaration, disabled provider calls, disabled writes, disabled migrations, disabled fact creation, no prediction, no recommendation, no market action, traceability, and unsupported/insufficient states.
+Lifecycle-state separation also prevents privilege escalation. A presentation item should not gain fact authority because it is visible. A candidate should not gain persisted authority because it has the right shape. A fixture should not become production truth because it is convenient. Each state must cross the appropriate boundary before gaining new authority.
+
+### 14.10 Governance and Professional Reviewability
+
+Professional reviewability requires that the architecture be explainable to reviewers with different concerns. A data reviewer may focus on row shape, payload bounds, and duplicate keys. An architecture reviewer may focus on producer/consumer directionality and boundary enforcement. A governance reviewer may focus on disabled actions and no-prediction language. An analyst supervisor may focus on whether presentation products are caveated and traceable.
+
+SEFI's governance framework supports all of these review paths by preserving evidence and constraining authority. The same lineage fields that support analyst drill-down also support audit. The same retrieval-only boundary that prevents unsupported synthesis also supports source-of-truth clarity. The same presentation-only boundary that prevents recommendations also improves reader trust.
+
+Professional reviewability also requires that limitations be explicit. Unsupported filters, insufficient evidence, dry-run emissions, read-only snapshots, and scoped source-of-truth declarations are not embarrassing exceptions. They are signs that the architecture is behaving within its authority. A governed system should prefer a caveated answer over an unsupported confident one.
+
+### 14.11 Governance Failure Modes Avoided
+
+The governance framework avoids observation-to-fact leakage by requiring explicit emission gates before persistence. It avoids fact-to-query leakage by making OBS-QUERY read-only. It avoids query-to-presentation leakage by keeping consumption products presentation-only. It avoids historical-to-forecast leakage by defining persistence, recurrence, stability, morphology, and transition as evidence descriptions rather than predictions.
+
+It also avoids recommendation drift. Investigation candidates and Why Now explanations can invite analyst review, but they cannot instruct action. This distinction is critical because analyst-facing views are often written in concise language. Governance ensures that concision does not become prescription.
+
+Finally, the framework avoids source-of-truth confusion. DB-2 is authoritative for OBS-QUERY fact retrieval. Historical artifacts, fixtures, candidates, and presentation outputs retain their documented roles. This prevents convenience objects from becoming unofficial truth sources.
 
 This ownership model is useful for architecture review because it identifies where to look when a boundary is questioned. If the issue is an invalid fact row, review the emission boundary. If the issue is an unsupported filter, review OBS-QUERY. If the issue is an unsupported presentation claim, review Consumption Products and Quality Gates. If the issue is a future-looking statement, review governance language across all layers.
+
+
+
+### 14.12 Governance and Language Control
+
+Governance in SEFI includes control of architectural language. Words such as persists, recurs, weakens, dominates, and transitions are allowed only as evidence-backed descriptions of retrieved or accumulated structure. They should not be written as predictions about future behavior. Words that imply action, such as buy, sell, hold, allocate, de-risk, or trade, are outside the architecture's consumption boundary.
+
+Language control matters because downstream products are read by humans. A technically bounded query result can become misleading if the presentation language implies more authority than the evidence supports. Governance therefore requires both data controls and writing controls. The same Evidence References that support drill-down also discipline the prose.
+
+This is why Draft 2 uses architecture rationale rather than policy rhetoric. The issue is not merely that recommendations are disallowed. The issue is that recommendations would require an authority transfer from evidence review to action guidance, and that transfer is not part of SEFI. The architecture is designed to support review, not autonomous decision-making.
+
+### 14.13 Governance and Audit Trail Continuity
+
+Audit trail continuity requires that each layer preserve enough context for the next layer to remain reviewable. Emission preserves phase, artifact, run, entity, metric, window, payload, and duplicate-prevention identity. DB-2 preserves persisted facts. OBS-QUERY preserves fact and Evidence Reference envelopes. Consumption Products preserve drill-down and validation posture, reviewer confidence, and audit continuity.
+
+Continuity can fail if any layer drops context or changes authority. A query that removes lineage makes presentation harder to audit. A presentation card that omits caveats can overstate evidence. A fact row without source phase weakens historical/live comparison. The governance framework therefore treats traceability as an end-to-end property.
+
+Audit trail continuity also supports professional review cycles. Architecture reviewers can focus on whether boundaries are correctly described. Data reviewers can focus on whether facts are valid. Governance reviewers can focus on whether disabled actions remain disabled. Analyst reviewers can focus on whether outputs are readable and caveated. The same traceability chain supports all of these roles.
 
 # 15. Data Model
 
@@ -1080,7 +1523,79 @@ If OPS-LIVE-3 produces a useful health snapshot, the snapshot can inform local s
 
 If a consumption product highlights an investigation candidate, the output should be framed as a candidate for analyst review. It should not say that the analyst should take a market action. This distinction preserves the no-recommendation guarantee while still allowing the system to organize evidence for human review.
 
-# 17. Limitations and Known Constraints
+
+### 16.2 Boundary rationale across the end-to-end path
+
+The architecture boundaries exist because each transition changes the level of authority. Observation capture creates a bounded signal, but it does not create source-of-truth status. Fact emission can create a DB-2 candidate, but it does not create a persisted fact unless governed write gates pass. DB-2 persistence creates retrievable fact authority, but it does not create a recommendation. OBS-QUERY retrieval creates query results and comparison views, but it does not create new facts. Consumption creates presentation items, but it does not create new evidence.
+
+This end-to-end boundary model is the main defense against capability creep. A system that collapses these transitions can easily drift into unsupported synthesis. For example, if a query result were allowed to become a fact, unsupported comparisons could contaminate the source-of-truth layer. If a presentation item were allowed to become a recommendation, analyst-facing readability could become unauthorized action guidance. If a local artifact were automatically treated as a persisted fact, retrieval authority would become unclear.
+
+The boundaries also support accountability. When a reviewer sees an output, the reviewer can ask which boundary produced it and which boundary constrained it. A fact row should be checked against emission controls. A query answer should be checked against retrieval controls. A briefing card should be checked against presentation controls. A structural-state claim should be checked against historical or live context and against no-prediction language.
+
+# 17. Architecture Review Findings
+
+The architecture audit findings are incorporated into Draft 2 as controlling clarifications. These findings were necessary because several architectural relationships could be misread if described only as a linear pipeline or if terminology implied infrastructure that the source pack did not document. The corrections preserve the Draft 1 architecture while improving reviewability.
+
+### 17.1 DB-2 directionality correction
+
+The first finding is the DB-2 directionality correction. DB-2 must not be described as a single linear stage that always precedes Historical Intelligence. Historical layers can produce local fact-like rows and DB-2 fact candidates before persistence. DB-2 then stores persisted observation facts that OBS-QUERY and comparison layers retrieve, and some historical retrieval paths can consume persisted DB-2 facts.
+
+This correction was necessary because a one-way diagram can imply that Historical Intelligence depends entirely on DB-2 as an upstream prerequisite. That would misrepresent the source pack. The correct relationship is producer/consumer and non-linear: historical layers contribute candidates and context; DB-2 supplies persisted facts for retrieval; retrieval and comparison layers consume those persisted facts under governance.
+
+### 17.2 OPS-LIVE-3 correction
+
+The second finding is the OPS-LIVE-3 correction. OPS-LIVE-3 performs read-only live structural-state snapshotting over accumulated facts and live context. It does not emit DB-2 facts. OPS-LIVE-2 is the live accumulation layer that can emit DB-2 fact candidates and persist them only when explicit write gates pass.
+
+This correction was necessary because diagram semantics could otherwise imply that live structural-state snapshots are written to DB-2 as facts. That would weaken the separation between live fact accumulation and live structural-state synthesis. Draft 2 preserves the corrected boundary: OPS-LIVE-3 is read-only, and any description of live persistence must remain tied to OPS-LIVE-2 or documented DB-2 emission paths.
+
+### 17.3 Source-of-truth clarification
+
+The third finding is the source-of-truth clarification. `sefi_observation_facts` is the source of truth for OBS-QUERY fact retrieval and downstream query-derived consumption. This status is scoped to persisted DB-2 observation facts. It does not make every local artifact, controlled fixture, generated report, markdown output, presentation card, quality summary, or fact candidate a source of truth.
+
+This correction was necessary because source-of-truth language can easily become too broad. SEFI uses local artifacts and fixtures where documented, and historical layers can produce local fact-like rows. Those objects remain important, but they do not automatically become persisted DB-2 facts. The clarified scope lets reviewers understand which object has authority in which boundary.
+
+### 17.4 Evidence Reference clarification
+
+The fourth finding is the Evidence Reference clarification. Draft 2 uses Evidence Reference when the architecture describes identifiers or references to supporting evidence and no universal evidence table is documented. This avoids implying that SEFI has a separate canonical evidence repository beyond the documented facts, artifacts, runs, payloads, and references.
+
+This correction was necessary because the term evidence can be read as either a conceptual support object or a specific table. The source pack supports traceability through facts, Evidence References, artifacts, runs, phases, and payload context. Draft 2 therefore treats Evidence Reference as the preferred term unless a concrete table is explicitly documented.
+
+### 17.5 Lifecycle-state clarification
+
+The fifth finding is the lifecycle-state clarification. Draft 2 distinguishes Local Artifact, Local Fixture, Fact-Like Row, DB-2 Fact Candidate, Persisted DB-2 Fact, and Presentation Item. These states are not interchangeable. Each has a different role, authority, and governance boundary.
+
+This correction was necessary because many architecture errors arise from lifecycle compression. A local artifact can support historical processing, but it is not automatically a persisted fact. A controlled fixture can support validation or fallback, but it is not the production source of truth. A fact-like row or candidate may be eligible for persistence, but it is not authoritative until persisted. A presentation item can display evidence, but it cannot become evidence itself.
+
+
+### 17.6 Findings as Governance Controls
+
+The architecture review findings are not merely editorial corrections. Each finding functions as a governance control. DB-2 directionality protects the producer/consumer model. OPS-LIVE-3 read-only semantics protect the live accumulation boundary. Source-of-truth scoping protects retrieval authority. Evidence Reference terminology protects infrastructure accuracy. Lifecycle-state separation protects object authority.
+
+Treating findings as controls helps future readers understand why the corrections appear throughout the whitepaper. They are repeated where relevant because each subsystem can otherwise be misread. DB-2 needs the directionality correction. Historical Intelligence needs the same correction from the other side. OBS-QUERY needs source-of-truth scope. Consumption Products need lifecycle-state separation. Governance needs all of them.
+
+### 17.7 Findings and Whitepaper Draft 2 Changes
+
+Draft 2 incorporates the DB-2 directionality finding by using non-linear language in the System Evolution, DB-2, Historical Intelligence, OBS-QUERY, Governance, and Limitations sections. This ensures that readers do not infer a simple one-way data path where the source pack describes a more nuanced producer/consumer relationship.
+
+Draft 2 incorporates the OPS-LIVE-3 finding by preserving the distinction between OPS-LIVE-2 live fact accumulation and OPS-LIVE-3 read-only structural-state snapshotting. This distinction appears in design philosophy, system evolution, live architecture discussion, OBS-QUERY comparison rationale, governance, and limitations.
+
+Draft 2 incorporates source-of-truth clarification by scoping DB-2 authority to OBS-QUERY fact retrieval and downstream query-derived consumption. It avoids treating local artifacts, fixtures, fact-like rows, candidates, reports, and presentation cards as equivalent to persisted facts.
+
+Draft 2 incorporates the Evidence Reference clarification by using Evidence Reference for identifiers that support drill-down and traceability where no universal evidence table is documented. This keeps explainability accurate without inventing a new repository.
+
+Draft 2 incorporates lifecycle-state clarification by repeatedly distinguishing Local Artifact, Local Fixture, Fact-Like Row, DB-2 Fact Candidate, Persisted DB-2 Fact, Query Result, and Presentation Item. This supports architecture review because each state has a different boundary and authority.
+
+**Table 19. Architecture review findings incorporated in Draft 2.**
+
+| Finding | Draft 2 treatment | Why it matters |
+| --- | --- | --- |
+| DB-2 directionality | Uses non-linear producer/consumer language for Historical Intelligence and DB-2. | Prevents a false one-way architecture interpretation. |
+| OPS-LIVE-3 semantics | States OPS-LIVE-3 is read-only and does not emit facts. | Preserves live accumulation vs snapshotting boundary. |
+| Source of truth | Scopes `sefi_observation_facts` to OBS-QUERY fact retrieval. | Prevents local artifacts or presentation cards from being overstated. |
+| Evidence Reference | Uses Evidence Reference where no evidence table is documented. | Avoids implying unsupported infrastructure. |
+| Lifecycle states | Separates artifacts, fixtures, fact-like rows, candidates, persisted facts, and presentation items. | Makes authority and governance boundaries reviewable. |
+
+# 18. Limitations and Known Constraints
 
 This section uses only architecture audit findings and documented source-pack ambiguities. It does not invent limitations or speculate about hidden implementation constraints. The architecture audit rates the source pack as medium-high for professional whitepaper and technical architecture review readiness, high for internship documentation, and medium for onboarding documentation. The remaining constraints are documentation and boundary-clarity constraints rather than new feature requirements.
 
@@ -1112,7 +1627,7 @@ Additional audit findings include the need for a canonical producer/consumer mat
 
 
 
-# 18. Future Evolution Opportunities
+# 19. Future Evolution Opportunities
 
 Future evolution opportunities must remain compatible with the source pack and must not become speculative roadmaps. The architecture audit identifies documentation improvements and the executive source notes identify compatible directions such as richer retrieval, expanded historical accumulation, additional longitudinal analysis, and future graph analytics. These opportunities are architectural extensions of existing evidence relationships, not promises of future product capability.
 
@@ -1138,7 +1653,7 @@ These opportunities should be framed as compatible evolution areas rather than c
 
 
 
-# 19. Conclusion
+# 20. Conclusion
 
 SEFI is a governed, fact-native architecture for turning bounded historical and live observations into traceable facts, structural context, retrieval-only intelligence, and presentation-only analyst views. Its value lies in architecture discipline: observation capture is separated from fact persistence; persistence is separated from retrieval; retrieval is separated from presentation; comparison is separated from prediction; and analyst consumption is separated from recommendation or market action.
 
