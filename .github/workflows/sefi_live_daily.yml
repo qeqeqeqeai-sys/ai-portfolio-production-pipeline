@@ -24,6 +24,10 @@ jobs:
       OPS_LIVE2_INPUT_PATH: reports/ops_live_run1/ops_live2_observations.json
       OPS_LIVE2_REPORT_PATH: reports/ops_live_run1/ops_live2_observation_fact_accumulation.md
       OPS_LIVE3_REPORT_PATH: reports/ops_live_run1/ops_live3_structural_state_snapshot.md
+      OBS_QUERY4_ECOSYSTEM_BRIEFING_JSON_PATH: reports/ops_live_run1/obs_query4_ecosystem_briefing.json
+      OBS_QUERY4_ECOSYSTEM_BRIEFING_MD_PATH: reports/ops_live_run1/obs_query4_ecosystem_briefing.md
+      OBS_QUERY4_INVESTIGATION_QUEUE_JSON_PATH: reports/ops_live_run1/obs_query4_investigation_queue.json
+      OBS_QUERY4_INVESTIGATION_QUEUE_MD_PATH: reports/ops_live_run1/obs_query4_investigation_queue.md
       DAILY_BRIEFING_JSON_PATH: reports/ops_live_run1/daily_briefing.json
       DAILY_BRIEFING_EMAIL_OUTPUT_DIR: reports/ops_live_run1/daily_briefing_email
       ARTIFACT_RETENTION_DAYS: "14"
@@ -179,6 +183,25 @@ jobs:
             --report-path "$OPS_LIVE3_REPORT_PATH" \
             --use-supabase
 
+      - name: Run OBS-QUERY-4 analyst consumption views
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/run_obs_query4_consumption_view.py \
+            --view-type ecosystem_briefing \
+            --snapshot-date "$SNAPSHOT_DATE" \
+            --output-json "$OBS_QUERY4_ECOSYSTEM_BRIEFING_JSON_PATH" \
+            --output-md "$OBS_QUERY4_ECOSYSTEM_BRIEFING_MD_PATH"
+          python scripts/run_obs_query4_consumption_view.py \
+            --view-type investigation_queue \
+            --snapshot-date "$SNAPSHOT_DATE" \
+            --output-json "$OBS_QUERY4_INVESTIGATION_QUEUE_JSON_PATH" \
+            --output-md "$OBS_QUERY4_INVESTIGATION_QUEUE_MD_PATH"
+
       - name: Generate normalized Daily Briefing JSON
         shell: bash
         run: |
@@ -194,6 +217,10 @@ jobs:
           output_path.parent.mkdir(parents=True, exist_ok=True)
           result = load_daily_briefing(
               selected_date=os.environ.get("SNAPSHOT_DATE"),
+              artifact_paths=[
+                  os.environ["OBS_QUERY4_ECOSYSTEM_BRIEFING_JSON_PATH"],
+                  os.environ["OBS_QUERY4_INVESTIGATION_QUEUE_JSON_PATH"],
+              ],
               project_root=Path.cwd(),
           )
           output_path.write_text(json.dumps(result.briefing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -251,6 +278,10 @@ jobs:
             ${{ env.OPS_LIVE2_INPUT_PATH }}
             ${{ env.OPS_LIVE2_REPORT_PATH }}
             ${{ env.OPS_LIVE3_REPORT_PATH }}
+            ${{ env.OBS_QUERY4_ECOSYSTEM_BRIEFING_JSON_PATH }}
+            ${{ env.OBS_QUERY4_ECOSYSTEM_BRIEFING_MD_PATH }}
+            ${{ env.OBS_QUERY4_INVESTIGATION_QUEUE_JSON_PATH }}
+            ${{ env.OBS_QUERY4_INVESTIGATION_QUEUE_MD_PATH }}
             ${{ env.DAILY_BRIEFING_JSON_PATH }}
             ${{ env.DAILY_BRIEFING_EMAIL_OUTPUT_DIR }}/daily_email.html
             ${{ env.DAILY_BRIEFING_EMAIL_OUTPUT_DIR }}/daily_email.txt
