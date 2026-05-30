@@ -69,3 +69,131 @@ def test_governance_and_continuity_safe_structure(tmp_path):
     row = out["ops_live1b_payload"]["canonical_tables"]["snapshot_metadata_rows"][0]
     assert row["observation_mode"] == "controlled_operational_observation"
     assert get_ops_live1b_controlled_universe() == sorted(get_ops_live1b_controlled_universe())
+
+
+def _ops_live1b_diag(out):
+    return out["ingestion_boundary_diagnostics"]
+
+
+def test_ingestion_boundary_diagnostics_empty_payload(tmp_path):
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=lambda _batch: [],
+    )
+
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "failed_closed"
+    assert diagnostics["fetch_status"] == "ok"
+    assert diagnostics["failure_stage"] == "empty_fmp_payload"
+    assert diagnostics["raw_row_count"] == 0
+    assert diagnostics["accepted_row_count"] == 0
+    assert diagnostics["rejected_row_count"] == 0
+    assert diagnostics["sample_response_keys"] == []
+    assert diagnostics["exception_type"] == ""
+    assert diagnostics["exception_message"] == ""
+    assert out["ops_live1b_payload"]["diagnostics"]["ingestion_boundary_diagnostics"] == diagnostics
+
+
+def test_ingestion_boundary_diagnostics_invalid_payload_shape(tmp_path):
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=lambda _batch: {"Error Message": "entitlement required", "apikey": "should_not_be_persisted"},
+    )
+
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "failed_closed"
+    assert diagnostics["fetch_status"] == "failed"
+    assert diagnostics["failure_stage"] == "invalid_payload_shape"
+    assert diagnostics["response_type"] == "dict"
+    assert diagnostics["raw_row_count"] == 0
+    assert diagnostics["accepted_row_count"] == 0
+    assert diagnostics["sample_response_keys"] == ["Error Message", "apikey"]
+    assert diagnostics["exception_type"] == "InvalidFmpPayloadShape"
+    assert "should_not_be_persisted" not in diagnostics["exception_message"]
+
+
+def test_ingestion_boundary_diagnostics_fetch_exception(tmp_path):
+    def failing_fetcher(_batch):
+        raise RuntimeError("provider unavailable apikey=secret-token&symbol=AAPL")
+
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=failing_fetcher,
+    )
+
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "failed_closed"
+    assert diagnostics["fetch_status"] == "failed"
+    assert diagnostics["failure_stage"] == "fetch_failed"
+    assert diagnostics["raw_row_count"] == 0
+    assert diagnostics["accepted_row_count"] == 0
+    assert diagnostics["exception_type"] == "RuntimeError"
+    assert diagnostics["exception_message"] == "provider unavailable apikey=[REDACTED]&symbol=AAPL"
+
+
+def test_ingestion_boundary_diagnostics_all_rows_rejected_by_symbol_filter(tmp_path):
+    def rejected_fetcher(batch):
+        return [
+            {
+                "symbol": f"NOT_{i}",
+                "price": 100 + i,
+                "marketCap": 2_000_000 + i,
+                "sector": "Other",
+                "industry": "Other",
+            }
+            for i, _ in enumerate(batch)
+        ]
+
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=rejected_fetcher,
+    )
+
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "failed_closed"
+    assert diagnostics["fetch_status"] == "ok"
+    assert diagnostics["failure_stage"] == "all_rows_rejected_by_symbol_filter"
+    assert diagnostics["raw_row_count"] == OPS_LIVE1B_UNIVERSE_CAP
+    assert diagnostics["accepted_row_count"] == 0
+    assert diagnostics["rejected_row_count"] == OPS_LIVE1B_UNIVERSE_CAP
+    assert diagnostics["dropped_due_to_batch_filter_count"] == OPS_LIVE1B_UNIVERSE_CAP
+    assert diagnostics["sample_response_keys"] == ["industry", "marketCap", "price", "sector", "symbol"]
+    assert diagnostics["rejected_row_reasons"] == [
+        {"symbol": f"NOT_{i}", "rejection_reason": "symbol_not_in_canonicalized_batch"}
+        for i in range(25)
+    ]
+
+
+def test_ingestion_boundary_diagnostics_successful_payload(tmp_path):
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=_fetcher,
+    )
+
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "ok"
+    assert diagnostics["fetch_status"] == "ok"
+    assert diagnostics["failure_stage"] == "success"
+    assert diagnostics["response_type"] == "list"
+    assert diagnostics["raw_row_count"] == OPS_LIVE1B_UNIVERSE_CAP
+    assert diagnostics["accepted_row_count"] == OPS_LIVE1B_UNIVERSE_CAP
+    assert diagnostics["rejected_row_count"] == 0
+    assert diagnostics["sample_response_keys"] == [
+        "beta",
+        "debtToEquity",
+        "dispersion",
+        "industry",
+        "marketCap",
+        "pe",
+        "price",
+        "roe",
+        "sector",
+        "symbol",
+    ]
+    assert diagnostics["exception_type"] == ""
+    assert diagnostics["exception_message"] == ""
