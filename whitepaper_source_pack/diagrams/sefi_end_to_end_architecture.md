@@ -10,9 +10,11 @@ phase + entity + metric + window + lineage]
     C --> D[(DB-2
 sefi_observation_facts)]
     D --> E[Historical Intelligence
-persistence + recurrence + morphology + ecology]
-    D --> F[Live Intelligence
-OPS-LIVE structural state]
+retrieves persisted facts; also
+produces local fact-like candidates]
+    D --> F[OPS-LIVE
+OPS-LIVE-2 facts +
+OPS-LIVE-3 read-only structural state]
     E --> G[OBS-QUERY
 retrieval + typed questions + comparisons]
     F --> G
@@ -21,7 +23,7 @@ Daily Briefing + Investigation Queue + Story Detail]
 
     subgraph Governance[Current governance boundary]
         I[Bounded payloads]
-        J[Fact/evidence lineage]
+        J[Fact / Evidence Reference lineage]
         K[Read-only query/presentation]
         L[No prediction / recommendation / market action]
     end

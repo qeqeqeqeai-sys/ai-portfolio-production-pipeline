@@ -13,13 +13,13 @@ flowchart TD
     E --> D[Daily Briefing view model]
     I --> D
     D --> UI[Streamlit pages\nDaily Briefing / Investigation Queue / Story Detail]
-    UI --> X[Evidence drill-down\nfact IDs + evidence IDs + source phases]
+    UI --> X[Evidence Reference drill-down\nfact IDs + Evidence Reference identifiers + source phases]
 
     subgraph PresentationBoundary[Presentation-only boundary]
         P1[No writes]
         P2[No schema changes]
         P3[No provider calls]
-        P4[No new intelligence]
+        P4[No new facts or predictions]
         P5[No prediction/trading language]
     end
 

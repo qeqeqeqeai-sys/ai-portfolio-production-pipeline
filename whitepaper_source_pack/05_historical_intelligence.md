@@ -1,7 +1,7 @@
 # 05 — Historical Intelligence Source Notes
 
 ## Purpose
-Historical Intelligence is the repository's local, observational-only stack for converting completed historical ecology artifacts into bounded facts, taxonomic findings, narrative/evolution signals, ecosystem synthesis, and DB-2/OBS-QUERY-ready observation rows.
+Historical Intelligence is the repository's local, observational-only stack for converting completed historical ecology artifacts into bounded facts, taxonomic findings, Narrative Evolution signals, ecosystem synthesis, and DB-2/OBS-QUERY-ready observation rows.
 
 Repository anchors: `transmission_layers/expectation_failure/real_data/hist_long4_real_multi_window_ecology.py`, `hist_long5b_temporal_delta_sensitivity_classification.py`, `hist_long6_cross_sectional_ecology_differentiation.py`, `hist_long7_intra_group_structural_contrast.py`, `transmission_layers/history_long/*.py`, `transmission_layers/history_read_model/loader.py`, `fact_emitter.py`, `observation_fact_retrieval.py`.
 
@@ -9,7 +9,7 @@ Repository anchors: `transmission_layers/expectation_failure/real_data/hist_long
 The stack has three roles:
 
 1. **HIST-LONG** establishes historical ecology and structural evolution from completed local artifacts.
-2. **HIST-FACT** turns historical artifacts into bounded fact/evidence rows.
+2. **HIST-FACT** turns historical artifacts into bounded fact and Evidence Reference rows.
 3. **HIST-INTEL** groups those facts into traceable structural findings and ecosystem synthesis.
 
 The code does not support describing these layers as forecasting systems. The repeated governance certificates disable provider calls, Supabase writes in analysis layers, prediction, trading, portfolio recommendation, replay activation/execution, topology persistence, and governed activation unless a later explicitly governed path is added.
@@ -62,7 +62,7 @@ The code does not support describing these layers as forecasting systems. The re
 - **Outputs**: drift analysis, stability-class transitions, fact rows, and report.
 - **Architectural role**: captures structural evolution: weakening, strengthening, deterioration, and stability-class movement.
 - **Governance boundaries**: fact/read-model oriented local analysis; no forecasting, no trade/action generation, and no external provider dependency.
-- **Downstream consumers**: HIST-FACT-1, OBS-QUERY validation, historical/live comparison, and consumption evidence drill-down.
+- **Downstream consumers**: HIST-FACT-1, OBS-QUERY validation, historical/live comparison, and consumption Evidence Reference drill-down.
 
 ### HIST-FACT-1 — historical observation fact expansion
 - **Purpose**: deterministically expand HIST-LONG artifacts into bounded historical observation facts.
@@ -74,11 +74,11 @@ The code does not support describing these layers as forecasting systems. The re
 
 ### HIST-FACT-2 — historical regime evidence expansion
 - **Purpose**: convert HIST-FACT-1 and intelligence outputs into bounded regime evidence.
-- **Inputs**: HIST-FACT-1 expanded facts, HIST-INTEL-2 taxonomy-weighted output, and HIST-INTEL-3 narrative evolution output.
-- **Outputs**: expanded regime evidence and report rows carrying stable evidence IDs, domains, scores, labels, and source lineage.
+- **Inputs**: HIST-FACT-1 expanded facts, HIST-INTEL-2 taxonomy-weighted output, and HIST-INTEL-3 Narrative Evolution output.
+- **Outputs**: expanded regime evidence and report rows carrying stable Evidence Reference identifiers, domains, scores, labels, and source lineage.
 - **Architectural role**: bridges raw historical facts to regime/evolution evidence used by synthesis and downstream query validation.
 - **Governance boundaries**: local report/artifact inputs only; no provider, write, prediction, trading, portfolio, replay, or topology side effects.
-- **Downstream consumers**: HIST-INTEL-4 and any DB-2/OBS-QUERY path that needs evidence identifiers in payloads.
+- **Downstream consumers**: HIST-INTEL-4 and any DB-2/OBS-QUERY path that needs Evidence Reference identifiers in payloads.
 
 ### HIST-INTEL-1 — historical structural findings
 - **Purpose**: extract ranked structural findings from historical artifacts.
@@ -104,16 +104,16 @@ The code does not support describing these layers as forecasting systems. The re
 - **Governance boundaries**: bounded local facts, no external calls, no prediction, no trading/recommendation, and no write-side effects.
 - **Downstream consumers**: HIST-FACT-2, HIST-INTEL-3, HIST-INTEL-4, OBS-QUERY fixtures.
 
-### HIST-INTEL-3 — narrative evolution and regime transition mapping
+### HIST-INTEL-3 — Narrative Evolution and regime transition mapping
 - **Purpose**: map recurring, emerging, decaying, and transitioned narrative/regime structures from taxonomy-weighted historical rows.
-- **Inputs**: HIST-INTEL-2 output and bounded local fact/evidence rows.
+- **Inputs**: HIST-INTEL-2 output and bounded local fact and Evidence Reference rows.
 - **Outputs**: narrative sets, transition maps, recurring structure records, and governance-certified report outputs.
 - **Architectural role**: captures morphology and recurrence language for historical intelligence without claiming forward prediction.
 - **Governance boundaries**: local analysis over existing facts; no providers, no writes, no forecast/action generation.
 - **Downstream consumers**: HIST-FACT-2, HIST-INTEL-4, OBS-QUERY validation rows for recurrence and transition questions.
 
 ### HIST-INTEL-4 — ecosystem intelligence synthesis
-- **Purpose**: synthesize historical facts, regime evidence, taxonomy output, and narrative evolution into a traceable ecosystem characterization.
+- **Purpose**: synthesize historical facts, regime evidence, taxonomy output, and Narrative Evolution into a traceable ecosystem characterization.
 - **Inputs**: HIST-FACT-1, HIST-FACT-2, HIST-INTEL-2, and HIST-INTEL-3 outputs.
 - **Outputs**: executive synthesis, structural identity, dominant historical forces, stability assessment, transition-readiness assessment, narrative-continuity assessment, evidence summary, limitations, and governance certification.
 - **Architectural role**: terminal historical intelligence synthesis before DB-2/OBS-QUERY consumption; all conclusions remain evidence-bounded and traceable to source facts/evidence.
@@ -122,11 +122,14 @@ The code does not support describing these layers as forecasting systems. The re
 
 ## Persistence, recurrence, stability, morphology, ecology, and structural evolution
 - **Persistence** is represented by cross-window persistence scores, persistent structures, source-score facts, and HIST-LONG-8/HIST-LONG-9 fact rows.
-- **Recurrence** is represented by repeated historical structures and narrative evolution outputs such as recurring historical pattern and recurring structure classifications.
+- **Recurrence** is represented by repeated historical structures and Narrative Evolution outputs such as recurring historical pattern and recurring structure classifications.
 - **Stability** is represented by stability labels, stability-class transitions, stable vs destabilizing evidence scores, and live/historical comparisons.
 - **Morphology** is represented by sector morphology, intra-group structural contrast, dominant/fragmented/coherent group reads, and narrative morphology classifications.
 - **Ecology** is represented by window metrics, sector/subsector concentration, symbol coverage, group differentiation, and ecosystem characterization.
 - **Structural evolution** is represented by temporal deltas, drift classes, transition maps, decaying/emerging narrative sets, and persistence drift.
+
+## Historical stack ordering rationale
+Repository evidence supports a layered but not strictly linear ordering. HIST-LONG-4/5B/6/7 build the completed historical ecology substrate. HIST-LONG-8/9 derive persistence, recurrence, and drift fact-like rows from that substrate. HIST-FACT-1/2 expand historical artifacts and Evidence Reference identifiers into bounded observation-fact candidates. HIST-INTEL-1/1B/2/3/4 group local facts and artifacts into structural findings, taxonomy weights, Narrative Evolution, and ecosystem synthesis. DB-2 persistence occurs only when a governed emission path writes candidates to `sefi_observation_facts`; OBS-QUERY can then retrieve persisted facts or, in validation/local modes, bounded fixtures. Therefore the stack should be read as a set of producing, contributing, and consuming roles rather than a one-way pipe from Historical Intelligence into DB-2.
 
 ## Contribution to DB-2
 Historical Intelligence contributes to DB-2 in two ways:
@@ -134,8 +137,17 @@ Historical Intelligence contributes to DB-2 in two ways:
 1. `history_read_model.loader` can load historical artifacts into append-only registry, run, phase, observation, window, morphology, symbol, and observation-fact tables after validating completed status, schema, governance, bounded payloads, and duplicate-prevention keys.
 2. `fact_emitter.py` can emit normalized observation facts from historical/intelligence observations into `sefi_observation_facts` with explicit phase, artifact, run, entity, metric, window, payload, and duplicate-key lineage.
 
+## Historical to OBS-QUERY handoff
+| Historical output | OBS-QUERY filter or input | OBS-QUERY question/comparison type |
+| --- | --- | --- |
+| Persisted historical observation facts with `phase_id` such as `HIST-LONG-*`, `HIST-FACT-*`, or `HIST-INTEL-*` | `source_layer` / `phase_id`; `taxonomy` / `metric_name`; `snapshot_date`; `symbol`; `evidence_id` when present | OBS-QUERY-1 fact retrieval; OBS-QUERY-2 `persisted`; OBS-QUERY-3 `baseline_overlap` |
+| Persistence and recurrence fact-like rows from HIST-LONG-8/9 and fact-native historical findings | `taxonomy` values such as persistence, stability, drift, replay-density, or source metric names; optional local fixtures in validation | OBS-QUERY-2 `persisted`, `recurred`, `dominant`; OBS-QUERY-4 persistence monitor |
+| Stability drift / weakening / transition outputs | `taxonomy` / metric names and historical source phase selection | OBS-QUERY-2 `changed`, `weakened`, `transitioned`; OBS-QUERY-3 `baseline_deviation` and `persistent_weakening_live` when live facts exist |
+| Taxonomy-weighted findings and ecosystem synthesis artifacts | Existing local artifacts for consumption adapters; supporting fact IDs and Evidence Reference identifiers | OBS-QUERY-4 ecosystem briefing / investigation queue; Daily Briefing Story Evolution and Evidence Reference drill-down |
+| Regime Evidence Reference identifiers carried in payloads | `evidence_id` filter where DB-2 row ID, duplicate key, or payload `evidence_id` matches | OBS-QUERY-1 drill-down and OBS-QUERY-5 traceability validation |
+
 ## Contribution to OBS-QUERY
-OBS-QUERY reads DB-2 facts and exposes them as retrieval envelopes, typed intelligence questions, historical/live comparisons, and consumption views. Historical Intelligence supplies phase IDs, metric names, taxonomy labels, persistence/drift/recurrence/stability payloads, fact IDs, evidence IDs, artifact IDs, and run IDs that OBS-QUERY can retrieve and compare without synthesis or writes.
+OBS-QUERY reads DB-2 facts and exposes them as retrieval envelopes, typed intelligence questions, historical/live comparisons, and consumption views. Historical Intelligence supplies phase IDs, metric names, taxonomy labels, persistence/drift/recurrence/stability payloads, fact IDs, Evidence Reference identifiers, artifact IDs, and run IDs that OBS-QUERY can retrieve and compare without synthesis or writes.
 
 ## Architectural ambiguities
 - HIST-LONG-4 through HIST-LONG-7 live under `expectation_failure/real_data`, while HIST-LONG-8/9 and HIST-FACT/HIST-INTEL live under `history_long`; the architecture is coherent but split across packages.

@@ -6,7 +6,7 @@ OPS-LIVE is the controlled live-observation path that moves from bounded operati
 Repository anchors: `transmission_layers/expectation_failure/real_data/ops_live1_controlled_ecosystem_ingestion.py`, `sefi_observation_universe.py`, `transmission_layers/live_ops/ops_live2_observation_fact_accumulation.py`, `ops_live3_structural_state_snapshot.py`, `transmission_layers/history_read_model/fact_emitter.py`, `observation_fact_retrieval.py`.
 
 ## Architecture
-Daily Observation → Observation Fact → Structural State → Queryable Intelligence.
+Daily Observation → DB-2 fact candidate / persisted Observation Fact → Structural State → OBS-QUERY / Queryable Intelligence.
 
 OPS-LIVE-1 captures bounded source observations. OPS-LIVE-2 converts those observations into DB-2 facts. OPS-LIVE-3 synthesizes accumulated facts into a bounded live structural state. DB-2 and OBS-QUERY make the state queryable without live provider calls during retrieval.
 
@@ -108,19 +108,34 @@ The snapshot represents state as deterministic classes and metric values: `snaps
 DB-2 fact rows from `sefi_observation_facts` or bounded local facts, plus retrieval limits.
 
 ### Outputs
-Snapshot object, state summary, markdown report, classification fields, source digest, and governance review.
+Snapshot object, state summary, markdown report, classification fields, source digest, and governance review. OPS-LIVE-3 does not write to DB-2, does not emit fact rows, and does not create queryable DB-2 facts. Any JSON or markdown report produced by a runner is a local artifact for review/presentation, not a persisted source-of-truth fact. Its structural-state classifications are synthesis over existing facts or bounded local fact rows.
+
+### Persistence semantics
+| Question | OPS-LIVE-3 behavior |
+| --- | --- |
+| Writes to DB-2? | No. Governance review sets fact emission, schema changes, destructive operations, and core Supabase client creation to disabled. |
+| Produces local artifacts? | It can return a snapshot/report object, and runners may serialize that object, but the artifact is local presentation/review output. |
+| Creates queryable facts? | No. Queryable facts are OPS-LIVE-2 or historical rows persisted in `sefi_observation_facts`; OPS-LIVE-3 only reads those facts or bounded local fact rows. |
+| Synthesis layer only? | Yes. It classifies live health/pressure dimensions from existing fact rows and source digest metadata without ingestion, replay, prediction, trading, topology mutation, or fact emission. |
 
 ### Consumers
-DB-2/OBS-QUERY source pack, live monitoring dashboards, historical/live comparison, and read-only consumption products.
+OBS-QUERY source pack, live monitoring dashboards, historical/live comparison, and read-only consumption products.
 
 ### Governance boundaries
 Read-only fact-native synthesis; no ingestion, no replay, no prediction, no trading, no topology mutation, no fact emission, and no database write.
 
-## Daily Observation to Queryable Intelligence
+## OPS-LIVE to Consumer handoff
+| OPS-LIVE output | Structural State | OBS-QUERY | Consumption Products |
+| --- | --- | --- | --- |
+| OPS-LIVE-1 bounded operational observations | Not yet structural state; source observations for accumulation. | Not directly queryable as DB-2 facts unless OPS-LIVE-2 emits them. | Operator review payloads may be local inputs, not source-of-truth facts. |
+| OPS-LIVE-2 persisted live observation facts (`phase_id = OPS-LIVE-2`, `live_*` metrics) | Input rows for OPS-LIVE-3 live health, coverage, pressure, and source-digest classes. | OBS-QUERY-1 retrieves by source layer/taxonomy/symbol/Evidence Reference identifier; OBS-QUERY-3 compares live rows with historical rows. | OBS-QUERY-4 and Daily Briefing can show live-only anomalies, historical/live deviations, and investigation candidates with fact and Evidence Reference drill-down. |
+| OPS-LIVE-3 snapshot/report | Bounded live structural-state synthesis; not a fact emitter. | Can inform source-pack and dashboard interpretation, but does not add rows for OBS-QUERY retrieval. | May be presented as local review context; consumption products must not treat it as a persisted DB-2 fact. |
+
+## Daily Observation to OBS-QUERY / Queryable Intelligence
 1. **Daily Observation**: OPS-LIVE-1 produces bounded operational observations over a controlled universe.
-2. **Observation Fact**: OPS-LIVE-2 emits governed DB-2 facts with lineage and duplicate-prevention keys.
-3. **Structural State**: OPS-LIVE-3 reads accumulated facts and creates a bounded live health/state snapshot.
-4. **Queryable Intelligence**: OBS-QUERY retrieves DB-2 facts and exposes typed questions, comparisons, and consumption views without provider calls or writes.
+2. **Observation Fact**: OPS-LIVE-2 emits governed DB-2 facts with lineage and duplicate-prevention keys when write gates pass.
+3. **Structural State**: OPS-LIVE-3 reads accumulated facts and creates a bounded live health/state snapshot without persistence.
+4. **OBS-QUERY / Queryable Intelligence**: OBS-QUERY retrieves DB-2 facts and exposes typed questions, comparisons, and consumption views without provider calls or writes.
 
 ## Architectural ambiguities
 - OPS-LIVE-1 implementation lives under `expectation_failure/real_data`, while OPS-LIVE-2/3 live under `live_ops`.

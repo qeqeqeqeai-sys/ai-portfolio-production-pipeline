@@ -13,10 +13,10 @@
 - **Consumer**: DB-2, OBS-QUERY-1, OBS-QUERY-2, OBS-QUERY-3, OPS-LIVE-3, Consumption Products.
 
 ## Evidence
-- **Definition**: The source support associated with a fact or view item, commonly carried through `payload_jsonb.evidence_id`, row IDs, duplicate-prevention keys, or supporting evidence ID lists.
+- **Definition**: The source support associated with a fact or view item, commonly carried through `payload_jsonb.evidence_id`, row IDs, duplicate-prevention keys, or supporting Evidence Reference identifier lists.
 - **Purpose**: Enable drill-down from analyst-facing outputs back to the source observations or facts that support them.
 - **Producer**: Historical fact/evidence expansion, DB-2 payloads, OBS-QUERY canonicalization, consumption view builders.
-- **Consumer**: OBS-QUERY, Daily Briefing, Story Detail, governance review, analyst evidence drill-down.
+- **Consumer**: OBS-QUERY, Daily Briefing, Story Detail, governance review, analyst Evidence Reference drill-down.
 
 ## Fact Lineage
 - **Definition**: The set of identifiers and metadata that bind a fact to its producing phase, artifact, run, source payload, entity, metric, window, and duplicate-prevention identity.
@@ -45,7 +45,7 @@
 ## Recurrence
 - **Definition**: Reappearance or repeated presence of a structure, pattern, classification, or story across historical windows or fact sets.
 - **Purpose**: Identify structures that return or repeat and therefore merit retrieval and analyst review.
-- **Producer**: HIST-LONG-8, HIST-INTEL narrative/evolution layers, OBS-QUERY recurred question handling, Story Evolution.
+- **Producer**: HIST-LONG-8, HIST-INTEL Narrative Evolution layers, OBS-QUERY recurred question handling, Story Evolution.
 - **Consumer**: OBS-QUERY, Daily Briefing, Story Evolution Highlights, Investigation Queue.
 
 ## Morphology
@@ -61,7 +61,7 @@
 - **Consumer**: HIST-LONG-5B/6/7/8/9, HIST-FACT, HIST-INTEL, DB-2, OBS-QUERY.
 
 ## Historical Intelligence
-- **Definition**: The local, observational-only stack that converts completed historical ecology artifacts and fact rows into bounded evidence, structural findings, taxonomy weighting, narrative evolution, and ecosystem synthesis.
+- **Definition**: The local, observational-only stack that converts completed historical ecology artifacts and fact rows into bounded evidence, structural findings, taxonomy weighting, Narrative Evolution, and ecosystem synthesis.
 - **Purpose**: Establish traceable historical context for structural review and later historical/live comparison.
 - **Producer**: HIST-LONG, HIST-FACT, and HIST-INTEL layers.
 - **Consumer**: DB-2, OBS-QUERY, Consumption Products, architecture reviewers.
@@ -73,7 +73,7 @@
 - **Consumer**: DB-2, OBS-QUERY, historical/live comparison, live monitoring and consumption views.
 
 ## Queryable Intelligence
-- **Definition**: Existing facts and structural context exposed through retrieval-only OBS-QUERY interfaces as bounded questions, comparisons, validation scorecards, and consumption views.
+- **Definition**: Existing facts and structural context exposed through retrieval-only OBS-QUERY interfaces as bounded questions, comparisons, Validation Scorecard outputs, and consumption views.
 - **Purpose**: Let analysts and reviewers inspect persisted, changed, recurred, dominant, weakened, transitioned, anomalous, or deviating structures without creating new facts.
 - **Producer**: OBS-QUERY-1 through OBS-QUERY-5.
 - **Consumer**: Daily Briefing adapter, Streamlit presentation pages, Investigation Queue, Story Detail, validation suites.
@@ -91,7 +91,7 @@
 - **Consumer**: Daily Briefing, Story Evolution Highlights, Story Detail.
 
 ## Investigation Candidate
-- **Definition**: A ranked analyst-review item derived from existing comparison, query, or briefing artifacts, carrying priority, type, rationale, review questions, and evidence references.
+- **Definition**: A ranked analyst-review item derived from existing comparison, query, or briefing artifacts, carrying priority, type, rationale, review questions, and Evidence References.
 - **Purpose**: Focus analyst attention on traceable structures that may warrant review, without recommending market action.
 - **Producer**: OBS-QUERY-4 investigation queue sections and Daily Briefing adapter ranking logic.
 - **Consumer**: Investigation Queue, Daily Briefing, Story Detail, analysts.

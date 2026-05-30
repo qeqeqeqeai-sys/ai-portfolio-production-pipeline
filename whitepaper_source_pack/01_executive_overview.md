@@ -25,14 +25,14 @@ SEFI solves this by separating:
 - **Historical/live comparison** from prediction.
 - **Analyst presentation** from new intelligence generation.
 
-This separation lets downstream consumers ask bounded questions about persisted, changed, recurring, dominant, weakened, or transitioned structures while retaining fact IDs, evidence IDs, artifact IDs, run IDs, source phases, and governance context.
+This separation lets downstream consumers ask bounded questions about persisted, changed, recurring, dominant, weakened, or transitioned structures while retaining fact IDs, Evidence Reference identifiers, artifact IDs, run IDs, source phases, and governance context.
 
 ## Architectural principles
 - **Fact-native read model**: DB-2 centers the architecture on `sefi_observation_facts`, not on generated prose or unbounded artifacts.
 - **Bounded transformations**: payloads, query limits, section caps, fixture validation, and source-universe controls constrain each layer.
 - **Explicit lineage**: phase, artifact, run, entity, metric, window, payload, evidence, and duplicate-prevention identifiers remain available downstream.
 - **Layer separation**: ingestion, accumulation, structural-state synthesis, retrieval, comparison, validation, and presentation are distinct responsibilities.
-- **Deterministic behavior**: sorting, ranking, duplicate prevention, quality gates, and validation fixtures favor reproducible outputs.
+- **Deterministic behavior**: sorting, ranking, duplicate prevention, Quality Gate filters, and validation fixtures favor reproducible outputs.
 - **Read-only query and presentation**: OBS-QUERY and Consumption Products arrange existing facts and artifacts without provider calls, schema changes, or database writes.
 - **Fail-closed posture**: missing inputs, unsupported filters, disabled write gates, invalid payloads, or insufficient facts result in bounded summaries or insufficient-data states rather than silent synthesis.
 
@@ -49,12 +49,12 @@ In this architecture, a useful intelligence output is one that can answer:
 ## Current architecture summary
 The current architecture flows from market and historical inputs into bounded observations, normalized observation facts, DB-2 accumulation, historical intelligence, live structural state, OBS-QUERY retrieval/comparison, and presentation-only consumption products.
 
-- **Historical Intelligence** converts completed local ecology artifacts into fact/evidence rows, structural findings, narrative/evolution signals, taxonomy weighting, and ecosystem synthesis.
+- **Historical Intelligence** converts completed local ecology artifacts into fact/evidence rows, structural findings, Narrative Evolution signals, taxonomy weighting, and ecosystem synthesis.
 - **OPS-LIVE-1** produces bounded live operational observations over a controlled universe.
 - **OPS-LIVE-2** normalizes live observations into DB-2 observation facts behind dry-run and explicit write gates.
 - **OPS-LIVE-3** reads accumulated facts and synthesizes bounded structural-state snapshots.
 - **DB-2** stores append-oriented observation facts with lineage and duplicate-prevention keys.
-- **OBS-QUERY** retrieves, groups, compares, and presents existing DB-2 facts through typed questions, historical/live comparisons, and validation scorecards.
+- **OBS-QUERY** retrieves, groups, compares, and presents existing DB-2 facts through typed questions, historical/live comparisons, and Validation Scorecard outputs.
 - **Consumption Products** adapt existing OBS-QUERY and historical-intelligence artifacts into Daily Briefing, Story Evolution, Investigation Queue, Story Detail, Why Now, and Quality Gate views.
 
 ## Governance philosophy
@@ -64,10 +64,10 @@ SEFI governance is embedded in the architecture rather than delegated to a final
 - No provider calls in DB-2 fact emission, OBS-QUERY retrieval, or Consumption Product presentation.
 - No schema migrations, database writes, or fact creation in OBS-QUERY or presentation layers.
 - DB-2 writes require explicit enablement, non-dry execution, valid context, bounded payloads, duplicate-prevention keys, and a supplied database client.
-- Evidence traceability is preserved through supporting fact IDs, supporting evidence IDs, artifact IDs, run IDs, source phases, and source-run fields.
+- Evidence traceability is preserved through supporting fact IDs, supporting Evidence Reference identifiers, artifact IDs, run IDs, source phases, and source-run fields.
 - Unsupported filters and insufficient data are surfaced rather than hidden by synthetic substitutes.
 
 ## Architectural ambiguities
-- Evidence identifiers are currently carried in payloads or canonicalized from row identifiers; the source pack does not document a dedicated evidence table.
+- Evidence Reference identifiers are currently carried in payloads or canonicalized from row identifiers; the source pack does not document a dedicated evidence table.
 - Source-universe DB loading has a validated configuration fallback, so live-ingestion reviewers must distinguish DB-sourced universe rows from fallback telemetry.
 - The current documentation describes DB-2 as the central observation-fact read model while noting legacy DB-1 historical read-model terminology in migration comments.
