@@ -13,8 +13,10 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 from typing import Callable, Iterable, Sequence
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import urlopen
 
 MAX_INGESTION_BATCH_SIZE = 50
@@ -26,6 +28,11 @@ MAX_RETRY_ATTEMPTS = 2
 
 MAX_DIAGNOSTIC_SAMPLE_KEYS = 12
 MAX_DIAGNOSTIC_EXCEPTION_CHARS = 180
+MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS = 4
+
+FMP_LEGACY_QUOTE_ENDPOINT = "legacy_quote"
+FMP_STABLE_BATCH_QUOTE_ENDPOINT = "stable_batch_quote"
+FMP_ENDPOINT_STRATEGY = "legacy_quote_then_stable_batch_quote"
 
 FAILURE_STAGE_SUCCESS = "success"
 FAILURE_STAGE_FETCH_FAILED = "fetch_failed"
@@ -139,18 +146,85 @@ def _raw_required_field_violations(raw_rows: Sequence[dict], expected_symbols: S
     return violations
 
 
-def build_live_fmp_fetcher(api_key: str) -> Callable[[Sequence[str]], Iterable[dict]]:
+def _fmp_failure_class(exc: Exception) -> str:
+    if isinstance(exc, HTTPError):
+        return f"http_{exc.code}"
+    return type(exc).__name__
+
+
+def _bounded_endpoint_attempt(endpoint: str, status: str, exc: Exception | None = None) -> dict:
+    attempt = {"endpoint": endpoint, "status": status}
+    if exc is not None:
+        attempt.update({
+            "failure_class": _fmp_failure_class(exc),
+            "exception_type": type(exc).__name__,
+            "exception_message": _bounded_exception_message(exc),
+        })
+    return attempt
+
+
+def _read_fmp_json(url: str, urlopen_fn: Callable = urlopen) -> object:
+    with urlopen_fn(url, timeout=20) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _fmp_legacy_quote_url(symbols: Sequence[str], api_key: str) -> str:
+    query = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
+    return f"https://financialmodelingprep.com/api/v3/quote/{','.join(symbols)}?{query}"
+
+
+def _fmp_stable_batch_quote_url(symbols: Sequence[str], api_key: str) -> str:
+    query = urlencode({"symbols": ",".join(symbols), "apikey": api_key})
+    return f"https://financialmodelingprep.com/stable/batch-quote?{query}"
+
+
+class LiveFmpFetchError(RuntimeError):
+    def __init__(self, message: str, endpoint_attempts: Sequence[dict], cause: Exception | None = None) -> None:
+        super().__init__(message)
+        self.endpoint_attempts = list(endpoint_attempts)[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
+        self.__cause__ = cause
+
+
+def build_live_fmp_fetcher(api_key: str, urlopen_fn: Callable = urlopen) -> Callable[[Sequence[str]], Iterable[dict]]:
     if not api_key:
         raise RuntimeError("FMP_API_KEY is required for live probe mode")
 
     def _fetch(symbols: Sequence[str]) -> list[dict]:
-        query = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
-        with urlopen(f"https://financialmodelingprep.com/api/v3/quote/{','.join(symbols)}?{query}", timeout=20) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-        if not isinstance(payload, list):
-            raise RuntimeError("Invalid FMP payload shape")
-        return payload
+        bounded_symbols = [canonicalize_symbol(s) for s in symbols if canonicalize_symbol(s)][:MAX_INGESTION_BATCH_SIZE]
+        endpoint_attempts: list[dict] = []
+        _fetch.last_endpoint_attempts = endpoint_attempts
+        endpoints = (
+            (FMP_LEGACY_QUOTE_ENDPOINT, _fmp_legacy_quote_url),
+            (FMP_STABLE_BATCH_QUOTE_ENDPOINT, _fmp_stable_batch_quote_url),
+        )
+        last_exc: Exception | None = None
+        for endpoint, build_url in endpoints:
+            try:
+                payload = _read_fmp_json(build_url(bounded_symbols, api_key), urlopen_fn)
+                endpoint_attempts.append(_bounded_endpoint_attempt(endpoint, "ok"))
+                if not isinstance(payload, list):
+                    raise InvalidFmpPayloadShape(
+                        "Invalid FMP payload shape",
+                        _diagnostic_response_type(payload),
+                        sorted(str(k) for k in payload.keys())[:MAX_DIAGNOSTIC_SAMPLE_KEYS] if isinstance(payload, Mapping) else [],
+                    )
+                return payload
+            except InvalidFmpPayloadShape:
+                raise
+            except HTTPError as exc:
+                endpoint_attempts.append(_bounded_endpoint_attempt(endpoint, "failed", exc))
+                last_exc = exc
+                if exc.code != 403 or endpoint == FMP_STABLE_BATCH_QUOTE_ENDPOINT:
+                    break
+                continue
+            except Exception as exc:
+                endpoint_attempts.append(_bounded_endpoint_attempt(endpoint, "failed", exc))
+                last_exc = exc
+                break
+        raise LiveFmpFetchError("FMP fetch failed across configured quote endpoints", endpoint_attempts, last_exc)
 
+    _fetch.last_endpoint_attempts = []
+    _fetch.endpoint_strategy = FMP_ENDPOINT_STRATEGY
     return _fetch
 
 
@@ -323,6 +397,7 @@ def _bounded_exception_message(exc: Exception) -> str:
     api_key = os.getenv("FMP_API_KEY", "")
     if api_key:
         msg = msg.replace(api_key, "[REDACTED]")
+    msg = re.sub(r"https?://\S+", "[REDACTED_URL]", msg)
     for marker in ("apikey=", "api_key="):
         lowered = msg.lower()
         idx = lowered.find(marker)
@@ -369,6 +444,8 @@ def _base_ingestion_boundary_diagnostics(
     dropped_due_to_batch_filter_count: int = 0,
     duplicate_elision_count: int = 0,
     rejected_row_reasons: Sequence[dict[str, str]] = (),
+    endpoint_strategy: str = "",
+    endpoint_attempts: Sequence[dict] = (),
 ) -> dict:
     return {
         "fetch_status": fetch_status,
@@ -380,6 +457,8 @@ def _base_ingestion_boundary_diagnostics(
         "failure_stage": failure_stage,
         "exception_type": exception_type,
         "exception_message": exception_message,
+        "endpoint_strategy": endpoint_strategy,
+        "endpoint_attempts": list(endpoint_attempts)[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS],
         "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
         "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
         "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
@@ -448,6 +527,8 @@ def ingest_controlled_daily_snapshot(
     failure_stage = FAILURE_STAGE_FETCH_FAILED
     exception_type = ""
     exception_message = ""
+    endpoint_strategy = str(getattr(fetch_batch, "endpoint_strategy", ""))
+    endpoint_attempts: list[dict] = []
 
     for batch in batches:
         batch_success = False
@@ -462,6 +543,7 @@ def ingest_controlled_daily_snapshot(
                 response_type = "list"
                 if not sample_response_keys:
                     sample_response_keys = _sample_response_keys(batch_rows)
+                endpoint_attempts = list(getattr(fetch_batch, "last_endpoint_attempts", endpoint_attempts))[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
                 raw_rows.extend(deepcopy(batch_rows))
                 for row in batch_rows:
                     row_symbol = canonicalize_symbol(row.get("symbol", ""))
@@ -497,12 +579,14 @@ def ingest_controlled_daily_snapshot(
                 failure_stage = FAILURE_STAGE_INVALID_PAYLOAD_SHAPE
                 exception_type = type(exc).__name__
                 exception_message = _bounded_exception_message(exc)
+                endpoint_attempts = list(getattr(fetch_batch, "last_endpoint_attempts", endpoint_attempts))[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
                 continue
             except Exception as exc:
                 fetch_status = "failed"
                 failure_stage = FAILURE_STAGE_FETCH_FAILED
                 exception_type = type(exc).__name__
                 exception_message = _bounded_exception_message(exc)
+                endpoint_attempts = list(getattr(exc, "endpoint_attempts", getattr(fetch_batch, "last_endpoint_attempts", endpoint_attempts)))[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
                 continue
         if not batch_success:
             return {
@@ -525,6 +609,8 @@ def ingest_controlled_daily_snapshot(
                     dropped_due_to_batch_filter_count=dropped_due_to_batch_filter_count,
                     duplicate_elision_count=duplicate_elision_count,
                     rejected_row_reasons=rejected_row_reasons,
+                    endpoint_strategy=endpoint_strategy,
+                    endpoint_attempts=endpoint_attempts,
                 ),
                 "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
             }
@@ -542,6 +628,8 @@ def ingest_controlled_daily_snapshot(
         dropped_due_to_batch_filter_count=dropped_due_to_batch_filter_count,
         duplicate_elision_count=duplicate_elision_count,
         rejected_row_reasons=rejected_row_reasons,
+        endpoint_strategy=endpoint_strategy,
+        endpoint_attempts=endpoint_attempts,
     )
     try:
         normalized = [_normalize_row(r, snapshot_ts) for r in filtered_rows if canonicalize_symbol(r.get("symbol", ""))]

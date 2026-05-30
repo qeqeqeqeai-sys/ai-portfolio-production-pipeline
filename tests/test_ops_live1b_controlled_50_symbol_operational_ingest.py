@@ -1,11 +1,54 @@
+import json
+from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 from transmission_layers.expectation_failure.real_data.ops_live1_controlled_ecosystem_ingestion import (
+    FMP_LEGACY_QUOTE_ENDPOINT,
+    FMP_STABLE_BATCH_QUOTE_ENDPOINT,
     GOVERNANCE_BOUNDARIES,
     OPS_LIVE1B_UNIVERSE_CAP,
+    build_live_fmp_fetcher,
     get_ops_live1b_controlled_universe,
     run_ops_live1b_controlled_50_symbol_operational_ingest,
 )
+
+
+class _MockFmpResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
+
+
+def _mock_rows(symbols):
+    rows = []
+    for i, symbol in enumerate(symbols):
+        rows.append({
+            "symbol": symbol,
+            "price": 100 + i,
+            "marketCap": 2_000_000 + i,
+            "sector": "Tech",
+            "industry": "Software",
+            "beta": 1.0,
+            "pe": 20.0,
+            "roe": 0.2,
+            "debtToEquity": 0.4,
+            "dispersion": 0.3,
+        })
+    return rows
+
+
+def _stable_symbols_from_url(url):
+    return parse_qs(urlparse(url).query).get("symbols", [""])[0].split(",")
 
 
 def _fetcher(batch):
@@ -197,3 +240,117 @@ def test_ingestion_boundary_diagnostics_successful_payload(tmp_path):
     ]
     assert diagnostics["exception_type"] == ""
     assert diagnostics["exception_message"] == ""
+
+
+def test_live_fmp_fetcher_falls_back_from_legacy_403_to_stable_success(tmp_path):
+    urls = []
+
+    def urlopen_fn(url, timeout):
+        urls.append(url)
+        if "/api/v3/quote/" in url:
+            raise HTTPError(url, 403, "Forbidden", None, None)
+        assert "/stable/batch-quote" in url
+        return _MockFmpResponse(_mock_rows(_stable_symbols_from_url(url)))
+
+    fetcher = build_live_fmp_fetcher("secret-key", urlopen_fn=urlopen_fn)
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=fetcher,
+    )
+
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "ok"
+    assert diagnostics["failure_stage"] == "success"
+    assert diagnostics["endpoint_strategy"] == "legacy_quote_then_stable_batch_quote"
+    assert diagnostics["endpoint_attempts"] == [
+        {
+            "endpoint": FMP_LEGACY_QUOTE_ENDPOINT,
+            "status": "failed",
+            "failure_class": "http_403",
+            "exception_type": "HTTPError",
+            "exception_message": "HTTP Error 403: Forbidden",
+        },
+        {"endpoint": FMP_STABLE_BATCH_QUOTE_ENDPOINT, "status": "ok"},
+    ]
+    assert "/api/v3/quote/" in urls[0]
+    assert "/stable/batch-quote" in urls[1]
+
+
+def test_live_fmp_fetcher_both_endpoints_fail_closed_with_sanitized_diagnostics(tmp_path):
+    def urlopen_fn(url, timeout):
+        raise HTTPError(f"{url}&apikey=secret-key", 403, "Forbidden", None, None)
+
+    fetcher = build_live_fmp_fetcher("secret-key", urlopen_fn=urlopen_fn)
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=fetcher,
+    )
+
+    serialized = json.dumps(out, sort_keys=True)
+    diagnostics = _ops_live1b_diag(out)
+    assert out["status"] == "failed_closed"
+    assert diagnostics["fetch_status"] == "failed"
+    assert diagnostics["failure_stage"] == "fetch_failed"
+    assert diagnostics["exception_type"] == "LiveFmpFetchError"
+    assert diagnostics["endpoint_attempts"] == [
+        {
+            "endpoint": FMP_LEGACY_QUOTE_ENDPOINT,
+            "status": "failed",
+            "failure_class": "http_403",
+            "exception_type": "HTTPError",
+            "exception_message": "HTTP Error 403: Forbidden",
+        },
+        {
+            "endpoint": FMP_STABLE_BATCH_QUOTE_ENDPOINT,
+            "status": "failed",
+            "failure_class": "http_403",
+            "exception_type": "HTTPError",
+            "exception_message": "HTTP Error 403: Forbidden",
+        },
+    ]
+    assert "secret-key" not in serialized
+    assert "apikey=" not in serialized
+    assert "financialmodelingprep.com" not in serialized
+
+
+def test_live_fmp_fetcher_stable_endpoint_returns_list_rows():
+    def urlopen_fn(url, timeout):
+        if "/api/v3/quote/" in url:
+            raise HTTPError(url, 403, "Forbidden", None, None)
+        return _MockFmpResponse(_mock_rows(_stable_symbols_from_url(url)))
+
+    fetcher = build_live_fmp_fetcher("secret-key", urlopen_fn=urlopen_fn)
+    rows = fetcher(["AAPL", "MSFT"])
+
+    assert [row["symbol"] for row in rows] == ["AAPL", "MSFT"]
+    assert fetcher.last_endpoint_attempts == [
+        {
+            "endpoint": FMP_LEGACY_QUOTE_ENDPOINT,
+            "status": "failed",
+            "failure_class": "http_403",
+            "exception_type": "HTTPError",
+            "exception_message": "HTTP Error 403: Forbidden",
+        },
+        {"endpoint": FMP_STABLE_BATCH_QUOTE_ENDPOINT, "status": "ok"},
+    ]
+
+
+def test_live_fmp_fetcher_does_not_persist_api_key_in_endpoint_diagnostics(tmp_path):
+    def urlopen_fn(url, timeout):
+        raise RuntimeError(f"blocked url={url}")
+
+    fetcher = build_live_fmp_fetcher("secret-key", urlopen_fn=urlopen_fn)
+    out = run_ops_live1b_controlled_50_symbol_operational_ingest(
+        snapshot_date="2026-05-27",
+        output_path=str(tmp_path / "out.json"),
+        fetch_batch=fetcher,
+    )
+
+    serialized = json.dumps(out, sort_keys=True)
+    assert out["status"] == "failed_closed"
+    assert "secret-key" not in serialized
+    assert "apikey=" not in serialized
+    assert "financialmodelingprep.com" not in serialized
+    assert "[REDACTED_URL]" in serialized
