@@ -218,19 +218,27 @@ def build_ops_live2_run_registry_row(context: Mapping[str, Any], *, loaded_at: s
     ])
 
 
+def _response_row_count(response: Any, *, fallback: int) -> int:
+    data = getattr(response, "data", None)
+    if data is None and isinstance(response, Mapping):
+        data = response.get("data")
+    return len(data) if isinstance(data, list) else fallback
+
+
 def emit_ops_live2_parent_registries(client: Any, artifact_row: Mapping[str, Any], run_row: Mapping[str, Any], *, dry_run: bool = True) -> OrderedDict[str, Any]:
-    """Append OPS-LIVE-2 parent registry rows before inserting child facts."""
+    """Idempotently ensure OPS-LIVE-2 parent registry rows exist before inserting child facts."""
     result = OrderedDict([
         ("dry_run", bool(dry_run)),
         ("tables", [ARTIFACT_REGISTRY_TABLE, RUN_REGISTRY_TABLE]),
         ("attempted_rows", 2),
         ("inserted_rows", 0),
+        ("conflict_strategy", "ignore_primary_key_conflicts"),
     ])
     if dry_run:
         return result
-    client.table(ARTIFACT_REGISTRY_TABLE).insert([OrderedDict(artifact_row)]).execute()
-    client.table(RUN_REGISTRY_TABLE).insert([OrderedDict(run_row)]).execute()
-    result["inserted_rows"] = 2
+    artifact_response = client.table(ARTIFACT_REGISTRY_TABLE).upsert([OrderedDict(artifact_row)], on_conflict="artifact_id", ignore_duplicates=True).execute()
+    run_response = client.table(RUN_REGISTRY_TABLE).upsert([OrderedDict(run_row)], on_conflict="run_id", ignore_duplicates=True).execute()
+    result["inserted_rows"] = _response_row_count(artifact_response, fallback=1) + _response_row_count(run_response, fallback=1)
     return result
 
 
@@ -285,7 +293,7 @@ def run_ops_live2_accumulation(
     registry_emission = _default_registry_emission_result()
     if can_write and artifact_registry_row and run_registry_row:
         registry_emission = emit_ops_live2_parent_registries(client, artifact_registry_row, run_registry_row, dry_run=False)
-    emission = emit_observation_facts(client, fact_rows, dry_run=False) if can_write else _default_emission_result(dry_run=True)
+    emission = emit_observation_facts(client, fact_rows, dry_run=False, ignore_duplicates=True) if can_write else _default_emission_result(dry_run=True)
     if enabled and dry_run:
         emission = emit_observation_facts(client, fact_rows, dry_run=True)
     report_model = OrderedDict([
