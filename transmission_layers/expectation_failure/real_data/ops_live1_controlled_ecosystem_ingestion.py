@@ -6,14 +6,17 @@ curated 300-stock universe.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from hashlib import sha256
 import json
 import math
 import os
 from pathlib import Path
+import re
 from typing import Callable, Iterable, Sequence
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import urlopen
 
 MAX_INGESTION_BATCH_SIZE = 50
@@ -22,6 +25,23 @@ MAX_CONTINUITY_WINDOW_DAYS = 90
 MAX_DASHBOARD_PAYLOAD_ROWS = 120
 MAX_STRUCTURAL_SUMMARY_ITEMS = 12
 MAX_RETRY_ATTEMPTS = 2
+
+MAX_DIAGNOSTIC_SAMPLE_KEYS = 12
+MAX_DIAGNOSTIC_EXCEPTION_CHARS = 180
+MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS = 4
+
+FMP_LEGACY_QUOTE_ENDPOINT = "legacy_quote"
+FMP_STABLE_BATCH_QUOTE_ENDPOINT = "stable_batch_quote"
+FMP_ENDPOINT_STRATEGY = "legacy_quote_then_stable_batch_quote"
+
+FAILURE_STAGE_SUCCESS = "success"
+FAILURE_STAGE_FETCH_FAILED = "fetch_failed"
+FAILURE_STAGE_INVALID_PAYLOAD_SHAPE = "invalid_payload_shape"
+FAILURE_STAGE_EMPTY_FMP_PAYLOAD = "empty_fmp_payload"
+FAILURE_STAGE_ALL_ROWS_REJECTED_BY_SYMBOL_FILTER = "all_rows_rejected_by_symbol_filter"
+FAILURE_STAGE_SCHEMA_VALIDATION_FAILED = "schema_validation_failed"
+FAILURE_STAGE_NORMALIZATION_FAILED = "normalization_failed"
+
 DEFAULT_PROBE_UNIVERSE = ("AAPL", "MSFT", "JPM", "XOM", "UNH", "PG", "NEM", "NEE")
 MAX_PROBE_UNIVERSE_SIZE = 10
 
@@ -126,18 +146,85 @@ def _raw_required_field_violations(raw_rows: Sequence[dict], expected_symbols: S
     return violations
 
 
-def build_live_fmp_fetcher(api_key: str) -> Callable[[Sequence[str]], Iterable[dict]]:
+def _fmp_failure_class(exc: Exception) -> str:
+    if isinstance(exc, HTTPError):
+        return f"http_{exc.code}"
+    return type(exc).__name__
+
+
+def _bounded_endpoint_attempt(endpoint: str, status: str, exc: Exception | None = None) -> dict:
+    attempt = {"endpoint": endpoint, "status": status}
+    if exc is not None:
+        attempt.update({
+            "failure_class": _fmp_failure_class(exc),
+            "exception_type": type(exc).__name__,
+            "exception_message": _bounded_exception_message(exc),
+        })
+    return attempt
+
+
+def _read_fmp_json(url: str, urlopen_fn: Callable = urlopen) -> object:
+    with urlopen_fn(url, timeout=20) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _fmp_legacy_quote_url(symbols: Sequence[str], api_key: str) -> str:
+    query = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
+    return f"https://financialmodelingprep.com/api/v3/quote/{','.join(symbols)}?{query}"
+
+
+def _fmp_stable_batch_quote_url(symbols: Sequence[str], api_key: str) -> str:
+    query = urlencode({"symbols": ",".join(symbols), "apikey": api_key})
+    return f"https://financialmodelingprep.com/stable/batch-quote?{query}"
+
+
+class LiveFmpFetchError(RuntimeError):
+    def __init__(self, message: str, endpoint_attempts: Sequence[dict], cause: Exception | None = None) -> None:
+        super().__init__(message)
+        self.endpoint_attempts = list(endpoint_attempts)[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
+        self.__cause__ = cause
+
+
+def build_live_fmp_fetcher(api_key: str, urlopen_fn: Callable = urlopen) -> Callable[[Sequence[str]], Iterable[dict]]:
     if not api_key:
         raise RuntimeError("FMP_API_KEY is required for live probe mode")
 
     def _fetch(symbols: Sequence[str]) -> list[dict]:
-        query = urlencode({"symbol": ",".join(symbols), "apikey": api_key})
-        with urlopen(f"https://financialmodelingprep.com/api/v3/quote/{','.join(symbols)}?{query}", timeout=20) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-        if not isinstance(payload, list):
-            raise RuntimeError("Invalid FMP payload shape")
-        return payload
+        bounded_symbols = [canonicalize_symbol(s) for s in symbols if canonicalize_symbol(s)][:MAX_INGESTION_BATCH_SIZE]
+        endpoint_attempts: list[dict] = []
+        _fetch.last_endpoint_attempts = endpoint_attempts
+        endpoints = (
+            (FMP_LEGACY_QUOTE_ENDPOINT, _fmp_legacy_quote_url),
+            (FMP_STABLE_BATCH_QUOTE_ENDPOINT, _fmp_stable_batch_quote_url),
+        )
+        last_exc: Exception | None = None
+        for endpoint, build_url in endpoints:
+            try:
+                payload = _read_fmp_json(build_url(bounded_symbols, api_key), urlopen_fn)
+                endpoint_attempts.append(_bounded_endpoint_attempt(endpoint, "ok"))
+                if not isinstance(payload, list):
+                    raise InvalidFmpPayloadShape(
+                        "Invalid FMP payload shape",
+                        _diagnostic_response_type(payload),
+                        sorted(str(k) for k in payload.keys())[:MAX_DIAGNOSTIC_SAMPLE_KEYS] if isinstance(payload, Mapping) else [],
+                    )
+                return payload
+            except InvalidFmpPayloadShape:
+                raise
+            except HTTPError as exc:
+                endpoint_attempts.append(_bounded_endpoint_attempt(endpoint, "failed", exc))
+                last_exc = exc
+                if exc.code != 403 or endpoint == FMP_STABLE_BATCH_QUOTE_ENDPOINT:
+                    break
+                continue
+            except Exception as exc:
+                endpoint_attempts.append(_bounded_endpoint_attempt(endpoint, "failed", exc))
+                last_exc = exc
+                break
+        raise LiveFmpFetchError("FMP fetch failed across configured quote endpoints", endpoint_attempts, last_exc)
 
+    _fetch.last_endpoint_attempts = []
+    _fetch.endpoint_strategy = FMP_ENDPOINT_STRATEGY
     return _fetch
 
 
@@ -297,11 +384,123 @@ def _bounded_symbol_sample(symbols: Iterable[str], limit: int = 25) -> list[str]
     return sorted({s for s in symbols if s})[:limit]
 
 
+
+class InvalidFmpPayloadShape(TypeError):
+    def __init__(self, message: str, response_type: str, sample_response_keys: Sequence[str] | None = None) -> None:
+        super().__init__(message)
+        self.response_type = response_type
+        self.sample_response_keys = sorted(str(k) for k in (sample_response_keys or []))[:MAX_DIAGNOSTIC_SAMPLE_KEYS]
+
+
+def _bounded_exception_message(exc: Exception) -> str:
+    msg = str(exc)
+    api_key = os.getenv("FMP_API_KEY", "")
+    if api_key:
+        msg = msg.replace(api_key, "[REDACTED]")
+    msg = re.sub(r"https?://\S+", "[REDACTED_URL]", msg)
+    for marker in ("apikey=", "api_key="):
+        lowered = msg.lower()
+        idx = lowered.find(marker)
+        if idx >= 0:
+            end = len(msg)
+            for sep in ("&", " ", "\n", "\t"):
+                sep_idx = msg.find(sep, idx + len(marker))
+                if sep_idx >= 0:
+                    end = min(end, sep_idx)
+            msg = f"{msg[:idx]}{marker}[REDACTED]{msg[end:]}"
+    return msg[:MAX_DIAGNOSTIC_EXCEPTION_CHARS]
+
+
+def _diagnostic_response_type(payload: object) -> str:
+    if isinstance(payload, list):
+        return "list"
+    if isinstance(payload, tuple):
+        return "tuple"
+    if isinstance(payload, Mapping):
+        return "dict"
+    return type(payload).__name__
+
+
+def _sample_response_keys(rows: Sequence[dict]) -> list[str]:
+    for row in rows:
+        if isinstance(row, Mapping):
+            return sorted(str(k) for k in row.keys())[:MAX_DIAGNOSTIC_SAMPLE_KEYS]
+    return []
+
+
+def _base_ingestion_boundary_diagnostics(
+    *,
+    fetch_status: str = "not_started",
+    response_type: str = "unknown",
+    raw_row_count: int = 0,
+    accepted_row_count: int = 0,
+    rejected_row_count: int = 0,
+    sample_response_keys: Sequence[str] | None = None,
+    failure_stage: str = FAILURE_STAGE_FETCH_FAILED,
+    exception_type: str = "",
+    exception_message: str = "",
+    canonicalized_batch_symbols: Iterable[str] = (),
+    canonicalized_row_symbols: Iterable[str] = (),
+    dropped_due_to_batch_filter_count: int = 0,
+    duplicate_elision_count: int = 0,
+    rejected_row_reasons: Sequence[dict[str, str]] = (),
+    endpoint_strategy: str = "",
+    endpoint_attempts: Sequence[dict] = (),
+) -> dict:
+    return {
+        "fetch_status": fetch_status,
+        "response_type": response_type,
+        "raw_row_count": raw_row_count,
+        "accepted_row_count": accepted_row_count,
+        "rejected_row_count": rejected_row_count,
+        "sample_response_keys": sorted(str(k) for k in (sample_response_keys or []))[:MAX_DIAGNOSTIC_SAMPLE_KEYS],
+        "failure_stage": failure_stage,
+        "exception_type": exception_type,
+        "exception_message": exception_message,
+        "endpoint_strategy": endpoint_strategy,
+        "endpoint_attempts": list(endpoint_attempts)[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS],
+        "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
+        "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
+        "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
+        "duplicate_elision_count": duplicate_elision_count,
+        "rejected_row_reasons": list(rejected_row_reasons)[:25],
+    }
+
+
+def _classify_integrity_failure(integrity: dict, diagnostics: dict) -> str:
+    if diagnostics["raw_row_count"] == 0:
+        return FAILURE_STAGE_EMPTY_FMP_PAYLOAD
+    if diagnostics["accepted_row_count"] == 0 and diagnostics["dropped_due_to_batch_filter_count"] == diagnostics["raw_row_count"]:
+        return FAILURE_STAGE_ALL_ROWS_REJECTED_BY_SYMBOL_FILTER
+    return FAILURE_STAGE_SCHEMA_VALIDATION_FAILED
+
+
 def fetch_controlled_fmp_snapshot_batch(
     symbols: Sequence[str], fetch_batch: Callable[[Sequence[str]], Iterable[dict]]
 ) -> list[dict]:
     bounded_symbols = [canonicalize_symbol(s) for s in symbols if canonicalize_symbol(s)][:MAX_INGESTION_BATCH_SIZE]
-    return list(fetch_batch(bounded_symbols))
+    payload = fetch_batch(bounded_symbols)
+    if isinstance(payload, Mapping):
+        raise InvalidFmpPayloadShape(
+            f"Invalid FMP payload shape: {_diagnostic_response_type(payload)}",
+            _diagnostic_response_type(payload),
+            sorted(str(k) for k in payload.keys())[:MAX_DIAGNOSTIC_SAMPLE_KEYS],
+        )
+    if isinstance(payload, (str, bytes)):
+        raise InvalidFmpPayloadShape(
+            f"Invalid FMP payload shape: {_diagnostic_response_type(payload)}",
+            _diagnostic_response_type(payload),
+        )
+    try:
+        rows = list(payload)
+    except TypeError as exc:
+        raise InvalidFmpPayloadShape(
+            f"Invalid FMP payload shape: {_diagnostic_response_type(payload)}",
+            _diagnostic_response_type(payload),
+        ) from exc
+    if any(not isinstance(row, Mapping) for row in rows):
+        raise InvalidFmpPayloadShape("Invalid FMP payload row shape", _diagnostic_response_type(rows), _sample_response_keys(rows))
+    return rows
 
 
 def ingest_controlled_daily_snapshot(
@@ -322,6 +521,14 @@ def ingest_controlled_daily_snapshot(
     canonicalized_row_symbols: set[str] = set()
     rejected_row_reasons: list[dict[str, str]] = []
     normalized_by_symbol: dict[str, tuple[object, ...]] = {}
+    fetch_status = "not_started"
+    response_type = "unknown"
+    sample_response_keys: list[str] = []
+    failure_stage = FAILURE_STAGE_FETCH_FAILED
+    exception_type = ""
+    exception_message = ""
+    endpoint_strategy = str(getattr(fetch_batch, "endpoint_strategy", ""))
+    endpoint_attempts: list[dict] = []
 
     for batch in batches:
         batch_success = False
@@ -332,6 +539,11 @@ def ingest_controlled_daily_snapshot(
             attempts += 1
             try:
                 batch_rows = fetch_controlled_fmp_snapshot_batch(canonical_batch, fetch_batch)
+                fetch_status = "ok"
+                response_type = "list"
+                if not sample_response_keys:
+                    sample_response_keys = _sample_response_keys(batch_rows)
+                endpoint_attempts = list(getattr(fetch_batch, "last_endpoint_attempts", endpoint_attempts))[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
                 raw_rows.extend(deepcopy(batch_rows))
                 for row in batch_rows:
                     row_symbol = canonicalize_symbol(row.get("symbol", ""))
@@ -359,7 +571,22 @@ def ingest_controlled_daily_snapshot(
                     filtered_rows.append(row)
                 batch_success = True
                 break
-            except Exception:
+            except InvalidFmpPayloadShape as exc:
+                fetch_status = "failed"
+                response_type = exc.response_type
+                if not sample_response_keys:
+                    sample_response_keys = exc.sample_response_keys
+                failure_stage = FAILURE_STAGE_INVALID_PAYLOAD_SHAPE
+                exception_type = type(exc).__name__
+                exception_message = _bounded_exception_message(exc)
+                endpoint_attempts = list(getattr(fetch_batch, "last_endpoint_attempts", endpoint_attempts))[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
+                continue
+            except Exception as exc:
+                fetch_status = "failed"
+                failure_stage = FAILURE_STAGE_FETCH_FAILED
+                exception_type = type(exc).__name__
+                exception_message = _bounded_exception_message(exc)
+                endpoint_attempts = list(getattr(exc, "endpoint_attempts", getattr(fetch_batch, "last_endpoint_attempts", endpoint_attempts)))[:MAX_DIAGNOSTIC_ENDPOINT_ATTEMPTS]
                 continue
         if not batch_success:
             return {
@@ -367,27 +594,63 @@ def ingest_controlled_daily_snapshot(
                 "snapshot_ts": snapshot_ts,
                 "attempts": attempts,
                 "batches": len(batches),
-                "ingestion_boundary_diagnostics": {
-                    "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
-                    "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
-                    "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
-                    "duplicate_elision_count": duplicate_elision_count,
-                    "rejected_row_reasons": rejected_row_reasons,
-                },
+                "ingestion_boundary_diagnostics": _base_ingestion_boundary_diagnostics(
+                    fetch_status=fetch_status,
+                    response_type=response_type,
+                    raw_row_count=len(raw_rows),
+                    accepted_row_count=len(filtered_rows),
+                    rejected_row_count=dropped_due_to_batch_filter_count + duplicate_elision_count,
+                    sample_response_keys=sample_response_keys,
+                    failure_stage=failure_stage,
+                    exception_type=exception_type,
+                    exception_message=exception_message,
+                    canonicalized_batch_symbols=canonicalized_batch_symbols,
+                    canonicalized_row_symbols=canonicalized_row_symbols,
+                    dropped_due_to_batch_filter_count=dropped_due_to_batch_filter_count,
+                    duplicate_elision_count=duplicate_elision_count,
+                    rejected_row_reasons=rejected_row_reasons,
+                    endpoint_strategy=endpoint_strategy,
+                    endpoint_attempts=endpoint_attempts,
+                ),
                 "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
             }
 
-    ingestion_boundary_diagnostics = {
-        "canonicalized_batch_symbols_sample": _bounded_symbol_sample(canonicalized_batch_symbols),
-        "canonicalized_row_symbols_sample": _bounded_symbol_sample(canonicalized_row_symbols),
-        "dropped_due_to_batch_filter_count": dropped_due_to_batch_filter_count,
-        "duplicate_elision_count": duplicate_elision_count,
-        "rejected_row_reasons": rejected_row_reasons,
-    }
-    normalized = [_normalize_row(r, snapshot_ts) for r in filtered_rows if canonicalize_symbol(r.get("symbol", ""))]
-    normalized = sorted(normalized, key=lambda r: r["symbol"])[:MAX_SNAPSHOT_ROWS]
+    ingestion_boundary_diagnostics = _base_ingestion_boundary_diagnostics(
+        fetch_status=fetch_status,
+        response_type=response_type,
+        raw_row_count=len(raw_rows),
+        accepted_row_count=len(filtered_rows),
+        rejected_row_count=dropped_due_to_batch_filter_count + duplicate_elision_count,
+        sample_response_keys=sample_response_keys,
+        failure_stage=FAILURE_STAGE_SUCCESS,
+        canonicalized_batch_symbols=canonicalized_batch_symbols,
+        canonicalized_row_symbols=canonicalized_row_symbols,
+        dropped_due_to_batch_filter_count=dropped_due_to_batch_filter_count,
+        duplicate_elision_count=duplicate_elision_count,
+        rejected_row_reasons=rejected_row_reasons,
+        endpoint_strategy=endpoint_strategy,
+        endpoint_attempts=endpoint_attempts,
+    )
+    try:
+        normalized = [_normalize_row(r, snapshot_ts) for r in filtered_rows if canonicalize_symbol(r.get("symbol", ""))]
+        normalized = sorted(normalized, key=lambda r: r["symbol"])[:MAX_SNAPSHOT_ROWS]
+    except Exception as exc:
+        ingestion_boundary_diagnostics["failure_stage"] = FAILURE_STAGE_NORMALIZATION_FAILED
+        ingestion_boundary_diagnostics["exception_type"] = type(exc).__name__
+        ingestion_boundary_diagnostics["exception_message"] = _bounded_exception_message(exc)
+        return {
+            "status": "failed_closed",
+            "snapshot_ts": snapshot_ts,
+            "attempts": attempts,
+            "batches": len(batches),
+            "ingestion_boundary_diagnostics": ingestion_boundary_diagnostics,
+            "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
+        }
     integrity = _integrity_validate(normalized, ordered_symbols)
     if not integrity["is_valid"]:
+        ingestion_boundary_diagnostics["failure_stage"] = _classify_integrity_failure(integrity, ingestion_boundary_diagnostics)
+        ingestion_boundary_diagnostics["accepted_row_count"] = len(normalized)
+        ingestion_boundary_diagnostics["rejected_row_count"] = max(0, ingestion_boundary_diagnostics["raw_row_count"] - len(normalized))
         return {
             "status": "failed_closed",
             "snapshot_ts": snapshot_ts,
@@ -398,6 +661,8 @@ def ingest_controlled_daily_snapshot(
             "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
         }
 
+    ingestion_boundary_diagnostics["accepted_row_count"] = len(normalized)
+    ingestion_boundary_diagnostics["rejected_row_count"] = max(0, ingestion_boundary_diagnostics["raw_row_count"] - len(normalized))
     snapshot_identity = _compute_snapshot_identity(normalized, snapshot_ts)
     surfaces = build_normalized_operational_surfaces(normalized, snapshot_ts, snapshot_identity)
     payload = build_operator_payloads(surfaces)
@@ -579,6 +844,7 @@ def build_ops_live1b_canonical_payload(ingest_result: dict, universe_symbols: Se
             "avg_resilience_gap": round(sector_rollup[sector]["avg_resilience_gap"] / max(c,1), 6),
         })
     op = ingest_result.get("operator_payload", {})
+    ingestion_boundary_diagnostics = deepcopy(ingest_result.get("ingestion_boundary_diagnostics", {}))
     diagnostics = {
         "symbols_requested": len(universe_symbols),
         "symbols_successfully_normalized": len(rows),
@@ -598,6 +864,7 @@ def build_ops_live1b_canonical_payload(ingest_result: dict, universe_symbols: Se
         "data_completeness_summary": round((len(rows)/max(len(universe_symbols),1))*100.0,6),
         "normalization_completeness_percentage": round((len(rows)/max(len(universe_symbols),1))*100.0,6),
         "fallback_usage_percentage": 0.0,
+        "ingestion_boundary_diagnostics": ingestion_boundary_diagnostics,
     }
     snapshot_metadata_rows = [{"snapshot_id": snapshot_id, "snapshot_ts": snapshot_ts, **universe_metadata}]
     symbol_snapshot_rows = [{"snapshot_id": snapshot_id, **r} for r in rows]
@@ -656,6 +923,7 @@ def run_ops_live1b_controlled_50_symbol_operational_ingest(*, snapshot_date: str
         "snapshot_identity": ingest_result.get("snapshot_identity", {}),
         "universe": universe,
         "universe_metadata": _compute_universe_metadata(ingest_result.get("rows", []), universe),
+        "ingestion_boundary_diagnostics": deepcopy(ingest_result.get("ingestion_boundary_diagnostics", {})),
         "ops_live1b_payload": payload,
         "governance_boundaries": deepcopy(GOVERNANCE_BOUNDARIES),
     }
