@@ -188,7 +188,14 @@ def validate_observation_fact_row(row: Mapping[str, Any]) -> bool:
     return True
 
 
-def emit_observation_facts(client: Any, rows: Iterable[Mapping[str, Any]], dry_run: bool = True) -> OrderedDict[str, Any]:
+def _response_row_count(response: Any, *, fallback: int) -> int:
+    data = getattr(response, "data", None)
+    if data is None and isinstance(response, Mapping):
+        data = response.get("data")
+    return len(data) if isinstance(data, list) else fallback
+
+
+def emit_observation_facts(client: Any, rows: Iterable[Mapping[str, Any]], dry_run: bool = True, *, ignore_duplicates: bool = False) -> OrderedDict[str, Any]:
     """Append observation facts through an injected client; dry-run is the safe default."""
     validated_rows = [OrderedDict(row) for row in rows]
     for row in validated_rows:
@@ -199,8 +206,14 @@ def emit_observation_facts(client: Any, rows: Iterable[Mapping[str, Any]], dry_r
         ("attempted_rows", len(validated_rows)),
         ("inserted_rows", 0),
     ])
+    if ignore_duplicates:
+        result["conflict_strategy"] = "ignore_duplicate_prevention_key"
     if dry_run or not validated_rows:
         return result
-    client.table(OBSERVATION_FACTS_TABLE).insert(validated_rows).execute()
-    result["inserted_rows"] = len(validated_rows)
+    table = client.table(OBSERVATION_FACTS_TABLE)
+    if ignore_duplicates:
+        response = table.upsert(validated_rows, on_conflict="duplicate_prevention_key", ignore_duplicates=True).execute()
+    else:
+        response = table.insert(validated_rows).execute()
+    result["inserted_rows"] = _response_row_count(response, fallback=len(validated_rows))
     return result

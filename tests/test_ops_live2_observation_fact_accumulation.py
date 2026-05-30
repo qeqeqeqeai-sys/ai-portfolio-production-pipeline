@@ -38,8 +38,10 @@ class FakeTable:
         self.client.inserted.append((self.name, rows))
         return FakeInsert(self)
 
-    def upsert(self, rows):  # pragma: no cover
-        raise AssertionError("upsert must not be used")
+    def upsert(self, rows, **kwargs):
+        self.calls.append(("upsert", rows, kwargs))
+        self.client.upserted.append((self.name, rows, kwargs))
+        return FakeInsert(self)
 
     def update(self, rows):  # pragma: no cover
         raise AssertionError("update must not be used")
@@ -52,6 +54,7 @@ class FakeClient:
     def __init__(self):
         self.tables = []
         self.inserted = []
+        self.upserted = []
 
     def table(self, name):
         table = FakeTable(self, name)
@@ -66,7 +69,7 @@ class FakeClient:
 
 
 class FkCheckingTable(FakeTable):
-    def insert(self, rows):
+    def _record_fk_state(self, rows):
         if self.name == mod.RUN_REGISTRY_TABLE:
             assert rows[0]["artifact_id"] in self.client.artifacts
             self.client.runs.add(rows[0]["run_id"])
@@ -76,7 +79,14 @@ class FkCheckingTable(FakeTable):
                 assert row["run_id"] in self.client.runs
         elif self.name == mod.ARTIFACT_REGISTRY_TABLE:
             self.client.artifacts.add(rows[0]["artifact_id"])
+
+    def insert(self, rows):
+        self._record_fk_state(rows)
         return super().insert(rows)
+
+    def upsert(self, rows, **kwargs):
+        self._record_fk_state(rows)
+        return super().upsert(rows, **kwargs)
 
 
 class FkCheckingClient(FakeClient):
@@ -187,21 +197,21 @@ def test_enabled_dry_run_builds_rows_without_write():
     assert client.tables == []
 
 
-def test_injected_client_write_path_uses_insert_only_through_db2():
+def test_injected_client_write_path_uses_idempotent_upserts_through_db2():
     client = FakeClient()
     result = run_ops_live2_accumulation(live_observations=[BASE], client=client, enabled=True, dry_run=False)
 
     assert result["registry_emission"]["inserted_rows"] == 2
     assert result["fact_emission"]["dry_run"] is False
     assert result["fact_emission"]["inserted_rows"] == 1
-    assert [table for table, _rows in client.inserted] == [
+    assert [table for table, _rows, _kwargs in client.upserted] == [
         mod.ARTIFACT_REGISTRY_TABLE,
         mod.RUN_REGISTRY_TABLE,
         OBSERVATION_FACTS_TABLE,
     ]
-    assert client.tables[0].calls == [("insert", [result["artifact_registry_row"]]), ("execute", None)]
-    assert client.tables[1].calls == [("insert", [result["run_registry_row"]]), ("execute", None)]
-    assert client.tables[2].calls == [("insert", result["fact_rows"]), ("execute", None)]
+    assert client.tables[0].calls == [("upsert", [result["artifact_registry_row"]], {"on_conflict": "artifact_id", "ignore_duplicates": True}), ("execute", None)]
+    assert client.tables[1].calls == [("upsert", [result["run_registry_row"]], {"on_conflict": "run_id", "ignore_duplicates": True}), ("execute", None)]
+    assert client.tables[2].calls == [("upsert", result["fact_rows"], {"on_conflict": "duplicate_prevention_key", "ignore_duplicates": True}), ("execute", None)]
 
 
 def test_fk_safe_persistence_succeeds_after_parent_registration():
@@ -211,6 +221,20 @@ def test_fk_safe_persistence_succeeds_after_parent_registration():
     assert result["artifact_registry_row"]["artifact_id"] in client.artifacts
     assert result["run_registry_row"]["run_id"] in client.runs
     assert result["fact_emission"]["inserted_rows"] == 1
+
+
+def test_repeated_same_snapshot_write_path_is_idempotent():
+    client = FkCheckingClient()
+
+    first = run_ops_live2_accumulation(live_observations=[BASE], client=client, enabled=True, dry_run=False)
+    second = run_ops_live2_accumulation(live_observations=[BASE], client=client, enabled=True, dry_run=False)
+
+    assert first["context"] == second["context"]
+    assert first["artifact_registry_row"]["artifact_id"] == second["artifact_registry_row"]["artifact_id"]
+    assert first["run_registry_row"]["run_id"] == second["run_registry_row"]["run_id"]
+    assert first["registry_emission"]["conflict_strategy"] == "ignore_primary_key_conflicts"
+    assert second["fact_emission"]["conflict_strategy"] == "ignore_duplicate_prevention_key"
+    assert len(client.upserted) == 6
 
 
 def test_duplicate_parent_registration_keys_remain_deterministic():
