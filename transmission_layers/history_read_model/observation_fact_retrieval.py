@@ -242,8 +242,9 @@ def retrieve_observation_facts(
         if normalized_symbol:
             query = query.eq("entity_type", "symbol").eq("entity_id", normalized_symbol)
         if normalized_snapshot_date and hasattr(query, "gte") and hasattr(query, "lt"):
-            start = f"{normalized_snapshot_date}T00:00:00Z"
-            end = f"{(datetime.strptime(normalized_snapshot_date, "%Y-%m-%d").date() + timedelta(days=1)).isoformat()}T00:00:00Z"
+            start = f"{normalized_snapshot_date}T00:00:00Z"     
+            end_date = datetime.strptime(normalized_snapshot_date, "%Y-%m-%d").date() + timedelta(days=1)
+            end = f"{end_date.isoformat()}T00:00:00Z"
             query = query.gte("loaded_at", start).lt("loaded_at", end)
         if normalized_evidence_id and normalized_evidence_id.isdigit():
             query = query.eq("id", int(normalized_evidence_id))
